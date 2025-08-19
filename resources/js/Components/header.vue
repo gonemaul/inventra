@@ -2,8 +2,10 @@
 import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
 import { useDarkMode } from "@/Composable/useDarkMode";
+import { useSidebar } from "@/Composable/useSidebar";
 
 const { isDark, toggleDark } = useDarkMode();
+const { isSidebarOpen, toggleSidebar } = useSidebar();
 
 defineProps({
     title: {
@@ -11,22 +13,21 @@ defineProps({
         default: "Inventra",
     },
 });
-
-defineEmits(["toggle-sidebar"]);
 </script>
 
 <template>
     <header
-        class="flex items-center justify-between h-16 p-4 pr-16 bg-white shadow md:pr-4 dark:bg-gray-800"
+        class="flex items-center justify-between h-16 p-4 pl-20 bg-white shadow lg:pl-4 dark:bg-gray-800"
     >
         <!-- Hamburger Menu Button -->
         <button
+            v-if="!isSidebarOpen"
             id="menu-toggle"
-            @click="$emit('toggle-sidebar')"
-            class="fixed z-50 p-2 bg-gray-800 rounded-md shadow dark:bg-white top-2 right-4 lg:hidden"
+            @click="toggleSidebar"
+            class="fixed z-50 p-2 rounded-md shadow bg-lime-500 dark:bg-white top-3 left-4 lg:hidden"
         >
             <svg
-                class="w-6 h-6 text-white dark:text-blue-700"
+                class="w-6 h-6 text-white dark:text-lime-600"
                 fill="none"
                 stroke="currentColor"
                 stroke-width="2"
@@ -38,13 +39,11 @@ defineEmits(["toggle-sidebar"]);
             </svg>
         </button>
         <h1 class="text-xl font-semibold dark:text-white">{{ title }}</h1>
-        <div class="flex items-center justify-end space-x-3 align-middle mr-14">
-            <button @click="toggleDark" class="p-2 rounded dark:text-white">
+        <div class="flex items-center justify-end space-x-2 align-middle">
+            <button @click="toggleDark" class="p-2 rounded">
                 <span v-if="!isDark">
                     <svg
-                        class="text-gray-600 dark:text-gray-400"
-                        width="35"
-                        height="35"
+                        class="w-6 h-6 text-gray-500 dark:text-gray-200 hover:text-gray-700 lg:w-8 lg:h-8 md:w-7 md:h-7"
                         viewBox="0 0 30 30"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
@@ -57,9 +56,7 @@ defineEmits(["toggle-sidebar"]);
                 </span>
                 <span v-else>
                     <svg
-                        class="text-gray-600 dark:text-yellow-400"
-                        width="35"
-                        height="35"
+                        class="w-6 h-6 text-gray-500 hover:text-gray-700 dark:text-yellow-500 dark:hover:text-yellow-600 lg:h-8 lg:w-8 md:h-7 md:w-7"
                         viewBox="0 0 30 30"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
@@ -103,11 +100,11 @@ defineEmits(["toggle-sidebar"]);
                     </svg>
                 </span>
             </button>
-            <div class="p-2 rounded">
+            <div
+                class="p-2 text-gray-500 dark:text-gray-200 hover:text-gray-700"
+            >
                 <svg
-                    class="text-gray-600 dark:text-gray-200"
-                    width="33"
-                    height="33"
+                    class="w-6 h-6 md:w-7 md:h-7 lg:w-8 lg:h-8"
                     viewBox="0 0 48 48"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
@@ -130,7 +127,7 @@ defineEmits(["toggle-sidebar"]);
                             <span class="inline-flex rounded-md">
                                 <button
                                     type="button"
-                                    class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out bg-white border border-transparent rounded-md dark:text-gray-200 dark:bg-gray-800 hover:text-gray-700 focus:outline-none"
+                                    class="inline-flex items-center px-3 py-2 text-sm font-medium leading-4 text-gray-500 transition duration-150 ease-in-out border border-transparent rounded-md dark:text-gray-200 hover:text-gray-700 focus:outline-none"
                                 >
                                     <svg
                                         class="mr-2 dark:text-gray-200"
