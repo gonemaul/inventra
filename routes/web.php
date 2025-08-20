@@ -14,9 +14,17 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/dashboard', function () {
-    return Inertia::render('Dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::controller(\App\Http\Controllers\DashboardController::class)->group(function () {
+        Route::get('/dashboard', 'index')->name('dashboard');
+    });
+
+    Route::resource('products', \App\Http\Controllers\ProductController::class);
+    Route::resource('purchases', \App\Http\Controllers\PurchaseController::class);
+    Route::resource('sellings', \App\Http\Controllers\SellingController::class);
+    Route::resource('reports',  \App\Http\Controllers\ReportController::class);
+    Route::resource('settings', \App\Http\Controllers\SettingController::class);
+});
 Route::get('/user', function () {
     return Inertia::render('user');
 })->middleware(['auth', 'verified'])->name('user');
