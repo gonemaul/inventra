@@ -150,7 +150,10 @@ const { isDarkMode } = useDarkMode();
                 <span class="ml-3">Penjualan</span>
             </NavLink>
             <!-- Keuangan -->
-            <NavLink :href="route('user')" :active="route().current('user*')">
+            <NavLink
+                :href="route('payments')"
+                :active="route().current('payments*')"
+            >
                 <svg
                     width="24"
                     height="24"
@@ -190,7 +193,10 @@ const { isDarkMode } = useDarkMode();
                 <span class="ml-3">Laporan</span>
             </NavLink>
             <!-- Pengaturan -->
-            <NavLink :href="route('user')" :active="route().current('user*')">
+            <NavLink
+                :href="route('settings')"
+                :active="route().current('settings*')"
+            >
                 <svg
                     width="24"
                     height="24"

@@ -19,14 +19,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/dashboard', 'index')->name('dashboard');
     });
 
+    Route::controller(\App\Http\Controllers\PaymentController::class)->group(function () {
+        Route::get('/payments', 'index')->name('payments');
+    });
+
     Route::get('products-detail', function () {
         return Inertia::render('Products/detail');
     })->name('products-detail');
     Route::resource('products', \App\Http\Controllers\ProductController::class);
     Route::resource('purchases', \App\Http\Controllers\PurchaseController::class);
     Route::resource('sellings', \App\Http\Controllers\SellingController::class);
+
     Route::resource('reports',  \App\Http\Controllers\ReportController::class);
-    Route::resource('settings', \App\Http\Controllers\SettingController::class);
+    Route::controller(\App\Http\Controllers\SettingController::class)->group(function () {
+        Route::get('/settings', 'index')->name('settings');
+    });
 });
 Route::get('/user', function () {
     return Inertia::render('user');
