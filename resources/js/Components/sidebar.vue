@@ -16,7 +16,7 @@ const { isDarkMode } = useDarkMode();
         id="sidebar"
         :class="[
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full',
-            'fixed top-0 left-0 z-50 flex flex-col justify-between w-64 h-full p-6 transition-transform duration-200 ease-in-out transform shadow-2xl dark:bg-gray-700 bg-gray-100 lg:translate-x-0',
+            'fixed top-0 left-0 z-50 flex flex-col justify-between w-64 h-full p-6 transition-transform duration-200 ease-in-out transform shadow-2xl dark:bg-customBg-tableDark dark:text-customText-dark dark:border-borderc-dark bg-customBg-tableLight text-customText-light border-r border-borderc-light lg:translate-x-0',
         ]"
     >
         <div class="items-center justify-center mb-4 text-center">

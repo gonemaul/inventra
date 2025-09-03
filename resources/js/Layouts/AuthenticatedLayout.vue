@@ -21,7 +21,7 @@ defineProps({
 </script>
 
 <template>
-    <div class="flex min-h-screen bg-gray-100">
+    <div class="flex min-h-screen">
         <!-- Sidebar -->
         <Sidebar v-if="showSidebar" />
         <!-- </aside> -->
@@ -33,10 +33,12 @@ defineProps({
             @click="closeSidebar"
         ></div>
         <div
-            class="flex flex-col flex-1 transition-transform duration-200 lg:ml-64"
+            class="flex flex-col flex-1 w-full transition-transform duration-200 lg:ml-64"
         >
             <Header v-if="showHeader" :title="headerTitle" />
-            <main class="flex-1 p-6">
+            <main
+                class="flex-1 p-6 bg-customBg-light text-customText-light dark:bg-customBg-dark dark:text-customText-dark"
+            >
                 <slot />
             </main>
         </div>

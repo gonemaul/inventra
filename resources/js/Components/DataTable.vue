@@ -1,123 +1,371 @@
+<script setup>
+import { ref, computed, watch, onMounted } from "vue";
+import axios from "axios";
+
+const props = defineProps({
+    data: { type: Array, default: () => [] }, //jika client side
+    columns: { type: Array, required: true }, // { key, label, sortable?, width?, class?, slot? }
+    perPageOptions: { type: Array, default: () => [5, 10, 25, 50] },
+    serverSide: { type: Boolean, default: false },
+    endpoint: { type: String, default: "" },
+    params: { type: Object, default: () => ({}) },
+});
+
+const emit = defineEmits(["row-click", "update:params"]);
+
+// Pagination
+const perPage = ref(props.perPageOptions[0]);
+const currentPage = ref(1);
+const lastPage = ref(1);
+
+// Sorting
+const sortKey = ref(null);
+const sortOrder = ref("asc");
+
+// Data state
+const localData = ref(props.data);
+const total = ref(props.serverSide ? 0 : props.data.length);
+const loading = ref(false);
+
+const formatRupiah = (value) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(value);
+
+// Server side fetch
+async function fetchServerData() {
+    loading.value = true;
+    try {
+        const response = await axios.get(props.endpoint, {
+            params: {
+                ...props.params,
+                page: currentPage.value,
+                per_page: perPage.value,
+                sort: sortKey.value,
+                order: sortOrder.value,
+            },
+        });
+
+        const res = response.data;
+        localData.value = res.data || [];
+        total.value = res.total || 0;
+        perPage.value = res.per_page || perPage.value;
+        currentPage.value = res.current_page || 1;
+        lastPage.value = res.last_page || 1;
+    } catch (e) {
+        console.error("Fetch error:", e);
+    } finally {
+        loading.value = false;
+    }
+}
+
+// Watch untuk server side (semua perubahan)
+watch(
+    [() => props.params, currentPage, sortKey, sortOrder],
+    async () => {
+        if (props.serverSide && props.endpoint) {
+            await fetchServerData();
+        }
+    },
+    { deep: true }
+);
+
+// Watch khusus untuk perPage → reset ke page 1
+watch(perPage, async () => {
+    if (props.serverSide && props.endpoint) {
+        currentPage.value = 1; // reset page
+        await fetchServerData();
+    }
+});
+
+// Auto load kalau server side
+onMounted(() => {
+    if (props.serverSide) fetchServerData();
+});
+
+// Client-side computed
+const filteredData = computed(() => {
+    if (props.serverSide) return localData.value;
+
+    let rows = [...props.data];
+
+    if (props.params.search) {
+        rows = rows.filter((row) =>
+            Object.values(row).some((v) =>
+                String(v)
+                    .toLowerCase()
+                    .includes(props.params.search.toLowerCase())
+            )
+        );
+    }
+
+    Object.keys(props.params).forEach((k) => {
+        if (k !== "search" && k !== "sort" && k !== "order") {
+            if (props.params[k]) {
+                rows = rows.filter(
+                    (r) => String(r[k]) === String(props.params[k])
+                );
+            }
+        }
+    });
+
+    if (sortKey.value) {
+        rows.sort((a, b) => {
+            const valA = a[sortKey.value];
+            const valB = b[sortKey.value];
+            if (valA < valB) return sortOrder.value === "asc" ? -1 : 1;
+            if (valA > valB) return sortOrder.value === "asc" ? 1 : -1;
+            return 0;
+        });
+    }
+
+    return rows;
+});
+
+const paginatedData = computed(() => {
+    if (props.serverSide) return localData.value;
+    const start = (currentPage.value - 1) * perPage.value;
+    return filteredData.value.slice(start, start + perPage.value);
+});
+
+const totalPages = computed(() =>
+    props.serverSide
+        ? lastPage.value
+        : Math.ceil(total.value / perPage.value) || 1
+);
+
+watch([perPage, filteredData], () => {
+    if (!props.serverSide) {
+        total.value = filteredData.value.length;
+        currentPage.value = 1;
+    }
+});
+</script>
+
 <template>
-    <div class="w-full">
-        <!-- Search -->
-        <div class="flex items-center justify-between mb-3">
-            <input
-                v-model="search"
-                @input="handleSearch"
-                type="text"
-                placeholder="Cari data..."
-                class="w-64 px-3 py-2 text-sm bg-white border border-gray-300 rounded-md dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
-            />
-
-            <!-- Per page select -->
-            <div class="flex items-center space-x-2">
-                <span class="text-sm dark:text-gray-300">Tampilkan</span>
-                <select
-                    v-model="perPage"
-                    @change="fetchTableData"
-                    class="px-2 py-1 text-sm bg-white border border-gray-300 rounded-md w-14 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600"
-                >
-                    <option v-for="n in [5, 10, 20, 50]" :key="n" :value="n">
-                        {{ n }}
-                    </option>
-                </select>
-                <span class="text-sm dark:text-gray-300">data</span>
-            </div>
-        </div>
-
+    <div
+        class="w-full p-5 border-2 rounded-md border-lime-300 text-customText-secondaryLight bg-customBg-light dark:text-customText-secondaryDark dark:border-borderc-dark dark:bg-customBg-dark"
+    >
         <!-- Table -->
-        <div
-            class="overflow-x-auto bg-white border rounded-lg shadow-sm border-lime-500 dark:border-gray-700"
-        >
-            <table class="w-full border-collapse">
-                <thead
-                    class="text-gray-800 bg-gray-100 border-b border-lime-500 dark:bg-gray-700"
-                >
-                    <tr>
+        <div class="overflow-x-auto">
+            <table class="min-w-full border-2 rounded-lg table-fixed">
+                <thead class="bg-gray-100 dark:bg-gray-800">
+                    <tr class="border-b border-gray-400">
                         <th
                             v-for="col in columns"
                             :key="col.key"
-                            class="px-4 py-2 text-sm font-semibold text-left border-r border-gray-500 cursor-pointer select-none dark:text-gray-200"
-                            :style="{ width: col.width || '200px' }"
-                            @click="toggleSort(col.key)"
+                            @click="
+                                col.sortable
+                                    ? ((sortKey = col.key),
+                                      (sortOrder =
+                                          sortKey === col.key &&
+                                          sortOrder === 'asc'
+                                              ? 'desc'
+                                              : 'asc'))
+                                    : null
+                            "
+                            :style="{ width: col.width || '150px' }"
+                            :class="[
+                                'px-4 text-sm md:text-base py-2 border-b dark:border-gray-700 text-left select-none',
+                                col.sortable ? 'cursor-pointer' : '',
+                                col.class,
+                            ]"
                         >
-                            <div class="flex items-center">
+                            <div class="flex items-center gap-2">
                                 {{ col.label }}
-                                <span v-if="sortKey === col.key" class="ml-1">
-                                    {{ sortOrder === "asc" ? "▲" : "▼" }}
+                                <span
+                                    v-if="col.sortable"
+                                    class="w-4 h-3 lg:w-5 lg:h-4"
+                                >
+                                    <!-- default -->
+                                    <svg
+                                        v-if="sortKey !== col.key"
+                                        viewBox="0 0 23 18"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            d="M15.5 15.75V2.25M15.5 2.25L12.375 6M15.5 2.25L18.625 6"
+                                            stroke="#6B7280"
+                                            stroke-opacity="0.5"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
+                                        <path
+                                            d="M7.5 2.25L7.5 15.75M7.5 15.75L10.625 12M7.5 15.75L4.375 12"
+                                            stroke="#6B7280"
+                                            stroke-opacity="0.5"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
+                                    </svg>
+
+                                    <!-- asc -->
+                                    <svg
+                                        v-else-if="sortOrder === 'asc'"
+                                        viewBox="0 0 23 18"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            d="M15.5 15.75V2.25M15.5 2.25L12.375 6M15.5 2.25L18.625 6"
+                                            stroke="#84CC16"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
+                                        <path
+                                            d="M7.5 2.25L7.5 15.75M7.5 15.75L10.625 12M7.5 15.75L4.375 12"
+                                            stroke="#6B7280"
+                                            stroke-opacity="0.5"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
+                                    </svg>
+
+                                    <!-- desc -->
+                                    <svg
+                                        v-else
+                                        viewBox="0 0 23 18"
+                                        fill="none"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                    >
+                                        <path
+                                            d="M7.5 2.25L7.5 15.75M7.5 15.75L10.625 12M7.5 15.75L4.375 12"
+                                            stroke="#84CC16"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
+                                        <path
+                                            d="M15.5 15.75L15.5 2.25M15.5 2.25L12.375 6M15.5 2.25L18.625 6"
+                                            stroke="#6B7280"
+                                            stroke-opacity="0.5"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
+                                    </svg>
                                 </span>
                             </div>
-                        </th>
-                        <th
-                            class="w-32 px-4 py-2 text-sm font-semibold text-center dark:text-gray-200"
-                        >
-                            Aksi
                         </th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr
-                        v-for="item in tableData"
-                        :key="item.id"
-                        class="border-b-2 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        v-if="!loading"
+                        v-for="row in paginatedData"
+                        :key="row.id"
+                        @click="emit('row-click', row)"
+                        class="cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
                         <td
                             v-for="col in columns"
                             :key="col.key"
-                            class="px-4 py-2 text-sm dark:text-gray-200"
+                            :style="{ width: col.width || '150px' }"
+                            :class="[
+                                'px-4 py-2 border-b text-sm md:text-base dark:border-gray-700 truncate',
+                                col.class,
+                            ]"
                         >
-                            {{ item[col.key] }}
-                        </td>
-                        <td class="px-4 py-2 text-sm text-center">
-                            <button
-                                @click="$emit('edit', item)"
-                                class="px-2 py-1 mr-1 text-xs text-white bg-blue-500 rounded hover:bg-blue-600"
-                            >
-                                Edit
-                            </button>
-                            <button
-                                @click="$emit('delete', item)"
-                                class="px-2 py-1 text-xs text-white bg-red-500 rounded hover:bg-red-600"
-                            >
-                                Hapus
-                            </button>
+                            <slot v-if="col.slot" :name="col.slot" :row="row" />
+                            <span v-else>
+                                {{
+                                    col.rupiah
+                                        ? row[col.key] && row[col.key] !== 0
+                                            ? formatRupiah(row[col.key])
+                                            : "-"
+                                        : row[col.key] && row[col.key] !== 0
+                                        ? row[col.key]
+                                        : "-"
+                                }}
+                            </span>
                         </td>
                     </tr>
-                    <tr v-if="!loading && tableData.length === 0">
+                    <tr v-if="!loading && paginatedData.length === 0">
                         <td
-                            :colspan="columns.length + 1"
-                            class="px-4 py-3 text-center text-gray-500 dark:text-gray-400"
+                            :colspan="columns.length"
+                            class="py-4 text-center text-gray-500"
                         >
-                            Tidak ada data
+                            No data available
+                        </td>
+                    </tr>
+                    <tr v-if="loading">
+                        <td
+                            :colspan="columns.length"
+                            class="py-4 text-center text-gray-500 dark:text-gray-300"
+                        >
+                            Loading...
                         </td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <!-- Pagination -->
-        <div class="flex items-center justify-between mt-3">
-            <div class="text-sm text-gray-600 dark:text-gray-300">
-                Menampilkan {{ startItem }} - {{ endItem }} dari
-                {{ total }} data
+        <!-- Footer -->
+        <div
+            class="flex flex-col items-center justify-center gap-4 mt-6 text-center sm:flex-row sm:justify-between"
+        >
+            <!-- Show entries -->
+            <div
+                class="flex items-center gap-2 text-gray-500 dark:text-gray-300"
+            >
+                <label class="text-sm lg:text-base">Show</label>
+                <select
+                    v-model="perPage"
+                    class="px-5 py-1 border rounded dark:bg-gray-800 dark:text-white"
+                >
+                    <option
+                        v-for="opt in perPageOptions"
+                        :key="opt"
+                        :value="opt"
+                    >
+                        {{ opt }}
+                    </option>
+                </select>
+                <span class="text-sm lg:text-base">entries</span>
             </div>
 
-            <div class="flex space-x-2">
+            <!-- Info -->
+            <div class="text-sm text-gray-500 lg:text-base dark:text-gray-300">
+                Showing
+                {{ total === 0 ? 0 : (currentPage - 1) * perPage + 1 }}
+                to
+                {{ Math.min(currentPage * perPage, total) }}
+                of {{ total }} entries
+            </div>
+
+            <!-- Pagination -->
+            <div class="flex flex-wrap justify-center gap-2">
                 <button
-                    @click="changePage(currentPage - 1)"
+                    @click="currentPage--"
                     :disabled="currentPage === 1"
-                    class="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 disabled:opacity-50"
+                    class="px-3 py-1 border border-gray-300 rounded shadow disabled:opacity-50 disabled:hover:bg-gray-300 dark:bg-gray-800 disabled:dark:hover:bg-gray-800 dark:hover:bg-primary-hover hover:bg-customBg-dark hover:text-white hover:bg-opacity-80 dark:border-gray-600"
                 >
                     Prev
                 </button>
-                <span class="px-3 py-1 text-sm dark:text-gray-300">
-                    {{ currentPage }} / {{ totalPages }}
-                </span>
                 <button
-                    @click="changePage(currentPage + 1)"
+                    v-for="page in totalPages"
+                    :key="page"
+                    @click="currentPage = page"
+                    :class="[
+                        'px-3 py-1 rounded border shadow border-gray-300 dark:bg-gray-800 dark:border-gray-600',
+                        page === currentPage
+                            ? 'dark:bg-primary-light bg-customBg-tableDark text-white dark:text-customBg-dark'
+                            : 'dark:hover:bg-primary-hover hover:bg-customBg-dark hover:text-white hover:bg-opacity-80',
+                    ]"
+                >
+                    {{ page }}
+                </button>
+                <button
+                    @click="currentPage++"
                     :disabled="currentPage === totalPages"
-                    class="px-3 py-1 text-sm bg-white border border-gray-300 rounded-md dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 disabled:opacity-50"
+                    class="px-3 py-1 border border-gray-300 rounded shadow disabled:opacity-50 disabled:hover:bg-gray-300 dark:bg-gray-800 disabled:dark:hover:bg-gray-800 dark:hover:bg-primary-hover hover:bg-customBg-dark hover:text-white hover:bg-opacity-80 dark:border-gray-600"
                 >
                     Next
                 </button>
@@ -125,71 +373,3 @@
         </div>
     </div>
 </template>
-
-<script setup>
-import { ref, watch, onMounted, computed } from "vue";
-
-const props = defineProps({
-    columns: Array,
-    fetchData: Function,
-    perPage: { type: Number, default: 5 },
-});
-
-const emit = defineEmits(["edit", "delete"]);
-
-const tableData = ref([]);
-const total = ref(0);
-const search = ref("");
-const currentPage = ref(1);
-const perPage = ref(props.perPage);
-const sortKey = ref(null);
-const sortOrder = ref("asc");
-const loading = ref(false);
-
-const totalPages = computed(() => Math.ceil(total.value / perPage.value));
-const startItem = computed(() =>
-    total.value === 0 ? 0 : (currentPage.value - 1) * perPage.value + 1
-);
-const endItem = computed(() =>
-    Math.min(currentPage.value * perPage.value, total.value)
-);
-
-async function fetchTableData() {
-    loading.value = true;
-    const res = await props.fetchData({
-        search: search.value,
-        page: currentPage.value,
-        perPage: perPage.value,
-        sortKey: sortKey.value,
-        sortOrder: sortOrder.value,
-    });
-    tableData.value = res.data;
-    total.value = res.total;
-    loading.value = false;
-}
-
-function toggleSort(key) {
-    if (sortKey.value === key) {
-        sortOrder.value = sortOrder.value === "asc" ? "desc" : "asc";
-    } else {
-        sortKey.value = key;
-        sortOrder.value = "asc";
-    }
-    fetchTableData();
-}
-
-function handleSearch() {
-    currentPage.value = 1;
-    fetchTableData();
-}
-
-function changePage(page) {
-    if (page >= 1 && page <= totalPages.value) {
-        currentPage.value = page;
-        fetchTableData();
-    }
-}
-
-onMounted(fetchTableData);
-watch([perPage], fetchTableData);
-</script>

@@ -21,6 +21,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::controller(\App\Http\Controllers\PaymentController::class)->group(function () {
         Route::get('/payments', 'index')->name('payments');
+        Route::get('/payments-detail', 'detail')->name('detail');
     });
 
     Route::get('products-detail', function () {
@@ -31,8 +32,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('sellings', \App\Http\Controllers\SellingController::class);
 
     Route::resource('reports',  \App\Http\Controllers\ReportController::class);
-    Route::controller(\App\Http\Controllers\SettingController::class)->group(function () {
-        Route::get('/settings', 'index')->name('settings');
+
+    // Setting Route
+    Route::controller(\App\Http\Controllers\SettingController::class)->prefix('settings')->group(function () {
+        Route::get('/', 'index')->name('settings');
+        Route::get('/category', 'getCategories')->name('getCategory');
     });
 });
 Route::get('/user', function () {

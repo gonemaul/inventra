@@ -21,7 +21,7 @@ const tabs = [
     <Head title="Settings" />
 
     <AuthenticatedLayout headerTitle="Pengaturan">
-        <div class="w-full min-h-screen space-y-5">
+        <div class="w-full space-y-5 max-w-screen">
             <Tabs :tabs="tabs" defaultTab="kategori">
                 <template #kategori>
                     <tabKategori />

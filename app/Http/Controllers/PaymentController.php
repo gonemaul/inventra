@@ -11,4 +11,9 @@ class PaymentController extends Controller
     {
         return Inertia::render('Keuangan/index');
     }
+
+    public function detail()
+    {
+        return Inertia::render('Keuangan/detail');
+    }
 }

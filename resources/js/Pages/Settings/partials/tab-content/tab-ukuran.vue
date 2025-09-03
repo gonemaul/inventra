@@ -1,64 +1,34 @@
 <script setup>
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import formCreate from "../form-create.vue";
+import DataTable from "@/Components/DataTable.vue";
 import { ref } from "vue";
 
 const showCreate = ref(false);
 
-import DataTable from "@/Components/DataTable.vue";
+const params = ref({
+    search: "",
+    kategori: "",
+});
 
-const allData = [
-    { id: 1, kode: "KTG001", nama: "Elektronik" },
-    { id: 2, kode: "KTG002", nama: "Fashion" },
-    { id: 3, kode: "KTG003", nama: "Makanan & Minuman" },
-    { id: 4, kode: "KTG004", nama: "Otomotif" },
-    { id: 5, kode: "KTG005", nama: "Kesehatan" },
-    { id: 6, kode: "KTG006", nama: "Olahraga" },
-    { id: 7, kode: "KTG007", nama: "Kosmetik" },
-    { id: 8, kode: "KTG008", nama: "Peralatan Rumah" },
-    { id: 9, kode: "KTG009", nama: "Alat Tulis" },
-    { id: 10, kode: "KTG010", nama: "Mainan" },
+const columns = [
+    { key: "code", label: "Kode", sortable: true, width: "120px" },
+    { key: "name", label: "Nama", sortable: true, width: "200px" },
+    { key: "aksi", label: "Aksi", width: "120px", slot: "aksi" },
 ];
 
-async function fetchCategories({ search, page, perPage, sortKey, sortOrder }) {
-    let filtered = [...allData];
-
-    // Searching
-    if (search) {
-        const q = search.toLowerCase();
-        filtered = filtered.filter(
-            (item) =>
-                item.kode.toLowerCase().includes(q) ||
-                item.nama.toLowerCase().includes(q)
-        );
-    }
-
-    // Sorting
-    if (sortKey) {
-        filtered.sort((a, b) => {
-            if (a[sortKey] < b[sortKey]) return sortOrder === "asc" ? -1 : 1;
-            if (a[sortKey] > b[sortKey]) return sortOrder === "asc" ? 1 : -1;
-            return 0;
-        });
-    }
-
-    // Pagination
-    const total = filtered.length;
-    const start = (page - 1) * perPage;
-    const paginated = filtered.slice(start, start + perPage);
-
-    return {
-        data: paginated,
-        total,
-    };
-}
-
-function editItem(item) {
-    alert("Edit: " + item.nama);
-}
-function deleteItem(item) {
-    alert("Hapus: " + item.nama);
-}
+const allData = [
+    { id: 1, code: "KTG001", name: "Elektronik" },
+    { id: 2, code: "KTG002", name: "Fashion" },
+    { id: 3, code: "KTG003", name: "Makanan & Minuman" },
+    { id: 4, code: "KTG004", name: "Otomotif" },
+    { id: 5, code: "KTG005", name: "Kesehatan" },
+    { id: 6, code: "KTG006", name: "Olahraga" },
+    { id: 7, code: "KTG007", name: "Kosmetik" },
+    { id: 8, code: "KTG008", name: "Peralatan Rumah" },
+    { id: 9, code: "KTG009", name: "Alat Tulis" },
+    { id: 10, code: "KTG010", name: "Mainan" },
+];
 </script>
 <template>
     <formCreate
@@ -66,31 +36,40 @@ function deleteItem(item) {
         @close="showCreate = false"
         title="Ukuran"
     ></formCreate>
-    <div class="p-4 bg-white rounded-lg shadow dark:bg-gray-600">
-        <div class="flex justify-between">
-            <div class="">
-                <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+    <div
+        class="p-4 border rounded-lg shadow-md bg-customBg-tableLight dark:bg-customBg-tableDark"
+    >
+        <div
+            class="flex flex-col gap-3 mb-3 sm:flex-row sm:items-center sm:justify-between"
+        >
+            <div>
+                <h2
+                    class="text-base font-semibold text-gray-900 dark:text-white sm:text-lg lg:text-xl"
+                >
                     Kelola Ukuran
                 </h2>
-                <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                <p
+                    class="mt-1 text-xs text-gray-600 dark:text-gray-300 sm:text-sm lg:text-base"
+                >
                     Kelola semua ukuran produk.
                 </p>
             </div>
-            <PrimaryButton class="ms-4" @click="showCreate = true"
+            <PrimaryButton
+                class="text-xs text-center sm:ms-4 sm:text-sm lg:text-base"
+                @click="showCreate = true"
                 >Tambah Ukuran</PrimaryButton
             >
         </div>
-        <div class="p-4 my-3 bg-gray-100 rounded-md dark:bg-gray-600">
-            <DataTable
-                :columns="[
-                    { key: 'kode', label: 'Kode' },
-                    { key: 'nama', label: 'Nama' },
-                ]"
-                :fetchData="fetchCategories"
-                :perPage="5"
-                @edit="editItem"
-                @delete="deleteItem"
-            />
-        </div>
+        <DataTable :columns="columns" :params="params" :data="allData">
+            <!-- Slot aksi -->
+            <template #aksi="{ row }">
+                <button class="px-2 py-1 text-white bg-blue-500 rounded">
+                    Edit
+                </button>
+                <button class="px-2 py-1 ml-2 text-white bg-red-500 rounded">
+                    Hapus
+                </button>
+            </template>
+        </DataTable>
     </div>
 </template>
