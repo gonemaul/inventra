@@ -1,7 +1,12 @@
-<script>
+<script setup>
 import { Link } from "@inertiajs/vue3";
+import { ref } from "vue";
+import Delete from "./delete.vue";
+
+const showDelete = ref(false);
 </script>
 <template>
+    <Delete :show="showDelete" @close="showDelete = false" />
     <div
         class="p-4 bg-gray-200 border-2 shadow-md border-lime-300 rounded-xl sm:p-5 dark:border-gray-700 dark:bg-gray-800"
     >

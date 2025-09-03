@@ -1,15 +1,12 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
 import { ref } from "vue";
-import Modal from "@/Components/Modal.vue";
 import Delete from "./delete.vue";
 
 const showDelete = ref(false);
 </script>
 <template>
-    <Modal :show="showDelete" @close="showDelete = false" maxWidth="lg">
-        <Delete />
-    </Modal>
+    <Delete :show="showDelete" @close="showDelete = false" />
     <div
         class="flex items-start max-w-4xl gap-4 p-3 mx-auto bg-gray-100 border-2 rounded-lg shadow-md dark:bg-customBg-tableDark bg-opacity-35 border-lime-500 dark:border-gray-500 sm:items-center"
     >
@@ -40,17 +37,17 @@ const showDelete = ref(false);
                 </p>
                 <div class="flex flex-wrap justify-center w-full gap-2">
                     <span
-                        class="px-2 py-1 text-xs font-medium text-black rounded-full select-none opacity-80 bg-lime-200"
+                        class="px-2 py-1 text-[11px] font-medium text-black rounded-full select-none opacity-80 bg-lime-200"
                     >
                         Oli
                     </span>
                     <span
-                        class="px-2 py-1 text-xs font-medium text-black rounded-full select-none bg-lime-200 opacity-80"
+                        class="px-2 py-1 text-[11px] font-medium text-black rounded-full select-none bg-lime-200 opacity-80"
                     >
                         800 ML
                     </span>
                     <span
-                        class="px-2 py-1 text-xs font-medium text-black rounded-full select-none bg-lime-200 opacity-80"
+                        class="px-2 py-1 text-[11px] font-medium text-black rounded-full select-none bg-lime-200 opacity-80"
                     >
                         24 Botol
                     </span>

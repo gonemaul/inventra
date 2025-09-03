@@ -15,13 +15,15 @@ const emit = defineEmits(["close", "save"]);
             class="w-full p-6 bg-white shadow-lg maxs-w-md rounded-xl dark:bg-gray-800"
         >
             <!-- Header -->
-            <div class="flex items-center justify-between pb-3 border-b">
+            <div
+                class="relative flex items-center justify-center pb-3 border-b"
+            >
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-white">
                     Pembayaran Nota
                 </h2>
                 <button
                     @click="$emit('close')"
-                    class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                    class="absolute right-0 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
                 >
                     ✕
                 </button>
