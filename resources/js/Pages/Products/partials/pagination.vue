@@ -3,7 +3,7 @@
         class="flex flex-col items-center justify-between gap-4 mt-6 md:flex-row"
     >
         <!-- Info jumlah data -->
-        <div class="text-sm text-gray-600">
+        <div class="text-sm text-gray-600 dark:text-gray-200">
             Menampilkan <span class="font-semibold">1</span> -
             <span class="font-semibold">10</span> dari
             <span class="font-semibold">120</span> data
@@ -49,12 +49,14 @@
 
         <!-- Page size -->
         <div class="flex items-center gap-2">
-            <label for="pageSize" class="text-sm text-gray-600"
+            <label
+                for="pageSize"
+                class="text-sm text-gray-600 dark:text-gray-200"
                 >Tampilkan:</label
             >
             <select
                 id="pageSize"
-                class="px-2 py-1 text-sm border rounded-md w-14 border-lime-500 focus-lime-600"
+                class="px-2 py-1 text-sm border-2 border-gray-500 rounded-md w-14 dark:bg-gray-700 dark:text-white"
             >
                 <option>5</option>
                 <option selected>10</option>

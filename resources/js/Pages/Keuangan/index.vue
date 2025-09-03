@@ -29,12 +29,6 @@ const formatRupiah = (value) =>
         minimumFractionDigits: 0,
     }).format(value);
 
-// progress bayar
-const progressValue = computed(() => {
-    if (props.total === 0) return 0;
-    return Math.min(100, Math.round((props.terbayarkan / props.total) * 100));
-});
-
 const params = ref({
     search: "",
     kategori: "",

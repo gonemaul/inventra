@@ -16,30 +16,30 @@ const errors = ref({
 </script>
 
 <template>
-    <form class="p-6 bg-white rounded-lg shadow dark:bg-gray-200">
+    <form class="p-6 bg-gray-100 rounded-lg shadow dark:bg-customBg-tableDark">
         <!-- Upload + Kode Barang -->
         <div class="flex flex-col gap-4 md:flex-row">
             <!-- Upload -->
             <div class="flex flex-col lg:w-2/5">
                 <label
                     for="image-upload"
-                    class="block text-sm font-medium text-gray-700 dark:text-gray-600"
+                    class="block text-sm font-medium text-gray-700 dark:text-gray-100"
                 >
                     Upload Gambar
                 </label>
                 <label
                     for="image-upload"
-                    class="flex flex-col items-center justify-center w-full h-40 mt-2 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-300 hover:bg-gray-100 dark:hover:bg-gray-400"
+                    class="flex flex-col items-center justify-center w-full h-40 mt-2 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600"
                 >
                     <div
                         class="flex flex-col items-center justify-center pt-5 pb-6"
                     >
                         <p
-                            class="mb-2 text-sm text-gray-500 dark:text-gray-600"
+                            class="mb-2 text-sm text-gray-500 dark:text-gray-200"
                         >
                             <span class="font-semibold">Klik untuk Upload</span>
                         </p>
-                        <p class="text-xs text-gray-500 dark:text-gray-500">
+                        <p class="text-xs text-gray-500 dark:text-gray-200">
                             WEBP, PNG (max. 1MB)
                         </p>
                     </div>
@@ -55,6 +55,10 @@ const errors = ref({
             <!-- Input kode -->
             <div class="flex flex-col justify-center flex-1 gap-3">
                 <div>
+                    <label
+                        class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
+                        >Kode Barang</label
+                    >
                     <TextInput
                         class="w-full max-h-10"
                         id="kode"
@@ -67,6 +71,10 @@ const errors = ref({
                     </p>
                 </div>
                 <div>
+                    <label
+                        class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
+                        >Nama Barang</label
+                    >
                     <TextInput
                         class="w-full max-h-10"
                         id="nama"
@@ -85,11 +93,11 @@ const errors = ref({
         <div class="grid grid-cols-1 gap-3 mt-5 md:grid-cols-3">
             <div>
                 <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-400"
+                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
                     >Kategori</label
                 >
                 <select
-                    class="w-full px-3 py-2 text-sm border border-gray-600 rounded-lg"
+                    class="w-full px-3 py-2 text-sm border border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
                 >
                     <option value="">Pilih Kategori</option>
                     <option value="tersedia">Kategori A</option>
@@ -98,11 +106,11 @@ const errors = ref({
             </div>
             <div>
                 <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-400"
+                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
                     >Satuan</label
                 >
                 <select
-                    class="w-full px-3 py-2 text-sm border border-gray-600 rounded-lg"
+                    class="w-full px-3 py-2 text-sm border border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
                 >
                     <option value="">Pilih Satuan</option>
                     <option value="pcs">Pcs</option>
@@ -111,11 +119,11 @@ const errors = ref({
             </div>
             <div>
                 <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-600"
+                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
                     >Ukuran</label
                 >
                 <select
-                    class="w-full px-3 py-2 text-sm border border-gray-400 rounded-lg"
+                    class="w-full px-3 py-2 text-sm border border-gray-400 rounded-lg dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
                 >
                     <option value="">Pilih Ukuran</option>
                     <option value="s">Small</option>
@@ -131,7 +139,7 @@ const errors = ref({
                 id="description"
                 rows="3"
                 placeholder="Deskripsi Barang"
-                class="w-full px-3 py-2 border border-gray-400 rounded-lg"
+                class="w-full px-3 py-2 border border-gray-400 rounded-lg dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
             ></textarea>
             <p v-if="errors.description" class="mt-1 text-sm text-red-500">
                 {{ errors.description }}
@@ -142,7 +150,7 @@ const errors = ref({
         <div class="flex flex-col gap-3 mt-4 md:flex-row">
             <div class="flex-1">
                 <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-600"
+                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
                     >Harga Beli</label
                 >
                 <TextInput
@@ -158,7 +166,7 @@ const errors = ref({
             </div>
             <div class="flex-1">
                 <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-600"
+                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
                     >Harga Jual</label
                 >
                 <TextInput
@@ -178,7 +186,7 @@ const errors = ref({
         <div class="grid grid-cols-1 gap-3 mt-4 md:grid-cols-3">
             <div>
                 <label
-                    class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-600"
+                    class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-100"
                     >Stock</label
                 >
                 <TextInput
@@ -194,7 +202,7 @@ const errors = ref({
             </div>
             <div>
                 <label
-                    class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-600"
+                    class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-100"
                     >Min Stock</label
                 >
                 <TextInput
@@ -210,11 +218,11 @@ const errors = ref({
             </div>
             <div>
                 <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-600"
+                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
                     >Status</label
                 >
                 <select
-                    class="w-full px-3 py-2 text-sm border border-gray-400 rounded-lg"
+                    class="w-full px-3 py-2 text-sm border border-gray-400 rounded-lg focus:border-lime-500 focus:ring-lime-500 dark:bg-gray-700 dark:text-white"
                 >
                     <option value="">Pilih Status</option>
                     <option value="tersedia">Tersedia</option>
