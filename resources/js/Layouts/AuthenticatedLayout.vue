@@ -33,9 +33,14 @@ defineProps({
             @click="closeSidebar"
         ></div>
         <div
-            class="flex flex-col flex-1 w-full transition-transform duration-200 lg:ml-64"
+            :class="showSidebar ? 'lg:ml-64' : ''"
+            class="flex flex-col flex-1 w-full transition-transform duration-200"
         >
-            <Header v-if="showHeader" :title="headerTitle" />
+            <Header
+                v-if="showHeader"
+                :showSidebar="showSidebar"
+                :title="headerTitle"
+            />
             <main
                 class="flex-1 p-6 bg-customBg-light text-customText-light dark:bg-customBg-dark dark:text-customText-dark"
             >

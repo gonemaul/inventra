@@ -12,19 +12,25 @@ defineProps({
         type: String,
         default: "Inventra",
     },
+    showSidebar: {
+        type: Boolean,
+        default: true,
+    },
 });
 </script>
 
 <template>
     <header
-        class="flex items-center justify-between h-16 p-4 pl-20 bg-white border-b-2 shadow-2xl text-customText-light border-borderc-light lg:pl-4 dark:bg-customBg-dark dark:text-customText-dark dark:border-borderc-dark"
+        :class="showSidebar ? 'pl-20' : ''"
+        class="flex items-center justify-between h-16 p-4 bg-white border-b-2 shadow-2xl text-customText-light border-borderc-light lg:pl-4 dark:bg-customBg-dark dark:text-customText-dark dark:border-borderc-dark"
     >
         <!-- Hamburger Menu Button -->
         <button
             v-if="!isSidebarOpen"
             id="menu-toggle"
             @click="toggleSidebar"
-            class="fixed z-50 p-2 rounded-md shadow bg-lime-500 dark:bg-white top-3 left-4 lg:hidden"
+            :class="showSidebar ? 'fixed' : 'hidden'"
+            class="z-50 p-2 rounded-md shadow bg-lime-500 dark:bg-white top-3 left-4 lg:hidden"
         >
             <svg
                 class="w-6 h-6 text-white dark:text-lime-600"

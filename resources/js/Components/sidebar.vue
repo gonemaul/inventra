@@ -82,7 +82,10 @@ const { isDarkMode } = useDarkMode();
                 <span class="ml-3">Data Barang</span>
             </NavLink>
             <!-- Pembelian -->
-            <NavLink :href="route('user')" :active="route().current('user*')">
+            <NavLink
+                :href="route('purchases.index')"
+                :active="route().current('purchases*')"
+            >
                 <svg
                     width="24"
                     height="24"
