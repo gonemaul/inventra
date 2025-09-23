@@ -37,7 +37,9 @@ class PurchaseController extends Controller
      */
     public function show(Purchase $purchase)
     {
-        //
+        return Inertia::render('Purchases/detail', [
+            'type' => 'detail',
+        ]);
     }
 
     /**

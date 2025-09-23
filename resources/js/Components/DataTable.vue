@@ -34,6 +34,38 @@ const formatRupiah = (value) =>
         minimumFractionDigits: 0,
     }).format(value);
 
+function formatValue(value, col) {
+    // default kosong
+    if (value === null || value === undefined || value === "") {
+        return "-";
+    }
+
+    if (col.format === "rupiah") {
+        return formatRupiah(value);
+    }
+
+    if (col.format === "tanggal") {
+        return new Date(value).toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        });
+    }
+
+    if (col.format === "datetime") {
+        return new Date(value).toLocaleString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        });
+    }
+
+    // default → tampilkan value apa adanya
+    return value;
+}
+
 // Server side fetch
 async function fetchServerData() {
     loading.value = true;
@@ -275,15 +307,7 @@ watch([perPage, filteredData], () => {
                         >
                             <slot v-if="col.slot" :name="col.slot" :row="row" />
                             <span v-else>
-                                {{
-                                    col.rupiah
-                                        ? row[col.key] && row[col.key] !== 0
-                                            ? formatRupiah(row[col.key])
-                                            : "-"
-                                        : row[col.key] && row[col.key] !== 0
-                                        ? row[col.key]
-                                        : "-"
-                                }}
+                                {{ formatValue(row[col.key], col) }}
                             </span>
                         </td>
                     </tr>

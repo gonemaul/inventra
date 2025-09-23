@@ -11,8 +11,8 @@
                     @click="activeTab = tab.key"
                     :class="[
                         activeTab === tab.key
-                            ? 'border-lime-500 dark:border-gray-800 text-white dark:text-white bg-lime-400 dark:bg-gray-800 rounded-t-lg'
-                            : 'border-transparent text-gray-500 dark:text-gray-600 hover:text-gray-700 dark:hover:text-gray-400',
+                            ? 'border-lime-500 dark:border-customBg-tableDark text-white dark:text-white bg-lime-400 dark:bg-customBg-tableDark rounded-t-lg'
+                            : 'border-transparent text-gray-500 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-400',
                         'whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm flex items-center gap-2',
                     ]"
                 >

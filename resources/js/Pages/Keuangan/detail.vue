@@ -14,20 +14,26 @@ const params = ref({
 });
 
 const columns = [
-    { key: "tanggal", label: "Tanggal", sortable: true, width: "120px" },
+    {
+        key: "tanggal",
+        label: "Tanggal",
+        sortable: true,
+        width: "120px",
+        format: "tanggal",
+    },
     {
         key: "nominal",
         label: "Nominal",
         sortable: true,
         width: "200px",
-        rupiah: true,
+        format: "rupiah",
     },
     {
         key: "kekurangan",
         label: "Kekurangan",
         sortable: true,
         width: "120px",
-        rupiah: true,
+        format: "rupiah",
     },
     { key: "bukti", label: "Bukti", width: "120px", slot: "bukti" },
 ];

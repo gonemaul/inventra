@@ -3,7 +3,7 @@ import { Head, Link } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { ref } from "vue";
 import tableCreate from "./partials/tableCreate.vue";
-import Recom from "./partials/recom.vue";
+import Recom from "./partials/modalChecking.vue";
 import Search from "./partials/search.vue";
 
 const showRecom = ref(false);

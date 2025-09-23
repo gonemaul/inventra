@@ -21,43 +21,41 @@ const props = defineProps({
     },
 });
 
-// format ke rupiah
-const formatRupiah = (value) =>
-    new Intl.NumberFormat("id-ID", {
-        style: "currency",
-        currency: "IDR",
-        minimumFractionDigits: 0,
-    }).format(value);
-
 const params = ref({
     search: "",
     kategori: "",
 });
 
 const columns = [
-    { key: "no_nota", label: "Kode", sortable: true, width: "120px" },
-    { key: "tanggal", label: "Tanggal", sortable: true, width: "200px" },
+    { key: "no_nota", label: "No Nota", sortable: true, width: "120px" },
+    {
+        key: "tanggal",
+        label: "Tanggal",
+        sortable: true,
+        width: "200px",
+        format: "tanggal",
+    },
     { key: "supplier", label: "Supplier", sortable: true, width: "200px" },
     {
         key: "total",
         label: "Total",
         sortable: true,
         width: "200px",
-        rupiah: true,
+        format: "rupiah",
     },
     {
         key: "terbayarkan",
         label: "Terbayarkan",
         sortable: true,
         width: "200px",
-        rupiah: true,
+        format: "rupiah",
     },
     {
         key: "kekurangan",
         label: "Kekurangan",
         sortable: true,
         width: "200px",
-        rupiah: true,
+        format: "rupiah",
     },
     {
         key: "progress",

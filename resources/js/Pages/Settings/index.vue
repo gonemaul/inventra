@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head } from "@inertiajs/vue3";
-import Tabs from "./partials/tabs.vue";
+import Tabs from "@/Components/Tabs.vue";
 import tabKategori from "./partials/tab-content/tab-kategori.vue";
 import tabSatuan from "./partials/tab-content/tab-satuan.vue";
 import tabUkuran from "./partials/tab-content/tab-ukuran.vue";

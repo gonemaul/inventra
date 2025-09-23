@@ -3,9 +3,8 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link } from "@inertiajs/vue3";
 import { ref } from "vue";
 import DataTable from "@/Components/DataTable.vue";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import TextInput from "@/Components/TextInput.vue";
 import OpsiTable from "@/Components/OpsiTable.vue";
+import Filter from "@/Components/Filter.vue";
 
 const activeId = ref(null);
 const position = ref({ top: 0, left: 0 });
@@ -34,12 +33,14 @@ const columns = [
         label: "Tanggal Order",
         sortable: true,
         width: "200px",
+        format: "tanggal",
     },
     {
         key: "tanggal_pengiriman",
         label: "Tanggal Pengiriman",
         sortable: true,
         width: "250px",
+        format: "tanggal",
     },
     {
         key: "item",
@@ -53,7 +54,7 @@ const columns = [
         label: "Total Belanja",
         sortable: true,
         width: "200px",
-        rupiah: true,
+        format: "rupiah",
     },
     {
         key: "status",
@@ -70,7 +71,7 @@ const allData = [
         id: 1,
         tanggal_order: "2025-08-01",
         tanggal_pengiriman: "2025-08-01",
-        item: 1500000,
+        item: 2,
         total: 2000000,
         status: "active",
     },
@@ -78,7 +79,7 @@ const allData = [
         id: 2,
         tanggal_order: "2025-08-03",
         tanggal_pengiriman: "2025-08-03",
-        item: 3000000,
+        item: 4,
         total: 3000000,
         status: "inactive",
     },
@@ -86,7 +87,7 @@ const allData = [
         id: 3,
         tanggal_order: "2025-08-05",
         tanggal_pengiriman: "2025-08-05",
-        item: 500000,
+        item: 7,
         total: 1500000,
         status: "active",
     },
@@ -98,23 +99,11 @@ const allData = [
 
     <AuthenticatedLayout headerTitle="Pembelian">
         <div class="w-full min-h-screen px-4 space-y-6">
-            <!-- Head -->
-            <div
-                class="flex justify-between px-5 py-3 bg-gray-100 rounded shadow-md dark:bg-customBg-tableDark"
-            >
-                <TextInput class="w-3/6" placeholder="Cari..." />
-                <div class="flex justify-end">
-                    <PrimaryButton class="ms-4" @click="showFilter = true"
-                        >Filter</PrimaryButton
-                    >
-                    <Link
-                        :href="route('purchases.create')"
-                        class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out border border-transparent rounded-md cursor-pointer ms-4 dark:bg-gray-800 bg-lime-500 hover:bg-lime-400 dark:hover:bg-gray-900 focus:bg-lime-700 focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2 active:bg-lime-900"
-                    >
-                        RAB
-                    </Link>
-                </div>
-            </div>
+            <Filter
+                :actions="[
+                    { route: route('purchases.create'), buttonText: 'RAB' },
+                ]"
+            />
 
             <div
                 class="p-4 space-y-6 bg-gray-100 border shadow-md rounded-xl dark:bg-customBg-tableDark"
@@ -153,12 +142,12 @@ const allData = [
                             @toggle="toggleDropdown"
                             @close="activeId = null"
                         >
-                            <button
-                                @click="alert('Lihat ' + row.tanggal_order)"
+                            <Link
+                                :href="route('checking')"
                                 class="block w-full px-4 py-2 text-sm text-left border-b-2 hover:bg-gray-100 dark:hover:bg-gray-700"
                             >
                                 👁 View
-                            </button>
+                            </Link>
                             <button
                                 @click="alert('Edit ' + row.tanggal_order)"
                                 class="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"

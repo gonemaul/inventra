@@ -24,6 +24,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/payments-detail', 'detail')->name('detail');
     });
 
+    Route::get('checking', function () {
+        return Inertia::render('Purchases/detail', [
+            'type' => 'checking',
+        ]);
+    })->name('checking');
+    Route::get('checking-detail', function () {
+        return Inertia::render('Purchases/checking');
+    })->name('checking-detail');
+
     Route::get('products-detail', function () {
         return Inertia::render('Products/detail');
     })->name('products-detail');

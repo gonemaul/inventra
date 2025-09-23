@@ -1,7 +1,7 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
 import { ref } from "vue";
-import Delete from "./delete.vue";
+import Delete from "./modalDelete.vue";
 
 const showDelete = ref(false);
 </script>
