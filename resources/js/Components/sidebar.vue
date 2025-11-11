@@ -1,13 +1,71 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
-import ApplicationLogo from "@/Components/ApplicationLogo.vue";
 import NavLink from "./NavLink.vue";
-
+import { ref } from "vue";
 import { useSidebar } from "@/Composable/useSidebar";
-import { useDarkMode } from "@/Composable/useDarkMode";
+import { useExtended } from "@/Composable/useExtended";
+// import { useExtended, toggleExtended } from "@/Composable/useExtended";
 
 const { isSidebarOpen } = useSidebar();
-const { isDarkMode } = useDarkMode();
+const { isExtended, toggleExtended } = useExtended();
+
+// const isExtended = ref(true); // State untuk melacak kondisi sidebar
+
+// const toggleSidebar = () => {
+//     isExpanded.value = !isExpanded.value;
+// };
+
+import DashboardIcon from "./Icons/DashboardIcon.vue";
+import ProductsIcon from "./Icons/ProductsIcon.vue";
+import PurchasesIcon from "./Icons/PurchasesIcon.vue";
+import SalesIcon from "./Icons/SalesIcon.vue";
+import PaymentsIcon from "./Icons/PaymentsIcon.vue";
+import ReportsIcon from "./Icons/ReportsIcon.vue";
+import SettingsIcon from "./Icons/SettingsIcon.vue";
+const navigation = [
+    {
+        name: "Dashboard",
+        href: route("dashboard"),
+        icon: DashboardIcon,
+        active: route().current("dashboard"),
+    },
+    {
+        name: "Data Barang",
+        href: route("products.index"),
+        icon: ProductsIcon,
+        active: route().current("products*"),
+    },
+    {
+        name: "Pembelian",
+        href: route("purchases.index"),
+        icon: PurchasesIcon,
+        active: route().current("purchases*"),
+    },
+    {
+        name: "Penjualan",
+        href: route("user"),
+        icon: SalesIcon,
+        active: route().current("user*"),
+    },
+    {
+        name: "Keuangan",
+        href: route("payments"),
+        icon: PaymentsIcon,
+        active: route().current("payments*"),
+    },
+    {
+        name: "Laporan",
+        href: route("user"),
+        icon: ReportsIcon,
+        active: route().current("user*"),
+    },
+    {
+        name: "Pengaturan",
+        href: route("settings"),
+        icon: SettingsIcon,
+        active: route().current("settings*"),
+    },
+];
 </script>
 
 <template>
@@ -16,211 +74,66 @@ const { isDarkMode } = useDarkMode();
         id="sidebar"
         :class="[
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full',
-            'fixed top-0 left-0 z-50 flex flex-col justify-between w-64 h-full p-6 transition-transform duration-200 ease-in-out transform shadow-2xl dark:bg-customBg-tableDark dark:text-customText-dark dark:border-borderc-dark bg-customBg-tableLight text-customText-light border-r border-borderc-light lg:translate-x-0',
+            isExtended ? 'w-64 p-6' : 'w-20 p-4',
+            'fixed top-0 left-0 z-50 flex flex-col justify-between h-full transition-transform duration-200 ease-in-out transform shadow-2xl dark:bg-customBg-tableDark dark:text-customText-dark dark:border-borderc-dark bg-customBg-tableLight text-customText-light border-r border-borderc-light lg:translate-x-0',
         ]"
     >
-        <div class="items-center justify-center mb-4 text-center">
-            <ApplicationLogo
-                class="block w-auto text-gray-800 fill-current dark:text-white h-9"
-            />
-            <!-- {{-- <img src="{{ asset('icon.png') }}" alt="" /> --}} -->
-            <!-- <img src="{{ asset('assets/svg/logo-new.svg') }}" alt="logo" /> -->
+        <div class="flex items-center mb-6">
+            <div
+                v-if="isExtended"
+                class="flex items-center justify-between gap-5"
+            >
+                <div class="p-2 bg-white rounded-full">
+                    <img src="/images/logo.webp" alt="Logo" class="w-8 h-8" />
+                </div>
+                <span class="text-xl font-bold">Inventra</span>
+            </div>
+            <button
+                v-if="!isSidebarOpen"
+                @click="toggleExtended"
+                :class="{ 'ml-auto': isExtended, 'mx-auto': !isExtended }"
+                class="transition-colors text-lime-400 hover:text-lime-500"
+            >
+                <svg
+                    :class="{ 'rotate-180': !isExtended }"
+                    class="w-10 h-10 text-white rounded-lg bg-lime-400 hover:bg-lime-500"
+                    viewBox="0 0 35 35"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                >
+                    <path
+                        d="M24.7917 23.3334L18.9583 17.5L24.7917 11.6667M16.0417 23.3334L10.2083 17.5L16.0417 11.6667"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+            </button>
         </div>
         <!-- Navigation -->
         <nav class="mt-8 mb-auto space-y-6">
-            <!-- Dashboard -->
             <NavLink
-                :href="route('dashboard')"
-                :active="route().current('dashboard')"
+                v-for="link in navigation"
+                :key="link.name"
+                :href="link.href"
+                :active="link.active"
+                :title="link.name"
             >
-                <svg
-                    class="icon-active"
-                    width="24"
-                    height="25"
-                    viewBox="0 0 24 25"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M20.04 6.96545L14.28 2.93545C12.71 1.83545 10.3 1.89545 8.78999 3.06545L3.77999 6.97545C2.77999 7.75545 1.98999 9.35545 1.98999 10.6154V17.5154C1.98999 20.0654 4.05999 22.1454 6.60999 22.1454H17.39C19.94 22.1454 22.01 20.0754 22.01 17.5254V10.7454C22.01 9.39545 21.14 7.73545 20.04 6.96545ZM12.75 18.1454C12.75 18.5554 12.41 18.8954 12 18.8954C11.59 18.8954 11.25 18.5554 11.25 18.1454V15.1454C11.25 14.7354 11.59 14.3954 12 14.3954C12.41 14.3954 12.75 14.7354 12.75 15.1454V18.1454Z"
-                        fill="currentColor"
-                    />
-                </svg>
-
-                <span class="ml-3">Dashboard</span>
-            </NavLink>
-            <!-- Data Barang -->
-            <NavLink
-                :href="route('products.index')"
-                :active="route().current('products*')"
-            >
-                <svg
-                    class="icon-active"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M17.6 5.30979L11.95 2.26979C11.35 1.94979 10.64 1.94979 10.04 2.26979L4.40001 5.30979C3.99001 5.53979 3.73001 5.97978 3.73001 6.45978C3.73001 6.94979 3.98001 7.38979 4.40001 7.60979L10.05 10.6498C10.35 10.8098 10.68 10.8898 11 10.8898C11.32 10.8898 11.66 10.8098 11.95 10.6498L17.6 7.60979C18.01 7.38979 18.27 6.94979 18.27 6.45978C18.27 5.97978 18.01 5.53979 17.6 5.30979Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M9.12 11.7096L3.87 9.0896C3.46 8.8796 3 8.9096 2.61 9.1396C2.23 9.3796 2 9.7896 2 10.2396V15.1996C2 16.0596 2.48 16.8296 3.25 17.2196L8.5 19.8396C8.68 19.9296 8.88 19.9796 9.08 19.9796C9.31 19.9796 9.55 19.9096 9.76 19.7896C10.14 19.5496 10.37 19.1396 10.37 18.6896V13.7296C10.36 12.8696 9.88 12.0996 9.12 11.7096Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M20 10.2396V12.6996C19.52 12.5596 19.01 12.4996 18.5 12.4996C17.14 12.4996 15.81 12.9696 14.76 13.8096C13.32 14.9396 12.5 16.6496 12.5 18.4996C12.5 18.9896 12.56 19.4796 12.69 19.9496C12.54 19.9296 12.39 19.8696 12.25 19.7796C11.87 19.5496 11.64 19.1396 11.64 18.6896V13.7296C11.64 12.8696 12.12 12.0996 12.88 11.7096L18.13 9.0896C18.54 8.8796 19 8.9096 19.39 9.1396C19.77 9.3796 20 9.7896 20 10.2396Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M22.58 21.4999L21.74 20.6599C22.18 19.9999 22.44 19.1999 22.44 18.3499C22.44 16.0199 20.55 14.1299 18.22 14.1299C15.89 14.1299 14 16.0199 14 18.3499C14 20.6799 15.89 22.5699 18.22 22.5699C19.07 22.5699 19.87 22.3099 20.53 21.8699L21.37 22.7099C21.54 22.8799 21.75 22.9599 21.97 22.9599C22.19 22.9599 22.41 22.8799 22.57 22.7099C22.91 22.3699 22.91 21.8299 22.58 21.4999Z"
-                        fill="currentColor"
-                    />
-                </svg>
-                <span class="ml-3">Data Barang</span>
-            </NavLink>
-            <!-- Pembelian -->
-            <NavLink
-                :href="route('purchases.index')"
-                :active="route().current('purchases*')"
-            >
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M15 22.75C14.73 22.75 14.48 22.6 14.35 22.37C14.22 22.14 14.22 21.85 14.36 21.62L15.41 19.87C15.62 19.51 16.08 19.4 16.44 19.61C16.8 19.82 16.91 20.28 16.7 20.64L16.43 21.09C19.19 20.44 21.26 17.96 21.26 15C21.26 14.59 21.6 14.25 22.01 14.25C22.42 14.25 22.76 14.59 22.76 15C22.75 19.27 19.27 22.75 15 22.75Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M2 9.75C1.59 9.75 1.25 9.41 1.25 9C1.25 4.73 4.73 1.25 9 1.25C9.27 1.25 9.52 1.4 9.65 1.63C9.78 1.86 9.78 2.15 9.64 2.38L8.59 4.14C8.38 4.49 7.92 4.61 7.56 4.39C7.21 4.18 7.09 3.72 7.31 3.36L7.58 2.91C4.81 3.56 2.75 6.04 2.75 9C2.75 9.41 2.41 9.75 2 9.75Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M10.67 13.85L7.52999 12.16C7.19999 11.98 6.79999 11.98 6.46999 12.16L3.32999 13.85C3.09999 13.97 2.95999 14.22 2.95999 14.49C2.95999 14.76 3.09999 15.01 3.32999 15.13L6.46999 16.82C6.63999 16.91 6.81999 16.95 6.99999 16.95C7.17999 16.95 7.35999 16.91 7.52999 16.82L10.67 15.13C10.9 15.01 11.04 14.76 11.04 14.49C11.04 14.22 10.89 13.98 10.67 13.85Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M5.95 17.41L3.03 15.95C2.81 15.84 2.55 15.85 2.33 15.98C2.13 16.11 2 16.34 2 16.59V19.35C2 19.83 2.26 20.26 2.69 20.47L5.61 21.93C5.71 21.97 5.82 22 5.93 22C6.06 22 6.19 21.96 6.31 21.89C6.52 21.76 6.65 21.53 6.65 21.28V18.52C6.65 18.05 6.38 17.62 5.95 17.41Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M11.66 15.98C11.45 15.85 11.19 15.84 10.96 15.95L8.04001 17.41C7.61001 17.62 7.35001 18.05 7.35001 18.53V21.29C7.35001 21.54 7.48001 21.77 7.69001 21.9C7.81001 21.96 7.94001 22 8.07001 22C8.18001 22 8.29001 21.97 8.39001 21.92L11.31 20.46C11.74 20.25 12 19.82 12 19.34V16.58C12 16.34 11.87 16.11 11.66 15.98Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M20.67 3.83L17.53 2.14C17.2 1.96 16.8 1.96 16.47 2.14L13.33 3.83C13.1 3.95 12.96 4.2 12.96 4.47C12.96 4.74 13.1 4.99001 13.33 5.11L16.47 6.8C16.64 6.89001 16.82 6.93 17 6.93C17.18 6.93 17.36 6.89001 17.53 6.8L20.67 5.11C20.9 4.99001 21.04 4.74 21.04 4.47C21.04 4.19 20.89 3.95 20.67 3.83Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M15.95 7.37999L13.03 5.91999C12.81 5.80999 12.55 5.81999 12.33 5.94999C12.13 6.07999 12 6.30999 12 6.55999V9.31999C12 9.79999 12.26 10.23 12.69 10.44L15.61 11.9C15.71 11.95 15.82 11.98 15.93 11.98C16.06 11.98 16.19 11.94 16.31 11.87C16.52 11.74 16.65 11.51 16.65 11.26V8.49999C16.65 8.01999 16.38 7.58999 15.95 7.37999Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M21.66 5.94999C21.45 5.81999 21.19 5.80999 20.96 5.91999L18.04 7.37999C17.61 7.58999 17.35 8.01999 17.35 8.49999V11.26C17.35 11.51 17.48 11.74 17.69 11.87C17.81 11.94 17.94 11.98 18.07 11.98C18.18 11.98 18.29 11.95 18.39 11.9L21.31 10.44C21.74 10.22 22 9.78999 22 9.31999V6.55999C22 6.30999 21.87 6.07999 21.66 5.94999Z"
-                        fill="currentColor"
-                    />
-                </svg>
-                <span class="ml-3">Pembelian</span>
-            </NavLink>
-            <!-- Penjualan -->
-            <NavLink :href="route('user')" :active="route().current('user*')">
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M22.36 8.27L22.07 5.5C21.65 2.48 20.28 1.25 17.35 1.25H14.99H13.51H10.47H8.98999H6.58999C3.64999 1.25 2.28999 2.48 1.85999 5.53L1.58999 8.28C1.48999 9.35 1.77999 10.39 2.40999 11.2C3.16999 12.19 4.33999 12.75 5.63999 12.75C6.89999 12.75 8.10999 12.12 8.86999 11.11C9.54999 12.12 10.71 12.75 12 12.75C13.29 12.75 14.42 12.15 15.11 11.15C15.88 12.14 17.07 12.75 18.31 12.75C19.64 12.75 20.84 12.16 21.59 11.12C22.19 10.32 22.46 9.31 22.36 8.27Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M11.35 16.66C10.08 16.79 9.12 17.87 9.12 19.15V21.89C9.12 22.16 9.33999 22.38 9.60999 22.38H14.38C14.65 22.38 14.87 22.16 14.87 21.89V19.5C14.88 17.41 13.65 16.42 11.35 16.66Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M21.37 14.4V17.38C21.37 20.14 19.13 22.38 16.37 22.38C16.1 22.38 15.88 22.16 15.88 21.89V19.5C15.88 18.22 15.49 17.22 14.73 16.54C14.06 15.93 13.15 15.63 12.02 15.63C11.77 15.63 11.52 15.64 11.25 15.67C9.47001 15.85 8.12 17.35 8.12 19.15V21.89C8.12 22.16 7.9 22.38 7.63 22.38C4.87 22.38 2.63 20.14 2.63 17.38V14.42C2.63 13.72 3.32 13.25 3.97 13.48C4.24 13.57 4.51 13.64 4.79 13.68C4.91 13.7 5.04 13.72 5.16 13.72C5.32 13.74 5.48 13.75 5.64 13.75C6.8 13.75 7.94 13.32 8.84 12.58C9.70001 13.32 10.82 13.75 12 13.75C13.19 13.75 14.29 13.34 15.15 12.6C16.05 13.33 17.17 13.75 18.31 13.75C18.49 13.75 18.67 13.74 18.84 13.72C18.96 13.71 19.07 13.7 19.18 13.68C19.49 13.64 19.77 13.55 20.05 13.46C20.7 13.24 21.37 13.72 21.37 14.4Z"
-                        fill="currentColor"
-                    />
-                </svg>
-                <span class="ml-3">Penjualan</span>
-            </NavLink>
-            <!-- Keuangan -->
-            <NavLink
-                :href="route('payments')"
-                :active="route().current('payments*')"
-            >
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M21.92 16.7496C21.59 19.4096 19.41 21.5896 16.75 21.9196C15.14 22.1196 13.64 21.6796 12.47 20.8196C11.8 20.3296 11.96 19.2896 12.76 19.0496C15.77 18.1396 18.14 15.7596 19.06 12.7496C19.3 11.9596 20.34 11.7996 20.83 12.4596C21.68 13.6396 22.12 15.1396 21.92 16.7496Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M9.99 2C5.58 2 2 5.58 2 9.99C2 14.4 5.58 17.98 9.99 17.98C14.4 17.98 17.98 14.4 17.98 9.99C17.97 5.58 14.4 2 9.99 2ZM9.05 8.87L11.46 9.71C12.33 10.02 12.75 10.63 12.75 11.57C12.75 12.65 11.89 13.54 10.84 13.54H10.75V13.59C10.75 14 10.41 14.34 10 14.34C9.59 14.34 9.25 14 9.25 13.59V13.53C8.14 13.48 7.25 12.55 7.25 11.39C7.25 10.98 7.59 10.64 8 10.64C8.41 10.64 8.75 10.98 8.75 11.39C8.75 11.75 9.01 12.04 9.33 12.04H10.83C11.06 12.04 11.24 11.83 11.24 11.57C11.24 11.22 11.18 11.2 10.95 11.12L8.54 10.28C7.68 9.98 7.25 9.37 7.25 8.42C7.25 7.34 8.11 6.45 9.16 6.45H9.25V6.41C9.25 6 9.59 5.66 10 5.66C10.41 5.66 10.75 6 10.75 6.41V6.47C11.86 6.52 12.75 7.45 12.75 8.61C12.75 9.02 12.41 9.36 12 9.36C11.59 9.36 11.25 9.02 11.25 8.61C11.25 8.25 10.99 7.96 10.67 7.96H9.17C8.94 7.96 8.76 8.17 8.76 8.43C8.75 8.77 8.81 8.79 9.05 8.87Z"
-                        fill="currentColor"
-                    />
-                </svg>
-                <span class="ml-3">Keuangan</span>
-            </NavLink>
-            <!-- Laporan -->
-            <NavLink :href="route('user')" :active="route().current('user*')">
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M14.35 2H9.65001C8.61001 2 7.76001 2.84 7.76001 3.88V4.82C7.76001 5.86 8.60001 6.7 9.64001 6.7H14.35C15.39 6.7 16.23 5.86 16.23 4.82V3.88C16.24 2.84 15.39 2 14.35 2Z"
-                        fill="currentColor"
-                    />
-                    <path
-                        d="M17.24 4.81998C17.24 6.40998 15.94 7.70998 14.35 7.70998H9.65001C8.06001 7.70998 6.76001 6.40998 6.76001 4.81998C6.76001 4.25998 6.16001 3.90998 5.66001 4.16998C4.25001 4.91998 3.29001 6.40998 3.29001 8.11998V17.53C3.29001 19.99 5.30001 22 7.76001 22H16.24C18.7 22 20.71 19.99 20.71 17.53V8.11998C20.71 6.40998 19.75 4.91998 18.34 4.16998C17.84 3.90998 17.24 4.25998 17.24 4.81998ZM12.38 16.95H8.00001C7.59001 16.95 7.25001 16.61 7.25001 16.2C7.25001 15.79 7.59001 15.45 8.00001 15.45H12.38C12.79 15.45 13.13 15.79 13.13 16.2C13.13 16.61 12.79 16.95 12.38 16.95ZM15 12.95H8.00001C7.59001 12.95 7.25001 12.61 7.25001 12.2C7.25001 11.79 7.59001 11.45 8.00001 11.45H15C15.41 11.45 15.75 11.79 15.75 12.2C15.75 12.61 15.41 12.95 15 12.95Z"
-                        fill="currentColor"
-                    />
-                </svg>
-                <span class="ml-3">Laporan</span>
-            </NavLink>
-            <!-- Pengaturan -->
-            <NavLink
-                :href="route('settings')"
-                :active="route().current('settings*')"
-            >
-                <svg
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M20.1 9.22C18.29 9.22 17.55 7.94 18.45 6.37C18.97 5.46 18.66 4.3 17.75 3.78L16.02 2.79C15.23 2.32 14.21 2.6 13.74 3.39L13.63 3.58C12.73 5.15 11.25 5.15 10.34 3.58L10.23 3.39C9.78 2.6 8.76 2.32 7.97 2.79L6.24 3.78C5.33 4.3 5.02 5.47 5.54 6.38C6.45 7.94 5.71 9.22 3.9 9.22C2.86 9.22 2 10.07 2 11.12V12.88C2 13.92 2.85 14.78 3.9 14.78C5.71 14.78 6.45 16.06 5.54 17.63C5.02 18.54 5.33 19.7 6.24 20.22L7.97 21.21C8.76 21.68 9.78 21.4 10.25 20.61L10.36 20.42C11.26 18.85 12.74 18.85 13.65 20.42L13.76 20.61C14.23 21.4 15.25 21.68 16.04 21.21L17.77 20.22C18.68 19.7 18.99 18.53 18.47 17.63C17.56 16.06 18.3 14.78 20.11 14.78C21.15 14.78 22.01 13.93 22.01 12.88V11.12C22 10.08 21.15 9.22 20.1 9.22ZM12 15.25C10.21 15.25 8.75 13.79 8.75 12C8.75 10.21 10.21 8.75 12 8.75C13.79 8.75 15.25 10.21 15.25 12C15.25 13.79 13.79 15.25 12 15.25Z"
-                        fill="currentColor"
-                    />
-                </svg>
-                <span class="ml-3">Pengaturan</span>
+                <component
+                    :is="link.icon"
+                    class="flex-shrink-0 w-6 h-6 text-gray-400 group-hover:text-white"
+                    :class="{ 'mr-3': isExtended, 'mx-auto': !isExtended }"
+                />
+                <span v-if="isExtended" class="ml-3">{{ link.name }}</span>
             </NavLink>
         </nav>
         <!-- <div
-        class="flex-col hidden py-2 font-medium text-center text-white md:flex"
-    >
-        <span>Version 1.1.1</span>
-        <span>© 2025 GliSentra Group</span>
-    </div> -->
+            class="flex-col hidden py-2 font-medium text-center text-white md:flex"
+        >
+            <span>Version 1.1.1</span>
+            <span>© 2025 GliSentra Group</span>
+        </div> -->
         <div
             class="flex justify-between pl-3 text-lg font-medium transition-all duration-200 bg-white border-2 rounded-lg border-lime-500 bg-opacity-80 text-lime-500 lg:hidden"
         >

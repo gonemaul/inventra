@@ -2,9 +2,12 @@
 import Sidebar from "@/Components/sidebar.vue";
 import Header from "@/Components/header.vue";
 import { useSidebar } from "@/Composable/useSidebar";
+// import { useExtended } from "@/Composable/useExtended";
+import { useExtended } from "@/Composable/useExtended";
 import { useDarkMode } from "@/Composable/useDarkMode";
 
 const { isSidebarOpen, closeSidebar } = useSidebar();
+const { isExtended } = useExtended();
 const { isDarkMode } = useDarkMode();
 
 defineProps({
@@ -33,7 +36,7 @@ defineProps({
             @click="closeSidebar"
         ></div>
         <div
-            :class="showSidebar ? 'lg:ml-64' : ''"
+            :class="showSidebar ? (isExtended ? 'lg:ml-64' : 'lg:ml-20') : ''"
             class="flex flex-col flex-1 w-full transition-transform duration-200"
         >
             <Header
