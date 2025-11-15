@@ -1,31 +1,157 @@
 <script setup>
 import Modal from "@/Components/Modal.vue";
-defineProps({
+import { useForm } from "@inertiajs/vue3";
+import { watch, computed } from "vue";
+import { useToast } from "vue-toastification";
+import { useActionLoading } from "@/Composable/useActionLoading";
+
+const props = defineProps({
     show: {
         type: Boolean,
         default: false,
     },
-    title: {
+    mode: {
         type: String,
-        default: "Kategori",
+        default: "create",
     },
-    isSupplier: {
-        type: Boolean,
-        default: false,
+    data: {
+        type: Object,
+        default: () => ({}),
+    },
+    dataType: {
+        type: String,
+        default: "category",
     },
 });
 
-const emit = defineEmits(["close", "save"]);
+const routeConfig = {
+    category: {
+        create: {
+            method: "post",
+            url: () => route("api.settings.storeCategory"),
+        },
+        edit: {
+            method: "put",
+            url: (id) => route("api.settings.updateCategory", { id: id }),
+        },
+    },
+    unit: {
+        create: {
+            method: "post",
+            url: () => route("api.settings.storeUnit"),
+        },
+        edit: {
+            method: "put",
+            url: (id) => route("api.settings.updateUnit", { id: id }),
+        },
+    },
+    size: {
+        create: {
+            method: "post",
+            url: () => route("api.settings.storeSize"),
+        },
+        edit: {
+            method: "put",
+            url: (id) => route("api.settings.updateSize", { id: id }),
+        },
+    },
+    supplier: {
+        create: {
+            method: "post",
+            url: () => route("api.settings.storeSupplier"),
+        },
+        edit: {
+            method: "put",
+            url: (id) => route("api.settings.updateSupplier", { id: id }),
+        },
+    },
+};
+
+const toast = useToast();
+const emit = defineEmits(["close", "success"]);
+const { isActionLoading } = useActionLoading();
+const form = useForm({
+    id: null,
+    // Fields untuk Kategori, Satuan, Ukuran
+    code: "",
+    name: "", // (Dipakai juga oleh Supplier)
+    description: "",
+    // Fields untuk Supplier
+    phone: "",
+    address: "",
+    type: "",
+    status: "",
+});
+
+watch(
+    () => props.data,
+    (newData) => {
+        form.clearErrors();
+        if (newData && props.mode === "edit") {
+            form.id = newData.id;
+            form.code = newData.code || "";
+            form.name = newData.name || "";
+            form.description = newData.description || "";
+            form.phone = newData.phone || "";
+            form.address = newData.address || "";
+            form.type = newData.type || "";
+            form.status = newData.status || "";
+            // (Tambahkan field supplier di sini nanti)
+        } else {
+            form.reset();
+        }
+    }
+);
+
+const modalTitle = computed(() => {
+    switch (props.dataType) {
+        case "category":
+            return props.mode === "create"
+                ? "Tambah Kategori"
+                : "Edit Kategori";
+        case "unit":
+            return props.mode === "create" ? "Tambah Satuan" : "Edit Satuan";
+        case "supplier":
+            return props.mode === "create"
+                ? "Tambah Supplier"
+                : "Edit Supplier";
+        default:
+            return "";
+    }
+});
+
+const submitForm = () => {
+    const type = props.dataType; // -> 'category'
+    const mode = props.mode;
+    const config = routeConfig[type]?.[mode];
+    if (!config) {
+        console.error(`Config rute tidak ditemukan untuk: ${type} - ${mode}`);
+        return;
+    }
+    const method = config.method;
+    const url = config.url(form.id);
+    isActionLoading.value = true;
+    form.submit(method, url, {
+        preserveScroll: true,
+        onFinish: () => {
+            isActionLoading.value = false;
+            if (form.wasSuccessful) {
+                emit("close");
+                emit("success");
+                form.reset();
+            }
+        },
+    });
+};
 </script>
 <template>
     <Modal :show="show" @close="$emit('close')" max-width="lg">
         <div
             class="w-full p-6 bg-white shadow-lg maxs-w-md rounded-xl dark:bg-gray-800"
         >
-            <!-- Header -->
             <div class="flex items-center justify-between pb-3 border-b">
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-white">
-                    Tambah {{ title }}
+                    {{ modalTitle }}
                 </h2>
                 <button
                     @click="$emit('close')"
@@ -34,121 +160,158 @@ const emit = defineEmits(["close", "save"]);
                     ✕
                 </button>
             </div>
-
-            <!-- Form -->
-            <form class="mt-4 space-y-4">
-                <!-- Kode -->
-                <div v-if="!isSupplier">
+            <form class="mt-4 space-y-4" @submit.prevent="submitForm">
+                <div v-if="dataType != 'supplier'">
                     <label
                         class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                        Kode
-                    </label>
-                    <input
+                        >Kode<span class="text-red-500">*</span></label
+                    ><input
                         type="text"
                         placeholder="Masukkan kode"
                         class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        v-model="form.code"
                     />
-                    <p class="mt-1 text-xs text-red-500">Kode wajib diisi</p>
-                </div>
-
-                <!-- Nama -->
-                <div v-if="!isSupplier">
-                    <label
-                        class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                    <p
+                        v-if="form.errors.code"
+                        class="mt-1 text-xs text-red-500"
                     >
-                        Nama
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="Masukkan nama"
-                        class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
-                    <p class="mt-1 text-xs text-red-500">Nama wajib diisi</p>
-                </div>
-
-                <!-- Nama Supplier -->
-                <div v-if="isSupplier">
-                    <label
-                        class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                        Nama Supplier
-                    </label>
-                    <input
-                        type="text"
-                        placeholder="Masukkan nama"
-                        class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    />
-                    <p class="mt-1 text-xs text-red-500">
-                        Nama Supplier wajib diisi
+                        {{ form.errors.code }}
                     </p>
                 </div>
-
-                <!-- Phone -->
-                <div v-if="isSupplier">
+                <div v-if="dataType != 'supplier'">
                     <label
                         class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                        No Hp
+                        >Nama<span class="text-red-500">*</span>
                     </label>
+                    <input
+                        type="text"
+                        placeholder="Masukkan nama"
+                        class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        v-model="form.name"
+                    />
+                    <p
+                        v-if="form.errors.name"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.name }}
+                    </p>
+                </div>
+                <div v-if="dataType == 'supplier'">
+                    <label
+                        class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >Nama Supplier<span class="text-red-500">*</span></label
+                    >
+                    <input
+                        type="text"
+                        placeholder="Masukkan nama"
+                        class="w-full px-3 py-2 text-sm text-gray-800 border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        v-model="form.name"
+                    />
+                    <p
+                        v-if="form.errors.name"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.name }}
+                    </p>
+                </div>
+                <div v-if="dataType == 'supplier'">
+                    <label
+                        class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >No Hp<span class="text-red-500">*</span></label
+                    >
                     <input
                         type="text"
                         placeholder="Masukkan No Hp"
-                        class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        class="w-full px-3 py-2 text-sm text-gray-800 border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        v-model="form.phone"
                     />
-                    <p class="mt-1 text-xs text-red-500">No Hp wajib diisi</p>
+                    <p
+                        v-if="form.errors.phone"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.phone }}
+                    </p>
                 </div>
-
-                <!-- Alamat -->
-                <div v-if="isSupplier">
+                <div v-if="dataType == 'supplier'">
                     <label
                         class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >
-                        Alamat
+                        >Alamat<span class="text-red-500">*</span>
                     </label>
                     <input
                         type="text"
                         placeholder="Masukkan alamat"
-                        class="w-full px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        class="w-full px-3 py-2 text-sm text-gray-800 border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        v-model="form.address"
                     />
-                    <p class="mt-1 text-xs text-red-500">Alamat wajib diisi</p>
+                    <p
+                        v-if="form.errors.address"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.address }}
+                    </p>
                 </div>
-
-                <!-- Type -->
-                <div v-if="isSupplier">
+                <div v-if="dataType == 'supplier'">
                     <label
                         class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >Type<span class="text-red-500">*</span></label
                     >
-                        Type
-                    </label>
                     <select
-                        class="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-700 dark:text-white"
+                        class="w-full px-3 py-2 text-sm text-gray-800 border rounded-lg dark:bg-gray-700 dark:text-white"
+                        v-model="form.type"
                     >
-                        <option value="">Pilih Type</option>
-                        <option value="tersedia">Online</option>
-                        <option value="habis">Offline</option>
+                        <option value="" v-if="props.mode == 'create'">
+                            Pilih Type
+                        </option>
+                        <option value="type_online">Online</option>
+                        <option value="type_offline">Offline</option>
                     </select>
-                    <p class="mt-1 text-xs text-red-500">Type wajib diisi</p>
+                    <p
+                        v-if="form.errors.type"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.type }}
+                    </p>
                 </div>
-
-                <!-- Status -->
-                <div v-if="isSupplier">
+                <div v-if="dataType == 'supplier'">
                     <label
                         class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >Status<span class="text-red-500">*</span></label
                     >
-                        Status
-                    </label>
                     <select
-                        class="w-full px-3 py-2 text-sm border rounded-lg dark:bg-gray-700 dark:text-white"
+                        class="w-full px-3 py-2 text-sm text-gray-800 border rounded-lg dark:bg-gray-700 dark:text-white"
+                        v-model="form.status"
                     >
-                        <option value="">Pilih Status</option>
-                        <option value="tersedia">Active</option>
-                        <option value="habis">Inactive</option>
+                        <option value="" v-if="props.mode == 'create'">
+                            Pilih Status
+                        </option>
+                        <option value="active">Aktif</option>
+                        <option value="inactive">Tidak Aktif</option>
                     </select>
-                    <p class="mt-1 text-xs text-red-500">Status wajib diisi</p>
+                    <p
+                        v-if="form.errors.status"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.status }}
+                    </p>
                 </div>
-
-                <!-- Action Buttons -->
+                <div class="">
+                    <label
+                        class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >Catatan / Deskripsi
+                    </label>
+                    <textarea
+                        type="text"
+                        placeholder="Masukkan Catatan / Deskripsi"
+                        class="w-full px-3 py-2 text-sm text-gray-800 border rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        v-model="form.description"
+                    ></textarea>
+                    <p
+                        v-if="form.errors.description"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.description }}
+                    </p>
+                </div>
                 <div class="flex justify-end gap-2 pt-3 border-t">
                     <button
                         type="button"
@@ -160,8 +323,9 @@ const emit = defineEmits(["close", "save"]);
                     <button
                         type="submit"
                         class="px-4 py-2 text-sm font-medium text-white rounded-lg bg-lime-500 hover:bg-lime-600"
+                        :disabled="form.processing"
                     >
-                        Simpan
+                        {{ form.processing ? "Menyimpan..." : "Simpan" }}
                     </button>
                 </div>
             </form>

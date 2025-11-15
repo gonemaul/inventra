@@ -20,5 +20,7 @@
         "vite": "^7.1.2",
         "vue": "^3.4.0"
     },
-    "dependencies": {}
+    "dependencies": {
+        "vue-toastification": "^2.0.0-rc.5"
+    }
 }

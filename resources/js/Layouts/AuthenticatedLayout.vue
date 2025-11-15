@@ -2,13 +2,36 @@
 import Sidebar from "@/Components/sidebar.vue";
 import Header from "@/Components/header.vue";
 import { useSidebar } from "@/Composable/useSidebar";
-// import { useExtended } from "@/Composable/useExtended";
 import { useExtended } from "@/Composable/useExtended";
 import { useDarkMode } from "@/Composable/useDarkMode";
+import { usePage } from "@inertiajs/vue3";
+import { useToast } from "vue-toastification";
+import { watch } from "vue";
+import ActionLoader from "@/Components/ActionLoader.vue";
 
+const page = usePage();
+const toast = useToast();
 const { isSidebarOpen, closeSidebar } = useSidebar();
 const { isExtended } = useExtended();
 const { isDarkMode } = useDarkMode();
+
+watch(
+    () => page.props.flash.success,
+    (message) => {
+        if (message) {
+            toast.success(message);
+        }
+    }
+);
+
+watch(
+    () => page.props.flash.error,
+    (message) => {
+        if (message) {
+            toast.error(message);
+        }
+    }
+);
 
 defineProps({
     showHeader: {
@@ -24,6 +47,7 @@ defineProps({
 </script>
 
 <template>
+    <ActionLoader />
     <div class="flex min-h-screen">
         <!-- Sidebar -->
         <Sidebar v-if="showSidebar" />

@@ -48,7 +48,7 @@
                                 >
                             </div>
                             <p
-                                v-if="productsFromOrder.length === 0"
+                                v-if="productsFromOrder?.length == 0"
                                 class="text-sm text-gray-500"
                             >
                                 Semua produk pesanan sudah dimasukkan.

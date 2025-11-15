@@ -18,7 +18,7 @@
                 >
                     <span>{{ tab.label }}</span>
                     <span
-                        v-if="tab.count !== undefined && tab.count > 0"
+                        v-if="tab.count !== undefined && tab.key !== 'backup'"
                         class="flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-gray-700 rounded-full dark:bg-lime-500"
                     >
                         {{ tab.count }}
@@ -26,16 +26,13 @@
                 </button>
             </div>
         </div>
-
         <!-- Tab Content -->
-        <div class="mt-4">
-            <slot :name="activeTab"></slot>
-        </div>
+        <div class="mt-4"><slot :name="activeTab"></slot></div>
     </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, watch } from "vue";
 
 const props = defineProps({
     tabs: {
@@ -48,5 +45,13 @@ const props = defineProps({
     },
 });
 
-const activeTab = ref(props.defaultTab || props.tabs[0].key);
+const STORAGE_KEY = "settings_active_tab";
+const activeTab = ref(
+    localStorage.getItem(STORAGE_KEY) ||
+        ref(props.defaultTab) ||
+        props.tabs[0].key
+);
+watch(activeTab, (newTabKey) => {
+    localStorage.setItem(STORAGE_KEY, newTabKey);
+});
 </script>
