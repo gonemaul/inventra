@@ -2,13 +2,19 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head } from "@inertiajs/vue3";
 import FormCreateEdit from "./partials/form-create-edit.vue";
+
+const props = defineProps({
+    dropdowns: Object,
+    product: Object, // Bisa null (create) atau berisi data (edit)
+});
+console.log(props.dropdowns);
 </script>
 <template>
     <Head title="Tambah Barang" />
 
     <AuthenticatedLayout headerTitle="Tambah Barang">
         <div class="w-full min-h-screen">
-            <FormCreateEdit />
+            <FormCreateEdit :dropdowns="props.dropdowns" mode="create" />
         </div>
     </AuthenticatedLayout>
 </template>

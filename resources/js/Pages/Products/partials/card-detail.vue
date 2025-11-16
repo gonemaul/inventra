@@ -3,6 +3,9 @@ import { Link } from "@inertiajs/vue3";
 import { ref } from "vue";
 import Delete from "./modalDelete.vue";
 
+defineProps({
+    data: Object,
+});
 const showDelete = ref(false);
 </script>
 <template>
@@ -14,10 +17,14 @@ const showDelete = ref(false);
             <!-- Gambar -->
             <div class="col-span-12 sm:col-span-3">
                 <div
-                    class="mx-auto overflow-hidden bg-white rounded-md dark:bg-gray-800"
+                    class="mx-auto overflow-hidden bg-white rounded-md aspect-square dark:bg-gray-800"
                 >
                     <img
-                        src="no-image.png"
+                        :src="
+                            data.image_path
+                                ? '/storage/' + data.image_path
+                                : '/no-image.png'
+                        "
                         alt="Produk"
                         class="object-cover w-full h-full"
                     />
@@ -32,28 +39,30 @@ const showDelete = ref(false);
                     <h1
                         class="text-2xl font-extrabold leading-tight text-gray-900 dark:text-gray-100"
                     >
-                        Deltalube Matic
+                        {{ data.name }}
                     </h1>
 
                     <div class="flex flex-wrap items-center gap-2">
                         <span
                             class="px-2 py-1 text-xs font-semibold tracking-wide bg-gray-300 rounded-md dark:bg-gray-700 dark:text-gray-100"
                         >
-                            JBD0382873987239
+                            {{ data.code }}
                         </span>
                         <span
                             class="px-2 py-1 text-xs font-semibold text-white bg-green-500 rounded-md"
                         >
-                            Active
+                            {{
+                                data.status == "active"
+                                    ? "Aktif"
+                                    : "Tidak Aktif"
+                            }}
                         </span>
                     </div>
 
                     <p
                         class="max-w-[48ch] text-sm leading-snug text-gray-700 dark:text-gray-300"
                     >
-                        Oil Mesin Motor Matic 800 ML, SAE 10/30 W, cocok untuk
-                        perjalanan harian maupun jauh, penggunaan untuk motor
-                        (Vario, Beat, Scoopy dan sebagainya).
+                        {{ data.description }}
                     </p>
                 </div>
 
@@ -73,7 +82,7 @@ const showDelete = ref(false);
                         <span
                             class="inline-block w-8/12 px-3 py-1 mt-1 text-xs font-medium text-gray-800 bg-white rounded-md shadow-sm dark:bg-gray-600 dark:text-gray-100"
                         >
-                            Oli Motor
+                            {{ data.category.name }}
                         </span>
                     </div>
 
@@ -87,7 +96,7 @@ const showDelete = ref(false);
                         <span
                             class="inline-block w-8/12 px-3 py-1 mt-1 text-xs font-medium text-gray-800 bg-white rounded-md shadow-sm dark:bg-gray-600 dark:text-gray-100"
                         >
-                            800 ML
+                            {{ data.size.name }}
                         </span>
                     </div>
 
@@ -101,7 +110,7 @@ const showDelete = ref(false);
                         <span
                             class="inline-block w-8/12 px-3 py-1 mt-1 text-xs font-semibold text-gray-800 bg-white rounded-md shadow-sm dark:bg-gray-600 dark:text-gray-100"
                         >
-                            24 Botol
+                            {{ data.stock }} {{ data.unit.name }}
                         </span>
                     </div>
 
@@ -115,7 +124,7 @@ const showDelete = ref(false);
                         <span
                             class="inline-block w-8/12 px-3 py-1 mt-1 text-xs font-semibold text-gray-800 bg-white rounded-md shadow-sm dark:bg-gray-600 dark:text-gray-100"
                         >
-                            4 Botol
+                            {{ data.min_stock }} {{ data.unit.name }}
                         </span>
                     </div>
                 </div>
@@ -132,9 +141,11 @@ const showDelete = ref(false);
                     <button
                         class="flex-auto p-2 text-white bg-indigo-400 rounded hover:bg-indigo-500"
                     >
-                        Inactive
+                        {{ data.status == "active" ? "Aktif" : "Tidak Aktif" }}
                     </button>
                     <Link
+                        :href="route('products.edit', data.id)"
+                        title="Edit Produk"
                         aria-label="Edit product"
                         class="flex items-center p-2 text-white bg-yellow-400 rounded hover:bg-yellow-500"
                     >
@@ -298,7 +309,7 @@ const showDelete = ref(false);
                         <div
                             class="text-xl font-extrabold text-gray-900 dark:text-white"
                         >
-                            Rp 80.000
+                            Rp {{ data.purchase_price }}
                         </div>
                     </div>
                 </div>
@@ -345,7 +356,7 @@ const showDelete = ref(false);
                         <div
                             class="text-xl font-extrabold text-gray-900 dark:text-white"
                         >
-                            Rp 78.800
+                            Rp {{ data.selling_price }}
                         </div>
                     </div>
                 </div>

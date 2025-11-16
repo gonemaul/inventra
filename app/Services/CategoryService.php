@@ -10,6 +10,11 @@ use Illuminate\Validation\Rule;
 
 class CategoryService
 {
+    public function getAll()
+    {
+        // Ambil ID dan Nama, urutkan berdasarkan Nama
+        return Category::orderBy('name')->get(['id', 'name']);
+    }
     /**
      * Mengambil semua data kategori.
      */

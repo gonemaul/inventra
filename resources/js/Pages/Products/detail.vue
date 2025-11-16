@@ -4,6 +4,9 @@ import { Head } from "@inertiajs/vue3";
 import CardDetail from "./partials/card-detail.vue";
 import tabsDetail from "./partials/tabs-detail.vue";
 
+const props = defineProps({
+    product: Object, // Bisa null (create) atau berisi data (edit)
+});
 const tabs = [
     { key: "ringkasan", label: "Ringkasan Penjualan" },
     { key: "analisis", label: "Analisis Pergerakan" },
@@ -16,7 +19,7 @@ const tabs = [
 
     <AuthenticatedLayout headerTitle="Detail Barang">
         <div class="w-full min-h-screen space-y-5">
-            <CardDetail />
+            <CardDetail :data="product" />
             <tabsDetail :tabs="tabs" defaultTab="ringkasan">
                 <!-- Ringkasan Penjualan -->
                 <template #ringkasan>

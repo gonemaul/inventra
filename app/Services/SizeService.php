@@ -10,6 +10,11 @@ use Illuminate\Validation\Rule;
 
 class SizeService
 {
+    public function getAll()
+    {
+        // Ambil ID dan Nama, urutkan berdasarkan Nama
+        return Size::orderBy('name')->get(['id', 'name']);
+    }
     /**
      * Mengambil semua data kategori.
      */

@@ -13,6 +13,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  */
 class SupplierService
 {
+    public function getAll()
+    {
+        // Ambil ID dan Nama, urutkan berdasarkan Nama
+        return Supplier::orderBy('name')->get(['id', 'name']);
+    }
     /**
      * Mengambil data supplier untuk datatable (server-side).
      *

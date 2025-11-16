@@ -5,15 +5,55 @@ namespace App\Http\Controllers;
 use Inertia\Inertia;
 use App\Models\Product;
 use Illuminate\Http\Request;
+use App\Services\SizeService;
+use App\Services\UnitService;
+use App\Services\ProductService;
+use App\Services\CategoryService;
+use App\Services\SupplierService;
+use Illuminate\Support\Facades\Redirect;
 
 class ProductController extends Controller
 {
+    protected $productService;
+    protected $categoryService;
+    protected $unitService;
+    protected $sizeService;
+    protected $supplierService;
+
+    // 3. Inject semua service di constructor
+    public function __construct(
+        ProductService $productService,
+        CategoryService $categoryService,
+        UnitService $unitService,
+        SizeService $sizeService,
+        SupplierService $supplierService
+    ) {
+        $this->productService = $productService;
+        $this->categoryService = $categoryService;
+        $this->unitService = $unitService;
+        $this->sizeService = $sizeService;
+        $this->supplierService = $supplierService;
+    }
+    private function getDropdownData(): array
+    {
+        return [
+            'categories' => $this->categoryService->getAll(),
+            'units' => $this->unitService->getAll(),
+            'sizes' => $this->sizeService->getAll(),
+            'suppliers' => $this->supplierService->getAll(),
+            'productStatuses' => Product::STATUSES,
+        ];
+    }
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        return Inertia::render('Products/index');
+        return Inertia::render('Products/index', [
+            'products' => $this->productService->get($request->all()),
+            'filters' => $request->all(),
+            'dropdowns' => $this->getDropdownData()
+        ]);
     }
 
     /**
@@ -21,7 +61,10 @@ class ProductController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Products/create');
+        $dropdowns = $this->getDropdownData();
+        return Inertia::render('Products/create', [
+            'dropdowns' => $this->getDropdownData()
+        ]);
     }
 
     /**
@@ -29,7 +72,10 @@ class ProductController extends Controller
      */
     public function store(Request $request)
     {
-        //
+        $this->productService->create($request->all());
+
+        return Redirect::route('products.index')
+            ->with('success', 'Produk berhasil ditambahkan!');
     }
 
     /**
@@ -37,7 +83,9 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        //
+        return Inertia::render('Products/detail', [
+            'product' => $product->load(['category', 'unit', 'size', 'supplier']),
+        ]);
     }
 
     /**
@@ -45,7 +93,10 @@ class ProductController extends Controller
      */
     public function edit(Product $product)
     {
-        return Inertia::render('Products/edit');
+        return Inertia::render('Products/edit', [
+            'product' => $product, // Kirim data produk yang ada
+            'dropdowns' => $this->getDropdownData() // Kirim data dropdown
+        ]);
     }
 
     /**
@@ -53,14 +104,33 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        //
+        $this->productService->update($product->id, $request->all());
+
+        return Redirect::route('products.index')
+            ->with('success', 'Produk berhasil diperbarui!');
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Product $product)
+    public function destroy(Request $request, $id)
     {
-        //
+        $isPermanent = $request->input('permanen', false);
+        $this->productService->delete($id, $request->all());
+
+        $message = $isPermanent
+            ? 'Produk berhasil dihapus permanen!'
+            : 'Produk berhasil dipindahkan ke sampah!';
+
+        // Redirect kembali ke halaman index
+        return Redirect::back()
+            ->with('success', $message);
+    }
+    public function restoreProduct($id)
+    {
+        $this->productService->restore($id);
+
+        return Redirect::back()
+            ->with('success', 'Produk berhasil dipulihkan!');
     }
 }

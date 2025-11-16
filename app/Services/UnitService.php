@@ -9,6 +9,11 @@ use Illuminate\Validation\ValidationException;
 
 class UnitService
 {
+    public function getAll()
+    {
+        // Ambil ID dan Nama, urutkan berdasarkan Nama
+        return Unit::orderBy('name')->get(['id', 'name']);
+    }
     public function getCount()
     {
         return Unit::count();

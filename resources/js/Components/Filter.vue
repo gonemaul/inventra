@@ -17,21 +17,37 @@ defineProps({
         type: Array,
         default: () => [],
     },
+    modelValue: String,
+    filterCount: {
+        type: Number,
+        default: 0,
+    },
 });
 
-const emit = defineEmits(["showFilter"]);
+const emit = defineEmits(["showFilter", "update:modelValue"]);
 </script>
 <template>
     <div
         class="flex justify-between px-5 py-3 bg-gray-100 rounded shadow-md dark:bg-customBg-tableDark"
     >
-        <TextInput class="w-3/6" v-if="isSearch" placeholder="Cari..." />
+        <TextInput
+            class="w-3/6"
+            v-if="isSearch"
+            :model-value="modelValue"
+            @update:model-value="(value) => emit('update:modelValue', value)"
+            placeholder="Cari..."
+        />
         <div class="flex justify-end">
             <PrimaryButton
-                class="ms-4"
+                class="relative ms-4"
                 v-if="isFilter"
                 @click="$emit('showFilter')"
-                >Filter</PrimaryButton
+                >Filter
+                <span
+                    v-if="filterCount > 0"
+                    class="absolute flex items-center justify-center w-5 h-5 text-xs font-medium text-white bg-red-500 rounded-full -top-2 -right-2"
+                    >{{ filterCount }}</span
+                ></PrimaryButton
             >
             <Link
                 v-for="action in actions"

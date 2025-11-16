@@ -76,7 +76,7 @@ class SettingController extends Controller
 
     public function deleteCategory(Request $request, $id)
     {
-        $isPermanent = $request->input('permanen', false);
+        $isPermanent = $request->input('permanen', default: false);
         $this->categoryService->delete($id, $request->all());
         $message = $isPermanent
             ? 'Kategori berhasil dihapus permanen!'

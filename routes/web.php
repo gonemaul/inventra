@@ -33,10 +33,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         return Inertia::render('Purchases/checking');
     })->name('checking-detail');
 
-    Route::get('products-detail', function () {
-        return Inertia::render('Products/detail');
-    })->name('products-detail');
-    Route::resource('products', \App\Http\Controllers\ProductController::class);
+    Route::delete('products/{id}', [\App\Http\Controllers\ProductController::class, 'destroy'])
+        ->name('products.destroy');
+    Route::put('products/restore/{id}', [\App\Http\Controllers\ProductController::class, 'restoreProduct'])->name('products.restoreProduct');
+
+    Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
     Route::resource('purchases', \App\Http\Controllers\PurchaseController::class);
     Route::resource('sellings', \App\Http\Controllers\SellingController::class);
 

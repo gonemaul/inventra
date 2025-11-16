@@ -1,55 +1,69 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
-import { ref } from "vue";
-import Delete from "./modalDelete.vue";
 
-const showDelete = ref(false);
+const props = defineProps({
+    data: Object, // Berisi data produk
+    isTrashView: Boolean,
+});
+defineEmits(["delete", "forceDelete", "restore", "imageClick"]);
 </script>
 <template>
-    <Delete :show="showDelete" @close="showDelete = false" />
     <div
-        class="flex items-start max-w-4xl gap-4 p-3 mx-auto bg-gray-100 border-2 rounded-lg shadow-md dark:bg-customBg-tableDark bg-opacity-35 border-lime-500 dark:border-gray-500 sm:items-center"
+        class="flex items-start justify-between w-full gap-4 p-3 mx-auto bg-gray-100 border-2 rounded-lg shadow-md dark:bg-customBg-tableDark bg-opacity-35 border-lime-500 dark:border-gray-500 sm:items-center"
     >
         <!-- Gambar + Status -->
         <div class="flex flex-col justify-center border-2 rounded-md shadow-md">
             <img
                 alt="Produk"
-                class="object-cover w-32 lg:w-40 rounded-t-md"
-                src="no-image.png"
+                class="object-cover w-32 cursor-pointer lg:w-40 aspect-square rounded-t-md"
+                :src="
+                    data.image_path
+                        ? 'storage/' + data.image_path
+                        : 'no-image.png'
+                "
+                @click="
+                    $emit('imageClick', {
+                        path: data.image_path,
+                        name: data.name,
+                    })
+                "
             />
             <div
-                class="w-32 py-1 text-xs font-medium text-center text-white select-none bg-lime-500 lg:w-40 rounded-b-md"
+                :class="[
+                    'w-32 py-1 text-xs font-medium text-center text-white select-none lg:w-40 rounded-b-md',
+                    data.status == 'active' ? 'bg-lime-500' : 'bg-gray-400',
+                ]"
             >
-                Aktif
+                {{ data.status == "active" ? "Aktif" : "Tidak Aktif" }}
             </div>
         </div>
 
-        <div class="flex flex-col gap-2 flex-r lg:flex-row">
+        <div class="flex flex-col w-full gap-2 flex-r lg:flex-row">
             <!-- Info Produk -->
             <div class="flex-1 space-y-3">
                 <h2 class="text-lg font-bold leading-tight sm:text-xl">
-                    Produk A
+                    {{ data.name }}
                 </h2>
                 <p
                     class="hidden text-sm text-black dark:text-gray-100 lg:flex sm:text-base"
                 >
-                    Oli Mesin Motor Matic dengan SAE 20/40 Isi 800 ML
+                    {{ data.description }}
                 </p>
-                <div class="flex flex-wrap justify-center w-full gap-2">
+                <div class="flex flex-wrap justify-start w-full gap-2">
                     <span
-                        class="px-2 py-1 text-[11px] font-medium text-black rounded-full select-none opacity-80 bg-lime-200"
+                        class="px-2 py-1 text-[11px] font-medium text-black rounded-xl select-none opacity-80 bg-lime-200"
                     >
-                        Oli
+                        {{ data.category.name }}
                     </span>
                     <span
-                        class="px-2 py-1 text-[11px] font-medium text-black rounded-full select-none bg-lime-200 opacity-80"
+                        class="px-2 py-1 text-[11px] font-medium text-black rounded-xl select-none bg-lime-200 opacity-80"
                     >
-                        800 ML
+                        {{ data.size.name }}
                     </span>
                     <span
-                        class="px-2 py-1 text-[11px] font-medium text-black rounded-full select-none bg-lime-200 opacity-80"
+                        class="px-2 py-1 text-[11px] font-medium text-black rounded-xl select-none bg-lime-200 opacity-80"
                     >
-                        24 Botol
+                        {{ data.stock }} {{ data.unit.name }}
                     </span>
                 </div>
             </div>
@@ -85,19 +99,32 @@ const showDelete = ref(false);
                     <p
                         class="mb-0 text-xs text-black line-through lg:text-sm dark:text-gray-100 opacity-60"
                     >
-                        Rp 40.000
+                        {{
+                            new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                minimumFractionDigits: 0,
+                            }).format(data.purchase_price)
+                        }}
                     </p>
                     <p
                         class="text-lg font-extrabold leading-none text-black dark:text-gray-100 sm:text-2xl"
                     >
-                        Rp 50.000
+                        {{
+                            new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                minimumFractionDigits: 0,
+                            }).format(data.selling_price)
+                        }}
                     </p>
                 </div>
 
                 <!-- Tombol Aksi -->
                 <div class="flex justify-center gap-2 lg:w-auto">
                     <Link
-                        :href="route('products-detail')"
+                        v-if="!isTrashView"
+                        :href="route('products.show', { id: data.id })"
                         aria-label="View product"
                         title="Lihat Produk"
                         class="p-2 text-white bg-blue-500 rounded hover:bg-blue-600"
@@ -121,7 +148,10 @@ const showDelete = ref(false);
                         </svg>
                     </Link>
                     <Link
+                        v-if="!isTrashView"
+                        :href="route('products.edit', { id: data.id })"
                         aria-label="Edit product"
+                        title="Edit Produk"
                         class="p-2 text-white bg-yellow-400 rounded hover:bg-yellow-500"
                     >
                         <svg
@@ -136,7 +166,50 @@ const showDelete = ref(false);
                         </svg>
                     </Link>
                     <button
-                        @click="showDelete = true"
+                        v-else
+                        @click="$emit('restore')"
+                        aria-label="Restore product"
+                        title="Pulihkan produk"
+                        class="p-2 text-white bg-green-400 rounded hover:bg-green-500"
+                    >
+                        <svg
+                            class="w-3 h-3 sm:w-5 sm:h-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                d="M9.11008 5.08C9.98008 4.82 10.9401 4.65 12.0001 4.65C16.7901 4.65 20.6701 8.53 20.6701 13.32C20.6701 18.11 16.7901 21.99 12.0001 21.99C7.21008 21.99 3.33008 18.11 3.33008 13.32C3.33008 11.54 3.87008 9.88 4.79008 8.5"
+                                stroke="white"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M7.87012 5.32L10.7601 2"
+                                stroke="white"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                            <path
+                                d="M7.87012 5.32L11.2401 7.78"
+                                stroke="white"
+                                stroke-width="2"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            />
+                        </svg>
+                    </button>
+                    <button
+                        @click="
+                            isTrashView ? $emit('forceDelete') : $emit('delete')
+                        "
+                        :title="
+                            isTrashView
+                                ? 'Hapus Permanen Produk'
+                                : 'Hapus Produk'
+                        "
                         aria-label="Delete product"
                         class="p-2 text-white bg-red-400 rounded hover:bg-red-500"
                     >
