@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Product extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
     protected $fillable = [
         'category_id',
         'unit_id',
@@ -35,6 +37,25 @@ class Product extends Model
         self::STATUS_ACTIVE,
         self::STATUS_DRAFT,
     ];
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($product) {
+            // Jika slug belum diisi atau produk baru dibuat
+            if (empty($product->slug) || $product->isDirty('name')) {
+                $product->slug = Str::slug($product->name);
+            }
+
+            $originalSlug = $product->slug;
+            $count = 1;
+
+            // Loop untuk cek apakah slug sudah ada di database
+            while (static::where('slug', $product->slug)->exists()) {
+                $product->slug = $originalSlug . '-' . $count++;
+            }
+        });
+    }
     protected static function booted(): void
     {
         static::forceDeleting(function (Product $product) {
