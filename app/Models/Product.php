@@ -15,8 +15,11 @@ class Product extends Model
         'unit_id',
         'size_id',
         'supplier_id',
+        'brand_id',
+        'product_type_id',
         'name',
         'code',
+        'slug',
         'stock',
         'min_stock',
         'purchase_price',
@@ -55,5 +58,14 @@ class Product extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
+    }
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function productType(): BelongsTo
+    {
+        return $this->belongsTo(ProductType::class);
     }
 }

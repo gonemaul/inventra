@@ -11,13 +11,11 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('suppliers', function (Blueprint $table) {
+        Schema::create('product_types', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('phone');
-            $table->string('address');
-            $table->string('status');
-            $table->string('type');
+            $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
+            $table->string('code')->nullable();
+            $table->string('name'); // Contoh: Matic, Bebek, Tubeless
             $table->text('description')->nullable();
             $table->softDeletes();
             $table->timestamps();
@@ -29,6 +27,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('suppliers');
+        Schema::dropIfExists('product_types');
     }
 };
