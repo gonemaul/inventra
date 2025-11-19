@@ -16,9 +16,10 @@ class PurchaseInvoice extends Model
         'invoice_date',
         'invoice_image',
         'total_amount',
-        'status',
         'payment_status',
         'amount_paid',
+        'due_date',
+        'paid_at',
     ];
     const STATUS_UPLOADED = 'uploaded'; // Nota baru di-upload, belum divalidasi
     const STATUS_VALIDATED = 'validated'; // Item di nota sudah dicocokkan

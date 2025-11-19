@@ -17,6 +17,8 @@ class PurchaseItem extends Model
         'quantity',
         'purchase_price',
         'subtotal',
+        'rejected_quantity',
+        'rejection_note',
     ];
     // Beri tahu Laravel untuk otomatis cast 'product_snapshot' ke array/objek
     protected $casts = [

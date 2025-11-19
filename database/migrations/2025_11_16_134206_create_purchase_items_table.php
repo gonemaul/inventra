@@ -19,10 +19,14 @@ return new class extends Migration
             // Relasi ke Produk (nullable), untuk jaga-jaga produk dihapus
             $table->foreignId('product_id')->nullable()->constrained('products')->onDelete('set null');
             // Snapshot data produk (permintaan Anda)
+
             $table->json('product_snapshot')->comment('Snapshot data produk saat pembelian dilakukan');
             $table->integer('quantity');
             $table->decimal('purchase_price', 15, 2)->comment('Harga beli satuan saat itu');
             $table->decimal('subtotal', 15, 2); // quantity * purchase_price
+
+            $table->integer('rejected_quantity')->default(0)->comment('Barang rusak/ditolak saat terima');
+            $table->string('rejection_note')->nullable()->comment('Alasan barang ditolak');
             $table->timestamps();
         });
     }

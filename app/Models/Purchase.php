@@ -20,18 +20,26 @@ class Purchase extends Model
         'reference_no',
         'transaction_date',
         'status',
+        'shipping_cost',
+        'other_costs',
+        'received_at',
+        'supplier_reference',
         'notes',
     ];
 
+    const STATUS_DRAFT = 'draft';
     const STATUS_ORDERED = 'dipesan';    // User 'Pesan'
     const STATUS_SHIPPED = 'dikirim';    // User tandai 'Diantar'
     const STATUS_RECEIVED = 'diterima';  // User tandai 'Sampai', siap 'Dicek'
+    const STATUS_CHECKING = 'checking';
     const STATUS_COMPLETED = 'selesai';  // User tandai 'Valid, update data'
     const STATUS_CANCELLED = 'dibatalkan'; // (Status tambahan)
     const STATUSES = [
+        self::STATUS_DRAFT,
         self::STATUS_ORDERED,
         self::STATUS_SHIPPED,
         self::STATUS_RECEIVED,
+        self::STATUS_CHECKING,
         self::STATUS_COMPLETED,
         self::STATUS_CANCELLED,
     ];

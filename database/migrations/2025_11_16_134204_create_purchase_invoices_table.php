@@ -14,18 +14,16 @@ return new class extends Migration
         Schema::create('purchase_invoices', function (Blueprint $table) {
             $table->id();
             $table->foreignId('purchase_id')->constrained('purchases')->onDelete('cascade');
+
             $table->string('invoice_number')->nullable()->comment('No. faktur dari supplier');
             $table->date('invoice_date')->nullable();
             $table->string('invoice_image')->comment('Path ke gambar nota');
-
             $table->decimal('total_amount', 15, 2)->comment('Total nilai di nota fisik');
 
-            // Status Operasional Nota (uploaded, validated)
-            $table->string('status');
-
-            // Status Finansial (unpaid, partial, paid)
-            $table->string('payment_status');
-            $table->decimal('amount_paid', 15, 2)->default(0)->comment('Jumlah yang sudah dibayar');
+            $table->string('payment_status')->default('unpaid');
+            $table->decimal('amount_paid', 15, 2)->default(0);
+            $table->date('due_date')->nullable()->comment('Jatuh tempo pembayaran');
+            $table->date('paid_at')->nullable()->comment('Tanggal lunas');
             $table->timestamps();
         });
     }
