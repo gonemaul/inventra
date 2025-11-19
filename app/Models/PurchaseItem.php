@@ -9,7 +9,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PurchaseItem extends Model
 {
     use HasFactory;
-
+    protected $fillable = [
+        'purchase_id',
+        'purchase_invoice_id',
+        'product_id',
+        'product_snapshot',
+        'quantity',
+        'purchase_price',
+        'subtotal',
+    ];
     // Beri tahu Laravel untuk otomatis cast 'product_snapshot' ke array/objek
     protected $casts = [
         'product_snapshot' => 'array',

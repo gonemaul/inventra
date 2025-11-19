@@ -1,4 +1,4 @@
-<script setup>
+<!-- <script setup>
 import { ref, computed, watch, onMounted } from "vue";
 import axios from "axios";
 
@@ -9,6 +9,8 @@ const props = defineProps({
     serverSide: { type: Boolean, default: false },
     endpoint: { type: String, default: "" },
     params: { type: Object, default: () => ({}) },
+    getData: Array, // <-- Data Inertia masuk sini
+    pagination: Object,
 });
 
 const emit = defineEmits(["row-click", "update:params"]);
@@ -174,6 +176,188 @@ watch([perPage, filteredData], () => {
         currentPage.value = 1;
     }
 });
+</script> -->
+<script setup>
+import { ref, computed, watch, onMounted } from "vue";
+import axios from "axios";
+
+const props = defineProps({
+    data: { type: Array, default: () => [] },
+    columns: { type: Array, required: true },
+    perPageOptions: { type: Array, default: () => [5, 10, 25, 50] },
+    serverSide: { type: Boolean, default: false },
+    endpoint: { type: String, default: "" },
+    params: { type: Object, default: () => ({}) },
+    pagination: Object, // Metadata pagination dari Inertia (Semi Side)
+});
+
+// Emit event untuk mode Semi Side
+const emit = defineEmits(["row-click", "update:params", "change"]);
+
+// --- STATE LOKAL ---
+const perPage = ref(props.perPageOptions[0]);
+const currentPage = ref(1);
+const lastPage = ref(1);
+const sortKey = ref(null);
+const sortOrder = ref("asc");
+const loading = ref(false);
+const localData = ref([]); // Hanya dipakai di mode Server Side Mandiri
+
+// --- DETEKSI MODE ---
+// Mode Semi Side aktif jika serverSide=true TAPI kita punya props.pagination
+const isSemiSide = computed(() => props.serverSide && props.pagination);
+// Mode Server Side Mandiri aktif jika serverSide=true DAN TIDAK ADA props.pagination
+const isServerMandiri = computed(() => props.serverSide && !props.pagination);
+// Mode Client Side aktif jika serverSide=false
+const isClientSide = computed(() => !props.serverSide);
+
+// --- LOGIKA FORMATTER (TETAP SAMA) ---
+const formatRupiah = (value) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(value);
+
+function formatValue(value, col) {
+    if (value === null || value === undefined || value === "") return "-";
+    if (col.format === "rupiah") return formatRupiah(value);
+    if (col.format === "tanggal")
+        return new Date(value).toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+        });
+    return value;
+}
+
+// --- 1. MODE SERVER SIDE MANDIRI (Axios) ---
+async function fetchServerData() {
+    if (!isServerMandiri.value || !props.endpoint) return;
+
+    loading.value = true;
+    try {
+        const response = await axios.get(props.endpoint, {
+            params: {
+                ...props.params,
+                page: currentPage.value,
+                per_page: perPage.value,
+                sort: sortKey.value,
+                order: sortOrder.value,
+            },
+        });
+        const res = response.data;
+        localData.value = res.data || [];
+        // Update metadata lokal
+        // Asumsi response JSON standar Laravel pagination
+        total.value = res.total || 0;
+        lastPage.value = res.last_page || 1;
+    } catch (e) {
+        console.error("Fetch error:", e);
+    } finally {
+        loading.value = false;
+    }
+}
+
+// --- 2. MODE SEMI SIDE (Inertia) ---
+function handleSemiSideChange() {
+    // Emit event ke Induk agar Induk yang melakukan router.get
+    emit("change", {
+        page: currentPage.value,
+        per_page: perPage.value,
+        sort: sortKey.value,
+        order: sortOrder.value,
+    });
+
+    // Kita juga bisa emit update:params untuk v-model:params
+    emit("update:params", {
+        ...props.params,
+        page: currentPage.value,
+        per_page: perPage.value,
+        sort: sortKey.value,
+        order: sortOrder.value,
+    });
+}
+
+// --- 3. MODE CLIENT SIDE (Computed) ---
+const filteredClientData = computed(() => {
+    if (!isClientSide.value) return [];
+
+    let rows = [...props.data];
+
+    // Filter (Search & Params)
+    // (Logika filter Anda yang sudah ada...)
+
+    // Sorting
+    if (sortKey.value) {
+        rows.sort((a, b) => {
+            const valA = a[sortKey.value];
+            const valB = b[sortKey.value];
+            if (valA < valB) return sortOrder.value === "asc" ? -1 : 1;
+            if (valA > valB) return sortOrder.value === "asc" ? 1 : -1;
+            return 0;
+        });
+    }
+    return rows;
+});
+
+// --- PENENTUAN DATA FINAL ---
+const paginatedData = computed(() => {
+    if (isServerMandiri.value) return localData.value;
+    if (isSemiSide.value) return props.data; // Data langsung dari props (karena sudah dipaginasi server)
+
+    // Client Side Pagination
+    const start = (currentPage.value - 1) * perPage.value;
+    return filteredClientData.value.slice(start, start + perPage.value);
+});
+
+// --- METADATA TOTAL & HALAMAN ---
+const total = computed(() => {
+    if (isServerMandiri.value) return 0; // (Diatur di fetch)
+    if (isSemiSide.value) return props.pagination?.total || 0;
+    return filteredClientData.value.length;
+});
+
+const computedTotalPages = computed(() => {
+    if (isServerMandiri.value) return lastPage.value;
+    if (isSemiSide.value) return props.pagination?.last_page || 1;
+    return Math.ceil(total.value / perPage.value) || 1;
+});
+
+// --- WATCHERS & HANDLERS ---
+
+// Watcher Gabungan (Trigger Perubahan)
+watch([currentPage, perPage, sortKey, sortOrder], () => {
+    if (isServerMandiri.value) {
+        fetchServerData();
+    } else if (isSemiSide.value) {
+        handleSemiSideChange();
+    }
+    // Client side otomatis reaktif via computed
+});
+
+// Watcher Reset Page saat PerPage Berubah
+watch(perPage, () => {
+    currentPage.value = 1;
+});
+
+// Initial Load (Hanya Server Mandiri)
+onMounted(() => {
+    if (isServerMandiri.value) fetchServerData();
+});
+
+// Sinkronisasi Pagination Props (Untuk Semi Side)
+// Jika Induk mengirim data baru (halaman berubah), update state lokal
+watch(
+    () => props.pagination,
+    (newVal) => {
+        if (newVal) {
+            currentPage.value = newVal.current_page;
+            perPage.value = newVal.per_page;
+        }
+    },
+    { deep: true, immediate: true }
+);
 </script>
 
 <template>

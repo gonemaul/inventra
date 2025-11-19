@@ -23,7 +23,6 @@ defineProps({
         default: 0,
     },
 });
-
 const emit = defineEmits(["showFilter", "update:modelValue"]);
 </script>
 <template>

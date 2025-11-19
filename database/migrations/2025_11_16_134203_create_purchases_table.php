@@ -19,6 +19,7 @@ return new class extends Migration
             $table->date('transaction_date');
             $table->string('status');
             $table->text('notes')->nullable();
+            $table->softDeletes();
             $table->timestamps();
         });
     }
