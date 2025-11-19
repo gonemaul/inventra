@@ -35,6 +35,16 @@ const routeConfig = {
             url: (id) => route("api.settings.updateCategory", { id: id }),
         },
     },
+    type: {
+        create: {
+            method: "post",
+            url: () => route("api.settings.storeType"),
+        },
+        edit: {
+            method: "put",
+            url: (id) => route("api.settings.updateType", { id: id }),
+        },
+    },
     unit: {
         create: {
             method: "post",
@@ -53,6 +63,16 @@ const routeConfig = {
         edit: {
             method: "put",
             url: (id) => route("api.settings.updateSize", { id: id }),
+        },
+    },
+    brand: {
+        create: {
+            method: "post",
+            url: () => route("api.settings.storeBrand"),
+        },
+        edit: {
+            method: "put",
+            url: (id) => route("api.settings.updateBrand", { id: id }),
         },
     },
     supplier: {
@@ -109,8 +129,14 @@ const modalTitle = computed(() => {
             return props.mode === "create"
                 ? "Tambah Kategori"
                 : "Edit Kategori";
+        case "type":
+            return props.mode === "create"
+                ? "Tambah Tipe Produk"
+                : "Edit Tipe Produk";
         case "unit":
             return props.mode === "create" ? "Tambah Satuan" : "Edit Satuan";
+        case "brand":
+            return props.mode === "create" ? "Tambah Merk" : "Edit Merk";
         case "supplier":
             return props.mode === "create"
                 ? "Tambah Supplier"

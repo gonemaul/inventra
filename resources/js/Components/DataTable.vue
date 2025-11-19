@@ -201,6 +201,7 @@ const lastPage = ref(1);
 const sortKey = ref(null);
 const sortOrder = ref("asc");
 const loading = ref(false);
+const localTotal = ref(0);
 const localData = ref([]); // Hanya dipakai di mode Server Side Mandiri
 
 // --- DETEKSI MODE ---
@@ -250,8 +251,8 @@ async function fetchServerData() {
         localData.value = res.data || [];
         // Update metadata lokal
         // Asumsi response JSON standar Laravel pagination
-        total.value = res.total || 0;
-        lastPage.value = res.last_page || 1;
+        localTotal.value = res.total ? parseInt(res.total) : 0;
+        lastPage.value = res.last_page ? parseInt(res.last_page) : 1;
     } catch (e) {
         console.error("Fetch error:", e);
     } finally {
@@ -313,12 +314,12 @@ const paginatedData = computed(() => {
 
 // --- METADATA TOTAL & HALAMAN ---
 const total = computed(() => {
-    if (isServerMandiri.value) return 0; // (Diatur di fetch)
+    if (isServerMandiri.value) return localTotal.value; // (Diatur di fetch)
     if (isSemiSide.value) return props.pagination?.total || 0;
     return filteredClientData.value.length;
 });
 
-const computedTotalPages = computed(() => {
+const totalPages = computed(() => {
     if (isServerMandiri.value) return lastPage.value;
     if (isSemiSide.value) return props.pagination?.last_page || 1;
     return Math.ceil(total.value / perPage.value) || 1;
@@ -326,11 +327,24 @@ const computedTotalPages = computed(() => {
 
 // --- WATCHERS & HANDLERS ---
 
+// Watch untuk server side (semua perubahan)
+watch(
+    [() => props.params, currentPage, sortKey, sortOrder],
+    async () => {
+        if (isServerMandiri.value) {
+            fetchServerData();
+        }
+    },
+    { deep: true }
+);
+// watch([currentPage, perPage, sortKey, sortOrder], () => {
+//     if (isServerMandiri.value) {
+//         fetchServerData();
+//     }
+// });
 // Watcher Gabungan (Trigger Perubahan)
 watch([currentPage, perPage, sortKey, sortOrder], () => {
-    if (isServerMandiri.value) {
-        fetchServerData();
-    } else if (isSemiSide.value) {
+    if (isSemiSide.value) {
         handleSemiSideChange();
     }
     // Client side otomatis reaktif via computed
@@ -541,11 +555,11 @@ watch(
 
             <!-- Info -->
             <div class="text-sm text-gray-500 lg:text-base dark:text-gray-300">
-                Showing
+                Menampilkan
                 {{ total === 0 ? 0 : (currentPage - 1) * perPage + 1 }}
-                to
+                -
                 {{ Math.min(currentPage * perPage, total) }}
-                of {{ total }} entries
+                dari total {{ total }} entri
             </div>
 
             <!-- Pagination -->

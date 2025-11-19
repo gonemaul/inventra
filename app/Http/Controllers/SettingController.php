@@ -9,25 +9,34 @@ use App\Services\SizeService;
 use App\Services\UnitService;
 use App\Services\CategoryService;
 use App\Services\SupplierService;
+use App\Services\BrandService;
+use App\Services\TypeService;
+
 use Illuminate\Support\Facades\Redirect;
 
 
 class SettingController extends Controller
 {
     protected $categoryService;
+    protected $typeService;
     protected $unitService;
     protected $sizeService;
+    protected $brandService;
     protected $supplierService;
 
     public function __construct(
         CategoryService $categoryService,
+        TypeService $typeService,
         UnitService $unitService,
         SizeService $sizeService,
+        BrandService $brandService,
         SupplierService $supplierService
     ) {
         $this->categoryService = $categoryService;
+        $this->typeService = $typeService;
         $this->unitService = $unitService;
         $this->sizeService = $sizeService;
+        $this->brandService = $brandService;
         $this->supplierService = $supplierService;
     }
 
@@ -37,6 +46,8 @@ class SettingController extends Controller
             'categoryCount' => $this->categoryService->getCount(),
             'unitCount' => $this->unitService->getCount(),
             'sizeCount' => $this->sizeService->getCount(),
+            'brandCount' => $this->brandService->getCount(),
+            'productTypeCount' => $this->typeService->getCount(),
             'supplierCount' => $this->supplierService->getCount(),
         ]);
     }
@@ -91,6 +102,58 @@ class SettingController extends Controller
 
         return Redirect::route('settings')
             ->with('success', 'Kategori berhasil dipulihkan!');
+    }
+
+    // ================== Type Methods ==================
+    public function getType()
+    {
+        if (request()->ajax()) {
+            $type = $this->typeService->get(request()->all());
+            return $type;
+        }
+    }
+
+    public function storeType(Request $request)
+    {
+        $type = $this->typeService->create($request->all());
+
+        return Redirect::route('settings')
+            ->with('success', 'Tipe Produk berhasil ditambahkan!');
+    }
+
+    public function updateType(Request $request, $id)
+    {
+        try {
+            $type = $this->typeService->update($id, $request->all());
+
+            return Redirect::route('settings')
+                ->with('success', 'Tipe Produk berhasil diperbarui!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Redirect::route('settings')
+                ->with('error', $e->errors());
+        } catch (\Exception $e) {
+            return Redirect::route('settings')
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    public function deleteType(Request $request, $id)
+    {
+        $isPermanent = $request->input('permanen', default: false);
+        $this->typeService->delete($id, $request->all());
+        $message = $isPermanent
+            ? 'Tipe Produk berhasil dihapus permanen!'
+            : 'Tipe Produk berhasil dipindahkan ke sampah!';
+        return Redirect::route('settings')
+            ->with('success', $message);
+    }
+
+    public function restoreType($id)
+    {
+        $this->typeService->restore($id);
+
+        return Redirect::route('settings')
+            ->with('success', 'Tipe Produk berhasil dipulihkan!');
     }
 
     // ================== Unit Methods ==================
@@ -194,6 +257,60 @@ class SettingController extends Controller
         return Redirect::route('settings')
             ->with('success', 'Ukuran berhasil dipulihkan!');
     }
+
+    // ================== Brand Methods ==================
+    public function getBrand()
+    {
+        if (request()->ajax()) {
+            $brands = $this->brandService->get(request()->all());
+            return $brands;
+        }
+    }
+
+    public function storeBrand(Request $request)
+    {
+        $brand = $this->brandService->create($request->all());
+
+        return Redirect::route('settings')
+            ->with('success', 'Merk berhasil ditambahkan!');
+    }
+
+    public function updateBrand(Request $request, $id)
+    {
+        try {
+            $brand = $this->brandService->update($id, $request->all());
+
+            return Redirect::route('settings')
+                ->with('success', 'Merk berhasil diperbarui!');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            return Redirect::route('settings')
+                ->with('error', $e->errors());
+        } catch (\Exception $e) {
+            return Redirect::route('settings')
+                ->with('error', $e->getMessage());
+        }
+    }
+
+    public function deleteBrand(Request $request, $id)
+    {
+        $isPermanent = $request->input('permanen', default: false);
+        $this->brandService->delete($id, $request->all());
+        $message = $isPermanent
+            ? 'Merk berhasil dihapus permanen!'
+            : 'Merk berhasil dipindahkan ke sampah!';
+        return Redirect::route('settings')
+            ->with('success', $message);
+    }
+
+    public function restoreBrand($id)
+    {
+        $this->brandService->restore($id);
+
+        return Redirect::route('settings')
+            ->with('success', 'Merk berhasil dipulihkan!');
+    }
+
+
     // ================== Supplier Methods ==================
     public function getSupplier()
     {

@@ -44,7 +44,7 @@ class SizeService
     public function create(array $data)
     {
         $validator = Validator::make($data, [
-            'code' => 'required|string|max:20|unique:categories,code', // 'unique' di tabel 'categories', kolom 'code'
+            'code' => 'required|string|max:20|unique:sizes,code', // 'unique' di tabel 'size', kolom 'code'
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
         ]);
@@ -68,7 +68,7 @@ class SizeService
                 'string',
                 'max:20',
                 // Aturan 'unique' yang mengabaikan ID saat ini
-                Rule::unique('categories')->ignore($size->id)
+                Rule::unique('sizes')->ignore($size->id)
             ],
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',

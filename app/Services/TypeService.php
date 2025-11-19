@@ -2,25 +2,29 @@
 
 namespace App\Services;
 
-use App\Models\Unit;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Validator;
+use App\Models\ProductType;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator; // <-- Impor Validator
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
-class UnitService
+class TypeService
 {
     public function getAll()
     {
         // Ambil ID dan Nama, urutkan berdasarkan Nama
-        return Unit::orderBy('name')->get(['id', 'name']);
+        return ProductType::orderBy('name')->get(['id', 'name']);
     }
+    /**
+     * Mengambil semua data brand.
+     */
     public function getCount()
     {
-        return Unit::count();
+        return ProductType::count();
     }
     public function get(array $params)
     {
-        $query = Unit::query();
+        $query = ProductType::query();
         if (isset($params['trashed']) && $params['trashed']) {
             $query->onlyTrashed();
         }
@@ -37,10 +41,11 @@ class UnitService
             ->paginate($perPage)
             ->withQueryString();
     }
+
     public function create(array $data)
     {
         $validator = Validator::make($data, [
-            'code' => 'required|string|max:20|unique:units,code', // 'unique' di tabel 'units', kolom 'code'
+            'code' => 'required|string|max:20|unique:product_types,code', // 'unique' di tabel 'product_types', kolom 'code'
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
         ]);
@@ -49,12 +54,13 @@ class UnitService
             throw new ValidationException($validator);
         }
 
-        return Unit::create($validator->validated());
+        return ProductType::create($validator->validated());
     }
+
     public function update($id, array $data)
     {
         // 1. Temukan data, jika tidak ada akan error (findOrFail)
-        $Unit = Unit::findOrFail($id);
+        $brand = ProductType::findOrFail($id);
 
         // 2. Validasi data
         $validator = Validator::make($data, [
@@ -63,7 +69,7 @@ class UnitService
                 'string',
                 'max:20',
                 // Aturan 'unique' yang mengabaikan ID saat ini
-                Rule::unique('units')->ignore($Unit->id)
+                Rule::unique('product_types')->ignore($brand->id)
             ],
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
@@ -74,25 +80,25 @@ class UnitService
         }
 
         // 3. Update data
-        $Unit->update($validator->validated());
+        $brand->update($validator->validated());
 
-        return $Unit;
+        return $brand;
     }
 
     public function delete($id, array $params = [])
     {
-        $Unit = Unit::withTrashed()->findOrFail($id);
+        $brand = ProductType::withTrashed()->findOrFail($id);
         if (isset($params['permanen']) && $params['permanen']) {
-            return $Unit->forceDelete();
+            return $brand->forceDelete();
         } else {
-            return $Unit->delete();
+            return $brand->delete();
         }
     }
 
     public function restore($id)
     {
-        $Unit = Unit::withTrashed()->findOrFail($id);
+        $brand = ProductType::withTrashed()->findOrFail($id);
 
-        return $Unit->restore();
+        return $brand->restore();
     }
 }

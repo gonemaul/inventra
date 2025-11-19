@@ -53,6 +53,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('category/{id}/restore', 'restoreCategory')->name('restoreCategory');
             Route::put('category/{id}', 'updateCategory')->name('updateCategory');
             Route::delete('category/{id}', 'deleteCategory')->name('deleteCategory');
+            // CRUD API Type Produk Settings
+            Route::get('type', 'getType')->name('getType');
+            Route::post('type', 'storeType')->name('storeType');
+            Route::put('type/{id}/restore', 'restoreType')->name('restoreType');
+            Route::put('type/{id}', 'updateType')->name('updateType');
+            Route::delete('type/{id}', 'deleteType')->name('deleteType');
             // CRUD API Unit Settings
             Route::get('unit', 'getUnit')->name('getUnit');
             Route::post('unit', 'storeUnit')->name('storeUnit');
@@ -65,6 +71,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('size/{id}/restore', 'restoreSize')->name('restoreSize');
             Route::put('size/{id}', 'updateSize')->name('updateSize');
             Route::delete('size/{id}', 'deleteSize')->name('deleteSize');
+            // CRUD API Size Settings
+            Route::get('brand', 'getBrand')->name('getBrand');
+            Route::post('brand', 'storeBrand')->name('storeBrand');
+            Route::put('brand/{id}/restore', 'restoreBrand')->name('restoreBrand');
+            Route::put('brand/{id}', 'updateBrand')->name('updateBrand');
+            Route::delete('brand/{id}', 'deleteBrand')->name('deleteBrand');
             // CRUD API Supplier Settings
             Route::get('supplier', 'getSupplier')->name('getSupplier');
             Route::post('supplier', 'storeSupplier')->name('storeSupplier');
