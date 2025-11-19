@@ -19,15 +19,21 @@ class Product extends Model
         'supplier_id',
         'brand_id',
         'product_type_id',
+
         'name',
         'code',
         'slug',
-        'stock',
-        'min_stock',
-        'purchase_price',
-        'selling_price',
         'description',
         'image_path',
+
+        'stock',
+        'min_stock',
+        'inventory_type',
+
+        'purchase_price',
+        'selling_price',
+        'target_margin_percent',
+
         'status',
     ];
     const STATUS_ACTIVE = 'active'; // Produk yang dijual
@@ -36,6 +42,16 @@ class Product extends Model
     const STATUSES = [
         self::STATUS_ACTIVE,
         self::STATUS_DRAFT,
+    ];
+    const INVENTORY_TYPE_FAST = 'FAST';
+    const INVENTORY_TYPE_SLOW = 'SLOW';
+    const INVENTORY_TYPE_SEASONAL = 'SEASONAL';
+    const INVENTORY_TYPE_DEAD = 'DEAD';
+    const INVENTORIES = [
+        self::INVENTORY_TYPE_FAST,
+        self::INVENTORY_TYPE_SLOW,
+        self::INVENTORY_TYPE_SEASONAL,
+        self::INVENTORY_TYPE_DEAD
     ];
     protected static function boot()
     {
