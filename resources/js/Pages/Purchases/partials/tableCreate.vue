@@ -4,12 +4,6 @@ const props = defineProps({
     items: Array, // Ini adalah form.items dari Induk
 });
 const emit = defineEmits(["remove", "edit"]);
-const rupiah = (n) =>
-    new Intl.NumberFormat("id-ID", {
-        style: "currency",
-        currency: "IDR",
-        minimumFractionDigits: 0,
-    }).format(n);
 const columns = [
     {
         key: "product_details",

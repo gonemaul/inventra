@@ -1,9 +1,10 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Foundation\Application;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PurchaseController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -24,26 +25,68 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/payments-detail', 'detail')->name('detail');
     });
 
-    Route::get('checking', function () {
-        return Inertia::render('Purchases/detail', [
-            'type' => 'checking',
-        ]);
-    })->name('checking');
-    Route::get('checking-detail', function () {
-        return Inertia::render('Purchases/checking');
-    })->name('checking-detail');
-
     Route::delete('products/{id}', [\App\Http\Controllers\ProductController::class, 'destroy'])
         ->name('products.destroy');
     Route::put('products/restore/{id}', [\App\Http\Controllers\ProductController::class, 'restoreProduct'])->name('products.restoreProduct');
 
-    Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
-    Route::resource('purchases', \App\Http\Controllers\PurchaseController::class);
-    Route::resource('sellings', \App\Http\Controllers\SellingController::class);
+    // Pemmbelian
+    Route::resource('purchases', PurchaseController::class)->except([
+        'show',
+        'edit',
+        'update' // Kita akan buat rute ini manual/spesifik nanti
+    ]);
+    Route::controller(PurchaseController::class)->group(function () {
+        // =============== RUTE PURCHASE =====================
+        // Rute khusus untuk Aksi Cepat (Update Status)
+        Route::put('purchases/{purchase}/status', 'updateStatus')
+            ->name('purchases.update-status');
+        // Rute detail
+        Route::get('purchases/{purchase}', [PurchaseController::class, 'checking'])
+            ->name('purchases.show');
+        // Rute untuk Halaman Checking/Validasi (Flow Khusus)
+        Route::get('purchases/{purchase}/checking', [PurchaseController::class, 'checking'])
+            ->name('purchases.checking');
 
+        // RUTE INVOICE
+        // POST Rute untuk Upload Invoice
+        Route::post('purchases/{purchase}/store-invoice', [PurchaseController::class, 'storeInvoice'])
+            ->name('purchases.storeInvoice');
+        // Rute Detail Update Delete Invoice
+        Route::prefix('purchases/{purchase}')->group(function () {
+            // TAMPILAN DETAIL INVOICE
+            Route::get('invoices/{invoice}', 'linkItemsView')->name('purchases.linkInvoiceItems');
+            // TAUTKAN PRODUK KE INVOICE
+            Route::post('invoices/{invoice}/link', 'linkItems')->name('purchases.linkItems');
+            // LEPASKAN PRODUK DARI INVOICE
+            Route::put('invoices/{invoice}/unlink-items', 'unlinkItems')->name('purchases.unlinkItems');
+            // MEMPERBARUI QTY DAN HARGA PRODUK YANG DITAUTKAN
+            Route::put('{invoice}/update-linked-item-details', [PurchaseController::class, 'updateLinkedItemDetails'])
+                ->name('purchases.updateLinkedItemDetails');
+            // MEMPERBARUI INVOICE
+            Route::put('invoices/{invoice}',  'updateInvoice')->name('purchases.updateInvoice');
+            // MENGHAPUS INVOCIE
+            Route::delete('invoices/{invoice}',  'destroyInvoice')->name('purchases.destroyInvoice');
+        });
+
+        // POST Rute untuk Selesaikan validasi
+        Route::put('purchases/{purchase}/finalize', [PurchaseController::class, 'finalize'])
+            ->name('purchases.finalize');
+
+        // Rute untuk Edit (Hanya jika status memungkinkan)
+        Route::get('purchases/{purchase}/edit', 'edit')
+            ->name('purchases.edit');
+        Route::put('purchases/{purchase}', 'update')
+            ->name('purchases.update');
+        // Rute get rekomendasi
+        Route::get('purchases/recommendations', 'getRecommendations')
+            ->name('purchases.recommendations');
+    });
+
+    Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
+    Route::resource('sellings', \App\Http\Controllers\SellingController::class);
     Route::resource('reports',  \App\Http\Controllers\ReportController::class);
 
-    // Setting Route
+    // Setting Route DATA MASTER
     Route::controller(\App\Http\Controllers\SettingController::class)->group(function () {
         Route::get('settings', 'index')->name('settings');
         Route::prefix('settings')->name("api.settings.")->group(function () {

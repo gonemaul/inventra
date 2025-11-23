@@ -231,6 +231,27 @@ function formatValue(value, col) {
         });
     return value;
 }
+function getNestedValue(obj, key) {
+    if (!obj || !key) return null;
+
+    // Memecah kunci string menjadi array: "product.name" -> ["product", "name"]
+    return key.split(".").reduce((current, part) => {
+        // Secara rekursif mengakses bagian objek: current['product']['name']
+        // Cek apakah current valid dan part ada di dalamnya
+        if (current && typeof current === "object" && part in current) {
+            return current[part];
+        }
+        // Jika gagal di tengah jalan (misal, product adalah null), kembalikan null
+        return null;
+    }, obj);
+}
+function getFormattedCellValue(row, column) {
+    // Langkah 1: Ambil nilai mentah (bisa berupa objek bersarang)
+    const rawValue = getNestedValue(row, column.key);
+
+    // Langkah 2: Format nilai tersebut dan kembalikan hasil final
+    return formatValue(rawValue, column);
+}
 
 // --- 1. MODE SERVER SIDE MANDIRI (Axios) ---
 async function fetchServerData() {
@@ -505,7 +526,7 @@ watch(
                         >
                             <slot v-if="col.slot" :name="col.slot" :row="row" />
                             <span v-else>
-                                {{ formatValue(row[col.key], col) }}
+                                {{ getFormattedCellValue(row, col) }}
                             </span>
                         </td>
                     </tr>

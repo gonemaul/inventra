@@ -7,6 +7,7 @@ import Filter from "@/Components/Filter.vue";
 import FilterModal from "./partials/modalFilter.vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import DeleteConfirm from "@/Components/DeleteConfirm.vue";
+import ConfirmModal from "@/Components/ConfirmModal.vue";
 import { router } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { throttle } from "lodash";
@@ -19,18 +20,12 @@ const props = defineProps({
 
 const activeId = ref(null);
 const position = ref({ top: 0, left: 0 });
-function toggleDropdown(id, event) {
-    if (activeId.value === id) {
-        activeId.value = null;
-    } else {
-        const rect = event.target.getBoundingClientRect();
-        position.value = {
-            top: rect.bottom + window.scrollY,
-            left: rect.left + window.scrollX,
-        };
-        activeId.value = id;
-    }
-}
+const search = ref(props.filters.search || "");
+const showFilterModal = ref(false);
+const { isActionLoading } = useActionLoading();
+const showConfirmDelete = ref(null);
+const showTrashed = ref(false);
+const showConfirmModal = ref(false); // State untuk menampilkan modal
 
 const columns = [
     {
@@ -63,10 +58,6 @@ const columns = [
     },
     { key: "aksi", label: "Aksi", width: "120px", slot: "aksi" },
 ];
-const search = ref(props.filters.search || "");
-const showFilterModal = ref(false);
-const { isActionLoading } = useActionLoading();
-const showConfirmModal = ref(null);
 
 const params = ref({
     search: props.filters.search || "",
@@ -75,22 +66,24 @@ const params = ref({
     page: props.purchases.current_page || 1, // Penting untuk pagination
 });
 
-watch(
-    params,
-    throttle((newParams) => {
-        const query = Object.fromEntries(
-            Object.entries(newParams).filter(([_, v]) => v != null && v !== "")
-        );
+function toggleDropdown(id, event) {
+    if (activeId.value === id) {
+        activeId.value = null;
+    } else {
+        const rect = event.target.getBoundingClientRect();
+        position.value = {
+            top: rect.bottom + window.scrollY,
+            left: rect.left + window.scrollX,
+        };
+        activeId.value = id;
+    }
+}
 
-        router.get(route("purchases.index"), query, {
-            preserveState: true, // Jangan scroll ke atas
-            preserveScroll: true,
-            replace: true, // Jangan penuh-penuhin history browser
-            only: ["purchases"], // Optimasi: Cuma update data tabel
-        });
-    }, 300),
-    { deep: true }
-);
+const refreshTable = () => {
+    // Memanggil fungsi fetchData di DataTable (jika mode Server Side Mandiri)
+    // Jika mode Semi Side (Inertia), ini memicu reload prop Inertia
+    router.reload({ only: ["purchases", "filters"], preserveScroll: true });
+};
 
 const performSearch = throttle(() => {
     const currentFilters = { ...props.filters };
@@ -103,39 +96,164 @@ const performSearch = throttle(() => {
         replace: true,
     });
 }, 300);
+
+const updateStatus = (row, newStatus) => {
+    const config = {
+        title: `Konfirmasi Perubahan Status`,
+        message: `Anda yakin ingin mengubah status transaksi ${
+            row.reference_no
+        } menjadi ${newStatus.toUpperCase()}?`,
+        itemName: row.reference_no,
+        url: route("purchases.update-status", { purchase: row.id }),
+        method: "put",
+        // Tambahkan data status yang akan dikirim
+        data: { status: newStatus },
+    };
+    showConfirmModal.value.open(config);
+};
+
+const confirmDelete = (row) => {
+    const config = {
+        title: `Hapus transaksi ${row.reference_no}?`,
+        message: `Aksi ini akan menghapus semua item terkait dan tidak dapat dibatalkan. Status saat ini: ${row.status}`,
+        itemName: row.name,
+        url: route("purchases.destroy", {
+            purchase: row.id,
+            permanen: false,
+        }),
+    };
+    showConfirmDelete.value.open(config);
+};
+
+// WATHCH
+watch(showTrashed, (newValue) => {
+    if (newValue === true) {
+        params.value.trashed = true;
+    } else {
+        delete params.value.trashed;
+    }
+});
+watch(
+    params,
+    throttle((newParams) => {
+        const query = Object.fromEntries(
+            Object.entries(newParams).filter(([_, v]) => v != null && v !== "")
+        );
+        isActionLoading.value = true;
+        router.get(route("purchases.index"), query, {
+            preserveState: true, // Jangan scroll ke atas
+            preserveScroll: true,
+            replace: true, // Jangan penuh-penuhin history browser
+            only: ["purchases"], // Optimasi: Cuma update data tabel
+            onFinish: () => {
+                isActionLoading.value = false;
+            },
+        });
+    }, 300),
+    { deep: true }
+);
+
 watch(search, performSearch);
 
 const activeFilterCount = computed(() => {
     const filterKeys = Object.keys(props.filters);
-    console.log(filterKeys);
     const ignoredKeys = ["search", "page", "per_page"];
     return filterKeys.filter((key) => !ignoredKeys.includes(key)).length;
 });
 
-const openDeleteModal = (purchase, isPermanent = false) => {
-    config = {
-        title: "Hapus Permanen Belanja",
-        message: "Belanja ini akan dihapus selamanya. Anda yakin menghapus",
-        itemName: purchase.name,
-        url: route("purchases.destroy", {
-            id: purchase.id,
-            permanen: true,
-        }),
-    };
-    showConfirmModal.value.open(config);
-};
-const updateStatus = (row, newStatus) => {
-    if (confirm(`Ubah status menjadi ${newStatus}?`)) {
-        router.put(
-            route("purchases.update-status", row.id),
-            {
-                status: newStatus,
-            },
-            {
-                preserveScroll: true,
-            }
-        );
+const getActions = (row) => {
+    const actions = [];
+
+    // --- A. AKSI STANDAR (Selalu Ada) ---
+    actions.push({
+        label: "📄 Detail",
+        icon: "eye",
+        type: "link",
+        route: route("purchases.show", row.id),
+    });
+    actions.push({
+        label: "🖨️ Cetak PO",
+        icon: "print",
+        type: "link",
+        route: route("purchases.index", row.id),
+        target: "_blank",
+    });
+
+    // --- B. AKSI OPERASIONAL (Conditional berdasarkan Status) ---
+    switch (row.status) {
+        case "draft":
+            actions.push({
+                label: "✏️ Edit",
+                icon: "edit",
+                type: "link",
+                route: route("purchases.edit", row.id),
+            });
+            actions.push({
+                label: "▶️ Tandai Dipesan",
+                icon: "play",
+                type: "status",
+                newStatus: "dipesan",
+            });
+            actions.push({ label: "🗑️ Hapus", icon: "delete", type: "delete" });
+            break;
+
+        case "dipesan":
+            actions.push({
+                label: "🚚 Tandai Dikirim",
+                icon: "truck",
+                type: "status",
+                newStatus: "dikirim",
+            });
+            actions.push({
+                label: "✏️ Edit",
+                icon: "edit",
+                type: "link",
+                route: route("purchases.edit", row.id),
+            });
+            actions.push({ label: "🗑️ Hapus", icon: "delete", type: "delete" });
+            break;
+
+        case "dikirim":
+            actions.push({
+                label: "📦 Tandai Diterima",
+                icon: "receive",
+                type: "status",
+                newStatus: "diterima",
+            });
+            break;
+
+        case "diterima":
+            actions.push({
+                label: "✅ Validasi Barang",
+                icon: "check",
+                type: "link",
+                route: route("purchases.checking", row.id),
+                isPrimary: true,
+            });
+            actions.push({
+                label: "🔄 Batalkan Terima",
+                icon: "undo",
+                type: "status",
+                newStatus: "dikirim",
+            }); // Kembali ke shipped
+            break;
+
+        case "checking":
+            actions.push({
+                label: "✏️ Lanjut Checking",
+                icon: "edit",
+                type: "link",
+                route: route("purchases.checking", row.id),
+            });
+            break;
+
+        case "completed":
+        case "cancelled":
+            // Status final, hanya View dan Print yang tersedia (sudah di Aksi Standar)
+            break;
     }
+
+    return actions;
 };
 </script>
 
@@ -143,7 +261,8 @@ const updateStatus = (row, newStatus) => {
     <Head title="Pembelian" />
 
     <AuthenticatedLayout headerTitle="Pembelian">
-        <DeleteConfirm ref="showConfirmModal" @success="" />
+        <DeleteConfirm ref="showConfirmDelete" @success="refreshTable" />
+        <ConfirmModal ref="showConfirmModal" @success="refreshTable" />
         <div class="w-full min-h-screen px-4 space-y-6">
             <Filter
                 :filters="filters"
@@ -229,75 +348,61 @@ const updateStatus = (row, newStatus) => {
                     </template>
                     <template #aksi="{ row }"
                         ><OpsiTable
+                            v-if="row.deleted_at == null"
                             :row-id="row.id"
                             :active-id="activeId"
                             :position="position"
                             @toggle="toggleDropdown"
                             @close="activeId = null"
                         >
-                            <Link
-                                :href="route('purchases.show', row.id)"
-                                class="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
-                                >Detail
-                            </Link>
-                            <a
-                                target="_blank"
-                                class="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                            <template
+                                v-for="(action, index) in getActions(row)"
+                                :key="index"
                             >
-                                Cetak PO
-                            </a>
-                            <template v-if="row.status === 'dipesan'">
-                                <hr
-                                    class="my-1 border-gray-200 dark:border-gray-600"
-                                />
-
                                 <Link
-                                    :href="route('purchases.edit', row.id)"
-                                    class="block w-full px-4 py-2 text-sm text-left text-yellow-600 hover:bg-yellow-50 dark:hover:bg-gray-700 dark:text-yellow-500"
+                                    v-if="action.type === 'link'"
+                                    :href="action.route"
+                                    :target="action.target || '_self'"
+                                    :class="{
+                                        'text-green-600 font-semibold':
+                                            action.isPrimary,
+                                        'border-b-2':
+                                            action.label.includes('Detail'), // Garis pemisah
+                                    }"
+                                    class="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
                                 >
-                                    Edit Pesanan
+                                    {{ action.label }}
                                 </Link>
 
                                 <button
+                                    v-else-if="action.type === 'status'"
+                                    @click="updateStatus(row, action.newStatus)"
+                                    :class="{
+                                        'text-lime-600 font-semibold':
+                                            action.isPrimary,
+                                        'border-b-2':
+                                            action.newStatus === 'ordered', // Garis pemisah
+                                    }"
+                                    class="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                                >
+                                    {{ action.label }}
+                                </button>
+
+                                <button
+                                    v-else-if="action.type === 'delete'"
                                     @click="confirmDelete(row)"
-                                    class="block w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-gray-700 dark:text-red-500"
+                                    class="block w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
                                 >
-                                    Hapus
+                                    {{ action.label }}
                                 </button>
 
-                                <button
-                                    @click="updateStatus(row, 'dikirim')"
-                                    class="block w-full px-4 py-2 text-sm text-left text-blue-600 hover:bg-blue-50 dark:hover:bg-gray-700 dark:text-blue-500"
-                                >
-                                    Tandai Dikirim
-                                </button>
-                            </template>
-
-                            <template v-if="row.status === 'dikirim'">
                                 <hr
+                                    v-if="action.newStatus === 'shipped'"
                                     class="my-1 border-gray-200 dark:border-gray-600"
                                 />
-                                <button
-                                    @click="updateStatus(row, 'diterima')"
-                                    class="block w-full px-4 py-2 text-sm font-semibold text-left text-purple-600 hover:bg-purple-50 dark:hover:bg-gray-700 dark:text-purple-400"
-                                >
-                                    Barang Sampai (Terima)
-                                </button>
-                            </template>
-
-                            <template v-if="row.status === 'diterima'">
-                                <hr
-                                    class="my-1 border-gray-200 dark:border-gray-600"
-                                />
-
-                                <Link
-                                    :href="route('purchases.checking', row.id)"
-                                    class="block w-full px-4 py-2 text-sm font-bold text-left text-lime-600 hover:bg-lime-50 dark:hover:bg-gray-700 dark:text-lime-500"
-                                >
-                                    Validasi (Checking)
-                                </Link>
                             </template>
                         </OpsiTable>
+                        <span v-else>Sudah dihapus</span>
                     </template>
                 </DataTable>
             </div>

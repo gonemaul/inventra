@@ -6,9 +6,13 @@ use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Purchase;
 use Illuminate\Http\Request;
+use App\Models\PurchaseInvoice;
+use Illuminate\Validation\Rule;
+use App\Services\InvoiceService;
 use App\Services\PurchaseService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\ValidationException;
 use App\Services\ProductService;  // Untuk dropdown
 use App\Services\SupplierService; // Untuk dropdown
 
@@ -17,26 +21,28 @@ class PurchaseController extends Controller
     protected $purchaseService;
     protected $supplierService;
     protected $productService;
+    protected $invoiceService;
 
     public function __construct(
         PurchaseService $purchaseService,
         SupplierService $supplierService,
-        ProductService $productService
+        ProductService $productService,
+        InvoiceService $invoiceService
     ) {
         $this->purchaseService = $purchaseService;
         $this->supplierService = $supplierService;
         $this->productService = $productService;
+        $this->invoiceService = $invoiceService;
     }
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
-        // if ($request->ajax()) {
-        //     return $purchases;
-        // }
         $purchases = $this->purchaseService->get($request->all());
-
+        // if ($request->wantsJson() || $request->ajax()) {
+        //     return response()->json($purchases); // <-- Kembalikan JSON MURNI
+        // }
         return Inertia::render('Purchases/index', [
             'purchases' => $purchases,
             'dropdowns' => [
@@ -45,7 +51,6 @@ class PurchaseController extends Controller
             ],
             'filters' => $request->all(),
         ]);
-        // return Inertia::render('Purchases/index');
     }
 
     /**
@@ -53,35 +58,18 @@ class PurchaseController extends Controller
      */
     public function create()
     {
-        $productsForAutocomplete = Product::select(
-            'id',
-            'name',
-            'code',
-            'stock',
-            'min_stock',
-            'purchase_price',
-            'image_path',
-            'unit_id',
-            'size_id',
-            'category_id'
-        )
-            ->with([
-                // Muat relasi yang penting saja
-                'unit:id,name',
-                'size:id,name',
-                'category:id,name'
-            ])
-            ->where('status', Product::STATUS_ACTIVE) // Hanya produk aktif
+        $productsForAutocomplete = Product::select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'product_type_id', 'supplier_id')
+            ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'productType:id,name'])
+            ->where('status', 'active')
             ->get();
+
         return Inertia::render('Purchases/create', [
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
                 'statuses' => Purchase::STATUSES,
             ],
             'products' => $productsForAutocomplete,
-            // 'recommendations' => $recommendationData, // (Untuk nanti)
         ]);
-        // return Inertia::render('Purchases/create');
     }
 
     /**
@@ -99,15 +87,226 @@ class PurchaseController extends Controller
     }
 
     /**
+     * Mengambil daftar produk yang direkomendasikan untuk dibeli.
+     * Kriteria: Stock saat ini <= Minimum Stock, dan Filter Supplier.
+     */
+    public function getRecommendations(Request $request)
+    {
+        if ($request->ajax()) {
+            $res = $this->purchaseService->getRecomendations($request);
+            return response()->json($res);
+        }
+    }
+
+    /**
+     * Mengubah status transaksi cepat (dari Index/Aksi Cepat).
+     */
+    public function updateStatus(Request $request, Purchase $purchase)
+    {
+        $request->validate(['status' => ['required', Rule::in(Purchase::STATUSES)]]);
+
+        // Memanggil Service untuk update status
+        $this->purchaseService->updateStatus($purchase->id, $request->input('status'));
+
+        return Redirect::back()->with('success', 'Status transaksi berhasil diperbarui.');
+    }
+
+    /**
      * Display the specified resource.
      */
-    public function show(Purchase $purchase)
+    public function checking(Purchase $purchase)
     {
-        return Inertia::render('Purchases/detail', [
-            'type' => 'detail',
+        $purchase->load([
+            'supplier',
+            'user',
+            // Load items dan relasi bersarang untuk mendapatkan data Brand, Tipe, Unit:
+            'items.product.brand',
+            'items.product.productType',
+            'items.product.unit',
+            'items.invoice',
+            'invoices' // Nota yang sudah di-upload
+        ]);
+        $purchase->loadSum('invoices', 'total_amount');
+        $invoice = $purchase->invoices->first() ?? new PurchaseInvoice();
+        // if (!in_array($purchase->status, [
+        //     Purchase::STATUS_RECEIVED,
+        //     Purchase::STATUS_CHECKING,
+        //     Purchase::STATUS_COMPLETED,
+        //     Purchase::STATUS_CANCELLED
+        // ])) {
+        //     // Jika masih ordered/shipped, redirect ke index
+        //     return redirect()->route('purchases.index')->with('error', 'Detail validasi hanya bisa diakses setelah barang tiba (Status Received).');
+        // }
+        return Inertia::render('Purchases/PurchaseDetail', [
+            'purchase' => $purchase,
+            'invoice' => $invoice,
+            'paymentStatuses' => PurchaseInvoice::PAYMENT_STATUSES,
+
+            // Flag untuk frontend (FE) agar tahu apakah tombol aksi harus ditampilkan
+            'isCheckingMode' => in_array($purchase->status, [
+                Purchase::STATUS_RECEIVED,
+                Purchase::STATUS_CHECKING
+            ]),
         ]);
     }
 
+
+    // MENAMBAHKAN INVOICE KE TRANSAKSI
+    public function storeInvoice(Request $request, Purchase $purchase)
+    {
+        if ($purchase->status !== Purchase::STATUS_RECEIVED && $purchase->status !== Purchase::STATUS_CHECKING) {
+            return redirect()->back()->with('error', 'Invoice hanya bisa diunggah pada status Diterima atau sedang Divalidasi. status saat ini');
+        }
+        try {
+            $this->invoiceService->store($request->all(), $purchase);
+            $this->purchaseService->updateStatus($purchase->id, Purchase::STATUS_CHECKING);
+            return redirect()->route('purchases.checking', $purchase)
+                ->with('success', 'Nota berhasil diunggah. Silakan lakukan validasi item.');
+        } catch (ValidationException $e) {
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menyimpan data nota: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Memperbarui Nota (Action Edit dari Modal).
+     * Rute: PUT purchases/{purchase}/invoices/{invoice}
+     */
+    public function updateInvoice(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
+    {
+        // Panggil Service untuk update
+        $this->invoiceService->update($request->all(), $invoice);
+
+        return redirect()->back()->with('success', 'Nota berhasil diperbarui.');
+    }
+
+    /**
+     * Menghapus Nota (Action Delete).
+     * Rute: DELETE purchases/{purchase}/invoices/{invoice}
+     */
+    public function destroyInvoice(Purchase $purchase, PurchaseInvoice $invoice)
+    {
+        // Panggil Service untuk menghapus nota dan file
+        try {
+            $this->invoiceService->destroy($invoice);
+            return redirect()->back()->with('success', 'Nota berhasil dihapus.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+    /**
+     * Detail Nota (Action Detail).
+     * Rute: Detail purchases/{purchase}/invoices/{invoice}
+     */
+    public function linkItemsView(Purchase $purchase, PurchaseInvoice $invoice)
+    {
+        $unlinkedItems = $purchase->items()
+            ->whereNull('purchase_invoice_id')
+            ->with('product:id,name,code,stock') // Load info produk master
+            ->get();
+
+        // 3. Ambil Item yang SUDAH Tertaut ke Invoice ini (untuk detail di FE)
+        $linkedItems = $invoice->items()->with('product:id,name,code')->get();
+        $products = Product::select('id', 'name', 'code', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'product_type_id', 'supplier_id')
+            ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'productType:id,name'])
+            ->where('status', 'active')
+            ->where('supplier_id', $purchase->supplier->id)
+            ->get();
+
+        $purchase->load(['supplier:id,name,phone,address']);
+        // 4. Kirim data ke Frontend
+        return Inertia::render('Purchases/InvoiceLinkagePage', [
+            'purchase' => $purchase->only(['id', 'reference_no', 'status',  'supplier']),
+            'invoice' => $invoice,
+            'unlinkedItems' => $unlinkedItems,
+            'linkedItems' => $linkedItems,
+            'products' => $products,
+        ]);
+    }
+    // MENAUTKAN PRODUK KE INVOICE
+    public function linkItems(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
+    {
+        // 1. Validasi Input Item Ids
+        $request->validate([
+            'product_ids' => 'required|array|min:1',
+            'product_ids.*' => 'exists:products,id',
+            'type' => 'required'
+        ]);
+
+        try {
+            // 2. Panggil Service Logika Penautan & Perhitungan Harga
+            $this->invoiceService->smartLinkProductsByProductId($invoice, $request->input('product_ids'), $request->input('type'));
+
+            return redirect()->back();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menautkan item: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Melepaskan item dari Nota (Dipanggil dari InvoiceLinkagePage).
+     */
+    public function unlinkItems(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
+    {
+        $request->validate([
+            'item_ids' => 'required|array|min:1',
+            'item_ids.*' => 'exists:purchase_items,id',
+        ]);
+
+        try {
+            $count = $this->invoiceService->unlinkItems($invoice, $request->input('item_ids'));
+            return redirect()->back();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal melepas item: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Menerima array item yang Qty/Harganya sudah dikoreksi dari InvoiceLinkagePage.
+     * MEMPERBARUI DATA QTY DAN HARGA PRODUK TRANSAKSI
+     */
+    public function updateLinkedItemDetails(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
+    {
+        // Guard: Pastikan transaksi masih dalam tahap CHECKING
+        if ($purchase->status !== Purchase::STATUS_CHECKING) {
+            return redirect()->back()->with('error', 'Koreksi hanya dapat disimpan saat status Checking.');
+        }
+
+        try {
+            // Panggil Service untuk update massal
+            $this->invoiceService->updateItemDetails($request->input('items'), $invoice);
+
+            return redirect()->back();
+        } catch (ValidationException $e) {
+            return redirect()->back()->withErrors($e->errors())->withInput();
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal menyimpan koreksi: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Menyelesaikan transaksi (Action Final).
+     */
+    public function finalize(Request $request, Purchase $purchase)
+    {
+        // Validasi Input Biaya Tambahan (Boleh 0)
+        $validated = $request->validate([
+            'shipping_cost' => 'required|numeric|min:0',
+            'other_costs' => 'required|numeric|min:0',
+            'notes' => 'nullable'
+        ]);
+
+        try {
+            $this->purchaseService->finalizeTransaction($purchase, $validated);
+
+            return redirect()->route('purchases.show', $purchase)
+                ->with('success', 'Transaksi Selesai! Stok telah bertambah dan HPP diperbarui.');
+        } catch (\Exception $e) {
+            // Tangkap error validasi logika dari service
+            return redirect()->back()->with('error', 'Gagal menyelesaikan transaksi: ' . $e->getMessage());
+        }
+    }
     /**
      * Show the form for editing the specified resource.
      */
@@ -123,12 +322,25 @@ class PurchaseController extends Controller
     {
         //
     }
-
+    public function show(Purchase $purchase)
+    {
+        //
+    }
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(Purchase $purchase)
     {
-        //
+        // SECURITY GUARD: Hanya boleh hapus jika transaksi belum berjalan
+        if (!in_array($purchase->status, [Purchase::STATUS_DRAFT, Purchase::STATUS_ORDERED])) {
+            return Redirect::back()
+                ->with('error', 'Transaksi yang sudah dikirim atau diterima tidak bisa dihapus. Harap batalkan.');
+        }
+
+        // Logika hapus (kita asumsikan tidak ada soft delete di Purchase)
+        $purchase->items()->delete(); // Hapus semua item terkait
+        $purchase->delete(); // Hapus header
+
+        return Redirect::back()->with('success', 'Transaksi berhasil dihapus.');
     }
 }

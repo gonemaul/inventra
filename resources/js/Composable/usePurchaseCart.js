@@ -88,6 +88,24 @@ export function usePurchaseCart() {
         localStorage.removeItem(STORAGE_KEY);
     }
 
+    function addMultipleItems(itemsArray) {
+        itemsArray.forEach((item) => {
+            // Kita format ulang objek agar cocok dengan parameter 'addItem'
+            const productData = {
+                id: item.product_id,
+                name: item.name,
+                code: item.code,
+                unit: item.unit,
+                size: item.size,
+                category: item.category,
+                stock: item.current_stock, // Master data stock
+                // Master data fields lain bisa ditambahkan di sini
+            };
+            // Panggil fungsi addItem yang sudah ada untuk setiap item
+            addToCart(productData, item.quantity, item.purchase_price);
+        });
+    }
+
     // 6. Computed Properties (Ringkasan)
     const totalUnit = computed(() =>
         cartItems.value.reduce((sum, item) => sum + item.quantity, 0)
@@ -119,5 +137,6 @@ export function usePurchaseCart() {
         totalUnit,
         totalBelanja,
         totalMacam,
+        addMultipleItems,
     };
 }

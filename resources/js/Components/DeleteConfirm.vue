@@ -22,7 +22,6 @@ const open = (config) => {
 
     show.value = true;
 };
-
 defineExpose({
     open,
 });
@@ -31,25 +30,6 @@ const close = () => {
     show.value = false;
     emit("close");
 };
-
-// defineProps({
-//     show: {
-//         type: Boolean,
-//         default: false,
-//     },
-//     item: {
-//         type: Object,
-//         default: () => ({}),
-//     },
-//     itemType: {
-//         type: String,
-//         default: "item",
-//     },
-//     url: {
-//         type: String,
-//         required: true,
-//     },
-// });
 
 const proceedDelete = () => {
     if (!deleteUrl.value) {

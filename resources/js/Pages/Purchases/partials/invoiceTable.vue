@@ -1,118 +1,147 @@
 <script setup>
-import PrimaryButton from "@/Components/PrimaryButton.vue";
 import DataTable from "@/Components/DataTable.vue";
-import { ref } from "vue";
-import Filter from "@/Components/Filter.vue";
+import { ref, computed } from "vue";
 import { Link } from "@inertiajs/vue3";
+import ImageModal from "@/Components/ImageModal.vue";
+// Menggunakan Emit untuk memberi tahu Parent (PurchaseDetail.vue) adanya aksi
+const emit = defineEmits([
+    "edit-invoice",
+    "delete-invoice",
+    "open-payment-modal",
+]);
 
-const params = ref({
-    search: "",
-    kategori: "",
+// Prop: Data Invoice (Array dari PurchaseInvoice)
+const props = defineProps({
+    purchase: { type: Array, required: true },
+    isCheckingMode: { type: Boolean, default: false }, // Menentukan visibility tombol Aksi
+    canEditDelete: Boolean,
 });
+// Gambar Nota
+const showImageModal = ref(false);
+const selectedImageUrl = ref(null);
+const selectedInvoiceCode = ref(null);
+const openImageModal = (path, name) => {
+    selectedImageUrl.value = path;
+    selectedInvoiceCode.value = "Invoice-#" + name;
+    showImageModal.value = true;
+};
 
+// Kolom yang disesuaikan untuk data PurchaseInvoice
 const columns = [
-    { key: "code", label: "No Incoice", sortable: true, width: "120px" },
     {
-        key: "tanggal",
-        label: "Tanggal",
+        key: "invoice_number",
+        label: "No Nota",
         sortable: true,
-        width: "200px",
+        width: "100px",
+        slot: "invoice",
+    },
+    {
+        key: "invoice_date",
+        label: "Tanggal Nota",
+        sortable: true,
+        width: "150px",
         format: "tanggal",
     },
-    { key: "qty", label: "Qty", sortable: true, width: "200px" },
     {
-        key: "nominal",
-        label: "Nominal",
+        key: "due_date",
+        label: "Jatuh Tempo",
+        sortable: true,
+        width: "150px",
+        format: "tanggal",
+    },
+    {
+        key: "total_amount",
+        label: "Nominal Total",
         sortable: true,
         width: "200px",
         format: "rupiah",
     },
     {
-        key: "status",
-        label: "Status",
+        key: "payment_status",
+        label: "Status Bayar",
         sortable: true,
         width: "120px",
         slot: "status",
     },
-    { key: "aksi", label: "Aksi", width: "120px", slot: "aksi" },
-];
-
-const allData = [
-    {
-        id: 1,
-        code: "INV-001",
-        tanggal: "2025-09-01",
-        qty: 15,
-        nominal: 1500000,
-        status: "Valid",
-    },
-    {
-        id: 2,
-        code: "INV-002",
-        tanggal: "2025-09-02",
-        qty: 8,
-        nominal: 850000,
-        status: "Invalid",
-    },
-    {
-        id: 3,
-        code: "INV-003",
-        tanggal: "2025-09-03",
-        qty: 20,
-        nominal: 3200000,
-        status: "Invalid",
-    },
-    {
-        id: 4,
-        code: "INV-004",
-        tanggal: "2025-09-04",
-        qty: 5,
-        nominal: 400000,
-        status: "Valid",
-    },
-    {
-        id: 5,
-        code: "INV-005",
-        tanggal: "2025-09-05",
-        qty: 12,
-        nominal: 1200000,
-        status: "Invalid",
-    },
+    { key: "aksi", label: "Aksi", width: "180px", slot: "aksi" },
 ];
 </script>
 <template>
+    <ImageModal
+        :show="showImageModal"
+        :imageUrl="selectedImageUrl"
+        :productName="selectedInvoiceCode"
+        @close="showImageModal = false"
+    />
     <div
-        class="p-4 space-y-5 border rounded-lg shadow-md bg-customBg-tableLight dark:bg-customBg-tableDark"
+        class="p-4 space-y-5 bg-white border rounded-lg shadow-md dark:bg-gray-900 dark:border-lime-500"
     >
-        <Filter
-            :actions="[{ buttonText: 'Tambah Invoice', route: 'invoice' }]"
-        />
-        <DataTable :columns="columns" :params="params" :data="allData">
-            <!-- Slot aksi -->
+        <h3 class="text-lg font-bold dark:text-white">Daftar Nota Keuangan</h3>
+
+        <DataTable
+            :columns="columns"
+            :data="purchase.invoices"
+            :serverSide="false"
+            :perPageOptions="[5, 10, 20]"
+        >
+            <template #invoice="{ row }">
+                <span
+                    class="text-blue-500 cursor-pointer"
+                    @click="
+                        openImageModal(row.invoice_image, row.invoice_number)
+                    "
+                    >{{ row.invoice_number }}</span
+                >
+            </template>
             <template #status="{ row }">
                 <span
                     :class="{
                         'px-2 py-1 text-white rounded': true,
-                        'bg-green-500': row.status === 'Valid',
-                        'bg-red-500': row.status === 'Invalid',
+                        'bg-green-600': row.payment_status === 'paid',
+                        'bg-yellow-600': row.payment_status === 'partial',
+                        'bg-red-600': row.payment_status === 'unpaid',
                     }"
+                    class="text-xs uppercase"
                 >
-                    {{ row.status }}
+                    {{ row.payment_status }}
                 </span>
             </template>
+
             <template #aksi="{ row }">
-                <button class="px-2 py-1 text-white bg-blue-500 rounded">
-                    Edit
-                </button>
-                <button class="px-2 py-1 ml-2 text-white bg-red-500 rounded">
-                    Hapus
-                </button>
-                <Link
-                    :href="route('checking-detail', row)"
-                    class="px-2 py-2 ml-2 text-sm font-medium text-white transition bg-blue-500 rounded hover:bg-blue-600 md:text-base"
-                >
-                    Check
-                </Link>
+                <div class="flex flex-wrap gap-2">
+                    <Link
+                        :href="
+                            route('purchases.linkInvoiceItems', {
+                                purchase: purchase.id,
+                                invoice: row.id,
+                            })
+                        "
+                        class="px-2 py-1 text-xs text-white bg-orange-500 rounded hover:bg-orange-600"
+                    >
+                        Detail
+                    </Link>
+                    <button
+                        v-if="canEditDelete"
+                        @click="$emit('edit-invoice', row)"
+                        class="px-2 py-1 text-xs text-white bg-blue-500 rounded hover:bg-blue-600"
+                    >
+                        Edit
+                    </button>
+                    <button
+                        v-if="canEditDelete"
+                        @click="$emit('delete-invoice', row)"
+                        class="px-2 py-1 text-xs text-white bg-red-500 rounded hover:bg-red-600"
+                    >
+                        Hapus
+                    </button>
+                    <button
+                        v-if="row.payment_status !== 'paid'"
+                        @click="$emit('open-payment-modal', row)"
+                        class="px-2 py-1 text-xs text-white rounded bg-lime-600 hover:bg-lime-700"
+                    >
+                        Bayar
+                    </button>
+                </div>
             </template>
         </DataTable>
     </div>

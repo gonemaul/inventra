@@ -1,40 +1,44 @@
 <script setup>
 import DataTable from "@/Components/DataTable.vue";
 import { ref } from "vue";
-import Filter from "@/Components/Filter.vue";
 import { Link } from "@inertiajs/vue3";
 
-const params = ref({
-    search: "",
-    kategori: "",
+const props = defineProps({
+    items: { type: Array, required: true },
 });
 
+console.log(props.items);
 const columns = [
-    { key: "name", label: "Nama", sortable: true, width: "120px" },
-    { key: "qty_pesan", label: "Qty Order", sortable: true, width: "120px" },
     {
-        key: "harga_pesan",
-        label: "Harga Lama",
+        key: "product.name",
+        label: "Nama",
         sortable: true,
-        width: "120px",
-        format: "rupiah",
+        slot: "productDetail",
     },
+    { key: "product_snapshot.quantity", label: "Qty Order", sortable: true },
     {
-        key: "qty_diterima",
+        key: "quantity",
         label: "Qty Diterima",
         sortable: true,
         width: "120px",
     },
     {
-        key: "harga_diterima",
-        label: "Harga Diterima",
+        key: "product_snapshot.purchase_price",
+        label: "Harga Lama",
         sortable: true,
         width: "120px",
         format: "rupiah",
     },
 
     {
-        key: "invoice_code",
+        key: "purchase_price",
+        label: "Harga Diterima",
+        sortable: true,
+        width: "120px",
+        format: "rupiah",
+    },
+    {
+        key: "invoice.invoice_number",
         sortable: true,
         label: "Invoice",
         width: "120px",
@@ -47,89 +51,173 @@ const columns = [
         width: "120px",
         slot: "status",
     },
-    // { key: "aksi", label: "Aksi", width: "120px", slot: "aksi" },
 ];
+function getItemValidationStatus(item) {
+    const qtyOrdered = item.product_snapshot.quantity;
+    const qtyReceived = item.quantity;
+    const priceOrdered = item.product_snapshot.purchase_price;
+    const priceReceived = item.purchase_price;
 
-const allData = [
-    {
-        id: 1,
-        invoice_code: "INV-001",
-        name: "Beras Premium 5kg",
-        qty_pesan: 10,
-        harga_pesan: 120000,
-        qty_diterima: 10,
-        harga_diterima: 120000,
-        status: "Sesuai",
-    },
-    {
-        id: 2,
-        invoice_code: "INV-001",
-        name: "Minyak Goreng 1L",
-        qty_pesan: 20,
-        harga_pesan: 15000,
-        qty_diterima: 18,
-        harga_diterima: 15000,
-        status: "Kurang",
-    },
-    {
-        id: 3,
-        invoice_code: "INV-002",
-        name: "Gula Pasir 1kg",
-        qty_pesan: 15,
-        harga_pesan: 14000,
-        qty_diterima: 15,
-        harga_diterima: 14500, // harga diterima lebih tinggi
-        status: "Harga Berbeda",
-    },
-    {
-        id: 4,
-        invoice_code: "",
-        name: "Tepung Terigu 1kg",
-        qty_pesan: 0, // tidak dipesan
-        harga_pesan: 0,
-        qty_diterima: 5,
-        harga_diterima: 12000,
-        status: "Tidak Ada di Order",
-    },
-    {
-        id: 5,
-        invoice_code: "INV-003",
-        name: "Kopi Bubuk 250gr",
-        qty_pesan: 8,
-        harga_pesan: 30000,
-        qty_diterima: 6,
-        harga_diterima: 30000,
-        status: "Kurang",
-    },
-];
+    // --- LOGIKA 1: STATUS KUANTITAS ---
+    if (qtyOrdered === 0) {
+        // Jika Qty yang dipesan adalah 0, ini adalah barang baru/tambahan
+        // Kita asumsikan ini barang yang tidak ada di PO awal atau item substitusi.
+        return "Barang Baru";
+    }
+    if (qtyReceived === 0) {
+        // Jika Qty dipesan > 0 tapi diterima 0
+        return "Barang Kosong";
+    }
+    if (qtyReceived > qtyOrdered) {
+        return "Lebih";
+    }
+    if (qtyReceived < qtyOrdered) {
+        return "Kurang";
+    }
+
+    // Jika Qty Sesuai (qtyReceived === qtyOrdered), lanjutkan ke pengecekan Harga
+
+    // --- LOGIKA 2: STATUS HARGA (Hanya jika Qty Sesuai) ---
+    // Gunakan Number() untuk memastikan perbandingan harga numerik, bukan string
+    if (Number(priceReceived) > Number(priceOrdered)) {
+        return "Harga Naik";
+    }
+    if (Number(priceReceived) < Number(priceOrdered)) {
+        return "Harga Turun";
+    }
+
+    // --- LOGIKA 3: STATUS SEMPURNA ---
+    return "Sesuai";
+}
+function getComprehensiveValidationStatus(item) {
+    const qtyOrdered = item.product_snapshot.quantity;
+    const qtyReceived = item.quantity;
+    const priceOrdered = item.product_snapshot.purchase_price;
+    const priceReceived = item.purchase_price;
+
+    let qtyLabel = "Sesuai";
+    let priceLabel = "Tetap";
+
+    // --- 1. Tentukan Status Kuantitas (Qty) ---
+
+    if (qtyOrdered === 0) {
+        qtyLabel = "BARANG BARU";
+    } else if (qtyReceived === 0) {
+        qtyLabel = "KOSONG";
+    } else if (qtyReceived > qtyOrdered) {
+        qtyLabel = "LEBIH QTY";
+    } else if (qtyReceived < qtyOrdered) {
+        qtyLabel = "KURANG QTY";
+    }
+
+    // --- 2. Tentukan Status Harga (Price) ---
+
+    if (Number(priceReceived) > Number(priceOrdered)) {
+        priceLabel = "HARGA NAIK";
+    } else if (Number(priceReceived) < Number(priceOrdered)) {
+        priceLabel = "HARGA TURUN";
+    }
+
+    // --- 3. GABUNGKAN HASIL (KUNCI LOGIKA) ---
+
+    // Jika Keduanya TIDAK Sesuai (Kurang/Lebih & Naik/Turun)
+    if (qtyLabel !== "Sesuai" && priceLabel !== "Tetap") {
+        return `${qtyLabel} / ${priceLabel}`; // Contoh: KURANG QTY / HARGA NAIK
+    }
+
+    // Jika hanya Qty yang Discrepancy
+    if (qtyLabel !== "Sesuai") {
+        return qtyLabel; // Contoh: QTY LEBIH
+    }
+
+    // Jika hanya Harga yang Discrepancy
+    if (priceLabel !== "Tetap") {
+        return priceLabel; // Contoh: HARGA TURUN
+    }
+
+    // Keduanya Sesuai
+    return "SESUAI SEMPURNA";
+}
 </script>
 <template>
     <div
-        class="p-4 space-y-5 border rounded-lg shadow-md bg-customBg-tableLight dark:bg-customBg-tableDark"
+        class="p-4 space-y-5 bg-white border rounded-lg shadow-md dark:bg-gray-800"
     >
-        <Filter />
-        <DataTable :columns="columns" :params="params" :data="allData">
+        <h3 class="text-lg font-bold dark:text-white">
+            Daftar Produk yang dibeli
+        </h3>
+        <DataTable
+            :columns="columns"
+            :serverSide="false"
+            :perPageOptions="[5, 10, 20]"
+            :data="items"
+        >
             <!-- Slot aksi -->
             <template #invoice="{ row }">
                 <Link
-                    v-if="row.invoice_code"
-                    class="font-medium text-blue-600 hover:underline"
-                    >{{ row.invoice_code }}</Link
+                    :href="
+                        route('purchases.linkInvoiceItems', {
+                            purchase: row.purchase_id,
+                            invoice: row.purchase_invoice_id,
+                        })
+                    "
+                    v-if="row.invoice"
+                    class="p-2 font-medium text-blue-800 rounded bg-lime-300 hover:underline"
+                    >{{ row.invoice.invoice_number }}</Link
                 >
-                <span v-else class="text-gray-500">Invalid</span>
+                <span v-else class="text-gray-500">Tidak Terhubung</span>
             </template>
             <template #status="{ row }">
                 <span
                     :class="{
-                        'px-2 py-2 text-white rounded-md text-sm font-medium': true,
-                        'bg-green-500': row.status === 'Sesuai',
-                        'bg-yellow-500': row.status === 'Harga Berbeda',
-                        'bg-red-500': row.status === 'Kurang',
-                        'bg-gray-500': row.status === 'Tidak Ada di Order',
+                        'px-2 py-1 rounded-md text-xs font-medium text-white': true,
+                        // Prioritas Warna berdasarkan String Konten
+                        'bg-red-700':
+                            getComprehensiveValidationStatus(row).includes(
+                                'KOSONG'
+                            ) ||
+                            getComprehensiveValidationStatus(row).includes(
+                                'KURANG'
+                            ),
+                        'bg-purple-500':
+                            getComprehensiveValidationStatus(row).includes(
+                                'LEBIH'
+                            ),
+                        'bg-yellow-600':
+                            getComprehensiveValidationStatus(row).includes(
+                                'HARGA NAIK'
+                            ),
+                        'bg-yellow-400':
+                            getComprehensiveValidationStatus(row).includes(
+                                'HARGA TURUN'
+                            ),
+                        'bg-blue-500':
+                            getComprehensiveValidationStatus(row).includes(
+                                'BARU'
+                            ),
+                        'bg-green-500':
+                            getComprehensiveValidationStatus(row) ===
+                            'SESUAI SEMPURNA',
                     }"
                 >
-                    {{ row.status }}
+                    {{ (status = getComprehensiveValidationStatus(row)) }}
                 </span>
+            </template>
+            <template #productDetail="{ row }">
+                <div class="flex flex-col">
+                    <span class="font-bold text-gray-800 dark:text-white">
+                        {{ row.product_snapshot.name }}
+                    </span>
+                    <span class="text-xs text-gray-500">
+                        {{ row.product_snapshot.brand }} |
+                        {{ row.product_snapshot.code }} |
+                        {{ row.product_snapshot.category }}
+                    </span>
+                    <span class="text-xs text-gray-400">
+                        {{ row.product_snapshot.size }} -
+                        {{ row.product_snapshot.unit }}
+                    </span>
+                </div>
             </template>
         </DataTable>
     </div>

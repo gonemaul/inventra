@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, useForm } from "@inertiajs/vue3";
-import { ref, computed, watch } from "vue";
+import { ref, computed, watch, onMounted } from "vue";
 import { throttle } from "lodash";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
@@ -30,14 +30,18 @@ const {
     totalUnit,
     totalBelanja,
     totalMacam,
+    addMultipleItems,
 } = usePurchaseCart();
 
 const formHeader = useForm({
-    supplier_id: "", // Wajib diisi
-    user_id: 1,
-    transaction_date: new Date().toISOString().split("T")[0], // Default hari ini
-    status: "dipesan",
-    notes: "",
+    supplier_id: props.purchase?.supplier_id || "",
+    transaction_date:
+        props.purchase?.transaction_date ||
+        new Date().toISOString().split("T")[0],
+    status: props.purchase?.status || "draft", // Default 'draft' (Sesuai alur baru)
+    notes: props.purchase?.notes || "",
+    shipping_cost: props.purchase?.shipping_cost || 0,
+    other_costs: props.purchase?.other_costs || 0,
 });
 
 // Ini menampung data yang sedang ditampilkan di form bagian atas
@@ -54,6 +58,8 @@ const stagingItem = ref({
     // Input user
     quantity: 1,
     purchase_price: 0,
+    // DSS data
+    restock_recommendation: 0,
 });
 
 const isEditingMode = ref(false);
@@ -61,23 +67,51 @@ const isEditingMode = ref(false);
 const searchKeyword = ref(""); // Teks yang diketik user
 const searchResults = ref([]); // Hasil filter dari props.products
 const isSearching = ref(false); // Untuk menampilkan "mencari..."
-const showRecommendationModal = ref(false);
+const showRecom = ref(false);
+const SUPPLIER_KEY = "inventra_draft_supplier_id";
 
-// const currentItem = ref({
-//     product_id: null,
-//     name: "",
-//     code: "",
-//     image_path: null,
-//     unit: "",
-//     size: "",
-//     current_stock: 0,
-//     restock_recommendation: 0, // (Fitur Pintar Tahap 3)
+watch(
+    () => formHeader.supplier_id,
+    (newId) => {
+        if (newId) {
+            // Menyimpan nilai baru
+            localStorage.setItem(SUPPLIER_KEY, newId);
+        } else {
+            // Jika user memilih opsi 'Pilih Supplier' (null), hapus cache
+            localStorage.removeItem(SUPPLIER_KEY);
+        }
+    }
+);
+onMounted(() => {
+    const savedSupplier = localStorage.getItem(SUPPLIER_KEY);
 
-//     // Input User
-//     quantity: 1,
-//     purchase_price: 0,
-// });
+    // Cek jika formHeader.supplier_id belum terisi dan ada data yang tersimpan
+    if (savedSupplier && !formHeader.supplier_id) {
+        formHeader.supplier_id = savedSupplier;
+    }
+});
+// --- WATCHER OTOMATIS (Setelah Supplier Dipilih) ---
+// Watcher ini akan berjalan setiap kali formHeader.supplier_id berubah
+watch(
+    () => formHeader.supplier_id,
+    (newId) => {
+        // 1. Logic persistence supplier ID sudah ada di onMounted
 
+        // 2. Tampilkan Modal hanya jika ID valid (tidak null/kosong)
+        if (newId) {
+            showRecom.value = true;
+        }
+        // Catatan: Jika Anda ingin modal TIDAK muncul otomatis saat load,
+        // Anda bisa menambahkan guard !isMounted disini.
+    }
+);
+const handleBulkAdd = (items) => {
+    // Panggil fungsi bulk add dari engine
+    addMultipleItems(items);
+
+    // Beri notifikasi toast (opsional)
+    toast.info(`${items.length} item rekomendasi ditambahkan ke keranjang.`);
+};
 const handleSearch = throttle(() => {
     if (searchKeyword.value.length < 2) {
         searchResults.value = [];
@@ -85,7 +119,7 @@ const handleSearch = throttle(() => {
     }
     isSearching.value = true;
     // Filter Client-side
-    searchResults.value = props.products
+    searchResults.value = availableProducts.value
         .filter(
             (p) =>
                 p.name
@@ -99,6 +133,15 @@ const handleSearch = throttle(() => {
 
 watch(searchKeyword, (newVal) => handleSearch(newVal));
 
+const availableProducts = computed(() => {
+    const selectedId = formHeader.supplier_id;
+    if (!selectedId) {
+        return [];
+    }
+
+    return props.products.filter((p) => p.supplier_id == selectedId);
+});
+
 // Saat user memilih produk dari autocomplete
 const selectProductFromSearch = (product) => {
     // Reset mode edit jika user mencari barang baru
@@ -111,47 +154,53 @@ const selectProductFromSearch = (product) => {
     searchKeyword.value = "";
     searchResults.value = [];
 };
-// Helper untuk mengisi form atas
+// [PERBAIKAN] Helper untuk mengisi form atas
 const fillStagingArea = (product, qty = 1, price = null) => {
     stagingItem.value = {
         product_id: product.id,
         name: product.name,
         code: product.code,
-        category: product.category?.name || "-",
+        category: product.category?.name || "-", // Kategori
         unit: product.unit?.name || "-",
         size: product.size?.name || "-",
-        category: product.category?.name || "-",
+
+        // [BARU] Tambahkan Merk dan Tipe Produk (sesuai Blueprint)
+        brand: product.brand?.name || "-",
+        type: product.product_type?.name || "-",
+
         image_path: product.image_path,
         current_stock: product.stock,
 
         quantity: qty,
-        // Jika price null (dari search), pakai harga master.
-        // Jika price ada (dari edit), pakai harga transaksi.
         purchase_price: price !== null ? price : product.purchase_price,
+        // [BARU] Tambahkan Rekomendasi Restock Sederhana (Logic sementara)
+        restock_recommendation: Math.max(0, product.min_stock - product.stock),
     };
 };
 
-// 1. Tombol "Simpan / Tambah" di Form Atas
 const handleSaveStaging = () => {
-    // Validasi Item
-    if (!stagingItem.value.product_id) return;
+    // 1. Validasi Kuantitas dan Produk
+    if (!stagingItem.value.product_id) {
+        toast.error("Mohon pilih produk terlebih dahulu.");
+        return;
+    }
     if (stagingItem.value.quantity <= 0) {
-        toast.error("Kesalahan: Jumlah minimal 1.");
-        return; // Ganti toast nanti
+        toast.error("Kuantitas minimal harus 1.");
+        return;
     }
 
+    // 2. Tentukan FLOW: Update atau Tambah Baru/Merge
     if (isEditingMode.value) {
-        // FLOW EDIT: Update item yang ada di keranjang
+        // --- FLOW A: UPDATE ITEM (Mode Edit) ---
         updateCartItem({
             product_id: stagingItem.value.product_id,
             quantity: stagingItem.value.quantity,
             purchase_price: stagingItem.value.purchase_price,
         });
-        // Matikan mode edit
-        isEditingMode.value = false;
+        toast.success("Item berhasil diperbarui.");
     } else {
-        // FLOW TAMBAH: Masukkan barang baru / merge
-        // Kita kirim FULL OBJECT produk dari props untuk snapshot data
+        // --- FLOW B: TAMBAH BARU / MERGE QTY (Mode Tambah) ---
+        // Ambil objek produk lengkap untuk snapshot/merge di engine
         const fullProduct = props.products.find(
             (p) => p.id === stagingItem.value.product_id
         );
@@ -161,10 +210,10 @@ const handleSaveStaging = () => {
             stagingItem.value.quantity,
             stagingItem.value.purchase_price
         );
+        toast.success("Item ditambahkan ke keranjang.");
     }
-    console.log(cartItems.value);
 
-    // Reset Staging Area (Kosongkan form atas)
+    // 3. Reset Staging Area (Siap untuk input berikutnya)
     resetStaging();
 };
 
@@ -186,52 +235,65 @@ const handleEditCartItem = (item) => {
     }
 };
 
-// 3. Reset Form Atas
+// [PERBAIKAN] Reset Staging
 const resetStaging = () => {
     stagingItem.value = {
         product_id: null,
         name: "",
         code: "",
-        category: "",
         unit: "",
         size: "",
         category: "",
+        brand: "", // <-- Tambah reset
+        type: "", // <-- Tambah reset
         image_path: null,
         current_stock: 0,
+        restock_recommendation: 0, // <-- Tambah reset
         quantity: 1,
         purchase_price: 0,
     };
     isEditingMode.value = false;
 };
 
-// 4. Submit Akhir (Simpan Transaksi)
 const submitTransaction = () => {
-    // VALIDASI WAJIB: Supplier
+    // 1. VALIDASI WAJIB: Form Header
     if (!formHeader.supplier_id) {
         toast.error("Mohon pilih Supplier terlebih dahulu!");
         return;
     }
 
-    // VALIDASI: Keranjang Kosong
+    // 2. VALIDASI WAJIB: Keranjang Kosong
     if (cartItems.value.length === 0) {
         toast.error("Keranjang belanja masih kosong!");
         return;
     }
 
-    // Gabungkan data dan kirim
+    // Aktifkan loader sebelum kirim
+    isActionLoading.value = true;
+
+    // 3. Gabungkan Header + Item dan kirim
     formHeader
         .transform((data) => ({
             ...data,
-            items: cartItems.value,
+            items: cartItems.value, // Mengirim data dari composable
         }))
         .post(route("purchases.store"), {
             onSuccess: () => {
-                clearCart(); // Bersihkan localstorage
-                // Reset form header
+                // [KRITIS] Bersihkan LocalStorage setelah sukses simpan ke DB
+                clearCart();
+                // Inertia akan mengurus redirect dan toast success dari BE (flash message)
                 formHeader.reset();
             },
             onError: (errors) => {
+                // Tampilkan error validasi dari Laravel jika ada
+                toast.error(
+                    "Gagal menyimpan transaksi. Harap periksa input Anda."
+                );
                 console.error(errors);
+            },
+            onFinish: () => {
+                localStorage.removeItem(SUPPLIER_KEY);
+                isActionLoading.value = false;
             },
         });
 };
@@ -244,33 +306,22 @@ function formatRupiah(number) {
         minimumFractionDigits: 0,
     }).format(number);
 }
-// Data rekomendasi produk (biasanya dari API backend)
-const rekomendasi = ref([
-    {
-        id: 1,
-        nama: "Oli Motor A",
-        satuan: "Botol",
-        stok: 6,
-        rekom: 24,
-        inRAB: false,
+const parseRupiah = (value) => {
+    // Menghapus semua karakter non-digit (termasuk titik/koma)
+    return parseInt(String(value).replace(/[^0-9]/g, "")) || 0;
+};
+// Computed property untuk memformat harga di input secara real-time
+const displayedPrice = computed({
+    get() {
+        // Getter: Mengubah angka mentah menjadi string Rupiah untuk ditampilkan
+        if (!stagingItem.value.purchase_price) return 0;
+        return formatRupiah(stagingItem.value.purchase_price);
     },
-    {
-        id: 2,
-        nama: "Kampas Rem",
-        satuan: "Set",
-        stok: 3,
-        rekom: 10,
-        inRAB: true,
-    }, // contoh sudah ada di RAB
-    {
-        id: 3,
-        nama: "Filter Oli",
-        satuan: "Pcs",
-        stok: 8,
-        rekom: 15,
-        inRAB: false,
+    set(value) {
+        // Setter: Mengubah string Rupiah kembali ke angka mentah (integer)
+        stagingItem.value.purchase_price = parseRupiah(value);
     },
-]);
+});
 </script>
 <template>
     <Head title="Rancangan Anggaran Belanja" />
@@ -281,8 +332,9 @@ const rekomendasi = ref([
     >
         <Recom
             :show="showRecom"
-            :items="rekomendasi"
+            :supplierId="formHeader.supplier_id"
             @close="showRecom = false"
+            @add-items="handleBulkAdd"
         />
         <form @submit.prevent="submitTransaction" class="">
             <div class="w-full min-h-screen space-y-6">
@@ -324,18 +376,25 @@ const rekomendasi = ref([
                                                 class="mt-1"
                                             />
                                         </div>
-                                        <div class="hidden py-1.5 lg:block">
+                                        <div class="hidden lg:block">
                                             <label
                                                 class="block mb-1 text-sm font-medium"
                                                 >Tanggal</label
                                             >
-                                            <TextInput
+                                            <input
                                                 v-model="
                                                     formHeader.transaction_date
                                                 "
                                                 type="date"
-                                                class="text-sm w-full py-1.5"
+                                                class="w-full px-2 focus:border-lime-500 focus:ring-lime-500 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white"
                                             />
+                                            <!-- <TextInput
+                                                v-model="
+                                                    formHeader.transaction_date
+                                                "
+                                                type="date"
+                                                class="text-sm w-full py-1.5 px-2"
+                                            /> -->
                                             <InputError
                                                 :message="
                                                     formHeader.errors
@@ -344,7 +403,7 @@ const rekomendasi = ref([
                                                 class="mt-1"
                                             />
                                         </div>
-                                        <div class="hidden w-1/5 mt-2 lg:block">
+                                        <!-- <div class="hidden w-1/5 mt-2 lg:block">
                                             <label
                                                 class="block text-sm font-medium"
                                                 >Last Update</label
@@ -354,7 +413,7 @@ const rekomendasi = ref([
                                             >
                                                 12 Agustus 2025 10:22:30 WIB
                                             </p>
-                                        </div>
+                                        </div> -->
                                     </div>
 
                                     <div
@@ -382,6 +441,21 @@ const rekomendasi = ref([
                                                     !stagingItem.product_id
                                                 "
                                                 class="w-full px-2 focus:border-lime-500 focus:ring-lime-500 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white"
+                                            />
+                                        </div>
+                                        <div class="w-1/4">
+                                            <label
+                                                class="block mb-1 text-sm font-medium"
+                                                >Harga Beli</label
+                                            >
+                                            <input
+                                                v-model="displayedPrice"
+                                                type="text"
+                                                placeholder="Rp"
+                                                :disabled="
+                                                    !stagingItem.product_id
+                                                "
+                                                class="w-full px-2 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white focus:border-lime-500"
                                             />
                                         </div>
                                     </div>
@@ -447,7 +521,7 @@ const rekomendasi = ref([
                                 </PrimaryButton>
 
                                 <button
-                                    @click="showRecommendationModal = true"
+                                    @click="showRecom = true"
                                     type="button"
                                     class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-yellow-500 border border-transparent rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
                                 >
