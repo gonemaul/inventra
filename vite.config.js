@@ -21,7 +21,7 @@ export default defineConfig({
         host: "0.0.0.0", // biar bisa diakses dari luar (hp)
         port: 5173,
         hmr: {
-            host: ["192.168.0.111"], // ganti dengan IP lokal PC kamu
+            host: ["192.168.0.110"], // ganti dengan IP lokal PC kamu
         },
     },
 });

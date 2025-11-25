@@ -197,69 +197,77 @@ class InvoiceService
      * Memproses array product_id untuk menautkan item PO yang ada atau membuat item baru.
      * Digunakan untuk integrasi search/autocomplete.
      */
-    public function smartLinkProductsByProductId(PurchaseInvoice $invoice, array $productIds, $type)
+    public function smartLinkProductsByProductId(PurchaseInvoice $invoice, array $payload)
     {
+        $type = $payload['type'] ?? null;
         // Guard: Cek apakah transaksi masih dalam fase yang bisa diubah
-        if (!in_array($invoice->purchase?->status, [Purchase::STATUS_RECEIVED, Purchase::STATUS_CHECKING])) {
-            throw new \Exception('Penautan hanya dapat dilakukan pada fase Validasi.');
+        if (!in_array($invoice->purchase->status, [Purchase::STATUS_RECEIVED, Purchase::STATUS_CHECKING])) {
+            throw new \Exception('Perubahan data hanya diizinkan saat status Checking atau Received.');
         }
 
-        // Validasi input
-        $validator = Validator::make(['product_ids' => $productIds], [
-            'product_ids' => 'required|array|min:1',
-            'product_ids.*' => 'exists:products,id',
-        ]);
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
-        }
-        return DB::transaction(function () use ($invoice, $productIds, $type) {
+        return DB::transaction(function () use ($invoice, $payload, $type) {
             $createdItemsCount = 0;
             $linkedItemsCount = 0;
 
             if ($type === 'link') {
-                $unlinkedPoItems = $invoice->purchase?->items()
-                    ->whereIn('product_id', $productIds)
+                $ids = $payload['ids'] ?? [];
+                if (empty($ids)) {
+                    throw new \InvalidArgumentException("Harap pilih minimal satu item dari daftar untuk ditautkan.");
+                }
+                $unlinkedPoItems = PurchaseItem::whereIn('id', $ids)
                     ->whereNull('purchase_invoice_id')
                     ->get();
 
                 foreach ($unlinkedPoItems as $item) {
+                    if ($item->purchase_id !== $invoice->purchase_id) {
+                        throw new \Exception("Keamanan: Item tidak valid untuk transaksi ini.");
+                    }
+                    if ($item->purchase_invoice_id && $item->purchase_invoice_id !== $invoice->id) {
+                        throw new \Exception("Item '{$item->product_snapshot['name']}' sudah tertaut di nota lain. Unlink dulu jika ingin memindahkan.");
+                    }
                     $item->purchase_invoice_id = $invoice->id;
                     $item->save();
                     $linkedItemsCount++;
                 }
             } else if ($type === 'create') {
-                foreach ($productIds as $productId) {
-                    $product = Product::with(['unit:id,name', 'size:id,name', 'brand:id,name', 'category:id,name'])->find($productId);
-
-                    if (!$product) {
-                        continue;
-                    }
-
-                    $snapshot = [
-                        'name' => $product->name,
-                        'code' => $product->code,
-                        'category' => $product->category?->name ?? null,
-                        'productType' => $product->productType?->name ?? null,
-                        'unit' => $product->unit?->name ?? null,
-                        'size' => $product->size?->name ?? null,
-                        'brand' => $product->brand?->name ?? null,
-                        'purchase_price' => $product->purchase_price,
-                        'selling_price' => $product->selling_price,
-                        'stock' => $product->stock ?? 0,
-                        'inventory_type' => $product->inventory_type ?? '-',
-                        'quantity' => 0
-                    ];
-
-                    $invoice->purchase->items()->create([
-                        'purchase_invoice_id' => $invoice->id, // Auto-taut
-                        'product_id' => $productId,
-                        'product_snapshot' => $snapshot,
-                        'quantity' => 1, // Default Qty
-                        'purchase_price' => $product->purchase_price, // Default Harga Master
-                        'subtotal' => $product->purchase_price,
-                    ]);
-                    $createdItemsCount++;
+                $productId = $payload['product_id'] ?? null;
+                if (!$productId) {
+                    throw new \InvalidArgumentException("Produk harus dipilih untuk ditambahkan.");
                 }
+                $isDuplicate = PurchaseItem::where('purchase_id', $invoice->purchase_id)
+                    ->where('product_id', $productId)
+                    ->exists();
+                if ($isDuplicate) {
+                    throw new \Exception("Gagal! Produk ini SUDAH ADA di daftar pesanan (PO). Mohon jangan buat baru. Silakan cari item tersebut di daftar kanan (Belum Tertaut) dan tautkan.");
+                }
+                $product = Product::with(['unit:id,name', 'size:id,name', 'brand:id,name', 'category:id,name'])->findOrFail($productId);
+
+                $snapshot = [
+                    'name' => $product->name,
+                    'code' => $product->code,
+                    'category' => $product->category?->name ?? null,
+                    'productType' => $product->productType?->name ?? null,
+                    'unit' => $product->unit?->name ?? null,
+                    'size' => $product->size?->name ?? null,
+                    'brand' => $product->brand?->name ?? null,
+                    'purchase_price' => $product->purchase_price,
+                    'selling_price' => $product->selling_price,
+                    'stock' => $product->stock ?? 0,
+                    'inventory_type' => $product->inventory_type ?? '-',
+                    'quantity' => 0
+                ];
+
+                $invoice->purchase->items()->create([
+                    'purchase_invoice_id' => $invoice->id, // Auto-taut
+                    'product_id' => $product->id,
+                    'product_snapshot' => $snapshot,
+                    'quantity' => 1, // Default Qty
+                    'purchase_price' => $product->purchase_price, // Default Harga Master
+                    'subtotal' => $product->purchase_price,
+                ]);
+                $createdItemsCount++;
+            } else {
+                throw new \InvalidArgumentException("Tipe aksi tidak dikenali (harus 'link' atau 'create').");
             }
 
             $this->recalculateTotalAmount($invoice);

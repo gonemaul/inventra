@@ -229,18 +229,24 @@ class PurchaseController extends Controller
     {
         // 1. Validasi Input Item Ids
         $request->validate([
-            'product_ids' => 'required|array|min:1',
-            'product_ids.*' => 'exists:products,id',
-            'type' => 'required'
+            'type' => 'required|in:link,create',
+            // Rule 1: ids wajib array & required HANYA JIKA type == link
+            'ids' => 'required_if:type,link|array',
+            'ids.*' => 'exists:purchase_items,id',
+            // Rule 2: product_id wajib required HANYA JIKA type == create
+            'product_id' => 'required_if:type,create|exists:products,id',
+        ], [
+            'ids.required_if' => 'Harap pilih item yang akan ditautkan.',
+            'product_id.required_if' => 'Harap pilih produk master untuk ditambahkan.',
         ]);
 
         try {
             // 2. Panggil Service Logika Penautan & Perhitungan Harga
-            $this->invoiceService->smartLinkProductsByProductId($invoice, $request->input('product_ids'), $request->input('type'));
+            $this->invoiceService->smartLinkProductsByProductId($invoice, $request->all());
 
             return redirect()->back();
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal menautkan item: ' . $e->getMessage());
+            return redirect()->back()->with('error',  $e->getMessage());
         }
     }
 

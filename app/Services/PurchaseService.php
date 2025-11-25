@@ -18,38 +18,44 @@ class PurchaseService
      */
     public function get(array $params)
     {
-        $query = Purchase::query();
-        $query->with(['supplier', 'user', 'invoices'])
+        $query = Purchase::query()
+            ->with(['supplier', 'user', 'invoices'])
             ->withSum('items', 'subtotal');
 
-        if (isset($params['trashed']) && $params['trashed']) {
-            $query->onlyTrashed();
-        }
+        // 1. Filter Trashed (Sampah)
+        $query->when($params['trashed'] ?? false, function ($q) {
+            $q->onlyTrashed();
+        });
 
-        // --- FILTERING (Sesuai dengan Filter Modal) ---
-        if ($search = $params['search'] ?? null) {
-            $query->where('reference_no', 'like', '%' . $search . '%')
-                ->orWhereHas('supplier', function ($q) use ($search) {
-                    $q->where('name', 'like', '%' . $search . '%');
-                });
-        }
+        // 2. Filter Search (PENTING: Dibungkus closure agar tidak merusak filter lain)
+        $query->when($params['search'] ?? null, function ($q, $search) {
+            $q->where(function ($subQuery) use ($search) {
+                $subQuery->where('reference_no', 'like', "%{$search}%")
+                    ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
+                        $supplierQuery->where('name', 'like', "%{$search}%");
+                    });
+            });
+        });
 
-        // Filter Status Operasional
-        if ($status = $params['status'] ?? null) {
-            $query->where('status', $status);
-        }
+        // 3. Filter Status & Supplier (Simple Where)
+        $query->when($params['status'] ?? null, fn($q, $status) => $q->where('status', $status))
+            ->when($params['supplier_id'] ?? null, fn($q, $id) => $q->where('supplier_id', $id));
 
-        // Filter Supplier
-        if ($supplierId = $params['supplier_id'] ?? null) {
-            $query->where('supplier_id', $supplierId);
-        }
+        // 4. Filter Tanggal (Date Range)
+        $query->when($params['min_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '>=', $date))
+            ->when($params['max_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '<=', $date));
 
-        // Filter Rentang Total (Menggunakan HAVING)
-        if ($minTotal = $params['min_total'] ?? null) {
-            $query->having('items_sum_subtotal', '>=', $minTotal);
-        }
-        // ... (Tambahkan filter lain seperti rentang tanggal dan max_total) ...
+        // 5. Filter Rentang Total (Having Aggregates)
+        // Kita cek is_numeric di dalam closure untuk keamanan
+        $query->when($params['min_total'] ?? null, function ($q, $min) {
+            $cleanMin = trim($min);
+            if (is_numeric($min)) $q->whereRaw('(SELECT SUM(subtotal) FROM purchase_items WHERE purchase_items.purchase_id = purchases.id) >= ?', (float)$cleanMin);
+        });
 
+        $query->when($params['max_total'] ?? null, function ($q, $max) {
+            $cleanMax = trim($max);
+            if (is_numeric($max)) $q->whereRaw('(SELECT SUM(subtotal) FROM purchase_items WHERE purchase_items.purchase_id = purchases.id) <= ?', (float)$cleanMax);
+        });
 
         // --- SORTING & PAGINASI ---
         $sortBy = $params['sort'] ?? 'transaction_date';
@@ -102,7 +108,7 @@ class PurchaseService
             $purchase = Purchase::create([
                 'supplier_id' => $validatedData['supplier_id'] ?? null,
                 'user_id' => $validatedData['user_id'],
-                'reference_no' => $this->generateReferenceNo(),
+                'reference_no' => $this->generateReferenceNo($validatedData['supplier_id']),
                 'transaction_date' => $validatedData['transaction_date'],
                 'status' => Purchase::STATUS_DRAFT,
                 'notes' => $validatedData['notes'] ?? null,
@@ -173,7 +179,7 @@ class PurchaseService
             Purchase::STATUS_DRAFT => [Purchase::STATUS_ORDERED, Purchase::STATUS_CANCELLED],
             Purchase::STATUS_ORDERED => [Purchase::STATUS_SHIPPED, Purchase::STATUS_CANCELLED],
             Purchase::STATUS_SHIPPED => [Purchase::STATUS_RECEIVED, Purchase::STATUS_CANCELLED],
-            Purchase::STATUS_RECEIVED => [Purchase::STATUS_CHECKING, Purchase::STATUS_CANCELLED],
+            Purchase::STATUS_RECEIVED => [Purchase::STATUS_CHECKING, Purchase::STATUS_SHIPPED, Purchase::STATUS_CANCELLED],
             Purchase::STATUS_CHECKING => [Purchase::STATUS_COMPLETED, Purchase::STATUS_CANCELLED],
 
             // Status FINAL (Tidak boleh berubah lagi)
@@ -258,20 +264,67 @@ class PurchaseService
     /**
      * Helper untuk membuat Nomor Referensi unik (TRX-YYYYMM-XXXX).
      */
-    private function generateReferenceNo(): string
-    {
-        $prefix = 'TRX-' . date('Ym');
+    // private function generateReferenceNo(): string
+    // {
+    //     $prefix = 'TRX-' . date('Ym');
+    //     // $supplierCode = str_pad((string)$supplierId, 3, '0', STR_PAD_LEFT);
+    //     $lastPurchase = Purchase::where('reference_no', 'like', $prefix . '%')
+    //         ->when(method_exists(Purchase::class, 'bootSoftDeletes'), function ($q) {
+    //             $q->withTrashed(); // Sertakan data yang sudah dihapus agar urutan terus maju
+    //         })
+    //         ->orderByDesc('id')
+    //         ->first();
 
-        $lastPurchase = Purchase::where('reference_no', 'like', $prefix . '%')
-            ->orderByDesc('reference_no')
+    //     $number = 1;
+    //     if ($lastPurchase) {
+    //         $number = (int)substr($lastPurchase->reference_no, -4) + 1;
+    //     }
+
+    //     return $prefix . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+    // }
+    /**
+     * Generate No Transaksi: PO/YYMM/S-ID/XXX
+     * Contoh: PO/2411/S-013/001
+     */
+    private function generateReferenceNo(int $supplierId): string
+    {
+        // 1. Ambil Variabel Waktu (Format 2 digit tahun + 2 digit bulan: 2411)
+        $dateCode = date('ym');
+
+        // 2. Format Supplier ID (Padding 3 digit: ID 13 jadi '013')
+        $supplierCode = 'S-' . str_pad((string)$supplierId, 3, '0', STR_PAD_LEFT);
+
+        // 3. Susun Prefix Dasar: "PO/2411/S-013/"
+        // Kita mencari urutan KHUSUS untuk Supplier ini di Bulan ini.
+        $prefix = "PO/{$dateCode}/{$supplierCode}/";
+
+        // 4. Cari Transaksi Terakhir (Termasuk yang dihapus/soft delete)
+        $lastRecord = Purchase::query()
+            ->select('reference_no')
+            ->where('reference_no', 'like', $prefix . '%')
+            ->when(method_exists(Purchase::class, 'bootSoftDeletes'), function ($q) {
+                $q->withTrashed(); // PENTING: Cek tong sampah agar urutan tidak bentrok
+            })
+            ->orderByDesc('id') // Ambil yang paling baru dibuat
             ->first();
 
-        $number = 1;
-        if ($lastPurchase) {
-            $number = (int)substr($lastPurchase->reference_no, -4) + 1;
+        // 5. Tentukan Nomor Urut
+        $sequence = 1;
+
+        if ($lastRecord) {
+            // Format: PO/2411/S-013/005
+            // Pecah string berdasarkan garis miring '/'
+            $parts = explode('/', $lastRecord->reference_no);
+            $lastSeq = end($parts); // Ambil bagian paling belakang (005)
+
+            if (is_numeric($lastSeq)) {
+                $sequence = (int)$lastSeq + 1;
+            }
         }
 
-        return $prefix . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
+        // 6. Gabungkan Hasil Akhir
+        // Hasil: PO/2411/S-013/001 (Padding urutan 3 digit)
+        return $prefix . str_pad((string)$sequence, 3, '0', STR_PAD_LEFT);
     }
 
     /**

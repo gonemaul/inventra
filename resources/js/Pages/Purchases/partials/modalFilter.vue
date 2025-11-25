@@ -12,7 +12,6 @@ const props = defineProps({
     dropdowns: Object, // Data { categories: [], sizes: [], productStatuses: [] }
 });
 const emit = defineEmits(["close"]);
-console.log(props.dropdowns);
 const form = useForm({
     status: props.filters.status || "",
     supplier_id: props.filters.supplier_id || "",
@@ -48,6 +47,7 @@ function applyFilter() {
     const allFilters = { ...searchFilter, ...modalFilters };
     const cleanModalFilters = clean(allFilters);
     isActionLoading.value = true;
+    console.log(cleanModalFilters);
     router.get(route("purchases.index"), cleanModalFilters, {
         preserveState: true,
         replace: true,
@@ -124,13 +124,13 @@ function resetFilter() {
                 >
                 <div class="flex gap-2">
                     <input
-                        type="number"
+                        type="date"
                         placeholder="Min"
                         class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
                         v-model="form.min_date"
                     />
                     <input
-                        type="number"
+                        type="date"
                         placeholder="Max"
                         class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
                         v-model="form.max_date"
@@ -143,18 +143,38 @@ function resetFilter() {
                     >Total</label
                 >
                 <div class="flex gap-2">
-                    <input
-                        type="number"
-                        placeholder="Min"
-                        class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                        v-model="form.min_total"
-                    />
-                    <input
-                        type="number"
-                        placeholder="Max"
-                        class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                        v-model="form.max_total"
-                    />
+                    <div class="flex flex-col w-full gap-2">
+                        <input
+                            type="number"
+                            placeholder="Min"
+                            class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                            v-model.number="form.min_total"
+                        />
+                        <span class="text-xs text-gray-500">{{
+                            new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                minimumFractionDigits: 0,
+                            }).format(form.min_total) || 0
+                        }}</span>
+                    </div>
+                    <div class="flex flex-col w-full gap-2">
+                        <input
+                            type="number"
+                            placeholder="Max"
+                            class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                            v-model.number="form.max_total"
+                        />
+                        <span class="text-xs text-gray-500">
+                            {{
+                                new Intl.NumberFormat("id-ID", {
+                                    style: "currency",
+                                    currency: "IDR",
+                                    minimumFractionDigits: 0,
+                                }).format(form.max_total) || 0
+                            }}</span
+                        >
+                    </div>
                 </div>
             </div>
             <div class="flex justify-end gap-2">

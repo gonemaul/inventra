@@ -254,16 +254,24 @@ const addNewSubstituteItem = (product) => {
     const exists = editableLinkedItems.value.some(
         (item) => item.product_id === product.id
     );
+    const unlinked = unlinkedItems.value.some(
+        (item) => item.product_id === product.id
+    )
     if (exists) {
         toast.warning(
             "Produk ini sudah ada di daftar. Gunakan input Qty untuk menambah."
         );
         return;
     }
+    if (unlinked) {
+        toast.warning(
+            "Produk ini sudah ada di daftar pembelian. Tautkan untuk menambahkan ke invoice."
+        );
+        return;
+    }
 
     singleLinkForm.product_ids = [];
     singleLinkForm.product_ids = [product.id]
-    console.log(singleLinkForm.product_ids)
     isActionLoading.value = true;
     isProcessing.value = true;
     singleLinkForm.post(
@@ -580,7 +588,7 @@ const addNewSubstituteItem = (product) => {
                     />
                 </div>
 
-                <div class="p-6 bg-white border-2 border-gray-100 rounded-lg shadow-lg dark:bg-gray-800">
+                <div v-if="pageMode === 'edit'" class="p-6 bg-white border-2 border-gray-100 rounded-lg shadow-lg dark:bg-gray-800">
                     <h4 class="mb-3 font-bold dark:text-gray-200">
                         Produk Belum Tertaut
                     </h4>
@@ -590,12 +598,6 @@ const addNewSubstituteItem = (product) => {
                             class="py-4 text-center text-gray-500"
                         >
                             Semua produk sudah ditautkan.
-                        </p>
-                        <p
-                            v-if="pageMode.value !== 'edit'"
-                            class="py-4 text-center text-gray-500"
-                        >
-                            Pembelian sudah divalidasi.
                         </p>
                         <div
                             v-else

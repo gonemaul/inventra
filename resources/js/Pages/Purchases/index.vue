@@ -26,7 +26,6 @@ const { isActionLoading } = useActionLoading();
 const showConfirmDelete = ref(null);
 const showTrashed = ref(false);
 const showConfirmModal = ref(false); // State untuk menampilkan modal
-
 const columns = [
     {
         key: "transaction_date",
@@ -337,6 +336,8 @@ const getActions = (row) => {
                                     row.status === 'dikirim',
                                 'bg-purple-100 text-purple-600':
                                     row.status === 'diterima',
+                                'bg-teal-100 text-teal-600':
+                                    row.status === 'checking',
                                 'bg-green-100 text-green-600':
                                     row.status === 'selesai',
                                 'bg-red-100 text-red-600':
@@ -366,10 +367,10 @@ const getActions = (row) => {
                                     :class="{
                                         'text-green-600 font-semibold':
                                             action.isPrimary,
-                                        'border-b-2':
+                                        'border-b-2 border-gray-100':
                                             action.label.includes('Detail'), // Garis pemisah
                                     }"
-                                    class="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    class="block w-full px-4 py-2 text-sm text-left text-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-100"
                                 >
                                     {{ action.label }}
                                 </Link>
@@ -383,7 +384,7 @@ const getActions = (row) => {
                                         'border-b-2':
                                             action.newStatus === 'ordered', // Garis pemisah
                                     }"
-                                    class="block w-full px-4 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    class="block w-full px-4 py-2 text-sm text-left text-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-100"
                                 >
                                     {{ action.label }}
                                 </button>

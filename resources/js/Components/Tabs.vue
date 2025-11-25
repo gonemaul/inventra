@@ -46,11 +46,18 @@ const props = defineProps({
 });
 
 const STORAGE_KEY = "settings_active_tab";
-const activeTab = ref(
-    localStorage.getItem(STORAGE_KEY) ||
-        ref(props.defaultTab) ||
-        props.tabs[0].key
-);
+const storedKey = localStorage.getItem(STORAGE_KEY);
+const isStoredKeyValid =
+    storedKey && props.tabs.some((tab) => tab.key === storedKey);
+let initialTabKey;
+if (isStoredKeyValid) {
+    initialTabKey = storedKey;
+} else if (props.defaultTab) {
+    initialTabKey = props.defaultTab;
+} else {
+    initialTabKey = props.tabs[0]?.key;
+}
+const activeTab = ref(initialTabKey);
 watch(activeTab, (newTabKey) => {
     localStorage.setItem(STORAGE_KEY, newTabKey);
 });

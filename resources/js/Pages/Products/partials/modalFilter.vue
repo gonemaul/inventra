@@ -234,18 +234,36 @@ function resetFilter() {
                     >Harga (Jual)</label
                 >
                 <div class="flex gap-2">
-                    <input
-                        type="number"
-                        placeholder="Min"
-                        class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                        v-model="form.min_price"
-                    />
-                    <input
-                        type="number"
-                        placeholder="Max"
-                        class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                        v-model="form.max_price"
-                    />
+                    <div class="flex flex-col w-full gap-2">
+                        <input
+                            type="number"
+                            placeholder="Min"
+                            class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                            v-model="form.min_price"
+                        />
+                        <span class="text-xs text-gray-500">{{
+                            new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                minimumFractionDigits: 0,
+                            }).format(form.min_price) || 0
+                        }}</span>
+                    </div>
+                    <div class="flex flex-col w-full gap-2">
+                        <input
+                            type="number"
+                            placeholder="Max"
+                            class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                            v-model="form.max_price"
+                        />
+                        <span class="text-xs text-gray-500">{{
+                            new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                minimumFractionDigits: 0,
+                            }).format(form.max_price) || 0
+                        }}</span>
+                    </div>
                 </div>
             </div>
             <div class="flex justify-between gap-2">
