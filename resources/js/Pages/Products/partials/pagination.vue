@@ -22,6 +22,27 @@ watch(perPage, (newValue) => {
     <div
         class="flex flex-col items-center justify-between gap-4 mt-6 md:flex-row"
     >
+        <!-- Page size -->
+        <div class="flex items-center gap-2">
+            <label
+                for="pageSize"
+                class="text-sm text-gray-600 dark:text-gray-200"
+                >Tampilkan:</label
+            >
+            <select
+                id="pageSize"
+                v-model="perPage"
+                class="px-2 py-1 text-sm border-2 border-gray-500 rounded-md w-14 dark:bg-gray-700 dark:text-white"
+            >
+                <option
+                    v-for="size in pageSizeOptions"
+                    :key="size"
+                    :value="size"
+                >
+                    {{ size }}
+                </option>
+            </select>
+        </div>
         <!-- Info jumlah data -->
         <div class="text-sm text-gray-600 dark:text-gray-200">
             Menampilkan
@@ -50,28 +71,6 @@ watch(perPage, (newValue) => {
                     v-html="link.label"
                 ></span>
             </div>
-        </div>
-
-        <!-- Page size -->
-        <div class="flex items-center gap-2">
-            <label
-                for="pageSize"
-                class="text-sm text-gray-600 dark:text-gray-200"
-                >Tampilkan:</label
-            >
-            <select
-                id="pageSize"
-                v-model="perPage"
-                class="px-2 py-1 text-sm border-2 border-gray-500 rounded-md w-14 dark:bg-gray-700 dark:text-white"
-            >
-                <option
-                    v-for="size in pageSizeOptions"
-                    :key="size"
-                    :value="size"
-                >
-                    {{ size }}
-                </option>
-            </select>
         </div>
     </div>
 </template>

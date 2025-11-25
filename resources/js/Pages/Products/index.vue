@@ -125,7 +125,7 @@ watch(search, performSearch);
                 ]"
             />
             <Pagination
-                v-if="products.data.length > 0"
+                v-if="products.data.length > 10"
                 :metadata="products"
                 :filters="filters"
             />

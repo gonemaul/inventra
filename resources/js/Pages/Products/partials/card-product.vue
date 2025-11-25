@@ -42,7 +42,7 @@ defineEmits(["delete", "forceDelete", "restore", "imageClick"]);
             <!-- Info Produk -->
             <div class="flex-1 space-y-3">
                 <h2 class="text-lg font-bold leading-tight sm:text-xl">
-                    {{ data.name }}
+                    {{ data.full_name }}
                 </h2>
                 <p
                     class="hidden text-sm text-black dark:text-gray-100 lg:flex sm:text-base"
@@ -53,17 +53,23 @@ defineEmits(["delete", "forceDelete", "restore", "imageClick"]);
                     <span
                         class="px-2 py-1 text-[11px] font-medium text-black rounded-xl select-none opacity-80 bg-lime-200"
                     >
-                        {{ data.category.name }}
+                        {{ data.brand?.name }}
+                    </span>
+                    <span
+                        class="px-2 py-1 text-[11px] font-medium text-black rounded-xl select-none opacity-80 bg-lime-200"
+                    >
+                        {{ data.category?.name }} (
+                        {{ data.product_type?.name }} )
                     </span>
                     <span
                         class="px-2 py-1 text-[11px] font-medium text-black rounded-xl select-none bg-lime-200 opacity-80"
                     >
-                        {{ data.size.name }}
+                        {{ data.size?.name }}
                     </span>
                     <span
                         class="px-2 py-1 text-[11px] font-medium text-black rounded-xl select-none bg-lime-200 opacity-80"
                     >
-                        {{ data.stock }} {{ data.unit.name }}
+                        {{ data.stock }} {{ data.unit?.name }}
                     </span>
                 </div>
             </div>

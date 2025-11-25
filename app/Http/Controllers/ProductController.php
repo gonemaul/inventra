@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Models\Product;
+use App\Services\BrandService;
 use Illuminate\Http\Request;
 use App\Services\SizeService;
 use App\Services\UnitService;
 use App\Services\ProductService;
 use App\Services\CategoryService;
 use App\Services\SupplierService;
+use App\Services\TypeService;
 use Illuminate\Support\Facades\Redirect;
 
 class ProductController extends Controller
@@ -19,6 +21,8 @@ class ProductController extends Controller
     protected $unitService;
     protected $sizeService;
     protected $supplierService;
+    protected $brandService;
+    protected $typeService;
 
     // 3. Inject semua service di constructor
     public function __construct(
@@ -26,13 +30,17 @@ class ProductController extends Controller
         CategoryService $categoryService,
         UnitService $unitService,
         SizeService $sizeService,
-        SupplierService $supplierService
+        SupplierService $supplierService,
+        BrandService $brandService,
+        TypeService $typeService
     ) {
         $this->productService = $productService;
         $this->categoryService = $categoryService;
         $this->unitService = $unitService;
         $this->sizeService = $sizeService;
         $this->supplierService = $supplierService;
+        $this->brandService = $brandService;
+        $this->typeService = $typeService;
     }
     private function getDropdownData(): array
     {
@@ -42,6 +50,8 @@ class ProductController extends Controller
             'sizes' => $this->sizeService->getAll(),
             'suppliers' => $this->supplierService->getAll(),
             'productStatuses' => Product::STATUSES,
+            'brand' => $this->brandService->getAll(),
+            'type' => $this->typeService->getAll(),
         ];
     }
     /**
@@ -61,7 +71,6 @@ class ProductController extends Controller
      */
     public function create()
     {
-        $dropdowns = $this->getDropdownData();
         return Inertia::render('Products/create', [
             'dropdowns' => $this->getDropdownData()
         ]);

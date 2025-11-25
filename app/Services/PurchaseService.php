@@ -408,15 +408,13 @@ class PurchaseService
                 $item->subtotal = $item->quantity * $finalHpp;
                 $item->save();
 
-                // 3. [STOCK UPDATE] Tambah Stok Master
-                $product->increment('stock', $item->quantity);
-
-                // 4. [PRICE UPDATE] Update Harga Beli Terakhir di Master Product
-                // Ini akan menjadi dasar HPP untuk penjualan berikutnya (Average atau FIFO tergantung sistem Anda)
-                // Disini kita pakai Last Purchase Price sederhana.
-                $product->update([
-                    'purchase_price' => $finalHpp
-                ]);
+                // Panggil fungsi sakti tadi
+                // Kita kirim array data yang ingin diubah
+                $product->updateWithSnapshot([
+                    'purchase_price' => $finalHpp,
+                    'stock'          => $product->stock + $item->quantity, // Tambah stok
+                    // 'supplier_id' => $purchase->supplier_id // (Opsional: update supplier default produk)
+                ], 'purchase'); // Reason: 'purchase'
             }
 
             return true;

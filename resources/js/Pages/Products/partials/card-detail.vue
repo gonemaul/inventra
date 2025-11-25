@@ -138,11 +138,29 @@ const showDelete = ref(false);
                 <div
                     class="flex flex-wrap justify-center w-full gap-2 lg:justify-between"
                 >
-                    <button
+                    <!-- <button
                         class="flex-auto p-2 text-white bg-indigo-400 rounded hover:bg-indigo-500"
                     >
                         {{ data.status == "active" ? "Aktif" : "Tidak Aktif" }}
-                    </button>
+                    </button> -->
+                    <Link
+                        :href="route('products.index')"
+                        title="Kembali"
+                        aria-label="Kembali"
+                        class="flex items-center p-2 text-white bg-yellow-400 rounded hover:bg-yellow-500"
+                    >
+                        <svg
+                            class="w-4 h-4 mr-2 sm:w-5 sm:h-5"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                        >
+                            <path
+                                d="M19.9902 18.9531C20.5471 18.9534 21 19.4124 21 19.9766C21 20.5418 20.5471 20.9998 19.9902 21H14.2793C13.7224 20.9998 13.2695 20.5419 13.2695 19.9766C13.2696 19.4124 13.7224 18.9533 14.2793 18.9531H19.9902ZM12.2412 3.95703C13.1538 2.78531 14.7463 2.67799 16.0303 3.69922L17.5049 4.87109C18.1097 5.34407 18.5134 5.96737 18.6514 6.62305C18.8105 7.34415 18.6403 8.05244 18.1631 8.66504L9.37598 20.0283C8.97274 20.544 8.37869 20.834 7.74219 20.8447L4.24023 20.8877C4.0493 20.8876 3.89009 20.7589 3.84766 20.5762L3.05176 17.125C2.91398 16.4909 3.05194 15.8352 3.45508 15.3301L9.68457 7.26758C9.79068 7.13908 9.98121 7.11856 10.1084 7.21387L12.7295 9.2998C12.8993 9.43955 13.1329 9.51467 13.377 9.48242C13.8969 9.41792 14.2474 8.94469 14.1943 8.43945C14.1625 8.18164 14.0349 7.96685 13.8652 7.80566C13.8122 7.76267 11.3184 5.7627 11.3184 5.7627C11.1593 5.63368 11.1276 5.39743 11.2549 5.2373L12.2412 3.95703Z"
+                                fill="white"
+                            />
+                        </svg>
+                        Kembali
+                    </Link>
                     <Link
                         :href="route('products.edit', data.id)"
                         title="Edit Produk"

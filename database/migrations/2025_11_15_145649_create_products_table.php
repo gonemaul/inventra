@@ -25,7 +25,6 @@ return new class extends Migration
                 ->constrained('sizes') // Merujuk ke tabel 'sizes'
                 ->onDelete('restrict');
             $table->foreignId('supplier_id')
-                ->nullable() // Boleh kosong
                 ->constrained('suppliers') // Merujuk ke tabel 'suppliers'
                 ->onDelete('set null');
             $table->string('name');

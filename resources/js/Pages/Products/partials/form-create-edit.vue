@@ -21,6 +21,8 @@ const form = useForm({
     unit_id: props.product?.unit_id || null,
     size_id: props.product?.size_id || null,
     supplier_id: props.product?.supplier_id || null,
+    brand_id: props.product?.brand_id || null,
+    product_type_id: props.product?.product_type_id || null,
 
     // Detail
     name: props.product?.name || "",
@@ -33,6 +35,7 @@ const form = useForm({
     selling_price: props.product?.selling_price || 0,
     stock: props.product?.stock || 0,
     min_stock: props.product?.min_stock || 0,
+    target_margin_percent: props.product?.target_margin_percent || 20,
 
     // File (image akan berisi file baru, image_path untuk preview)
     image: null,
@@ -162,7 +165,7 @@ const submitForm = () => {
         </div>
 
         <!-- Selects -->
-        <div class="grid grid-cols-1 gap-3 mt-5 md:grid-cols-4">
+        <div class="grid grid-cols-1 gap-3 mt-5 md:grid-cols-3">
             <div>
                 <label
                     class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
@@ -188,6 +191,33 @@ const submitForm = () => {
                     class="mt-1 text-sm text-red-500"
                 >
                     {{ form.errors.category_id }}
+                </p>
+            </div>
+            <div>
+                <label
+                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
+                    >Type<span class="text-red-500">*</span></label
+                >
+                <select
+                    class="w-full px-3 py-2 text-sm border border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                    v-model="form.product_type_id"
+                >
+                    <option v-if="props.mode == 'create'" :value="null">
+                        Pilih Type
+                    </option>
+                    <option
+                        v-for="cat in dropdowns.type"
+                        :key="cat.id"
+                        :value="cat.id"
+                    >
+                        {{ cat.name }}
+                    </option>
+                </select>
+                <p
+                    v-if="form.errors.product_type_id"
+                    class="mt-1 text-sm text-red-500"
+                >
+                    {{ form.errors.product_type_id }}
                 </p>
             </div>
             <div>
@@ -236,6 +266,33 @@ const submitForm = () => {
                 </select>
                 <p v-if="form.errors.size_id" class="mt-1 text-sm text-red-500">
                     {{ form.errors.size_id }}
+                </p>
+            </div>
+            <div>
+                <label
+                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
+                    >Merk<span class="text-red-500">*</span></label
+                >
+                <select
+                    v-model="form.brand_id"
+                    class="w-full px-3 py-2 text-sm border border-gray-400 rounded-lg dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                >
+                    <option v-if="props.mode == 'create'" :value="null">
+                        Pilih Merk
+                    </option>
+                    <option
+                        v-for="size in dropdowns.brand"
+                        :key="size.id"
+                        :value="size.id"
+                    >
+                        {{ size.name }}
+                    </option>
+                </select>
+                <p
+                    v-if="form.errors.brand_id"
+                    class="mt-1 text-sm text-red-500"
+                >
+                    {{ form.errors.brand_id }}
                 </p>
             </div>
             <div>
@@ -298,15 +355,27 @@ const submitForm = () => {
                     class="w-full max-h-10"
                     id="price_buy"
                     type="number"
+                    min="0"
                     name="price_buy"
                     placeholder="Harga Beli"
                 />
-                <p
-                    v-if="form.errors.purchase_price"
-                    class="mt-1 text-sm text-red-500"
-                >
-                    {{ form.errors.purchase_price }}
-                </p>
+                <span class="flex justify-between">
+                    <p class="text-sm text-gray-500">
+                        {{
+                            new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                minimumFractionDigits: 0,
+                            }).format(form.purchase_price) || 0
+                        }}
+                    </p>
+                    <p
+                        v-if="form.errors.purchase_price"
+                        class="mt-1 text-sm text-red-500"
+                    >
+                        {{ form.errors.purchase_price }}
+                    </p>
+                </span>
             </div>
             <div class="flex-1">
                 <label
@@ -318,20 +387,32 @@ const submitForm = () => {
                     class="w-full max-h-10"
                     id="price_sell"
                     type="number"
+                    min="0"
                     name="price_sell"
                     placeholder="Harga Jual"
                 />
-                <p
-                    v-if="form.errors.selling_price"
-                    class="mt-1 text-sm text-red-500"
-                >
-                    {{ form.errors.selling_price }}
-                </p>
+                <span class="flex justify-between">
+                    <p class="text-sm text-gray-500">
+                        {{
+                            new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                minimumFractionDigits: 0,
+                            }).format(form.selling_price) || 0
+                        }}
+                    </p>
+                    <p
+                        v-if="form.errors.selling_price"
+                        class="mt-1 text-sm text-red-500"
+                    >
+                        {{ form.errors.selling_price }}
+                    </p>
+                </span>
             </div>
         </div>
 
         <!-- Stock -->
-        <div class="grid grid-cols-1 gap-3 mt-4 md:grid-cols-3">
+        <div class="grid grid-cols-1 gap-3 mt-4 md:grid-cols-4">
             <div>
                 <label
                     class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-100"
@@ -342,6 +423,7 @@ const submitForm = () => {
                     id="stock"
                     type="number"
                     name="stock"
+                    min="0"
                     placeholder="Stock"
                     v-model="form.stock"
                 />
@@ -358,6 +440,7 @@ const submitForm = () => {
                     v-model="form.min_stock"
                     class="w-full max-h-10"
                     id="min_stock"
+                    min="0"
                     type="number"
                     name="min_stock"
                     placeholder="Min Stock"
@@ -367,6 +450,27 @@ const submitForm = () => {
                     class="mt-1 text-sm text-red-500"
                 >
                     {{ form.errors.min_stock }}
+                </p>
+            </div>
+            <div>
+                <label
+                    class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-100"
+                    >Margin(%)<span class="text-red-500">*</span></label
+                >
+                <TextInput
+                    v-model="form.target_margin_percent"
+                    class="w-full max-h-10"
+                    id="target_margin_percent"
+                    type="number"
+                    min="0"
+                    name="target_margin_percent"
+                    placeholder="Min Stock"
+                />
+                <p
+                    v-if="form.errors.target_margin_percent"
+                    class="mt-1 text-sm text-red-500"
+                >
+                    {{ form.errors.target_margin_percent }}
                 </p>
             </div>
             <div>

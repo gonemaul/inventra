@@ -2,12 +2,16 @@
 
 namespace App\Services;
 
+use App\Models\Size;
+use App\Models\Brand;
 use App\Models\Product;
+use App\Models\Category;
+use App\Models\ProductType;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Storage;
 
 class ProductService
 {
@@ -36,7 +40,7 @@ class ProductService
     public function get(array $params)
     {
         // Selalu ambil relasi (eager load) untuk efisiensi
-        $query = Product::with(['category', 'unit', 'size', 'supplier']);
+        $query = Product::with(['category', 'unit', 'size', 'supplier', 'brand', 'productType']);
 
         // 1. Filter 'trashed' (Sampah)
         if (isset($params['trashed']) && $params['trashed']) {
@@ -120,11 +124,13 @@ class ProductService
             'unit_id' => ['nullable', 'integer', Rule::exists('units', 'id')], // Sesuai migrasi (nullable)
             'size_id' => ['nullable', 'integer', Rule::exists('sizes', 'id')], // Sesuah migrasi (nullable)
             'supplier_id' => ['nullable', 'integer', Rule::exists('suppliers', 'id')], // Sesuai migrasi (nullable)
+            'brand_id' => ['nullable', 'integer', Rule::exists('brands', 'id')], // Sesuai migrasi (nullable)
+            'product_type_id' => ['nullable', 'integer', Rule::exists('product_types', 'id')], // Sesuai migrasi (nullable)
 
             // Detail Produk
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:255|unique:products,code', // 'code' dari migrasi Anda
-            'description' => 'nullable|string',
+            // 'code' => 'string|max:255|unique:products,code', // 'code' dari migrasi Anda
+            'description' => 'required|string',
             // 'image_path' => 'nullable|string|max:255', // 'image_path' dari migrasi Anda
             'status' => ['required', Rule::in(Product::STATUSES)], // Validasi string 'active'/'draft'
 
@@ -133,12 +139,20 @@ class ProductService
             'min_stock' => 'required|integer|min:0', // 'min_stock' dari migrasi Anda
             'purchase_price' => 'required|numeric|min:0',
             'selling_price' => 'required|numeric|min:0',
+            'target_margin_percent' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
             throw new ValidationException($validator);
         }
+        $generatedCode = $this->generateProductCode(
+            $data['category_id'],
+            $data['product_type_id'],
+            $data['brand_id'],
+            $data['size_id']
+        );
         $validatedData = $validator->validated();
+        $validatedData['code'] = $generatedCode;
         if ($imageFile) {
             $imageValidator = Validator::make(['image' => $imageFile], [
                 'image' => 'nullable|image|mimes:jpeg,png,webp|max:1024' // Maks 1MB
@@ -235,5 +249,68 @@ class ProductService
     {
         $product = Product::onlyTrashed()->findOrFail($id);
         return $product->restore();
+    }
+
+    private function generateInitials(string $name, int $length = 3): string
+    {
+        // 1. Bersihkan string (Hapus simbol aneh)
+        $clean = preg_replace('/[^A-Za-z0-9 ]/', '', $name);
+
+        // 2. Pecah per kata
+        $words = explode(' ', $clean);
+
+        $initials = '';
+
+        // Jika lebih dari 1 kata, ambil huruf depan setiap kata (Maksimal 3)
+        // Contoh: "Tiga Roda" -> "TR", "Cat Minyak Kayu" -> "CMK"
+        if (count($words) > 1) {
+            foreach ($words as $word) {
+                $initials .= strtoupper(substr($word, 0, 1));
+            }
+        } else {
+            // Jika 1 kata, ambil 3 huruf pertama (Consonants preferred logic bisa ditambahkan jika mau rumit)
+            // Contoh: "Semen" -> "SEM"
+            $initials = strtoupper(substr($clean, 0, $length));
+        }
+
+        // Pastikan panjangnya pas (pad atau potong)
+        return str_pad(substr($initials, 0, $length), $length, 'X');
+    }
+
+    public function generateProductCode($categoryId, $typeId, $brandId, $sizeId)
+    {
+        // 1. Ambil Data Master
+        $category = Category::find($categoryId);
+        $type     = ProductType::find($typeId);
+        $brand    = Brand::find($brandId);
+        $size    = Size::find($sizeId);
+
+        // 3. Susun Prefix
+        // Format: KAT-TIP-BRD (Contoh: MAT-SEM-TR)
+        $prefix = "{$category->code}-{$type->code}-{$brand->code}-{$size->code}";
+
+        // 4. Cari Urutan Terakhir untuk Prefix ini
+        // Kita cari produk yang kodenya diawali dengan "MAT-SEM-TR-"
+        $lastProduct = Product::where('code', 'like', $prefix . '%')
+            ->orderByRaw('LENGTH(code) DESC') // Pastikan urutan panjang karakter benar
+            ->orderBy('code', 'desc')
+            ->first();
+
+        $sequence = 1;
+
+        if ($lastProduct) {
+            // Format Existing: MAT-SEM-TR-001
+            // Pecah berdasarkan strip
+            $parts = explode('-', $lastProduct->code);
+            $lastSeq = end($parts); // Ambil bagian paling belakang
+
+            if (is_numeric($lastSeq)) {
+                $sequence = (int)$lastSeq + 1;
+            }
+        }
+
+        // 5. Gabungkan Hasil Akhir
+        // Hasil: MAT-SEM-TR-001
+        return $prefix . '-' . str_pad((string)$sequence, 3, '0', STR_PAD_LEFT);
     }
 }

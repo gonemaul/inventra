@@ -36,107 +36,107 @@ class DatabaseSeeder extends Seeder
 
         $this->call(MasterDataSeeder::class);
         // $this->call(ProductSeeder::class);
-        Product::create([
-            'category_id' => 1,
-            'unit_id' => 1,
-            'size_id' => 1,
-            'supplier_id' => 1,
-            'brand_id' => 1,
-            'product_type_id' => 1,
-            'name' => 'Kaos Polos Hitam',
-            'code' => 'KPH-M',
-            'stock' => 100,
-            'min_stock' => 10,
-            'purchase_price' => 35000,
-            'selling_price' => 55000,
-            'description' => 'Kaos polos bahan katun 30s.',
-            'status' => Product::STATUS_ACTIVE, // 'active'
-        ]);
+        // Product::create([
+        //     'category_id' => 1,
+        //     'unit_id' => 1,
+        //     'size_id' => 1,
+        //     'supplier_id' => 1,
+        //     'brand_id' => 1,
+        //     'product_type_id' => 1,
+        //     'name' => 'Kaos Polos Hitam',
+        //     'code' => 'KPH-M',
+        //     'stock' => 100,
+        //     'min_stock' => 10,
+        //     'purchase_price' => 35000,
+        //     'selling_price' => 55000,
+        //     'description' => 'Kaos polos bahan katun 30s.',
+        //     'status' => Product::STATUS_ACTIVE, // 'active'
+        // ]);
 
-        Product::create([
-            'category_id' => 2,
-            'unit_id' => 2,
-            'size_id' => 2,
-            'supplier_id' => 2, // Boleh null
-            'brand_id' => 2,
-            'product_type_id' => 2,
-            'name' => 'Jeans Biru Slim Fit',
-            'code' => 'JNS-L',
-            'stock' => 50,
-            'min_stock' => 5,
-            'purchase_price' => 120000,
-            'selling_price' => 180000,
-            'description' => 'Celana jeans slim fit warna biru.',
-            'status' => Product::STATUS_ACTIVE, // 'active'
-        ]);
+        // Product::create([
+        //     'category_id' => 2,
+        //     'unit_id' => 2,
+        //     'size_id' => 2,
+        //     'supplier_id' => 2, // Boleh null
+        //     'brand_id' => 2,
+        //     'product_type_id' => 2,
+        //     'name' => 'Jeans Biru Slim Fit',
+        //     'code' => 'JNS-L',
+        //     'stock' => 50,
+        //     'min_stock' => 5,
+        //     'purchase_price' => 120000,
+        //     'selling_price' => 180000,
+        //     'description' => 'Celana jeans slim fit warna biru.',
+        //     'status' => Product::STATUS_ACTIVE, // 'active'
+        // ]);
 
-        Product::create([
-            'category_id' => 3,
-            'unit_id' => 3,
-            'size_id' => 3, // Pakai 'All Size'
-            'supplier_id' => 3,
-            'brand_id' => 3,
-            'product_type_id' => 3,
-            'name' => 'Mouse Wireless V2',
-            'code' => 'MOU-V2',
-            'stock' => 75,
-            'min_stock' => 20,
-            'purchase_price' => 80000,
-            'selling_price' => 125000,
-            'description' => 'Mouse wireless 2.4GHz dengan silent click.',
-            'status' => Product::STATUS_DRAFT, // 'draft'
-        ]);
+        // Product::create([
+        //     'category_id' => 3,
+        //     'unit_id' => 3,
+        //     'size_id' => 3, // Pakai 'All Size'
+        //     'supplier_id' => 3,
+        //     'brand_id' => 3,
+        //     'product_type_id' => 3,
+        //     'name' => 'Mouse Wireless V2',
+        //     'code' => 'MOU-V2',
+        //     'stock' => 75,
+        //     'min_stock' => 20,
+        //     'purchase_price' => 80000,
+        //     'selling_price' => 125000,
+        //     'description' => 'Mouse wireless 2.4GHz dengan silent click.',
+        //     'status' => Product::STATUS_DRAFT, // 'draft'
+        // ]);
 
-        Product::create([
-            'category_id' => 1,
-            'unit_id' => 2,
-            'size_id' => 3,
-            'supplier_id' => 2,
-            'brand_id' => 3,
-            'product_type_id' => 3,
-            'name' => 'Topi Baseball',
-            'code' => 'TPI-01',
-            'stock' => 150,
-            'min_stock' => 15,
-            'purchase_price' => 25000,
-            'selling_price' => 45000,
-            'description' => 'Topi baseball polos.',
-            'status' => Product::STATUS_ACTIVE, // 'active'
-        ]);
+        // Product::create([
+        //     'category_id' => 1,
+        //     'unit_id' => 2,
+        //     'size_id' => 3,
+        //     'supplier_id' => 2,
+        //     'brand_id' => 3,
+        //     'product_type_id' => 3,
+        //     'name' => 'Topi Baseball',
+        //     'code' => 'TPI-01',
+        //     'stock' => 150,
+        //     'min_stock' => 15,
+        //     'purchase_price' => 25000,
+        //     'selling_price' => 45000,
+        //     'description' => 'Topi baseball polos.',
+        //     'status' => Product::STATUS_ACTIVE, // 'active'
+        // ]);
 
-        Product::create([
-            'category_id' => 2,
-            'unit_id' => 3,
-            'size_id' => 1,
-            'supplier_id' => 3,
-            'brand_id' => 2,
-            'product_type_id' => 2,
-            'name' => 'Kemeja Flanel Kotak',
-            'code' => 'KFL-L',
-            'stock' => 60,
-            'min_stock' => 10,
-            'purchase_price' => 85000,
-            'selling_price' => 135000,
-            'description' => 'Kemeja flanel lengan panjang.',
-            'status' => Product::STATUS_ACTIVE,
-        ]);
+        // Product::create([
+        //     'category_id' => 2,
+        //     'unit_id' => 3,
+        //     'size_id' => 1,
+        //     'supplier_id' => 3,
+        //     'brand_id' => 2,
+        //     'product_type_id' => 2,
+        //     'name' => 'Kemeja Flanel Kotak',
+        //     'code' => 'KFL-L',
+        //     'stock' => 60,
+        //     'min_stock' => 10,
+        //     'purchase_price' => 85000,
+        //     'selling_price' => 135000,
+        //     'description' => 'Kemeja flanel lengan panjang.',
+        //     'status' => Product::STATUS_ACTIVE,
+        // ]);
 
-        Product::create([
-            'category_id' => 3,
-            'unit_id' => 1,
-            'size_id' => 2,
-            'supplier_id' => 1,
-            'brand_id' => 1,
-            'product_type_id' => 1,
-            'name' => 'Celana Chino Cream',
-            'code' => 'CHN-M',
-            'stock' => 80,
-            'min_stock' => 15,
-            'purchase_price' => 90000,
-            'selling_price' => 145000,
-            'description' => 'Celana chino bahan katun twill.',
-            'status' => Product::STATUS_ACTIVE,
-        ]);
+        // Product::create([
+        //     'category_id' => 3,
+        //     'unit_id' => 1,
+        //     'size_id' => 2,
+        //     'supplier_id' => 1,
+        //     'brand_id' => 1,
+        //     'product_type_id' => 1,
+        //     'name' => 'Celana Chino Cream',
+        //     'code' => 'CHN-M',
+        //     'stock' => 80,
+        //     'min_stock' => 15,
+        //     'purchase_price' => 90000,
+        //     'selling_price' => 145000,
+        //     'description' => 'Celana chino bahan katun twill.',
+        //     'status' => Product::STATUS_ACTIVE,
+        // ]);
 
         // Product::create([
         //     'category_id' => $catAksesoris->id,
