@@ -97,7 +97,8 @@ defineEmits(["delete", "forceDelete", "restore", "imageClick"]);
                             stroke-linejoin="round"
                         />
                     </svg>
-                    Naik 1.3%
+                    {{ data.market_insight.price.trend }}
+                    {{ data.market_insight.price.percent }}
                 </div>
 
                 <!-- Harga -->

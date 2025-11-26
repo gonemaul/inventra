@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('category_id')->constrained('categories')->onDelete('cascade');
             $table->string('code')->nullable();
-            $table->string('name'); // Contoh: Matic, Bebek, Tubeless
+            $table->string('name')->index(); // Contoh: Matic, Bebek, Tubeless
             $table->text('description')->nullable();
             $table->softDeletes();
             $table->timestamps();

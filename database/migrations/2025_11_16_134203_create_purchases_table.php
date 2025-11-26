@@ -17,15 +17,20 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users')->onDelete('restrict');
 
             $table->string('reference_no')->unique()->comment('Nomor Transaksi Internal (TRX-001)');
-            $table->date('transaction_date');
-            $table->string('status')->comment('draft, dipesan, dikirim, diterima, checking, selesai, dibatalkan');
+            $table->date('transaction_date')->index();
+            $table->string('status')->comment('draft, dipesan, dikirim, diterima, checking, selesai, dibatalkan')->index();
 
-            $table->decimal('shipping_cost', 15, 2)->default(0);
-            $table->decimal('other_costs', 15, 2)->default(0);
             $table->date('received_at')->nullable()->comment('Tanggal barang fisik tiba');
             $table->string('supplier_reference')->nullable()->comment('No Resi/SO Supplier');
 
             $table->text('notes')->nullable();
+
+            // --- STRUKTUR KEUANGAN (Hybrid) ---
+            // Gunakan Kolom Decimal agar mudah dihitung SQL
+            $table->decimal('total_item_price', 19, 4)->default(0); // Total harga barang saja
+            $table->decimal('shipping_cost', 19, 4)->default(0);    // Ongkir
+            $table->decimal('other_costs', 19, 4)->default(0);
+            $table->decimal('grand_total', 19, 4)->default(0);      // Total Akhir (Items + Ongkir + Lain)
             $table->softDeletes();
             $table->timestamps();
         });

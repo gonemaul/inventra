@@ -21,11 +21,11 @@ return new class extends Migration
             // Snapshot data produk (permintaan Anda)
 
             $table->json('product_snapshot')->comment('Snapshot data produk saat pembelian dilakukan');
-            $table->integer('quantity');
-            $table->decimal('purchase_price', 15, 2)->comment('Harga beli satuan saat itu');
-            $table->decimal('subtotal', 15, 2); // quantity * purchase_price
+            $table->decimal('quantity', 19, 4);
+            $table->decimal('purchase_price', 19, 4)->comment('Harga beli satuan saat itu');
+            $table->decimal('subtotal', 19, 4); // quantity * purchase_price
 
-            $table->integer('rejected_quantity')->default(0)->comment('Barang rusak/ditolak saat terima');
+            $table->decimal('rejected_quantity', 19, 4)->default(0)->comment('Barang rusak/ditolak saat terima');
             $table->string('rejection_note')->nullable()->comment('Alasan barang ditolak');
             $table->timestamps();
         });

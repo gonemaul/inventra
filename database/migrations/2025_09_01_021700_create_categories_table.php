@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('slug')->unique();
             $table->string('code')->unique();
-            $table->string('name');
+            $table->string('name')->index();
             $table->text('description')->nullable();
             $table->softDeletes();
             $table->timestamps();

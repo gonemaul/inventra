@@ -26,6 +26,8 @@ class Purchase extends Model
         'received_at',
         'supplier_reference',
         'notes',
+        'total_item_price',
+        'grand_total'
     ];
 
     const STATUS_DRAFT = 'draft';

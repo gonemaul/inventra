@@ -39,6 +39,7 @@ class Product extends Model
         'target_margin_percent',
 
         'status',
+        'snapshot'
     ];
     const STATUS_ACTIVE = 'active'; // Produk yang dijual
     const STATUS_DRAFT = 'draft';

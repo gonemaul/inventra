@@ -152,7 +152,7 @@ watch(search, performSearch);
                 />
             </div>
             <Pagination
-                v-if="products.data.length > 0"
+                v-if="products.data.length > 8"
                 :metadata="products"
                 :filters="filters"
             />
