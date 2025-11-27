@@ -7,7 +7,6 @@ const props = defineProps({
     items: { type: Array, required: true },
 });
 
-console.log(props.items);
 const columns = [
     {
         key: "product.name",

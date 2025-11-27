@@ -1,0 +1,208 @@
+<?php
+
+namespace App\Services;
+
+use Exception;
+use App\Models\Product;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Sale;       // Revisi: Kita pakai nama model 'Sale' sesuai migrasi terakhir
+use App\Models\SalesRecap; // Pastikan Model bernama Sale (sesuai migrasi terakhir 'sales')
+
+class SalesRecapService
+{
+    protected $decimalUnits = [
+        // Berat
+        "kg",
+        "kilogram",
+        "gram",
+        "gr",
+        "g",
+        "ons",
+        "ton",
+        "kwintal",
+        "mg",
+
+        // Volume
+        "liter",
+        "ltr",
+        "l",
+        "ml",
+        "cc",
+        "m3",
+        "kubik",
+        "galon",
+
+        // Panjang/Luas
+        "meter",
+        "mtr",
+        "m",
+        "cm",
+        "mm",
+        "m2",
+        "yard",
+        "kaki",
+        "inch",
+        "inci",
+    ];
+    /**
+     * Mengambil data transaksi pembelian untuk halaman index (Index.vue).
+     */
+    public function get(array $params)
+    {
+        $query = Sale::query()
+            ->with(['user', 'items']);
+
+        // 1. Filter Trashed (Sampah)
+        $query->when($params['trashed'] ?? false, function ($q) {
+            $q->onlyTrashed();
+        });
+
+        // 2. Filter Search (PENTING: Dibungkus closure agar tidak merusak filter lain)
+        $query->when($params['search'] ?? null, function ($q, $search) {
+            $q->where(function ($subQuery) use ($search) {
+                $subQuery->where('reference_no', 'like', "%{$search}%");
+            });
+        });
+
+        // 4. Filter Tanggal (Date Range)
+        $query->when($params['min_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '>=', $date))
+            ->when($params['max_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '<=', $date));
+
+        // 4. Filter Revenue (Nominal Range)
+        $query->when($params['min_revenue'] ?? null, fn($q, $revenue) => $q->where('total_revenue', '>=', $revenue))
+            ->when($params['max_revenue'] ?? null, fn($q, $revenue) => $q->where('total_revenue', '<=', $revenue));
+
+        // --- SORTING & PAGINASI ---
+        $sortBy = $params['sort'] ?? 'transaction_date';
+        $sortDirection = $params['order'] ?? 'desc';
+        $perPage = $params['per_page'] ?? 10;
+
+        return $query
+            ->orderBy($sortBy, $sortDirection)
+            ->paginate($perPage)
+            ->withQueryString();
+    }
+    /**
+     * Menyimpan data rekap, mengurangi stok, dan hitung profit
+     */
+    public function storeRecap(array $data)
+    {
+        return DB::transaction(function () use ($data) {
+
+            // 1. Buat Header Sales
+            $sale = Sale::create([
+                'reference_no' => $this->generateReferenceNo($data['report_date']),
+                'transaction_date' => $data['report_date'],
+                'user_id' => Auth::id(),
+                'notes' => $data['notes'] ?? null,
+                'total_revenue' => 0, // Nanti diupdate
+                'total_profit' => 0,  // Nanti diupdate
+            ]);
+
+            $totalRevenue = 0;
+            $totalProfit = 0;
+            $itemsCount = 0;
+            $totalQty = 0;
+
+            // 2. Loop Items dari Frontend
+            foreach ($data['items'] as $itemData) {
+                // Ambil Master Produk Terbaru
+                $product = Product::with(['brand', 'category', 'unit'])->lockForUpdate()->findOrFail($itemData['product_id']);
+
+                $inputQty = (float) $itemData['quantity'];
+                $sellingPrice = $itemData['selling_price'];
+
+                // Validasi Stok (Opsional, jika tidak boleh minus)
+                if ($product->stock < $inputQty) {
+                    throw new Exception("Stok tidak cukup untuk produk: {$product->name}. Sisa: {$product->stock}");
+                }
+
+                $unitName = strtolower($product->unit->name ?? '');
+                $isDecimalAllowed = in_array($unitName, $this->decimalUnits);
+
+                // Cek apakah inputQty mengandung koma (misal 1.5)
+                // fmod(1.5, 1) hasilnya 0.5. fmod(1.0, 1) hasilnya 0.
+                if (!$isDecimalAllowed && fmod($inputQty, 1) !== 0.0) {
+                    throw new Exception("Produk {$product->name} dengan satuan '{$product->unit->name}' tidak boleh desimal (0.xx).");
+                }
+
+                // Jika harga jual < harga modal, sistem bisa menolak atau membiarkan
+                if ($itemData['selling_price'] < $product->purchase_price) {
+                    throw new Exception("Harga jual {$product->name} di bawah modal! Cek harga.");
+                }
+
+                // PENTING: Ambil HPP saat ini dari Master Product
+                $capitalPrice = $product->purchase_price;
+
+                // Hitungan Baris
+                $subtotal = $inputQty * $sellingPrice;
+                $rowCost  = $inputQty * $capitalPrice;
+                $rowProfit = $subtotal - $rowCost;
+
+                // --- LOGIC SNAPSHOT (HISTORY AMAN) ---
+                $snapshot = [
+                    'name' => $product->name,
+                    'code' => $product->code,
+                    'brand' => $product->brand->name ?? '-',
+                    'category' => $product->category->name ?? '-',
+                    'unit' => $product->unit->name ?? 'Pcs',
+                    'original_price' => $product->selling_price, // Harga jual normal (sebelum diedit kasir)
+                ];
+
+                // Simpan ke sale_items
+                $sale->items()->create([
+                    'product_id' => $product->id,
+                    'quantity' => $inputQty,
+                    'selling_price' => $sellingPrice,
+                    'capital_price' => $capitalPrice, // Terkunci selamanya
+                    'subtotal' => $subtotal,
+                    'profit' => $rowProfit,
+                    'product_snapshot' => $snapshot,
+                ]);
+
+                // Update Stok Master (Berkurang)
+                $product->decrement('stock', $inputQty);
+
+                // Akumulasi Header
+                $totalRevenue += $subtotal;
+                $totalProfit += $rowProfit;
+                $itemsCount++;
+                $totalQty += $inputQty;
+            }
+
+            // 3. Update Header dengan Total Final
+            $sale->update([
+                'total_revenue' => $totalRevenue,
+                'total_profit' => $totalProfit,
+                // Kita simpan ringkasan di JSON (sesuai migrasi) agar dashboard ringan
+                // 'financial_summary' => [
+                //     'item_count' => $itemsCount,
+                //     'total_qty' => $totalQty
+                // ]
+            ]);
+
+            return $sale;
+        });
+    }
+
+    // Generator No: POS/YYMMDD/001
+    private function generateReferenceNo($date)
+    {
+        $dateCode = date('ymd', strtotime($date));
+        $prefix = 'POS/' . $dateCode . '/';
+
+        // Cari nomor terakhir hari itu
+        $lastSale = Sale::where('reference_no', 'like', $prefix . '%')
+            ->orderByDesc('id')
+            ->first();
+
+        $seq = 1;
+        if ($lastSale) {
+            $parts = explode('/', $lastSale->reference_no);
+            $seq = (int)end($parts) + 1;
+        }
+
+        return $prefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
+    }
+}

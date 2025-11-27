@@ -94,6 +94,7 @@ function resetFilter() {
         onFinish: () => {
             isActionLoading.value = false; // Matikan loader
             emit("close"); // Tutup modal
+            form.reset();
         },
     });
 }

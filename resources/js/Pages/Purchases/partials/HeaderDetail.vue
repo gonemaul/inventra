@@ -205,7 +205,6 @@ function formatRupiah(value) {
         minimumFractionDigits: 0,
     }).format(value);
 }
-console.log(props.data);
 const totalAddedCost =
     (props.data.shipping_cost || 0) + (props.data.other_costs || 0);
 const total_nominal =

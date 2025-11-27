@@ -15,7 +15,8 @@ class Sale extends Model
         'total_revenue',
         'total_profit',
         'user_id',
-        'notes'
+        'notes',
+        'finance_summary'
     ];
 
     protected $casts = [

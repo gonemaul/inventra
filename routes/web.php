@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\SalesRecapController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -82,8 +83,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('purchases.recommendations');
     });
 
+    // Penjualan
+    Route::controller(SalesRecapController::class)->group(function () {
+        Route::get('/sales/search-product', 'searchProduct')
+            ->name('sales.search-product');
+    });
+
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
-    Route::resource('sellings', \App\Http\Controllers\SellingController::class);
+    Route::resource('sales', SalesRecapController::class);
     Route::resource('reports',  \App\Http\Controllers\ReportController::class);
 
     // Setting Route DATA MASTER

@@ -7,7 +7,6 @@ const props = defineProps({
     dropdowns: Object,
     product: Object, // Bisa null (create) atau berisi data (edit)
 });
-console.log(props.dropdowns);
 </script>
 <template>
     <Head title="Tambah Barang" />

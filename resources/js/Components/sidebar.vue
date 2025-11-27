@@ -43,9 +43,9 @@ const navigation = [
     },
     {
         name: "Penjualan",
-        href: route("user"),
+        href: route("sales.index"),
         icon: SalesIcon,
-        active: route().current("user*"),
+        active: route().current("sales*"),
     },
     {
         name: "Keuangan",
@@ -55,9 +55,9 @@ const navigation = [
     },
     {
         name: "Laporan",
-        href: route("user"),
+        href: route("reports.index"),
         icon: ReportsIcon,
-        active: route().current("user*"),
+        active: route().current("reports*"),
     },
     {
         name: "Pengaturan",

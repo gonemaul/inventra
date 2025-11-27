@@ -21,6 +21,7 @@
         "vue": "^3.4.0"
     },
     "dependencies": {
+        "lodash": "^4.17.21",
         "vue-toastification": "^2.0.0-rc.5"
     }
 }

@@ -9,18 +9,15 @@ const props = defineProps({
         default: false,
     },
     filters: Object, // Filter yang sedang aktif
-    dropdowns: Object, // Data { categories: [], sizes: [], productStatuses: [] }
 });
 const emit = defineEmits(["close"]);
 const form = useForm({
-    status: props.filters.status || "",
-    supplier_id: props.filters.supplier_id || "",
-
-    // Range filter (nama field harus cocok dengan backend)
     min_date: props.filters.min_date || "",
     max_date: props.filters.max_date || "",
-    min_total: props.filters.min_total || "",
-    max_total: props.filters.max_total || "",
+    min_revenue: props.filters.min_revenue || "",
+    max_revenue: props.filters.max_revenue || "",
+    min_profit: props.filters.min_profit || "",
+    max_profit: props.filters.max_profit || "",
 });
 
 const { isActionLoading } = useActionLoading();
@@ -47,10 +44,10 @@ function applyFilter() {
     const allFilters = { ...searchFilter, ...modalFilters };
     const cleanModalFilters = clean(allFilters);
     isActionLoading.value = true;
-    router.get(route("purchases.index"), cleanModalFilters, {
+    router.get(route("sales.index"), cleanModalFilters, {
         preserveState: true,
         replace: true,
-        only: ["purchases", "filters "],
+        only: ["sales", "filters"],
         onFinish: () => {
             isActionLoading.value = false; // Matikan loader
             emit("close"); // Tutup modal
@@ -62,20 +59,13 @@ function applyFilter() {
 function resetFilter() {
     const cleanSearch = clean({ search: props.filters.search || "" });
     isActionLoading.value = true;
-    router.get(route("purchases.index"), cleanSearch, {
+    router.get(route("sales.index"), cleanSearch, {
         preserveState: true,
         replace: true,
         onFinish: () => {
             isActionLoading.value = false; // Matikan loader
             emit("close"); // Tutup modal
-            form.reset(
-                "status",
-                "supplier_id",
-                "max_date",
-                "min_date",
-                "min_total",
-                "max_total"
-            );
+            form.reset();
         },
     });
 }
@@ -86,44 +76,8 @@ function resetFilter() {
             <h2
                 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white"
             >
-                Filter Pembelian
+                Filter Penjualan
             </h2>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Status</label
-                ><select
-                    v-model="form.status"
-                    class="w-full px-3 py-2 text-sm text-gray-800 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                >
-                    <option value="">Semua Status</option>
-                    <option
-                        v-for="status in dropdowns.purchaseStatuses"
-                        :key="status"
-                        :value="status"
-                    >
-                        {{ status.charAt(0).toUpperCase() + status.slice(1) }}
-                    </option>
-                </select>
-            </div>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Supplier</label
-                ><select
-                    v-model="form.supplier_id"
-                    class="w-full px-3 py-2 text-sm text-gray-800 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                >
-                    <option value="">Semua Supplier</option>
-                    <option
-                        v-for="cat in dropdowns.suppliers"
-                        :key="cat.id"
-                        :value="cat.id"
-                    >
-                        {{ cat.name }}
-                    </option>
-                </select>
-            </div>
             <div class="mb-4">
                 <label
                     class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -147,7 +101,7 @@ function resetFilter() {
             <div class="mb-4">
                 <label
                     class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Total</label
+                    >Total Omset</label
                 >
                 <div class="flex gap-2">
                     <div class="flex flex-col w-full gap-2">
@@ -155,14 +109,14 @@ function resetFilter() {
                             type="number"
                             placeholder="Min"
                             class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                            v-model.number="form.min_total"
+                            v-model.number="form.min_revenue"
                         />
                         <span class="text-xs text-gray-500">{{
                             new Intl.NumberFormat("id-ID", {
                                 style: "currency",
                                 currency: "IDR",
                                 minimumFractionDigits: 0,
-                            }).format(form.min_total) || 0
+                            }).format(form.min_revenue) || 0
                         }}</span>
                     </div>
                     <div class="flex flex-col w-full gap-2">
@@ -170,7 +124,7 @@ function resetFilter() {
                             type="number"
                             placeholder="Max"
                             class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                            v-model.number="form.max_total"
+                            v-model.number="form.max_revenue"
                         />
                         <span class="text-xs text-gray-500">
                             {{
@@ -178,7 +132,7 @@ function resetFilter() {
                                     style: "currency",
                                     currency: "IDR",
                                     minimumFractionDigits: 0,
-                                }).format(form.max_total) || 0
+                                }).format(form.max_revenue) || 0
                             }}</span
                         >
                     </div>

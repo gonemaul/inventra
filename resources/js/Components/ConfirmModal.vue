@@ -40,7 +40,6 @@ const close = () => {
 
 // 1. Fungsi Aksi Utama (Delete/Put/Post)
 const executeAction = () => {
-    console.log(deleteUrl.value);
     if (!deleteUrl.value) {
         toast.error("URL aksi tidak terdefinisi.");
         return;

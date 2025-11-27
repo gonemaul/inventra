@@ -346,7 +346,7 @@ const displayedPrice = computed({
                             <div class="flex flex-row gap-4">
                                 <div class="flex flex-col w-full gap-3">
                                     <div
-                                        class="flex flex-row justify-start gap-3"
+                                        class="flex flex-col justify-start gap-3 md:flex-row"
                                     >
                                         <div class="w-full lg:w-2/3">
                                             <label
@@ -376,7 +376,7 @@ const displayedPrice = computed({
                                                 class="mt-1"
                                             />
                                         </div>
-                                        <div class="hidden lg:block">
+                                        <div class="lg:block">
                                             <label
                                                 class="block mb-1 text-sm font-medium"
                                                 >Tanggal</label
@@ -417,7 +417,7 @@ const displayedPrice = computed({
                                     </div>
 
                                     <div
-                                        class="flex flex-row justify-between gap-3"
+                                        class="flex flex-col justify-between gap-3 md:flex-row"
                                     >
                                         <Search
                                             class="flex-1"
@@ -426,37 +426,39 @@ const displayedPrice = computed({
                                             :isSearching="isSearching"
                                             @select="selectProductFromSearch"
                                         />
-                                        <div class="w-1/5 lg:w-1/6">
-                                            <label
-                                                class="block mb-1 text-sm font-medium"
-                                                >Qty</label
-                                            >
-                                            <input
-                                                v-model.number="
-                                                    stagingItem.quantity
-                                                "
-                                                type="number"
-                                                placeholder="Qty"
-                                                :disabled="
-                                                    !stagingItem.product_id
-                                                "
-                                                class="w-full px-2 focus:border-lime-500 focus:ring-lime-500 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white"
-                                            />
-                                        </div>
-                                        <div class="w-1/4">
-                                            <label
-                                                class="block mb-1 text-sm font-medium"
-                                                >Harga Beli</label
-                                            >
-                                            <input
-                                                v-model="displayedPrice"
-                                                type="text"
-                                                placeholder="Rp"
-                                                :disabled="
-                                                    !stagingItem.product_id
-                                                "
-                                                class="w-full px-2 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white focus:border-lime-500"
-                                            />
+                                        <div class="flex justify-between gap-3">
+                                            <div class="lg:w-1/6">
+                                                <label
+                                                    class="block mb-1 text-sm font-medium"
+                                                    >Qty</label
+                                                >
+                                                <input
+                                                    v-model.number="
+                                                        stagingItem.quantity
+                                                    "
+                                                    type="number"
+                                                    placeholder="Qty"
+                                                    :disabled="
+                                                        !stagingItem.product_id
+                                                    "
+                                                    class="w-full px-2 focus:border-lime-500 focus:ring-lime-500 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white"
+                                                />
+                                            </div>
+                                            <div class="md:w-1/4">
+                                                <label
+                                                    class="block mb-1 text-sm font-medium"
+                                                    >Harga Beli</label
+                                                >
+                                                <input
+                                                    v-model="displayedPrice"
+                                                    type="text"
+                                                    placeholder="Rp"
+                                                    :disabled="
+                                                        !stagingItem.product_id
+                                                    "
+                                                    class="w-full px-2 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white focus:border-lime-500"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
