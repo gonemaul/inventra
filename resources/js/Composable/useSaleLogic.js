@@ -4,14 +4,36 @@ import axios from "axios";
 import debounce from "lodash/debounce";
 import { useToast } from "vue-toastification";
 
-export function useSaleLogic() {
+export function useSaleLogic(props) {
     // --- STATE ---
     const toast = useToast();
     const STORAGE_KEY = "POS_RECAP_DRAFT_V1"; // Key unik
     const form = useForm({
-        report_date: new Date().toISOString().substr(0, 10),
-        notes: "",
-        items: [],
+        report_date:
+            props?.sale?.transaction_date ||
+            new Date().toISOString().substr(0, 10),
+        notes: props?.sale?.notes || "",
+        // Mapping item dari DB ke format Frontend
+        items: props?.sale?.items
+            ? props.sale.items.map((item) => ({
+                  product_id: item.product_id,
+                  code: item.product_snapshot?.code,
+                  name: item.product_snapshot?.name, // Pakai nama snapshot biar aman
+                  unit: item.product_snapshot?.unit,
+                  // Perhatian: stock_max harusnya ambil stok terkini dari DB via API search
+                  // Tapi untuk cepat, kita pakai stok sisa + qty dia sendiri (logic rumit di frontend)
+                  // Untuk amannya, biarkan stock_max ambil dari relation product (jika diload)
+                  stock_max:
+                      parseFloat(item.product?.stock || 0) +
+                      parseFloat(item.quantity),
+
+                  image: item.product?.image,
+                  selling_price: parseFloat(item.selling_price),
+                  is_price_locked: true,
+                  quantity: parseFloat(item.quantity),
+                  subtotal: parseFloat(item.subtotal),
+              }))
+            : [],
     });
 
     const searchResults = ref([]);
@@ -210,18 +232,33 @@ export function useSaleLogic() {
             );
             return;
         }
-        form.post(route("sales.store"), {
-            onSuccess: () => {
-                localStorage.removeItem(STORAGE_KEY); // Bersihkan draft
-                form.reset();
-                form.items = [];
-            },
-            onError: (errors) => {
-                // Inertia otomatis handle flash error, tapi kita bisa tambah toast.error manual
-                console.error(errors);
-                toast.error("Gagal menyimpan. Periksa inputan.");
-            },
-        });
+        if (props?.mode === "edit") {
+            form.put(route("sales.update", props.sale.id), {
+                onSuccess: () => {
+                    localStorage.removeItem(STORAGE_KEY); // Bersihkan draft
+                    form.reset();
+                    form.items = [];
+                },
+                onError: (errors) => {
+                    // Inertia otomatis handle flash error, tapi kita bisa tambah toast.error manual
+                    console.error(errors);
+                    toast.error("Gagal menyimpan. Periksa inputan.");
+                },
+            });
+        } else {
+            form.post(route("sales.store"), {
+                onSuccess: () => {
+                    localStorage.removeItem(STORAGE_KEY); // Bersihkan draft
+                    form.reset();
+                    form.items = [];
+                },
+                onError: (errors) => {
+                    // Inertia otomatis handle flash error, tapi kita bisa tambah toast.error manual
+                    console.error(errors);
+                    toast.error("Gagal menyimpan. Periksa inputan.");
+                },
+            });
+        }
     };
 
     const totalQty = computed(() =>

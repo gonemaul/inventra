@@ -8,7 +8,12 @@ import ProductSearch from "./partials/ProductSearch.vue";
 import SaleTable from "./partials/SaleTable.vue";
 import { useToast } from "vue-toastification";
 import { useActionLoading } from "@/Composable/useActionLoading";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 
+const props = defineProps({
+    sale: Object, // Data existing (jika edit)
+    mode: String, // 'create' atau 'edit'
+});
 // STATE
 const toast = useToast();
 const { isActionLoading } = useActionLoading();
@@ -38,14 +43,14 @@ const {
     hasInvalidQty,
     hasStockError,
     submitForm,
-} = useSaleLogic();
+} = useSaleLogic(props);
 
 isActionLoading.value = form.processing;
 </script>
 
 <template>
     <Head title="Input Rekap Penjualan" />
-
+    <!-- <AuthenticatedLayout :showHeader="false" :showSidebar="false"> -->
     <div class="flex flex-col h-screen overflow-hidden bg-gray-50">
         <div
             class="relative z-20 flex flex-col items-center justify-between flex-shrink-0 gap-4 px-6 py-4 bg-white border-b border-gray-200 shadow-sm md:flex-row"
@@ -231,4 +236,5 @@ isActionLoading.value = form.processing;
             </div>
         </div>
     </div>
+    <!-- </AuthenticatedLayout> -->
 </template>

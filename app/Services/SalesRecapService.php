@@ -186,6 +186,129 @@ class SalesRecapService
         });
     }
 
+    /**
+     * Update Rekap dengan teknik Safe Reset
+     */
+    public function updateRecap(Sale $sale, array $data)
+    {
+        return DB::transaction(function () use ($sale, $data) {
+
+            // --- LANGKAH 1: KEMBALIKAN SEMUA STOK LAMA (REFUND) ---
+            foreach ($sale->items as $oldItem) {
+                $product = Product::find($oldItem->product_id);
+                if ($product) {
+                    $product->increment('stock', $oldItem->quantity);
+                }
+            }
+
+            // --- LANGKAH 2: HAPUS SEMUA ITEM LAMA ---
+            // Kita hapus fisik baris item lama agar tidak pusing mikirin update/insert satu-satu
+            $sale->items()->delete();
+            // (Note: Pastikan sale_items pakai SoftDeletes atau ForceDelete sesuai kebutuhan.
+            // Kalau di migrasi pakai cascadeOnDelete, aman).
+
+            // --- LANGKAH 3: UPDATE HEADER ---
+            $sale->update([
+                'transaction_date' => $data['report_date'],
+                'notes' => $data['notes'] ?? null,
+                // Reset total, nanti dihitung ulang di bawah
+                'total_revenue' => 0,
+                'total_profit' => 0,
+            ]);
+
+            // --- LANGKAH 4: INSERT ITEM BARU (REPLAY) ---
+            // Logika ini COPY-PASTE dari method storeRecap,
+            // atau sebaiknya dibuat private method biar reusable.
+
+            $totalRevenue = 0;
+            $totalProfit = 0;
+            $itemsCount = 0;
+            $totalQty = 0;
+
+            foreach ($data['items'] as $itemData) {
+                $product = Product::with(['brand', 'category', 'unit'])
+                    ->lockForUpdate()
+                    ->findOrFail($itemData['product_id']);
+
+                $inputQty = $itemData['quantity'];
+                $sellingPrice = $itemData['selling_price'];
+
+                // Cek Stok (Stok di DB sekarang adalah: Stok Awal + Pengembalian Langkah 1)
+                // Jadi aman untuk dikurangi lagi.
+                if ($product->stock < $inputQty) {
+                    throw new Exception("Stok tidak cukup (setelah revisi) untuk: {$product->name}.");
+                }
+
+                // Ambil HPP (Profit Locking Baru)
+                // Jika mau pakai HPP lama, harus ambil dari $oldItem, tapi itu rumit.
+                // Asumsi: Edit transaksi berarti mengikuti harga modal saat ini (atau logic lain).
+                // Untuk simplifikasi, kita ambil modal master saat ini.
+                $capitalPrice = $product->purchase_price;
+
+                $subtotal = $inputQty * $sellingPrice;
+                $rowCost  = $inputQty * $capitalPrice;
+                $rowProfit = $subtotal - $rowCost;
+
+                $snapshot = [
+                    'name' => $product->name,
+                    'code' => $product->code,
+                    'brand' => $product->brand->name ?? '-',
+                    'category' => $product->category->name ?? '-',
+                    'unit' => $product->unit->name ?? 'Pcs',
+                ];
+
+                $sale->items()->create([
+                    'product_id' => $product->id,
+                    'quantity' => $inputQty,
+                    'selling_price' => $sellingPrice,
+                    'capital_price' => $capitalPrice,
+                    'subtotal' => $subtotal,
+                    'profit' => $rowProfit,
+                    'product_snapshot' => $snapshot,
+                ]);
+
+                $product->decrement('stock', $inputQty);
+
+                $totalRevenue += $subtotal;
+                $totalProfit += $rowProfit;
+                $itemsCount++;
+                $totalQty += $inputQty;
+            }
+
+            $sale->update([
+                'total_revenue' => $totalRevenue,
+                'total_profit' => $totalProfit,
+                'financial_summary' => ['item_count' => $itemsCount, 'total_qty' => $totalQty]
+            ]);
+
+            return $sale;
+        });
+    }
+
+    /**
+     * Menghapus Rekap & Mengembalikan Stok
+     */
+    public function deleteRecap(Sale $sale)
+    {
+        return DB::transaction(function () use ($sale) {
+
+            // 1. Loop semua item untuk kembalikan stok
+            foreach ($sale->items as $item) {
+                $product = Product::find($item->product_id);
+
+                if ($product) {
+                    // KEMBALIKAN STOK (Increment)
+                    // Karena penjualan mengurangi, maka hapus penjualan = menambah kembali
+                    $product->increment('stock', $item->quantity);
+                }
+            }
+
+            // 2. Hapus Item & Header (Soft Delete)
+            $sale->items()->delete(); // Soft delete items (optional jika cascade)
+            return $sale->delete();          // Soft delete header
+        });
+    }
+
     // Generator No: POS/YYMMDD/001
     private function generateReferenceNo($date)
     {

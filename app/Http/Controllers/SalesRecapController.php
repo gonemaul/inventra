@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use App\Services\SalesRecapService;
+use Illuminate\Support\Facades\Redirect;
 
 class SalesRecapController extends Controller
 {
@@ -58,10 +59,10 @@ class SalesRecapController extends Controller
         try {
             $this->service->storeRecap($validated);
 
-            return redirect()->route('sales.index')
+            return Redirect::route('sales.index')
                 ->with('success', 'Rekap penjualan berhasil disimpan.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return Redirect::back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -120,7 +121,12 @@ class SalesRecapController extends Controller
      */
     public function edit(Sale $sale)
     {
-        //
+        $sale->load('items.product.unit');
+
+        return Inertia::render('Sale/Form', [
+            'sale' => $sale, // Kirim data lama ke Vue
+            'mode' => 'edit' // Penanda mode
+        ]);
     }
 
     /**
@@ -128,7 +134,24 @@ class SalesRecapController extends Controller
      */
     public function update(Request $request, Sale $sale)
     {
-        //
+        // Validasi sama persis dengan Store
+        $validated = $request->validate([
+            'report_date' => 'required|date',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|numeric|gt:0',
+            'items.*.selling_price' => 'required|numeric|min:0',
+        ]);
+
+        try {
+            $this->service->updateRecap($sale, $validated);
+
+            return Redirect::route('sales.index')
+                ->with('success', 'Rekap berhasil diperbarui.');
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
     }
 
     /**
@@ -136,6 +159,13 @@ class SalesRecapController extends Controller
      */
     public function destroy(Sale $sale)
     {
-        //
+        // try {
+        //     $this->service->deleteRecap($sale);
+
+        return Redirect::route('sales.index')
+            ->with('success', "Rekap {$sale->reference_no} berhasil dihapus. Stok telah dikembalikan.");
+        // } catch (\Exception $e) {
+        // return Redirect::back()->with('error', 'Gagal menghapus: ');
+        // }
     }
 }

@@ -15,23 +15,41 @@ const { isSidebarOpen, closeSidebar } = useSidebar();
 const { isExtended } = useExtended();
 const { isDarkMode } = useDarkMode();
 
+// Watcher Global
 watch(
-    () => page.props.flash.success,
-    (message) => {
-        if (message) {
-            toast.success(message);
-        }
-    }
-);
+    () => page.props.flash,
+    (flash) => {
+        // Debugging: Cek apakah console log ini muncul saat redirect?
+        console.log("Flash Message Diterima:", flash);
 
-watch(
-    () => page.props.flash.error,
-    (message) => {
-        if (message) {
-            toast.error(message);
+        if (flash?.success) {
+            toast.success(flash.success);
+            page.props.flash.success = null;
         }
-    }
+        if (flash?.error) {
+            toast.error(flash.error);
+            page.props.flash.error = null;
+        }
+    },
+    { deep: true }
 );
+// watch(
+//     () => page.props.flash.success,
+//     (message) => {
+//         if (message) {
+//             toast.success(message);
+//         }
+//     }
+// );
+
+// watch(
+//     () => page.props.flash.error,
+//     (message) => {
+//         if (message) {
+//             toast.error(message);
+//         }
+//     }
+// );
 
 defineProps({
     showHeader: {
