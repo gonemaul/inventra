@@ -8,32 +8,40 @@ export function useSaleLogic(props) {
     // --- STATE ---
     const toast = useToast();
     const STORAGE_KEY = "POS_RECAP_DRAFT_V1"; // Key unik
+    // const form = useForm({
+    //     report_date:
+    //         props?.sale?.transaction_date ||
+    //         new Date().toISOString().substr(0, 10),
+    //     notes: props?.sale?.notes || "",
+    //     // Mapping item dari DB ke format Frontend
+    //     items: props?.sale?.items
+    //         ? props.sale.items.map((item) => ({
+    //               product_id: item.product_id,
+    //               code: item.product_snapshot?.code,
+    //               name: item.product_snapshot?.name, // Pakai nama snapshot biar aman
+    //               brand: item.product_snapshot?.brand,
+    //               category: item.product_snapshot?.category,
+    //               unit: item.product_snapshot?.unit,
+    //               // Perhatian: stock_max harusnya ambil stok terkini dari DB via API search
+    //               // Tapi untuk cepat, kita pakai stok sisa + qty dia sendiri (logic rumit di frontend)
+    //               // Untuk amannya, biarkan stock_max ambil dari relation product (jika diload)
+    //               stock_max:
+    //                   parseFloat(item.product?.stock || 0) +
+    //                   parseFloat(item.quantity),
+
+    //               image: item.product?.image,
+    //               selling_price: parseFloat(item.selling_price),
+    //               is_price_locked: true,
+    //               quantity: parseFloat(item.quantity),
+    //               subtotal: parseFloat(item.subtotal),
+    //           }))
+    //         : [],
+    // });
     const form = useForm({
         report_date:
             props?.sale?.transaction_date ||
             new Date().toISOString().substr(0, 10),
-        notes: props?.sale?.notes || "",
-        // Mapping item dari DB ke format Frontend
-        items: props?.sale?.items
-            ? props.sale.items.map((item) => ({
-                  product_id: item.product_id,
-                  code: item.product_snapshot?.code,
-                  name: item.product_snapshot?.name, // Pakai nama snapshot biar aman
-                  unit: item.product_snapshot?.unit,
-                  // Perhatian: stock_max harusnya ambil stok terkini dari DB via API search
-                  // Tapi untuk cepat, kita pakai stok sisa + qty dia sendiri (logic rumit di frontend)
-                  // Untuk amannya, biarkan stock_max ambil dari relation product (jika diload)
-                  stock_max:
-                      parseFloat(item.product?.stock || 0) +
-                      parseFloat(item.quantity),
-
-                  image: item.product?.image,
-                  selling_price: parseFloat(item.selling_price),
-                  is_price_locked: true,
-                  quantity: parseFloat(item.quantity),
-                  subtotal: parseFloat(item.subtotal),
-              }))
-            : [],
+        items: [],
     });
 
     const searchResults = ref([]);
@@ -78,16 +86,50 @@ export function useSaleLogic(props) {
     // --- 1. LOCAL STORAGE LOGIC (FIX BUG 1) ---
     onMounted(() => {
         const savedData = localStorage.getItem(STORAGE_KEY);
+        let localItems = [];
+        let localNotes = "";
+        let dbItems = [];
         if (savedData) {
             try {
                 const parsed = JSON.parse(savedData);
                 if (parsed.items && parsed.items.length > 0) {
-                    // Restore data
-                    form.items = parsed.items;
-                    form.notes = parsed.notes || "";
+                    localItems = parsed.items;
+                    localNotes = parsed.notes || "";
                 }
             } catch (e) {
                 localStorage.removeItem(STORAGE_KEY);
+            }
+        }
+        if (props?.mode === "edit" && props.sale?.items) {
+            dbItems = props.sale.items.map((item) => ({
+                product_id: item.product_id,
+                code: item.product_snapshot?.code,
+                name: item.product_snapshot?.name, // Pakai nama snapshot biar aman
+                unit: item.product_snapshot?.unit,
+                category: item.product_snapshot?.category,
+                brand: item.product_snapshot?.brand,
+                stock_max:
+                    parseFloat(item.product?.stock || 0) +
+                    parseFloat(item.quantity),
+                image: item.product?.image,
+                selling_price: parseFloat(item.selling_price),
+                is_price_locked: true,
+                is_total_locked: true,
+                quantity: parseFloat(item.quantity),
+                subtotal: parseFloat(item.subtotal),
+            }));
+            if (localItems.length > 0) {
+                form.items = [...dbItems, ...localItems];
+                form.notes = localNotes ? localNotes : props.sale?.notes || "";
+                console.log("Data digabung: Database + Local Storage");
+            } else {
+                form.items = dbItems;
+                form.notes = props.sale?.notes || "";
+            }
+        } else {
+            if (localItems.length > 0) {
+                form.items = localItems;
+                form.notes = localNotes;
             }
         }
     });
@@ -245,7 +287,8 @@ export function useSaleLogic(props) {
                     toast.error("Gagal menyimpan. Periksa inputan.");
                 },
             });
-        } else {
+        } else if (props?.mode === "create") {
+            console.log("store");
             form.post(route("sales.store"), {
                 onSuccess: () => {
                     localStorage.removeItem(STORAGE_KEY); // Bersihkan draft

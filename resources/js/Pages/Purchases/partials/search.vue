@@ -1,5 +1,5 @@
 <template>
-    <div class="relative w-64">
+    <div class="relative md:w-full">
         <!-- Input -->
         <label class="block mb-1 text-sm font-medium"
             >Cari Produk (Nama atau Kode)</label

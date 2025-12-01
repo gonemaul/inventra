@@ -16,13 +16,14 @@ class Sale extends Model
         'total_profit',
         'user_id',
         'notes',
-        'finance_summary'
+        'financial_summary'
     ];
 
     protected $casts = [
         'transaction_date' => 'date',
         'total_revenue' => 'decimal:2',
         'total_profit' => 'decimal:2',
+        'financial_summary' => 'array'
     ];
 
     // Relasi ke Item Penjualan

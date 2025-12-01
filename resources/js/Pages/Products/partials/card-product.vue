@@ -9,13 +9,15 @@ defineEmits(["delete", "forceDelete", "restore", "imageClick"]);
 </script>
 <template>
     <div
-        class="flex items-start justify-between w-full gap-4 p-3 mx-auto bg-gray-100 border-2 rounded-lg shadow-md dark:bg-customBg-tableDark bg-opacity-35 border-lime-500 dark:border-gray-500 sm:items-center"
+        class="items-start justify-between w-full gap-4 p-3 mx-auto bg-gray-100 border-2 rounded-lg shadow-md md:flex dark:bg-customBg-tableDark bg-opacity-35 border-lime-500 dark:border-gray-500 sm:items-center"
     >
         <!-- Gambar + Status -->
-        <div class="flex flex-col justify-center border-2 rounded-md shadow-md">
+        <div
+            class="flex flex-col justify-center w-32 mx-auto mb-3 border-2 rounded-md shadow-md md:w-40"
+        >
             <img
                 alt="Produk"
-                class="object-cover w-32 cursor-pointer lg:w-40 aspect-square rounded-t-md"
+                class="object-cover w-32 cursor-pointer md:w-40 aspect-square rounded-t-md"
                 :src="
                     data.image_path
                         ? 'storage/' + data.image_path
@@ -30,7 +32,7 @@ defineEmits(["delete", "forceDelete", "restore", "imageClick"]);
             />
             <div
                 :class="[
-                    'w-32 py-1 text-xs font-medium text-center text-white select-none lg:w-40 rounded-b-md',
+                    'w-32 py-1 text-xs font-medium text-center text-white select-none md:w-40 rounded-b-md',
                     data.status == 'active' ? 'bg-lime-500' : 'bg-gray-400',
                 ]"
             >
@@ -102,7 +104,7 @@ defineEmits(["delete", "forceDelete", "restore", "imageClick"]);
                 </div>
 
                 <!-- Harga -->
-                <div class="text-left sm:text-right">
+                <div class="mx-auto text-left sm:text-right">
                     <p
                         class="mb-0 text-xs text-black line-through lg:text-sm dark:text-gray-100 opacity-60"
                     >
@@ -128,7 +130,7 @@ defineEmits(["delete", "forceDelete", "restore", "imageClick"]);
                 </div>
 
                 <!-- Tombol Aksi -->
-                <div class="flex justify-center gap-2 lg:w-auto">
+                <div class="flex justify-center gap-2 mx-auto lg:w-auto">
                     <Link
                         v-if="!isTrashView"
                         :href="route('products.show', { id: data.id })"

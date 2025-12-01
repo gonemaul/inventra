@@ -262,7 +262,7 @@ const getActions = (row) => {
     <AuthenticatedLayout headerTitle="Pembelian">
         <DeleteConfirm ref="showConfirmDelete" @success="refreshTable" />
         <ConfirmModal ref="showConfirmModal" @success="refreshTable" />
-        <div class="w-full min-h-screen px-4 space-y-6">
+        <div class="w-full min-h-screen space-y-6">
             <Filter
                 :filters="filters"
                 v-model="search"

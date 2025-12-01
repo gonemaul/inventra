@@ -24,11 +24,6 @@
                         >
                             Info Transaksi
                         </h3>
-                        <Link
-                            :href="route('purchases.index')"
-                            class="mb-4 text-sm font-semibold text-gray-600 dark:hover:text-gray-100 hover:text-gray-800 dark:text-gray-300"
-                            >← Kembali</Link
-                        >
                     </div>
                     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <InfoCard label="Supplier">

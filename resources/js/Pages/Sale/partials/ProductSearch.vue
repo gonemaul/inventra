@@ -148,60 +148,64 @@ onMounted(() => {
                     v-for="product in searchResults"
                     :key="product.id"
                     @click="selectItem(product)"
-                    class="flex items-center gap-4 px-4 py-3 transition duration-150 ease-in-out border-b border-gray-100 cursor-pointer group hover:bg-indigo-50 last:border-b-0"
+                    class="items-center px-4 py-3 space-y-2 transition duration-150 ease-in-out border-b border-gray-100 cursor-pointer group hover:bg-indigo-50 last:border-b-0"
                 >
-                    <div
-                        class="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-md shadow-sm group-hover:border-indigo-200"
-                    >
-                        <img
-                            v-if="product.image"
-                            :src="product.image"
-                            class="object-cover w-full h-full"
-                        />
+                    <div class="flex gap-2">
+                        <div
+                            class="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-md shadow-sm group-hover:border-indigo-200"
+                        >
+                            <img
+                                v-if="product.image"
+                                :src="product.image"
+                                class="object-cover w-full h-full"
+                            />
+                            <span
+                                v-else
+                                class="text-sm font-bold text-gray-400 group-hover:text-indigo-500"
+                            >
+                                {{ getInitials(product.name) }}
+                            </span>
+                        </div>
+
+                        <div class="flex-1 min-w-0">
+                            <div
+                                class="text-sm font-bold text-gray-800 truncate group-hover:text-indigo-700"
+                            >
+                                {{ product.name }}
+                            </div>
+                            <div class="flex items-center mt-0.5 space-x-2">
+                                <span
+                                    class="bg-gray-100 text-gray-600 text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-200"
+                                >
+                                    {{ product.code }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between">
                         <span
-                            v-else
-                            class="text-sm font-bold text-gray-400 group-hover:text-indigo-500"
+                            class="text-xs text-gray-500"
+                            :class="
+                                parseFloat(product.stock) <= 0
+                                    ? 'text-red-500 font-bold'
+                                    : ''
+                            "
                         >
-                            {{ getInitials(product.name) }}
+                            Stok: {{ product.stock }} {{ product.unit }}
                         </span>
-                    </div>
-
-                    <div class="flex-1 min-w-0">
-                        <div
-                            class="text-sm font-bold text-gray-800 truncate group-hover:text-indigo-700"
-                        >
-                            {{ product.name }}
-                        </div>
-                        <div class="flex items-center mt-0.5 space-x-2">
-                            <span
-                                class="bg-gray-100 text-gray-600 text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-200"
+                        <div class="text-right">
+                            <div
+                                class="font-mono text-sm font-bold text-indigo-600"
                             >
-                                {{ product.code }}
-                            </span>
-                            <span
-                                class="text-xs text-gray-500"
-                                :class="
-                                    parseFloat(product.stock) <= 0
-                                        ? 'text-red-500 font-bold'
-                                        : ''
-                                "
+                                {{ formatCurrency(product.price) }}
+                            </div>
+                            <div
+                                v-if="parseFloat(product.stock) <= 0"
+                                class="text-[10px] text-red-600 font-bold uppercase mt-1"
                             >
-                                Stok: {{ product.stock }} {{ product.unit }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="text-right">
-                        <div
-                            class="font-mono text-sm font-bold text-indigo-600"
-                        >
-                            {{ formatCurrency(product.price) }}
-                        </div>
-                        <div
-                            v-if="parseFloat(product.stock) <= 0"
-                            class="text-[10px] text-red-600 font-bold uppercase mt-1"
-                        >
-                            Habis
+                                Habis
+                            </div>
                         </div>
                     </div>
                 </li>

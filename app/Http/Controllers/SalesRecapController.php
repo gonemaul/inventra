@@ -34,7 +34,7 @@ class SalesRecapController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Sale/form');
+        return Inertia::render('Sale/form', ['mode' => 'create']);
     }
 
     /**
@@ -62,7 +62,7 @@ class SalesRecapController extends Controller
             return Redirect::route('sales.index')
                 ->with('success', 'Rekap penjualan berhasil disimpan.');
         } catch (\Exception $e) {
-            return Redirect::back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -123,7 +123,7 @@ class SalesRecapController extends Controller
     {
         $sale->load('items.product.unit');
 
-        return Inertia::render('Sale/Form', [
+        return Inertia::render('Sale/form', [
             'sale' => $sale, // Kirim data lama ke Vue
             'mode' => 'edit' // Penanda mode
         ]);
@@ -159,13 +159,12 @@ class SalesRecapController extends Controller
      */
     public function destroy(Sale $sale)
     {
-        // try {
-        //     $this->service->deleteRecap($sale);
-
-        return Redirect::route('sales.index')
-            ->with('success', "Rekap {$sale->reference_no} berhasil dihapus. Stok telah dikembalikan.");
-        // } catch (\Exception $e) {
-        // return Redirect::back()->with('error', 'Gagal menghapus: ');
-        // }
+        try {
+            $this->service->deleteRecap($sale);
+            return Redirect::route('sales.index')
+                ->with('success', "Rekap {$sale->reference_no} berhasil dihapus. Stok telah dikembalikan.");
+        } catch (\Exception $e) {
+            return Redirect::back()->with('error', 'Gagal menghapus: ');
+        }
     }
 }

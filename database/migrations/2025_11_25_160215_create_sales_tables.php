@@ -18,6 +18,7 @@ return new class extends Migration
             $table->decimal('total_revenue', 19, 4)->default(0); // Total Omset
             $table->decimal('total_profit', 19, 4)->default(0);  // Total Laba Bersih
 
+            $table->json('financial_summary');
             $table->foreignId('user_id')->constrained('users');  // Kasir/Admin
             $table->text('notes')->nullable(); // Catatan (misal: "Shift Pagi")
 

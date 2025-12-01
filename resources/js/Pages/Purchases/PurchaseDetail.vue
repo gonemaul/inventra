@@ -5,6 +5,7 @@ import Tabs from "@/Components/Tabs.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 import FinalizeModal from "./partials/FinalizeModal.vue";
+import { Link } from "@inertiajs/vue3";
 // Komponen Anak
 import InvoiceForm from "./partials/InvoiceForm.vue";
 import InvoiceTransactionTable from "./partials/invoiceTable.vue"; // Menggunakan nama yang sudah diperbaiki
@@ -97,17 +98,39 @@ const tabs = [
 ];
 </script>
 <template>
-    <Head title="Detail Transaksi"></Head>
+    <Head :title="`Pembelian - ${purchase.reference_no}`"></Head>
     <DeleteConfirm ref="deleteModalRef" @success="handleInvoiceSaved" />
     <FinalizeModal
         :show="showFinalizeModal"
         :purchase="purchase"
         @close="showFinalizeModal = false"
     />
-    <AuthenticatedLayout
-        :headerTitle="'Detail' + ' # ' + props.purchase.reference_no"
-        :showSidebar="false"
-    >
+    <AuthenticatedLayout :showSidebar="false" :showHeader="false">
+        <div
+            class="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-300"
+        >
+            <Link
+                :href="route('purchases.index')"
+                class="flex items-center transition hover:text-indigo-600"
+            >
+                <svg
+                    class="w-4 h-4 mr-1"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                    ></path>
+                </svg>
+                Riwayat
+            </Link>
+            <span>/</span>
+            <span>Detail Pembelian # {{ purchase.reference_no }}</span>
+        </div>
         <HeaderDetail :data="props.purchase" :mode="type" />
         <InvoiceForm
             :show="showInvoiceModal"

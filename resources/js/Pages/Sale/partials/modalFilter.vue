@@ -104,7 +104,7 @@ function resetFilter() {
                     >Total Omset</label
                 >
                 <div class="flex gap-2">
-                    <div class="flex flex-col w-full gap-2">
+                    <div class="flex flex-col w-1/2 gap-2">
                         <input
                             type="number"
                             placeholder="Min"
@@ -119,7 +119,7 @@ function resetFilter() {
                             }).format(form.min_revenue) || 0
                         }}</span>
                     </div>
-                    <div class="flex flex-col w-full gap-2">
+                    <div class="flex flex-col w-1/2 gap-2">
                         <input
                             type="number"
                             placeholder="Max"

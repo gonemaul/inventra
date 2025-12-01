@@ -33,29 +33,31 @@ const getInitials = (name) =>
 
 <template>
     <div
-        class="relative flex flex-col flex-1 min-h-0 overflow-hidden bg-white border border-gray-300 rounded-lg shadow-sm"
+        class="relative flex flex-col flex-1 min-h-0 bg-white border border-gray-300 rounded-lg shadow-sm"
     >
-        <div class="flex-shrink-0 pr-2 bg-gray-100 border-b border-gray-200">
-            <table class="min-w-full">
-                <thead>
+        <div
+            class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-50"
+        >
+            <table class="min-w-full divide-y divide-gray-100">
+                <thead class="bg-gray-300 border-b border-gray-500">
                     <tr>
                         <th
-                            class="px-4 py-3 text-left w-[35%] text-xs font-bold text-gray-600 uppercase tracking-wider"
+                            class="px-4 py-3 text-left min-w-[200px] max-w-[35%] text-xs font-bold text-gray-600 uppercase tracking-wider"
                         >
                             Produk
                         </th>
                         <th
-                            class="px-2 py-3 text-center w-[15%] text-xs font-bold text-gray-600 uppercase tracking-wider"
+                            class="px-2 py-3 text-center min-w-[130px] max-w-[15%] text-xs font-bold text-gray-600 uppercase tracking-wider"
                         >
                             Harga (@)
                         </th>
                         <th
-                            class="px-2 py-3 text-center w-[10%] text-xs font-bold text-gray-600 uppercase tracking-wider"
+                            class="px-2 py-3 text-center min-w-[130px] max-w-[10%] text-xs font-bold text-gray-600 uppercase tracking-wider"
                         >
                             Qty
                         </th>
                         <th
-                            class="px-2 py-3 text-center w-[20%] text-xs font-bold text-gray-600 uppercase tracking-wider"
+                            class="px-2 py-3 text-center min-w-[130px] max-w-[20%] text-xs font-bold text-gray-600 uppercase tracking-wider"
                         >
                             Subtotal
                         </th>
@@ -66,13 +68,6 @@ const getInitials = (name) =>
                         </th>
                     </tr>
                 </thead>
-            </table>
-        </div>
-
-        <div
-            class="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-50"
-        >
-            <table class="min-w-full divide-y divide-gray-100">
                 <tbody class="bg-white">
                     <tr v-if="items.length === 0">
                         <td colspan="5" class="h-64 text-center align-middle">
@@ -104,8 +99,8 @@ const getInitials = (name) =>
                         :key="index"
                         class="transition duration-75 group hover:bg-indigo-50/50"
                     >
-                        <td class="px-4 py-3 w-[35%] align-top">
-                            <div class="flex items-start gap-3">
+                        <td class="px-4 py-3 min-w-[200px] w-[35%] align-top">
+                            <div class="items-start gap-3 md:flex">
                                 <div
                                     class="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden border border-gray-200 rounded bg-gray-50"
                                 >
@@ -122,7 +117,7 @@ const getInitials = (name) =>
                                 </div>
                                 <div class="min-w-0 pt-0.5">
                                     <div
-                                        class="text-base font-bold leading-tight text-gray-900 line-clamp-2"
+                                        class="text-sm font-bold leading-tight text-gray-900 md:text-base line-clamp-2"
                                     >
                                         {{ item.name }}
                                     </div>
@@ -131,7 +126,7 @@ const getInitials = (name) =>
                                         class="flex flex-wrap gap-2 mt-1 text-xs text-gray-500"
                                     >
                                         <span
-                                            class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-medium"
+                                            class="bg-indigo-50 hidden md:block text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 font-medium"
                                         >
                                             {{ item.brand || "-" }}
                                         </span>
@@ -154,7 +149,7 @@ const getInitials = (name) =>
                             </div>
                         </td>
 
-                        <td class="px-2 py-3 w-[15%] align-top">
+                        <td class="px-2 py-3 min-w-[130px] w-[15%] align-top">
                             <div class="flex items-start gap-1">
                                 <div
                                     class="relative w-full rounded-md shadow-sm"
@@ -216,7 +211,7 @@ const getInitials = (name) =>
                             </div>
                         </td>
 
-                        <td class="px-2 py-3 w-[10%] align-top">
+                        <td class="px-2 py-3 min-w-[130px] w-[10%] align-top">
                             <div class="relative rounded-md shadow-sm">
                                 <input
                                     type="number"
@@ -249,7 +244,7 @@ const getInitials = (name) =>
                             </div>
                         </td>
 
-                        <td class="px-2 py-3 w-[20%] align-top">
+                        <td class="px-2 py-3 min-w-[130px] w-[20%] align-top">
                             <div class="flex items-start justify-end gap-1">
                                 <div class="relative rounded-md shadow-sm">
                                     <div
@@ -314,7 +309,7 @@ const getInitials = (name) =>
                             <button
                                 @click="onRemove(index)"
                                 tabindex="-1"
-                                class="text-gray-400 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition duration-150"
+                                class="text-white bg-red-500 hover:text-red-500 p-1.5 rounded-md hover:bg-red-300 transition duration-150"
                             >
                                 <svg
                                     class="w-5 h-5"

@@ -23,17 +23,20 @@ const columns = [
         label: "Tanggal",
         sortable: true,
         format: "tanggal",
+        width: "130px",
     },
     {
         key: "reference_no",
         label: "No. Referensi",
         sortable: true,
         slot: "reference",
+        width: "130px",
     },
     {
         key: "summary",
         label: "Summary",
         slot: "Summary",
+        width: "130px",
     },
     {
         key: "total_revenue",
@@ -103,7 +106,7 @@ const activeFilterCount = computed(() => {
     <Head title="Riwayat Penjualan" />
 
     <AuthenticatedLayout headerTitle="Riwayat Penjualan">
-        <div class="w-full min-h-screen px-4 space-y-6">
+        <div class="w-full min-h-screen space-y-6">
             <Filter
                 :filters="filters"
                 v-model="search"
@@ -158,10 +161,10 @@ const activeFilterCount = computed(() => {
                             📝 {{ row.notes }}
                         </div>
                     </template>
-                    <template #summary="{ row }">
+                    <template #Summary="{ row }">
                         <div
                             v-if="row.financial_summary"
-                            class="mx-6 my-4 text-sm text-gray-600 whitespace-nowrap"
+                            class="my-4 text-sm text-gray-600 dark:text-gray-200 whitespace-nowrap"
                         >
                             <div>
                                 Item:
@@ -183,7 +186,7 @@ const activeFilterCount = computed(() => {
                     <template #aksi="{ row }">
                         <Link
                             :href="route('sales.show', row.id)"
-                            class="px-3 py-1 text-sm font-medium text-indigo-600 transition border border-indigo-200 rounded hover:text-indigo-900 hover:bg-indigo-50"
+                            class="px-3 py-1 text-sm font-medium text-indigo-600 transition border border-indigo-200 rounded hover:text-indigo-900 hover:bg-indigo-300"
                         >
                             Lihat Detail
                         </Link>

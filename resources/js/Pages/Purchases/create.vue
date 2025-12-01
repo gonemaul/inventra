@@ -420,14 +420,13 @@ const displayedPrice = computed({
                                         class="flex flex-col justify-between gap-3 md:flex-row"
                                     >
                                         <Search
-                                            class="flex-1"
                                             v-model="searchKeyword"
                                             :results="searchResults"
                                             :isSearching="isSearching"
                                             @select="selectProductFromSearch"
                                         />
                                         <div class="flex justify-between gap-3">
-                                            <div class="lg:w-1/6">
+                                            <div class="lg:w-1/2">
                                                 <label
                                                     class="block mb-1 text-sm font-medium"
                                                     >Qty</label
@@ -444,7 +443,7 @@ const displayedPrice = computed({
                                                     class="w-full px-2 focus:border-lime-500 focus:ring-lime-500 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white"
                                                 />
                                             </div>
-                                            <div class="md:w-1/4">
+                                            <div class="md:w-1/2">
                                                 <label
                                                     class="block mb-1 text-sm font-medium"
                                                     >Harga Beli</label

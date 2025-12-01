@@ -235,11 +235,11 @@ function resetFilter() {
                     >Harga (Jual)</label
                 >
                 <div class="flex gap-2">
-                    <div class="flex flex-col w-full gap-2">
+                    <div class="flex flex-col gap-2">
                         <input
                             type="number"
                             placeholder="Min"
-                            class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
                             v-model="form.min_price"
                         />
                         <span class="text-xs text-gray-500">{{
@@ -250,11 +250,11 @@ function resetFilter() {
                             }).format(form.min_price) || 0
                         }}</span>
                     </div>
-                    <div class="flex flex-col w-full gap-2">
+                    <div class="flex flex-col gap-2">
                         <input
                             type="number"
                             placeholder="Max"
-                            class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
                             v-model="form.max_price"
                         />
                         <span class="text-xs text-gray-500">{{
@@ -267,8 +267,20 @@ function resetFilter() {
                     </div>
                 </div>
             </div>
-            <div class="flex justify-between gap-2">
-                <div class="my-auto">
+            <div class="block mb-4 mr-auto md:hidden">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        v-model="form.trashed"
+                        class="border-gray-300 rounded dark:bg-gray-900 dark:border-gray-700 text-lime-600 focus:ring-lime-500"
+                    />
+                    <span class="text-sm text-gray-700 dark:text-gray-400">
+                        Hanya Tampilkan Sampah
+                    </span>
+                </label>
+            </div>
+            <div class="flex justify-center gap-2 md:justify-between">
+                <div class="hidden my-auto md:block">
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input
                             type="checkbox"

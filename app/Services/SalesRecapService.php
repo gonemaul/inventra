@@ -98,6 +98,7 @@ class SalesRecapService
                 'notes' => $data['notes'] ?? null,
                 'total_revenue' => 0, // Nanti diupdate
                 'total_profit' => 0,  // Nanti diupdate
+                'financial_summary' => []
             ]);
 
             $totalRevenue = 0;
@@ -172,14 +173,14 @@ class SalesRecapService
             }
 
             // 3. Update Header dengan Total Final
-            $sale->update([
+            $sale->update(attributes: [
                 'total_revenue' => $totalRevenue,
                 'total_profit' => $totalProfit,
                 // Kita simpan ringkasan di JSON (sesuai migrasi) agar dashboard ringan
-                // 'financial_summary' => [
-                //     'item_count' => $itemsCount,
-                //     'total_qty' => $totalQty
-                // ]
+                'financial_summary' => [
+                    'item_count' => $itemsCount,
+                    'total_qty' => $totalQty
+                ]
             ]);
 
             return $sale;
@@ -207,6 +208,8 @@ class SalesRecapService
             // (Note: Pastikan sale_items pakai SoftDeletes atau ForceDelete sesuai kebutuhan.
             // Kalau di migrasi pakai cascadeOnDelete, aman).
 
+            // $totalRevenue = 0;
+            // $totalProfit = 0;
             // --- LANGKAH 3: UPDATE HEADER ---
             $sale->update([
                 'transaction_date' => $data['report_date'],
