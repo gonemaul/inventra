@@ -45,8 +45,8 @@ const searchResults = ref([]);
 const isSearching = ref(false);
 
 // --- FORMS UNTUK SUBMISSION ---
-const linkForm = useForm({ product_ids: [], type: 'link' });
-const singleLinkForm = useForm({product_ids: [], type: 'create'});
+const linkForm = useForm({ ids: [], type: 'link' });
+const singleLinkForm = useForm({product_id: [], type: 'create'});
 const unlinkForm = useForm({ item_ids: [] });
 const correctionForm = useForm({ items: editableLinkedItems }); // Form untuk Simpan Koreksi Qty/Harga
 
@@ -112,8 +112,9 @@ const submitLinkage = () => {
         toast.error("Pilih minimal satu item untuk ditautkan.");
         return;
     }
-    linkForm.product_ids = [];
-    linkForm.product_ids = selectedLinkItemIds.value;
+    linkForm.ids = [];
+    linkForm.ids = selectedLinkItemIds.value;
+    console.log(linkForm.ids)
     isActionLoading.value = true;
     isProcessing.value = true;
     linkForm.post(
@@ -270,8 +271,8 @@ const addNewSubstituteItem = (product) => {
         return;
     }
 
-    singleLinkForm.product_ids = [];
-    singleLinkForm.product_ids = [product.id]
+    singleLinkForm.product_id = [];
+    singleLinkForm.product_id = [product.id]
     isActionLoading.value = true;
     isProcessing.value = true;
     singleLinkForm.post(
@@ -594,7 +595,7 @@ const addNewSubstituteItem = (product) => {
                     </h4>
                     <form @submit.prevent="submitLinkage">
                         <p
-                            v-if="pageMode.value === 'edit' && unlinkedItems.length === 0"
+                            v-if="pageMode === 'edit' && unlinkedItems.length == 0"
                             class="py-4 text-center text-gray-500"
                         >
                             Semua produk sudah ditautkan.

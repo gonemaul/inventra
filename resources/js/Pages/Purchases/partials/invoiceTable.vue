@@ -4,11 +4,7 @@ import { ref, computed } from "vue";
 import { Link } from "@inertiajs/vue3";
 import ImageModal from "@/Components/ImageModal.vue";
 // Menggunakan Emit untuk memberi tahu Parent (PurchaseDetail.vue) adanya aksi
-const emit = defineEmits([
-    "edit-invoice",
-    "delete-invoice",
-    "open-payment-modal",
-]);
+const emit = defineEmits(["edit-invoice", "delete-invoice"]);
 
 // Prop: Data Invoice (Array dari PurchaseInvoice)
 const props = defineProps({
@@ -134,13 +130,13 @@ const columns = [
                     >
                         Hapus
                     </button>
-                    <button
+                    <Link
+                        :href="route('finance.detail', row.id)"
                         v-if="row.payment_status !== 'paid'"
-                        @click="$emit('open-payment-modal', row)"
                         class="px-2 py-1 text-xs text-white rounded bg-lime-600 hover:bg-lime-700"
                     >
                         Bayar
-                    </button>
+                    </Link>
                 </div>
             </template>
         </DataTable>

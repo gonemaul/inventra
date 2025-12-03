@@ -4,58 +4,65 @@ import { Head, Link } from "@inertiajs/vue3";
 import { ref } from "vue";
 import { computed } from "vue";
 import DataTable from "@/Components/DataTable.vue";
+import { useActionLoading } from "@/Composable/useActionLoading";
 
 // props data pembayaran
 const props = defineProps({
-    total: {
-        type: Number,
-        required: true,
-    },
-    terbayarkan: {
-        type: Number,
-        required: true,
-    },
-    kekurangan: {
-        type: Number,
-        required: true,
-    },
+    stats: Object,
+    invoices: Object,
 });
 
 const params = ref({
     search: "",
     kategori: "",
+    refresh_key: 0,
 });
 
+console.log(props.stats);
+// STATE
+const { isActionLoading } = useActionLoading();
+const datatable = ref(null);
+const refreshTable = () => {
+    params.value.refresh_key = Date.now();
+    if (datatable.value) {
+        datatable.value.refresh();
+    }
+};
+const formatRupiah = (val) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(val);
+const formatDate = (date) =>
+    new Date(date).toLocaleDateString("id-ID", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+    });
 const columns = [
-    { key: "no_nota", label: "No Nota", sortable: true, width: "120px" },
     {
-        key: "tanggal",
-        label: "Tanggal",
+        key: "due_date",
+        label: "Jatuh Tempo",
         sortable: true,
-        width: "200px",
+        width: "130px",
         format: "tanggal",
     },
-    { key: "supplier", label: "Supplier", sortable: true, width: "200px" },
+    { key: "invoice_number", label: "No Nota", sortable: true, width: "120px" },
+    {
+        key: "supplier",
+        label: "Supplier",
+        sortable: true,
+        width: "200px",
+        slot: "supplier",
+    },
     {
         key: "total",
         label: "Total",
         sortable: true,
         width: "200px",
-        format: "rupiah",
-    },
-    {
-        key: "terbayarkan",
-        label: "Terbayarkan",
-        sortable: true,
-        width: "200px",
-        format: "rupiah",
-    },
-    {
-        key: "kekurangan",
-        label: "Kekurangan",
-        sortable: true,
-        width: "200px",
-        format: "rupiah",
+        slot: "total",
     },
     {
         key: "progress",
@@ -64,35 +71,12 @@ const columns = [
         width: "200px",
         slot: "progress",
     },
-    { key: "aksi", label: "Aksi", width: "120px", slot: "aksi" },
-];
-const allData = [
     {
-        id: 1,
-        no_nota: "INV-001",
-        tanggal: "2025-08-01",
-        supplier: "PT Sumber Makmur",
-        total: 2000000,
-        terbayarkan: 1500000,
-        kekurangan: 500000,
-    },
-    {
-        id: 2,
-        no_nota: "INV-002",
-        tanggal: "2025-08-03",
-        supplier: "UD Berkah Jaya",
-        total: 3000000,
-        terbayarkan: 3000000,
-        kekurangan: 0,
-    },
-    {
-        id: 3,
-        no_nota: "INV-003",
-        tanggal: "2025-08-05",
-        supplier: "CV Sinar Abadi",
-        total: 1500000,
-        terbayarkan: 500000,
-        kekurangan: 1000000,
+        key: "aksi",
+        label: "Aksi",
+        width: "120px",
+        class: "!text-right text-red-400",
+        slot: "aksi",
     },
 ];
 </script>
@@ -117,7 +101,9 @@ const allData = [
                         >
                         <span
                             class="text-2xl font-bold text-red-500 lg:text-3xl"
-                            >Rp 6.500.000</span
+                            >{{
+                                formatRupiah(stats.financial.total_debt)
+                            }}</span
                         >
                     </div>
                     <div
@@ -129,7 +115,9 @@ const allData = [
                         >
                         <span
                             class="text-2xl font-bold text-green-500 lg:text-3xl"
-                            >Rp 4.500.000</span
+                            >{{
+                                formatRupiah(stats.financial.total_paid)
+                            }}</span
                         >
                     </div>
                 </div>
@@ -141,19 +129,30 @@ const allData = [
                     >
                         <div class="flex justify-between">
                             <span>Nota Lunas</span>
-                            <span class="font-semibold">5 Nota</span>
+                            <span class="font-semibold"
+                                >{{ stats.counts.paid }} Nota</span
+                            >
                         </div>
                         <div class="flex justify-between">
                             <span>Nota Belum Lunas</span>
-                            <span class="font-semibold">3 Nota</span>
+                            <span class="font-semibold"
+                                >{{ stats.counts.unpaid }} Nota</span
+                            >
                         </div>
                         <div class="flex justify-between">
                             <span>Nota Jatuh Tempo</span>
-                            <span class="font-semibold">2 Nota</span>
+                            <span class="font-semibold"
+                                >{{ stats.counts.overdue }} Nota</span
+                            >
                         </div>
                         <div class="flex justify-between">
-                            <span>Total Transaksi</span>
-                            <span class="font-semibold">8 Nota</span>
+                            <span>Total Nota</span>
+                            <span class="font-semibold"
+                                >{{
+                                    stats.counts.paid + stats.counts.unpaid
+                                }}
+                                Nota</span
+                            >
                         </div>
                     </div>
                     <div
@@ -163,15 +162,44 @@ const allData = [
                             class="flex flex-col text-sm text-gray-500 dark:text-gray-300 lg:flex-row lg:items-center lg:gap-2"
                         >
                             <span
-                                class="text-sm text-gray-500 dark:text-gray-300"
-                                >Pembayaran terakhir:</span
+                                v-if="stats.last_payment"
+                                class="text-gray-400"
                             >
-                            <span><b>20 Agustus 2025</b> | 10:30:22 WIB</span>
+                                Terakhir bayar:
+                                <span class="font-semibold text-gray-600">
+                                    {{ formatDate(stats.last_payment) }}
+                                </span>
+                            </span>
+
+                            <span v-else class="italic text-gray-400">
+                                Belum ada riwayat pembayaran
+                            </span>
                         </div>
-                        <span class="text-sm text-red-500"
-                            >⚠ 5 Nota dari 2 Transaksi mendekati jatuh
-                            tempo.</span
+                        <div
+                            v-if="stats.alerts.length > 0"
+                            class="mb-6 space-y-2"
                         >
+                            <div
+                                v-for="(alert, index) in stats.alerts"
+                                :key="index"
+                                :class="[
+                                    'p-4 rounded-lg border-l-4 flex items-center shadow-sm',
+                                    alert.type === 'danger'
+                                        ? 'bg-red-50 border-red-500 text-red-700'
+                                        : 'bg-yellow-50 border-yellow-500 text-yellow-700',
+                                ]"
+                            >
+                                <span
+                                    class="mr-2 text-xl"
+                                    v-if="alert.type === 'danger'"
+                                    >🚨</span
+                                >
+                                <span class="mr-2 text-xl" v-else>⚠️</span>
+                                <span class="font-medium">{{
+                                    alert.message
+                                }}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -193,16 +221,61 @@ const allData = [
                     </p>
                 </div>
                 <!-- Data Table -->
-                <DataTable :columns="columns" :data="allData" :params="params">
+                <DataTable
+                    ref="datatable"
+                    :serverSide="true"
+                    :endpoint="route('finance.index')"
+                    :columns="columns"
+                    :perPageOptions="[5, 10, 25, 50, 100]"
+                    :params="params"
+                >
+                    <template #supplier="{ row }">
+                        <div class="flex flex-col">
+                            <span class="font-medium">{{
+                                row.purchase.supplier
+                                    ? row.purchase.supplier.name
+                                    : "Umum/Cash"
+                            }}</span>
+                            <span class="text-xs text-gray-500">{{
+                                row.purchase.supplier
+                                    ? row.purchase.supplier.phone
+                                    : "-"
+                            }}</span>
+                        </div>
+                    </template>
+                    <template #total="{ row }">
+                        <div
+                            v-if="row.total_amount - row.amount_paid > 0"
+                            class="mb-1 text-xs text-gray-500"
+                        >
+                            Tagihan: {{ formatRupiah(row.total_amount) }}
+                        </div>
+
+                        <div v-if="row.total_amount - row.amount_paid > 0">
+                            <span class="text-base font-bold text-red-600">
+                                Sisa:
+                                {{
+                                    formatRupiah(
+                                        row.total_amount - row.amount_paid
+                                    )
+                                }}
+                            </span>
+                        </div>
+                        <div class="text-base font-semibold" v-else>
+                            {{ formatRupiah(row.total_amount) }}
+                        </div>
+                    </template>
                     <template #progress="{ row }">
-                        <div class="" v-if="row.terbayarkan < row.total">
+                        <div class="" v-if="row.amount_paid < row.total_amount">
                             <span class="text-xs"
                                 >Progress:
                                 {{
                                     Math.min(
                                         100,
                                         Math.round(
-                                            (row.terbayarkan / row.total) * 100
+                                            (row.amount_paid /
+                                                row.total_amount) *
+                                                100
                                         )
                                     )
                                 }}%</span
@@ -215,8 +288,8 @@ const allData = [
                                             Math.min(
                                                 100,
                                                 Math.round(
-                                                    (row.terbayarkan /
-                                                        row.total) *
+                                                    (row.amount_paid /
+                                                        row.total_amount) *
                                                         100
                                                 )
                                             ) + '%',
@@ -239,8 +312,8 @@ const allData = [
                         >
                             <!-- Button Bayar (muncul kalau belum lunas) -->
                             <Link
-                                href="/payments-detail"
-                                v-if="row.terbayarkan < row.total"
+                                :href="route('finance.detail', row.id)"
+                                v-if="row.amount_paid < row.total_amount"
                                 class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
                             >
                                 <svg
@@ -266,6 +339,7 @@ const allData = [
 
                             <!-- Button Lihat -->
                             <Link
+                                :href="route('finance.detail', row.id)"
                                 class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
                             >
                                 <svg

@@ -38,6 +38,11 @@ class PurchaseInvoice extends Model
         self::PAYMENT_STATUS_PAID,
     ];
 
+    public function getRemainingBalanceAttribute()
+    {
+        return $this->total_amount - $this->amount_paid;
+    }
+
     public function purchase(): BelongsTo
     {
         return $this->belongsTo(Purchase::class);
@@ -47,5 +52,10 @@ class PurchaseInvoice extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseItem::class, 'purchase_invoice_id');
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(PurchasePayment::class, 'purchase_invoice_id')->latest();
     }
 }

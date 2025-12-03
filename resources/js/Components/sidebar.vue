@@ -49,9 +49,9 @@ const navigation = [
     },
     {
         name: "Keuangan",
-        href: route("payments"),
+        href: route("finance.index"),
         icon: PaymentsIcon,
-        active: route().current("payments*"),
+        active: route().current("finance*"),
     },
     {
         name: "Laporan",

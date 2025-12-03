@@ -1,199 +1,327 @@
 <script setup>
+import { Head, Link, useForm } from "@inertiajs/vue3";
+import { ref, computed } from "vue";
+import PaymentModal from "./partials/PaymentModal.vue";
+import ImageModal from "@/Components/ImageModal.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head } from "@inertiajs/vue3";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import DataTable from "@/Components/DataTable.vue";
-import formBayar from "./partials/formBayar.vue";
-import { ref } from "vue";
 
-const showBayar = ref(false);
+const props = defineProps({ invoice: Object, paymentMethods: Array });
+// --- HELPERS ---
+const formatRupiah = (val) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(val);
+const formatDate = (date) =>
+    new Date(date).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    });
 
-const params = ref({
-    search: "",
-    kategori: "",
-});
+// state image
+const showImageModal = ref(false);
+const selectedImageUrl = ref(null);
+const selectedtName = ref(null);
+const openImageModal = (path, name) => {
+    selectedImageUrl.value = path;
+    selectedtName.value = name;
+    showImageModal.value = true;
+};
 
-const columns = [
-    {
-        key: "tanggal",
-        label: "Tanggal",
-        sortable: true,
-        width: "120px",
-        format: "tanggal",
-    },
-    {
-        key: "nominal",
-        label: "Nominal",
-        sortable: true,
-        width: "200px",
-        format: "rupiah",
-    },
-    {
-        key: "kekurangan",
-        label: "Kekurangan",
-        sortable: true,
-        width: "120px",
-        format: "rupiah",
-    },
-    { key: "bukti", label: "Bukti", width: "120px", slot: "bukti" },
-];
+// --- LOGIC HITUNGAN ---
+const totalPaid = computed(() => props.invoice.amount_paid);
+const remainingDebt = computed(
+    () => props.invoice.total_amount - props.invoice.amount_paid
+);
+const isPaidOff = computed(() => remainingDebt.value <= 0);
 
-const allData = [
-    {
-        id: 1,
-        tanggal: "2024-12-21",
-        nominal: 2000000,
-        kekurangan: 1350000,
-    },
-    {
-        id: 2,
-        tanggal: "2024-12-25",
-        nominal: 5000000,
-        kekurangan: 8500000,
-    },
-];
+// --- LOGIC MODAL & FORM ---
+const showModal = ref(false);
 </script>
 
 <template>
-    <Head title="Detail Nota" />
-
-    <AuthenticatedLayout headerTitle="Detail Nota">
-        <formBayar :show="showBayar" @close="showBayar = false"></formBayar>
-        <div class="w-full min-h-screen p-4 space-y-6">
-            <!-- Informasi Utama Nota -->
-            <div
-                class="flex flex-col gap-5 p-4 bg-gray-100 border rounded-md shadow-md dark:bg-customBg-tableDark lg:flex-row lg:items-center"
-            >
-                <!-- Nota Gambar -->
-                <div class="flex justify-center p-2 lg:w-1/6 lg:justify-start">
-                    <img
-                        alt="Nota"
-                        class="object-cover w-full rounded-md"
-                        src="no-image.png"
-                    />
-                </div>
-                <!-- Container Tombol -->
-                <div class="flex justify-center gap-4 lg:flex-col lg:w-1/12">
-                    <PrimaryButton
-                        @click="showBayar = true"
-                        class="justify-center flex-1 gap-2 text-white !bg-green-600 !hover:bg-green-700"
+    <Head title="Bayar Tagihan" />
+    <ImageModal
+        :show="showImageModal"
+        :imageUrl="selectedImageUrl"
+        :productName="selectedtName"
+        @close="showImageModal = false"
+    />
+    <AuthenticatedLayout :showSidebar="false" :showHeader="false">
+        <div
+            class="w-full min-h-screen px-4 py-2 sm:px-6 lg:px-8 bg-customBg-light text-customText-light dark:bg-customBg-dark dark:text-customText-dark"
+        >
+            <div class="flex items-center gap-2 mb-4 text-sm text-gray-500">
+                <Link
+                    :href="route('finance.index')"
+                    class="flex items-center transition hover:text-blue-600"
+                    ><svg
+                        class="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                     >
-                        Bayar
-                    </PrimaryButton>
-                    <PrimaryButton
-                        class="justify-center flex-1 text-white !bg-blue-600 !hover:bg-blue-700"
-                    >
-                        Detail
-                    </PrimaryButton>
-                    <PrimaryButton
-                        class="justify-center flex-1 text-white !bg-gray-500 !hover:bg-gray-600"
-                    >
-                        Kembali
-                    </PrimaryButton>
-                </div>
-
-                <!-- Detail Nota -->
-                <div
-                    class="flex flex-col items-center flex-1 gap-4 p-5 lg:flex-row lg:justify-between lg:items-start"
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                        ></path>
+                    </svg>
+                    Keuangan</Link
                 >
-                    <!-- Detail Nota -->
-                    <div class="grid w-full grid-rows-5 gap-2 text-sm lg:w-1/3">
-                        <div class="flex justify-between">
-                            <span>No Nota</span>
-                            <span class="font-semibold">83749734873</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Tanggal Terbit</span>
-                            <span>20 Maret 2024</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Total Bayar</span>
-                            <span class="font-semibold">Rp 20.000.000</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Terbayarkan</span>
-                            <span class="font-semibold text-green-600"
-                                >Rp 15.000.000</span
-                            >
-                        </div>
-                        <div class="flex justify-between">
-                            <span>Kekurangan</span>
-                            <span class="font-semibold text-red-600"
-                                >Rp 5.000.000</span
-                            >
-                        </div>
-                    </div>
+                <span>/</span>
+                <span class="font-semibold text-gray-700"
+                    >#{{ invoice.invoice_number }}</span
+                >
+            </div>
 
-                    <!-- Progress -->
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <div class="space-y-6 lg:col-span-2">
                     <div
-                        class="flex flex-col items-center justify-center w-full gap-2 lg:w-40"
+                        class="p-6 bg-white border-l-8 shadow rounded-xl"
+                        :class="
+                            isPaidOff ? 'border-green-500' : 'border-red-500'
+                        "
                     >
-                        <span class="text-xs">Pembayaran Terakhir</span>
-                        <span class="text-sm font-medium"
-                            >11 Desember 2024</span
-                        >
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h1 class="text-2xl font-bold text-gray-800">
+                                    Invoice #{{ invoice.invoice_number }}
+                                </h1>
+                                <p class="mt-1 text-gray-500">
+                                    Supplier:
+                                    <span class="font-semibold text-blue-600">{{
+                                        invoice.purchase?.supplier?.name
+                                    }}</span>
+                                </p>
+                                <div class="mt-2 text-sm text-gray-400">
+                                    Jatuh Tempo:
+                                    {{ formatDate(invoice.due_date) }}
+                                </div>
+                            </div>
+
+                            <div class="text-right">
+                                <p
+                                    class="text-sm font-medium tracking-wider text-gray-500 uppercase"
+                                >
+                                    Sisa Tagihan
+                                </p>
+                                <div
+                                    class="mt-1 text-4xl font-bold"
+                                    :class="
+                                        isPaidOff
+                                            ? 'text-green-600'
+                                            : 'text-red-600'
+                                    "
+                                >
+                                    {{ formatRupiah(remainingDebt) }}
+                                </div>
+                                <p class="my-1 text-xs text-gray-400">
+                                    Terbayar: {{ formatRupiah(totalPaid) }} dari
+                                    {{ formatRupiah(invoice.total_amount) }}
+                                </p>
+                                <div
+                                    class="w-full bg-gray-200 h-2.5 rounded-full overflow-hidden"
+                                >
+                                    <div
+                                        class="h-full transition-all duration-500 rounded-full"
+                                        :class="
+                                            isPaidOff
+                                                ? 'bg-green-500'
+                                                : 'bg-blue-500'
+                                        "
+                                        :style="{
+                                            width:
+                                                Math.min(
+                                                    100,
+                                                    Math.round(
+                                                        (totalPaid /
+                                                            invoice.total_amount) *
+                                                            100
+                                                    )
+                                                ) + '%',
+                                        }"
+                                    ></div>
+                                </div>
+                                <div
+                                    class="flex items-center justify-between mt-1 text-xs text-gray-400"
+                                >
+                                    <span class="ml-1">
+                                        {{
+                                            Math.min(
+                                                100,
+                                                Math.round(
+                                                    (totalPaid /
+                                                        invoice.total_amount) *
+                                                        100
+                                                )
+                                            )
+                                        }}
+                                        %
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div
-                            class="w-full h-2 bg-gray-300 rounded-full dark:bg-gray-600"
+                            class="flex gap-3 pt-6 mt-6 border-t"
+                            v-if="!isPaidOff"
                         >
-                            <div
-                                class="h-2 bg-green-500 rounded-full"
-                                style="width: 30%"
-                            ></div>
-                        </div>
-                        <span class="text-xs">Progress: 30%</span>
-                    </div>
-
-                    <!-- Supplier -->
-                    <div
-                        class="flex flex-col items-center justify-center p-3 text-sm rounded-md shadow bg-lime-200 dark:bg-lime-700 lg:w-48"
-                    >
-                        <span class="font-bold">PT. MAJU MUNDUR</span>
-                        <span>0827 8782 78</span>
-                        <span>Offline</span>
-                        <span>Jawa Timur, Indonesia</span>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                class="p-4 space-y-3 border rounded-lg shadow-md bg-customBg-tableLight dark:bg-customBg-tableDark"
-            >
-                <!-- Title & Description -->
-                <div>
-                    <h2
-                        class="text-base font-semibold text-gray-900 dark:text-white sm:text-lg lg:text-xl"
-                    >
-                        Kelola Kategori
-                    </h2>
-                    <p
-                        class="mt-1 text-xs text-gray-600 dark:text-gray-300 sm:text-sm lg:text-base"
-                    >
-                        Kelola semua kategori untuk kategori produk.
-                    </p>
-                </div>
-                <!-- Riwayat Pembayaran -->
-                <DataTable :columns="columns" :data="allData" :params="params">
-                    <template #bukti="{ row }">
-                        <button>
-                            <svg
-                                class="w-5 h-5 text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-600"
-                                viewBox="0 0 24 24"
-                                fill="currentColor"
-                                xmlns="http://www.w3.org/2000/svg"
+                            <button
+                                @click="showModal = true"
+                                class="flex items-center gap-2 px-6 py-3 font-bold text-white transition transform bg-blue-600 rounded-lg shadow-lg hover:bg-blue-700 active:scale-95"
                             >
-                                <path
-                                    d="M7 2H6C3 2 2 3.79 2 6V7V21C2 21.83 2.94 22.3 3.6 21.8L5.31 20.52C5.71 20.22 6.27 20.26 6.63 20.62L8.29 22.29C8.68 22.68 9.32 22.68 9.71 22.29L11.39 20.61C11.74 20.26 12.3 20.22 12.69 20.52L14.4 21.8C15.06 22.29 16 21.82 16 21V4C16 2.9 16.9 2 18 2H7ZM5.97 14.01C5.42 14.01 4.97 13.56 4.97 13.01C4.97 12.46 5.42 12.01 5.97 12.01C6.52 12.01 6.97 12.46 6.97 13.01C6.97 13.56 6.52 14.01 5.97 14.01ZM5.97 10.01C5.42 10.01 4.97 9.56 4.97 9.01C4.97 8.46 5.42 8.01 5.97 8.01C6.52 8.01 6.97 8.46 6.97 9.01C6.97 9.56 6.52 10.01 5.97 10.01ZM12 13.76H9C8.59 13.76 8.25 13.42 8.25 13.01C8.25 12.6 8.59 12.26 9 12.26H12C12.41 12.26 12.75 12.6 12.75 13.01C12.75 13.42 12.41 13.76 12 13.76ZM12 9.76H9C8.59 9.76 8.25 9.42 8.25 9.01C8.25 8.6 8.59 8.26 9 8.26H12C12.41 8.26 12.75 8.6 12.75 9.01C12.75 9.42 12.41 9.76 12 9.76Z"
-                                    fill="currentColor"
-                                />
-                                <path
-                                    d="M18.01 2V3.5C18.67 3.5 19.3 3.77 19.76 4.22C20.24 4.71 20.5 5.34 20.5 6V8.42C20.5 9.16 20.17 9.5 19.42 9.5H17.5V4.01C17.5 3.73 17.73 3.5 18.01 3.5V2ZM18.01 2C16.9 2 16 2.9 16 4.01V11H19.42C21 11 22 10 22 8.42V6C22 4.9 21.55 3.9 20.83 3.17C20.1 2.45 19.11 2.01 18.01 2C18.02 2 18.01 2 18.01 2Z"
-                                    fill="currentColor"
-                                />
-                            </svg>
-                        </button>
-                    </template>
-                </DataTable>
+                                💳 Input Pembayaran
+                            </button>
+                        </div>
+                        <div
+                            v-else
+                            class="p-3 pt-6 mt-6 font-bold text-center text-green-700 border-t rounded bg-green-50"
+                        >
+                            ✅ LUNAS PADA {{ formatDate(invoice.paid_at) }}
+                        </div>
+                    </div>
+
+                    <div class="overflow-hidden bg-white shadow rounded-xl">
+                        <div
+                            class="p-4 font-bold text-gray-700 border-b bg-gray-50"
+                        >
+                            Rincian Pembelian
+                        </div>
+                        <table class="w-full text-sm text-left">
+                            <thead class="text-gray-500 border-b">
+                                <tr>
+                                    <th class="p-3">Produk</th>
+                                    <th class="p-3 text-right">Qty</th>
+                                    <th class="p-3 text-right">Harga Satuan</th>
+                                    <th class="p-3 text-right">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr
+                                    v-for="item in invoice.items"
+                                    :key="item.id"
+                                    class="border-b last:border-0"
+                                >
+                                    <td>
+                                        <div class="flex flex-col ml-3">
+                                            <span
+                                                class="font-bold text-gray-800 dark:text-white"
+                                            >
+                                                {{ item.product_snapshot.name }}
+                                            </span>
+                                            <span class="text-xs text-gray-500">
+                                                {{ item.product_snapshot.code }}
+                                                |
+                                                {{
+                                                    item.product_snapshot
+                                                        .category
+                                                }}
+                                            </span>
+                                            <span class="text-xs text-gray-400">
+                                                {{ item.product_snapshot.size }}
+                                                -
+                                                {{ item.product_snapshot.unit }}
+                                            </span>
+                                        </div>
+                                    </td>
+                                    <td class="p-3 text-right">
+                                        {{ item.quantity }}
+                                    </td>
+                                    <td class="p-3 text-right text-gray-500">
+                                        {{ formatRupiah(item.purchase_price) }}
+                                    </td>
+                                    <td class="p-3 font-semibold text-right">
+                                        {{ formatRupiah(item.subtotal) }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-1">
+                    <div class="h-full bg-white shadow rounded-xl">
+                        <div
+                            class="flex items-center justify-between p-4 font-bold text-gray-700 border-b"
+                        >
+                            <span>Riwayat Pembayaran</span>
+                            <span
+                                class="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded-full"
+                                >{{ invoice.payments.length }}x Bayar</span
+                            >
+                        </div>
+
+                        <div class="p-4 space-y-6">
+                            <div
+                                v-for="(pay, index) in invoice.payments"
+                                :key="pay.id"
+                                class="relative pl-6 border-l-2 border-gray-200 last:border-0"
+                            >
+                                <div
+                                    class="absolute -left-[9px] top-0 w-4 h-4 rounded-full border-2 border-white"
+                                    :class="
+                                        index === 0
+                                            ? 'bg-green-500'
+                                            : 'bg-gray-300'
+                                    "
+                                ></div>
+
+                                <div class="mb-1 text-sm text-gray-500">
+                                    {{ formatDate(pay.payment_date) }}
+                                </div>
+                                <div class="text-lg font-bold text-gray-800">
+                                    {{ formatRupiah(pay.amount) }}
+                                </div>
+
+                                <div
+                                    class="inline-block px-2 py-1 mt-1 text-xs text-gray-600 capitalize bg-gray-100 rounded"
+                                >
+                                    Via {{ pay.payment_method }}
+                                </div>
+
+                                <div
+                                    v-if="pay.notes"
+                                    class="p-2 mt-2 text-sm italic text-gray-600 border border-yellow-100 rounded bg-yellow-50"
+                                >
+                                    "{{ pay.notes }}"
+                                </div>
+
+                                <div v-if="pay.proof_image" class="mt-2">
+                                    <span
+                                        class="flex items-center gap-1 text-xs text-blue-500 hover:underline"
+                                        @click="
+                                            openImageModal(
+                                                pay.proof_image,
+                                                pay.payment_date
+                                            )
+                                        "
+                                    >
+                                        📄 Lihat Bukti
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div
+                                v-if="invoice.payments.length === 0"
+                                class="py-8 text-sm italic text-center text-gray-400"
+                            >
+                                Belum ada pembayaran yang tercatat.
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
+
+            <PaymentModal
+                :show="showModal"
+                :invoice="invoice"
+                :paymentMethods="paymentMethods"
+                @close="showModal = false"
+            />
         </div>
     </AuthenticatedLayout>
 </template>

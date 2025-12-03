@@ -1,512 +1,264 @@
 <script setup>
-import { ref, computed, onMounted, watch } from "vue";
-import { Head, Link, useForm, router } from "@inertiajs/vue3";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import { Head } from "@inertiajs/vue3";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
-import SecondaryButton from "@/Components/SecondaryButton.vue";
-import InputError from "@/Components/InputError.vue";
-import ImageModal from "@/Components/ImageModal.vue";
-import { useToast } from "vue-toastification";
-import { useActionLoading } from "@/Composable/useActionLoading";
-import { throttle } from "lodash";
-import Search from "./partials/search.vue";
+import DataTable from "@/Components/DataTable.vue";
+import formBayar from "./partials/formBayar.vue";
+import { ref } from "vue";
 
-// --- PROPS DARI BACKEND ---
 const props = defineProps({
-    purchase: Object,
     invoice: Object,
-    unlinkedItems: Object, // Produk PO yang belum punya invoice ID
-    linkedItems: Object, // Produk PO yang tertaut ke invoice ini
-    // Note: Anda perlu menambahkan prop products: Array, di Controller untuk search
-    products: { type: Array, default: () => [] },
+});
+console.log(props.invoice);
+const showBayar = ref(false);
+const params = ref({
+    search: "",
+    kategori: "",
 });
 
-// --- STATE LINKAGE & MODE ---
-const { isActionLoading } = useActionLoading();
-const toast = useToast();
+const formatDate = (dateString) => {
+    // Cek jika null, undefined, atau string kosong
+    if (!dateString) return null;
 
-const isProcessing = ref(false);
-
-// Mode Page (Edit jika 'checking', Detail jika lainnya)
-const pageMode = computed(() =>
-    props.purchase.status === "checking" ? "edit" : "detail"
-);
-
-// [KUNCI]: State untuk Qty dan Harga yang boleh diedit user
-// Kita gunakan salinan linkedItems untuk menampung perubahan Qty/Harga
-const editableLinkedItems = ref([]);
-
-// State untuk Link/Unlink
-const selectedLinkItemIds = ref([]);
-const selectedUnlinkItemIds = ref([]);
-
-// State untuk Barang Pengganti/Baru
-const showNewItemForm = ref(false); // Kontrol visibility form input manual
-const searchKeyword = ref("");
-const searchResults = ref([]);
-const isSearching = ref(false);
-const newProductSelection = ref(null); // Produk master yang dipilih untuk substitusi
-
-// --- FORMS UNTUK SUBMISSION ---
-const linkForm = useForm({ item_ids: selectedLinkItemIds });
-const unlinkForm = useForm({ item_ids: selectedUnlinkItemIds });
-const correctionForm = useForm({ items: editableLinkedItems }); // Form untuk Simpan Koreksi Qty/Harga
-
-// --- INIT LOGIC ---
-onMounted(() => {
-    // Buat salinan dalam (deep copy) dari linked items saat load
-    if (pageMode.value === "edit") {
-        editableLinkedItems.value = JSON.parse(
-            JSON.stringify(props.linkedItems)
-        );
-    }
-});
-
-// --- COMPUTED DATA & HELPERS ---
-const formatRupiah = (value) =>
+    return new Date(dateString).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+    });
+};
+const formatRupiah = (val) =>
     new Intl.NumberFormat("id-ID", {
         style: "currency",
         currency: "IDR",
         minimumFractionDigits: 0,
-    }).format(value);
-const formatTanggal = (date) =>
-    date
-        ? new Date(date).toLocaleDateString("id-ID", {
-              day: "2-digit",
-              month: "short",
-              year: "numeric",
-          })
-        : "-";
-const goBackToChecking = () =>
-    router.get(route("purchases.checking", props.purchase.id));
+    }).format(val);
+const columns = [
+    {
+        key: "tanggal",
+        label: "Tanggal",
+        sortable: true,
+        width: "120px",
+        format: "tanggal",
+    },
+    {
+        key: "nominal",
+        label: "Nominal",
+        sortable: true,
+        width: "200px",
+        format: "rupiah",
+    },
+    {
+        key: "kekurangan",
+        label: "Kekurangan",
+        sortable: true,
+        width: "120px",
+        format: "rupiah",
+    },
+    { key: "bukti", label: "Bukti", width: "120px", slot: "bukti" },
+];
 
-// Perhitungan: Harga per unit yang akan di-overwrite (Display di Card Kanan)
-const calculatedPricePerUnit = computed(() => {
-    const totalQty = props.linkedItems.reduce(
-        (sum, item) => sum + item.quantity,
-        0
-    );
-    if (totalQty === 0) return 0;
-    return props.invoice.total_amount / totalQty;
-});
-
-// Perhitungan: Total Qty di tabel Koreksi (Editable)
-const totalQtyInCorrectionTable = computed(() =>
-    editableLinkedItems.value.reduce((sum, item) => sum + item.quantity, 0)
-);
-
-// Gambar Nota
-const showImageModal = ref(false);
-const selectedImageUrl = ref(null);
-const selectedInvoiceCode = ref(null);
-const openImageModal = (path, name) => {
-    selectedImageUrl.value = path;
-    selectedInvoiceCode.value = name;
-    showImageModal.value = true;
-};
-
-// --- FUNGSI UTAMA ---
-
-// 1. [LINK ACTION] Menautkan item baru (sudah ada di props.unlinkedItems)
-const submitLinkage = () => {
-    if (selectedLinkItemIds.value.length === 0) {
-        toast.error("Pilih minimal satu item untuk ditautkan.");
-        return;
-    }
-    isActionLoading.value = true;
-    isProcessing.value = true;
-    console.log(selectedLinkItemIds.value);
-    linkForm.post(
-        route("purchases.linkItems", {
-            purchase: props.purchase.id,
-            invoice: props.invoice.id,
-        }),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success(
-                    `${selectedLinkItemIds.value.length} item berhasil ditautkan. Harga otomatis diperbarui.`
-                );
-                router.reload({
-                    only: ["unlinkedItems", "linkedItems", "invoice"],
-                }); // Reload kedua list
-            },
-            onFinish: () => {
-                isProcessing.value = false;
-                isActionLoading.value = true;
-                selectedLinkItemIds.value = [];
-            },
-        }
-    );
-};
-
-// 2. [UNLINK ACTION] Melepaskan tautan item (sudah ada di linkedItems)
-const submitUnlinkage = () => {
-    if (selectedUnlinkItemIds.value.length === 0) {
-        toast.error("Pilih minimal satu item untuk dilepaskan.");
-        return;
-    }
-
-    isProcessing.value = true;
-    // Gunakan method PUT untuk aksi UPDATE (mengubah link menjadi NULL)
-    unlinkForm.put(
-        route("purchases.unlinkItems", {
-            purchase: props.purchase.id,
-            invoice: props.invoice.id,
-        }),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.warning(
-                    `${selectedUnlinkItemIds.value.length} item dilepaskan. Harga item lain tidak berubah.`
-                );
-                router.reload({
-                    only: ["unlinkedItems", "linkedItems", "invoice"],
-                });
-            },
-            onFinish: () => {
-                isProcessing.value = false;
-                selectedUnlinkItemIds.value = [];
-            },
-        }
-    );
-};
-
-// 3. [BARU] SIMPAN KOREKSI QTY/HARGA (Update Qty/Price di DB)
-const saveCorrections = () => {
-    isActionLoading.value = true;
-    isProcessing.value = true;
-
-    // Perlu validasi FE: Qty tidak boleh < 0
-    const invalidQty = editableLinkedItems.value.some(
-        (item) => item.quantity < 0
-    );
-    if (invalidQty) {
-        toast.error("Kuantitas yang diterima tidak boleh kurang dari nol.");
-        isProcessing.value = false;
-        isActionLoading.value = false;
-        return;
-    }
-
-    correctionForm.items = editableLinkedItems.value;
-
-    // [ENDPOINT BARU DIBUTUHKAN]: purchases.updateLinkedItemDetails (PUT)
-    correctionForm.put(
-        route("purchases.updateLinkedItemDetails", props.purchase.id),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success("Koreksi kuantitas dan harga berhasil disimpan!");
-                // Reload hanya items yang tertaut
-                router.reload({ only: ["linkedItems"] });
-            },
-            onFinish: () => {
-                isProcessing.value = false;
-                isActionLoading.value = false;
-            },
-        }
-    );
-};
-
-// 4. [BARU] Logika Search & Penambahan Barang Pengganti
-const handleSearchNewItem = throttle(() => {
-    if (searchKeyword.value.length < 2) {
-        searchResults.value = [];
-        return;
-    }
-    isSearching.value = true;
-    console.log(products);
-    // Filter props.products (katalog master) berdasarkan supplier yang sama
-    searchResults.value = props.products
-        .filter(
-            (p) =>
-                p.supplier_id == props.purchase.supplier_id &&
-                (p.name
-                    .toLowerCase()
-                    .includes(searchKeyword.value.toLowerCase()) ||
-                    p.code
-                        .toLowerCase()
-                        .includes(searchKeyword.value.toLowerCase()))
-        )
-        .slice(0, 5); // Tampilkan 5 hasil teratas
-    isSearching.value = false;
-}, 300);
-
-watch(searchKeyword, handleSearchNewItem);
-
-// Aksi: Menambahkan produk pengganti ke daftar editableLinkedItems
-const addNewSubstituteItem = (product) => {
-    // Cek apakah item sudah ada di daftar
-    const exists = editableLinkedItems.value.some(
-        (item) => item.product_id === product.id
-    );
-    if (exists) {
-        toast.warning(
-            "Produk ini sudah ada di daftar. Gunakan input Qty untuk menambah."
-        );
-        return;
-    }
-
-    // Tambahkan item baru ke daftar edit
-    editableLinkedItems.value.push({
-        id: "new_" + Date.now(), // ID sementara untuk FE
-        purchase_invoice_id: props.invoice.id,
-        product_id: product.id,
-        // Qty/Harga awal 0 atau harga master
-        quantity: 1,
-        purchase_price: product.purchase_price,
-        product: product, // Snapshot data
-    });
-
-    // Bersihkan UI
-    searchKeyword.value = "";
-    searchResults.value = [];
-    showNewItemForm.value = false;
-};
+const allData = [
+    {
+        id: 1,
+        tanggal: "2024-12-21",
+        nominal: 2000000,
+        kekurangan: 1350000,
+    },
+    {
+        id: 2,
+        tanggal: "2024-12-25",
+        nominal: 5000000,
+        kekurangan: 8500000,
+    },
+];
 </script>
 
 <template>
-    <ImageModal
-        :show="showImageModal"
-        :imageUrl="selectedImageUrl"
-        :productName="selectedInvoiceCode"
-        @close="showImageModal = false"
-    />
-    <Head :title="`Tautkan Item ke Nota ${invoice.invoice_number}`" />
-    <AuthenticatedLayout
-        :headerTitle="`Penautan Item: ${invoice.invoice_number}`"
-    >
-        <div class="flex items-center justify-between mb-4">
-            <SecondaryButton @click="goBackToChecking">
-                ← Kembali ke Validasi Utama
-            </SecondaryButton>
-        </div>
+    <Head title="Detail Nota" />
 
-        <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div class="space-y-6 lg:col-span-2">
-                <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
-                    <h3
-                        class="pb-2 mb-4 text-xl font-bold border-b dark:text-gray-200"
+    <AuthenticatedLayout headerTitle="Detail Nota">
+        <formBayar :show="showBayar" @close="showBayar = false"></formBayar>
+        <div class="w-full min-h-screen p-4 space-y-6">
+            <!-- Informasi Utama Nota -->
+            <div
+                class="flex flex-col gap-5 p-4 bg-gray-100 border rounded-md shadow-md dark:bg-customBg-tableDark lg:flex-row lg:items-center"
+            >
+                <!-- Nota Gambar -->
+                <div class="flex justify-center p-2 lg:w-1/6 lg:justify-start">
+                    <img
+                        :src="`/storage/${invoice.invoice_image}`"
+                        alt="Bukti Nota"
+                        class="object-cover w-full h-32 rounded-md shadow cursor-pointer"
+                        @click="
+                            openImageModal(
+                                invoice.invoice_image,
+                                invoice.invoice_number
+                            )
+                        "
+                    />
+                </div>
+                <!-- Container Tombol -->
+                <div class="flex justify-center gap-4 lg:flex-col lg:w-1/12">
+                    <PrimaryButton
+                        @click="showBayar = true"
+                        class="justify-center flex-1 gap-2 text-white !bg-green-600 !hover:bg-green-700"
                     >
-                        Koreksi Qty Diterima & Harga Final
-                    </h3>
-                    <p
-                        v-if="linkedItems.length === 0"
-                        class="py-8 text-center text-gray-500"
+                        Bayar
+                    </PrimaryButton>
+                    <PrimaryButton
+                        class="justify-center flex-1 text-white !bg-blue-600 !hover:bg-blue-700"
                     >
-                        Belum ada item tertaut ke nota ini. Tautkan item dari
-                        daftar kanan.
-                    </p>
+                        Detail
+                    </PrimaryButton>
+                    <PrimaryButton
+                        class="justify-center flex-1 text-white !bg-gray-500 !hover:bg-gray-600"
+                    >
+                        Kembali
+                    </PrimaryButton>
+                </div>
 
-                    <form @submit.prevent="saveCorrections">
-                        <div
-                            v-if="linkedItems.length > 0"
-                            class="overflow-x-auto max-h-[55vh] border rounded dark:border-gray-700 mb-4"
-                        >
-                            <table class="min-w-full text-sm">
-                                <thead
-                                    class="sticky top-0 bg-gray-50 dark:bg-gray-700"
-                                >
-                                    <tr>
-                                        <th class="px-4 py-2 text-left">
-                                            Produk
-                                        </th>
-                                        <th class="w-20 px-2 py-2 text-center">
-                                            Qty Datang
-                                        </th>
-                                        <th class="w-24 px-2 py-2 text-right">
-                                            Harga Final
-                                        </th>
-                                        <th class="w-16 px-2 py-2 text-center">
-                                            Unlink
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="item in editableLinkedItems"
-                                        :key="item.id"
-                                        class="hover:bg-gray-50 dark:hover:bg-gray-700"
-                                    >
-                                        <td class="px-4 py-2">
-                                            {{ item.product.name }}
-                                        </td>
-
-                                        <td class="px-2 py-2 text-center">
-                                            <input
-                                                v-model.number="item.quantity"
-                                                type="number"
-                                                :disabled="pageMode !== 'edit'"
-                                                class="w-full p-1 text-xs text-center border rounded"
-                                                min="0"
-                                            />
-                                        </td>
-
-                                        <td class="px-2 py-2 text-right">
-                                            <input
-                                                v-model.number="
-                                                    item.purchase_price
-                                                "
-                                                type="number"
-                                                :disabled="pageMode !== 'edit'"
-                                                class="w-full p-1 text-xs text-right border rounded"
-                                                min="0"
-                                            />
-                                        </td>
-
-                                        <td class="px-2 py-2 text-center">
-                                            <input
-                                                v-if="pageMode === 'edit'"
-                                                type="checkbox"
-                                                :value="item.id"
-                                                v-model="selectedUnlinkItemIds"
-                                                class="text-red-600 rounded"
-                                            />
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                <!-- Detail Nota -->
+                <div
+                    class="flex flex-col items-center flex-1 gap-4 p-5 lg:flex-row lg:justify-between lg:items-start"
+                >
+                    <!-- Detail Nota -->
+                    <div class="grid w-full grid-rows-5 gap-2 text-sm lg:w-1/3">
+                        <div class="flex justify-between">
+                            <span>No Nota</span>
+                            <span class="font-semibold">{{
+                                invoice.invoice_number
+                            }}</span>
                         </div>
-
-                        <div
-                            v-if="pageMode === 'edit'"
-                            class="flex items-center justify-between pt-4"
-                        >
-                            <PrimaryButton
-                                type="submit"
-                                :disabled="isProcessing"
-                                title="Simpan perubahan Qty dan Harga"
-                            >
-                                Simpan Koreksi Harga/Qty
-                            </PrimaryButton>
-
-                            <button
-                                @click.prevent="submitUnlinkage"
-                                :disabled="
-                                    selectedUnlinkItemIds.length === 0 ||
-                                    isProcessing
-                                "
-                                class="px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-red-500 rounded-md hover:bg-red-600"
-                            >
-                                Lepaskan {{ selectedUnlinkItemIds.length }} Item
-                            </button>
+                        <div class="flex justify-between">
+                            <span>Tanggal Terbit</span>
+                            <span>{{ formatDate(invoice.invoice_date) }}</span>
                         </div>
-                    </form>
+                        <div class="flex justify-between">
+                            <span>Jatuh Tempo</span>
+                            <span>{{ formatDate(invoice.due_date) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Total Bayar</span>
+                            <span class="font-semibold">{{
+                                formatRupiah(invoice.total_amount)
+                            }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Terbayarkan</span>
+                            <span class="font-semibold text-green-600">{{
+                                formatRupiah(invoice.amount_paid)
+                            }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span>Kekurangan</span>
+                            <span class="font-semibold text-red-600"
+                                >-{{
+                                    formatRupiah(
+                                        invoice.total_amount -
+                                            invoice.amount_paid
+                                    )
+                                }}</span
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Progress -->
+                    <div
+                        class="flex flex-col items-center justify-center w-full gap-2 lg:w-40"
+                    >
+                        <span class="text-xs">Pembayaran Terakhir</span>
+                        <span class="text-sm font-medium"
+                            >11 Desember 2024</span
+                        >
+                        <div
+                            class="w-full h-2 bg-gray-300 rounded-full dark:bg-gray-600"
+                        >
+                            <div
+                                class="h-2 bg-green-500 rounded-full"
+                                :style="{
+                                    width:
+                                        Math.min(
+                                            100,
+                                            Math.round(
+                                                (invoice.amount_paid /
+                                                    invoice.total_amount) *
+                                                    100
+                                            )
+                                        ) + '%',
+                                }"
+                            ></div>
+                        </div>
+                        <span class="text-xs"
+                            >Progress:
+                            {{
+                                Math.min(
+                                    100,
+                                    Math.round(
+                                        (invoice.amount_paid /
+                                            invoice.total_amount) *
+                                            100
+                                    )
+                                )
+                            }}%</span
+                        >
+                    </div>
+
+                    <!-- Supplier -->
+                    <div
+                        class="flex flex-col items-center justify-center p-3 text-sm rounded-md shadow bg-lime-200 dark:bg-lime-700 lg:w-48"
+                    >
+                        <span class="font-bold">{{
+                            invoice.purchase.supplier.name
+                        }}</span>
+                        <span>{{ invoice.purchase.supplier.phone }}</span>
+                        <span>{{
+                            invoice.purchase.supplier.type == "type_offline"
+                                ? "Offline"
+                                : "Online"
+                        }}</span>
+                        <span>{{ invoice.purchase.supplier.address }}</span>
+                    </div>
                 </div>
             </div>
 
-            <div class="space-y-6 lg:col-span-1">
-                <div
-                    class="p-4 rounded-lg shadow bg-yellow-50 dark:bg-yellow-900/30"
-                >
-                    <h3
-                        class="mb-2 text-lg font-bold text-yellow-800 dark:text-yellow-200"
+            <div
+                class="p-4 space-y-3 border rounded-lg shadow-md bg-customBg-tableLight dark:bg-customBg-tableDark"
+            >
+                <!-- Title & Description -->
+                <div>
+                    <h2
+                        class="text-base font-semibold text-gray-900 dark:text-white sm:text-lg lg:text-xl"
                     >
-                        Detail Nota Target
-                    </h3>
-                    <div class="text-sm dark:text-gray-300">
-                        <p class="flex justify-between">
-                            <strong>Total Nominal Nota:</strong>
-                            <span class="text-xl font-extrabold text-red-600">{{
-                                formatRupiah(invoice.total_amount)
-                            }}</span>
-                        </p>
-                        <p class="flex justify-between">
-                            <strong>Harga Unit Baru (Perhitungan):</strong>
-                            <span class="font-bold text-green-700">{{
-                                formatRupiah(calculatedPricePerUnit)
-                            }}</span>
-                        </p>
-                        <p>
-                            Jatuh Tempo: {{ formatTanggal(invoice.due_date) }}
-                        </p>
-                    </div>
-
-                    <div v-if="invoice.invoice_image" class="mt-3">
-                        <p class="mb-1 text-xs font-semibold">Bukti Fisik:</p>
-                        <img
-                            :src="`/storage/${invoice.invoice_image}`"
-                            alt="Bukti Nota"
-                            class="object-cover w-full h-32 rounded-md shadow cursor-pointer"
-                            @click="
-                                openImageModal(
-                                    invoice.invoice_image,
-                                    invoice.invoice_number
-                                )
-                            "
-                        />
-                    </div>
+                        Kelola Kategori
+                    </h2>
+                    <p
+                        class="mt-1 text-xs text-gray-600 dark:text-gray-300 sm:text-sm lg:text-base"
+                    >
+                        Kelola semua kategori untuk kategori produk.
+                    </p>
                 </div>
-
-                <div
-                    v-if="pageMode === 'edit'"
-                    class="p-4 rounded-lg shadow bg-lime-50 dark:bg-lime-900/30"
-                >
-                    <h4 class="mb-3 font-bold text-lime-800 dark:text-lime-300">
-                        Tambah Item Baru / Pengganti
-                    </h4>
-                    <Search
-                        :isSearching="isSearching"
-                        v-model="searchKeyword"
-                        :results="searchResults"
-                        @select="addNewSubstituteItem"
-                        placeholder="Cari produk ..."
-                    />
-                </div>
-
-                <div class="p-6 bg-white rounded-lg shadow dark:bg-gray-800">
-                    <h4 class="mb-3 font-bold dark:text-gray-200">
-                        Item PO Belum Tertaut (Kandidat Link)
-                    </h4>
-                    <form @submit.prevent="submitLinkage">
-                        <p
-                            v-if="unlinkedItems.length === 0"
-                            class="py-4 text-center text-gray-500"
-                        >
-                            Tidak ada item PO yang tersisa.
-                        </p>
-                        <div
-                            v-else
-                            class="overflow-y-auto border rounded max-h-48 dark:border-gray-700"
-                        >
-                            <ul class="p-2 space-y-1">
-                                <li
-                                    v-for="item in unlinkedItems"
-                                    :key="item.id"
-                                    class="flex items-center justify-between"
-                                >
-                                    <label
-                                        class="flex items-center gap-2 text-sm dark:text-gray-300"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            :value="item.id"
-                                            v-model="selectedLinkItemIds"
-                                            class="rounded text-lime-600"
-                                        />
-                                        {{ item.quantity }}x
-                                        {{ item.product.name }}
-                                    </label>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div
-                            v-if="unlinkedItems.length > 0"
-                            class="flex justify-end mt-4"
-                        >
-                            <PrimaryButton
-                                type="submit"
-                                :disabled="
-                                    selectedLinkItemIds.length === 0 ||
-                                    isProcessing
-                                "
+                <!-- Riwayat Pembayaran -->
+                <DataTable :columns="columns" :data="allData" :params="params">
+                    <template #bukti="{ row }">
+                        <button>
+                            <svg
+                                class="w-5 h-5 text-blue-700 hover:text-blue-800 dark:text-blue-500 dark:hover:text-blue-600"
+                                viewBox="0 0 24 24"
+                                fill="currentColor"
+                                xmlns="http://www.w3.org/2000/svg"
                             >
-                                Tautkan Item
-                            </PrimaryButton>
-                        </div>
-                    </form>
-                </div>
+                                <path
+                                    d="M7 2H6C3 2 2 3.79 2 6V7V21C2 21.83 2.94 22.3 3.6 21.8L5.31 20.52C5.71 20.22 6.27 20.26 6.63 20.62L8.29 22.29C8.68 22.68 9.32 22.68 9.71 22.29L11.39 20.61C11.74 20.26 12.3 20.22 12.69 20.52L14.4 21.8C15.06 22.29 16 21.82 16 21V4C16 2.9 16.9 2 18 2H7ZM5.97 14.01C5.42 14.01 4.97 13.56 4.97 13.01C4.97 12.46 5.42 12.01 5.97 12.01C6.52 12.01 6.97 12.46 6.97 13.01C6.97 13.56 6.52 14.01 5.97 14.01ZM5.97 10.01C5.42 10.01 4.97 9.56 4.97 9.01C4.97 8.46 5.42 8.01 5.97 8.01C6.52 8.01 6.97 8.46 6.97 9.01C6.97 9.56 6.52 10.01 5.97 10.01ZM12 13.76H9C8.59 13.76 8.25 13.42 8.25 13.01C8.25 12.6 8.59 12.26 9 12.26H12C12.41 12.26 12.75 12.6 12.75 13.01C12.75 13.42 12.41 13.76 12 13.76ZM12 9.76H9C8.59 9.76 8.25 9.42 8.25 9.01C8.25 8.6 8.59 8.26 9 8.26H12C12.41 8.26 12.75 8.6 12.75 9.01C12.75 9.42 12.41 9.76 12 9.76Z"
+                                    fill="currentColor"
+                                />
+                                <path
+                                    d="M18.01 2V3.5C18.67 3.5 19.3 3.77 19.76 4.22C20.24 4.71 20.5 5.34 20.5 6V8.42C20.5 9.16 20.17 9.5 19.42 9.5H17.5V4.01C17.5 3.73 17.73 3.5 18.01 3.5V2ZM18.01 2C16.9 2 16 2.9 16 4.01V11H19.42C21 11 22 10 22 8.42V6C22 4.9 21.55 3.9 20.83 3.17C20.1 2.45 19.11 2.01 18.01 2C18.02 2 18.01 2 18.01 2Z"
+                                    fill="currentColor"
+                                />
+                            </svg>
+                        </button>
+                    </template>
+                </DataTable>
             </div>
         </div>
     </AuthenticatedLayout>

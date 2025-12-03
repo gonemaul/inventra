@@ -171,7 +171,6 @@ const tabs = [
                         :canEditDelete="canEditDeleteInvoice"
                         @edit-invoice="handleEditInvoice"
                         @delete-invoice="handleDeleteInvoice(invoice)"
-                        @open-payment-modal="() => {}"
                     />
                 </template>
                 <template #products>

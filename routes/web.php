@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\PaymentController;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
@@ -19,11 +20,6 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::controller(\App\Http\Controllers\DashboardController::class)->group(function () {
         Route::get('/dashboard', 'index')->name('dashboard');
-    });
-
-    Route::controller(\App\Http\Controllers\PaymentController::class)->group(function () {
-        Route::get('/payments', 'index')->name('payments');
-        Route::get('/payments-detail', 'detail')->name('detail');
     });
 
     Route::delete('products/{id}', [\App\Http\Controllers\ProductController::class, 'destroy'])
@@ -87,6 +83,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::controller(SalesRecapController::class)->group(function () {
         Route::get('/sales/search-product', 'searchProduct')
             ->name('sales.search-product');
+    });
+
+    // Keuangan
+    Route::controller(PaymentController::class)->prefix('finance')->name('finance.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/{id}', 'show')->name('detail');
+        Route::post('/{id}/pay', 'store')->name('store');
     });
 
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
