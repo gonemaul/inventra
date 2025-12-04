@@ -8,7 +8,8 @@ import { useExtended } from "@/Composable/useExtended";
 
 const { isSidebarOpen } = useSidebar();
 const { isExtended, toggleExtended } = useExtended();
-
+console.log(isExtended.value);
+console.log(isSidebarOpen.value);
 // const isExtended = ref(true); // State untuk melacak kondisi sidebar
 
 // const toggleSidebar = () => {
@@ -114,6 +115,7 @@ const navigation = [
         <!-- Navigation -->
         <nav class="mt-8 mb-auto space-y-6">
             <NavLink
+                @click="isSidebarOpen = false"
                 v-for="link in navigation"
                 :key="link.name"
                 :href="link.href"
@@ -135,7 +137,11 @@ const navigation = [
             <span>© 2025 GliSentra Group</span>
         </div> -->
         <div
-            class="flex justify-between pl-3 text-lg font-medium transition-all duration-200 bg-white border-2 rounded-lg border-lime-500 bg-opacity-80 text-lime-500 lg:hidden"
+            :class="
+                isSidebarOpen
+                    ? 'flex justify-between pl-3 text-lg font-medium transition-all duration-200 bg-white border-2 rounded-lg border-lime-500 bg-opacity-80 text-lime-500 lg:hidden'
+                    : 'hidden'
+            "
         >
             <Link :href="route('profile.edit')" class="flex items-center py-2">
                 <svg
