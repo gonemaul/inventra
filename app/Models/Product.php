@@ -255,7 +255,10 @@ class Product extends Model
     }
 
 
-
+    public function insights()
+    {
+        return $this->hasMany(SmartInsight::class);
+    }
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

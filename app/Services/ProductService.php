@@ -2,11 +2,15 @@
 
 namespace App\Services;
 
+use Carbon\Carbon;
 use App\Models\Size;
 use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Category;
+use App\Models\SaleItem;
 use App\Models\ProductType;
+use App\Models\PurchaseItem;
+use App\Models\SmartInsight;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -15,6 +19,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProductService
 {
+    protected $insightService;
+    public function __construct(InsightService $insightService)
+    {
+        $this->insightService = $insightService;
+    }
     private function handleImageUpload($file, $existingPath = null)
     {
         // 1. Hapus gambar lama jika ada file baru
@@ -32,6 +41,142 @@ class ProductService
         return $existingPath;
     }
     /**
+     * LOGIC PUSAT: MENGHITUNG METRIK KEUANGAN
+     * Mengembalikan array lengkap (Nominal & Persen)
+     */
+    private function calculateFinancials($product)
+    {
+        // 1. DATA SAAT INI
+        $buy = (float) $product->purchase_price;
+        $sell = (float) $product->selling_price;
+
+        // 2. DATA SNAPSHOT (Histori)
+        // Default ke harga sekarang jika snapshot kosong (artinya tidak ada perubahan)
+        $oldBuy = (float) ($product->snapshot['purchase_price'] ?? $buy);
+        $oldSell = (float) ($product->snapshot['selling_price'] ?? $sell);
+
+        // --- A. ANALISA MARGIN (KEUNTUNGAN) ---
+        $marginRp = $sell - $buy;
+        // Hindari division by zero
+        $marginPercent = $buy > 0 ? round(($marginRp / $buy) * 100, 1) : 0;
+
+        // --- B. ANALISA TREN HARGA MODAL (PURCHASE) ---
+        $diffBuy = $buy - $oldBuy;
+        $trendBuyPercent = $oldBuy > 0 ? round(($diffBuy / $oldBuy) * 100, 1) : 0;
+
+        $trendBuyDirection = 'flat';
+        if ($diffBuy > 0) $trendBuyDirection = 'up';     // Modal Naik (Buruk/Warning)
+        if ($diffBuy < 0) $trendBuyDirection = 'down';   // Modal Turun (Bagus)
+
+        // --- C. ANALISA TREN HARGA JUAL (SELLING) ---
+        $diffSell = $sell - $oldSell;
+        $trendSellPercent = $oldSell > 0 ? round(($diffSell / $oldSell) * 100, 1) : 0;
+
+        $trendSellDirection = 'flat';
+        if ($diffSell > 0) $trendSellDirection = 'up';   // Jual Naik (Bagus/Cuan)
+        if ($diffSell < 0) $trendSellDirection = 'down'; // Jual Turun (Diskon)
+
+        // RETURN PAKET LENGKAP
+        return [
+            'margin' => [
+                'rp' => $marginRp,
+                'percent' => $marginPercent
+            ],
+            'purchase_trend' => [
+                'direction' => $trendBuyDirection,
+                'diff_rp' => abs($diffBuy),      // Kita kirim angka positif untuk tampilan
+                'percent' => abs($trendBuyPercent),
+                'old_price' => $oldBuy
+            ],
+            'selling_trend' => [
+                'direction' => $trendSellDirection,
+                'diff_rp' => abs($diffSell),
+                'percent' => abs($trendSellPercent),
+                'old_price' => $oldSell
+            ]
+        ];
+    }
+
+    /**
+     * LOGIC PUSAT: ANALISA STOK & FORECASTING
+     */
+    private function calculateInventoryMetrics($product)
+    {
+        // 1. DATA DASAR
+        $stock = $product->stock;
+        $minStock = $product->min_stock ?? 0;
+
+        // 2. HITUNG VELOCITY (KECEPATAN JUAL)
+        // Ambil data penjualan 30 hari terakhir
+        $sales30Days = SaleItem::where('product_id', $product->id)
+            ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
+            ->sum('quantity');
+
+        // Rata-rata jual per hari (Daily Burn Rate)
+        $avgDaily = $sales30Days > 0 ? round($sales30Days / 30, 1) : 0;
+
+        // 3. FORECASTING (PREDIKSI HABIS)
+        $daysLeft = 999; // Default aman
+        $stockoutDate = null;
+        $status = 'safe'; // safe, warning, critical, overstock
+
+        if ($avgDaily > 0) {
+            $daysLeft = floor($stock / $avgDaily);
+            $stockoutDate = now()->addDays($daysLeft)->isoFormat('D MMMM Y'); // Contoh: 25 November 2024
+
+            // Tentukan Status berdasarkan sisa hari
+            if ($daysLeft <= 3) $status = 'critical'; // Habis < 3 hari
+            elseif ($daysLeft <= 7) $status = 'warning'; // Habis seminggu lagi
+        } elseif ($stock <= $minStock) {
+            // Jika tidak ada data penjualan tapi stok dibawah min
+            $status = 'warning';
+        }
+
+        // 4. SARAN RESTOCK (SUGGESTION)
+        // Rumus sederhana: Targetkan stok aman untuk 14 hari kedepan (bisa disesuaikan)
+        $targetDays = 14;
+        $suggestedQty = 0;
+
+        if ($status !== 'safe' || $stock <= $minStock) {
+            $idealStock = $avgDaily * $targetDays;
+            $suggestedQty = ceil($idealStock - $stock);
+            // Pastikan saran minimal sebesar min_stock jika stok 0
+            if ($suggestedQty <= 0 && $stock < $minStock) {
+                $suggestedQty = $minStock - $stock;
+            }
+        }
+
+        // 5. ANALISA DEAD STOCK (LOGIC SIMPLE)
+        // Cek transaksi terakhir
+        $lastSaleDate = null;
+        $isDeadStock = false;
+
+        $lastItem = SaleItem::with('sale')
+            ->where('product_id', $product->id)
+            ->latest()
+            ->first();
+
+        if ($lastItem) {
+            $lastSaleDate = $lastItem->sale->transaction_date;
+            // Jika tidak laku > 60 hari dan stok masih ada
+            if ($stock > 0 && Carbon::parse($lastSaleDate)->diffInDays(now()) > 60) {
+                $isDeadStock = true;
+                $status = 'dead';
+            }
+        }
+
+        return [
+            'stock_status' => $status,      // critical, warning, safe, dead
+            'avg_daily'    => $avgDaily,    // Rata-rata laku per hari
+            'days_left'    => $daysLeft,    // Sisa hari
+            'stockout_date' => $stockoutDate, // Tanggal estimasi habis
+            'sales_30_days' => $sales30Days, // Total laku sebulan
+            'suggested_qty' => $suggestedQty, // Saran beli
+            'is_dead_stock' => $isDeadStock,
+            'last_sale'    => $lastSaleDate ? Carbon::parse($lastSaleDate)->diffForHumans() : 'Belum pernah terjual'
+        ];
+    }
+    /**
      * Mengambil data produk untuk datatable (server-side).
      *
      * @param array $params
@@ -39,8 +184,12 @@ class ProductService
      */
     public function get(array $params)
     {
+        $this->insightService->runAnalysis();
         // Selalu ambil relasi (eager load) untuk efisiensi
-        $query = Product::with(['category', 'unit', 'size', 'supplier', 'brand', 'productType']);
+        $query = Product::with(['category', 'unit', 'size', 'supplier', 'brand', 'productType', 'insights' => function ($q) {
+            // Ambil insight yang masih aktif (belum dibaca/diselesaikan)
+            $q->where('is_read', false);
+        }]);
 
         // 1. Filter 'trashed' (Sampah)
         if (isset($params['trashed']) && $params['trashed']) {
@@ -88,11 +237,14 @@ class ProductService
             $sortBy = 'created_at';
         }
         $perPage = $params['per_page'] ?? 10;
-
-        return $query
-            ->orderBy($sortBy, $sortDirection)
+        $products = $query->orderBy($sortBy, $sortDirection)
             ->paginate($perPage)
-            ->withQueryString(); // <-- Ini PENTING
+            ->withQueryString();
+        $products->getCollection()->transform(function ($product) {
+            $product->financials = $this->calculateFinancials($product);
+            return $product;
+        });
+        return $products;
     }
 
     /**
@@ -106,6 +258,108 @@ class ProductService
         return Product::count();
     }
 
+    /**
+     * MENGAMBIL SEMUA DATA DETAIL PRODUK + DSS (Untuk Halaman Show)
+     */
+    public function getProductDetails($id)
+    {
+        // 1. Jalankan Analisa DSS (Agar data selalu fresh saat dibuka)
+        $this->insightService->runAnalysis();
+        // 2. Ambil Data Produk & Relasi
+        $product = Product::with(['category', 'unit', 'size', 'supplier', 'brand', 'productType'])
+            ->withTrashed() // Handle jika produk soft deleted
+            ->findOrFail($id);
+
+        $inventory = $this->calculateInventoryMetrics($product);
+        $financials = $this->calculateFinancials($product);
+        // 3. Ambil Insight DSS (Hasil Analisa)
+        $insights = SmartInsight::where('product_id', $id)->get();
+
+        // Struktur data DSS untuk Frontend
+        $dssData = [
+            'restock'       => $insights->where('type', 'restock')->first(),
+            'dead_stock'    => $insights->where('type', 'dead_stock')->first(),
+            'trend'         => $insights->where('type', 'trend')->first(),
+            'margin_alert'  => $insights->where('type', 'margin_alert')->first(),
+            'is_trending'   => $insights->where('type', 'trend')->count() > 0,
+            'is_dead_stock' => $insights->where('type', 'dead_stock')->count() > 0,
+            'is_margin_low' => $insights->where('type', 'margin_alert')->count() > 0,
+        ];
+
+
+        // 4. Statistik Penjualan (Untuk Tab Ringkasan)
+        $salesStats = SaleItem::where('product_id', $id)
+            ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
+            ->sum('quantity');
+
+        $dssData['sales_30_days'] = $salesStats;
+        $dssData['avg_daily'] = $salesStats > 0 ? round($salesStats / 30, 1) : 0;
+
+        // 5. Data Grafik (7 Hari Terakhir)
+        $chartData = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $date = now()->subDays($i);
+            $qty = SaleItem::where('product_id', $id)
+                ->whereHas('sale', fn($q) => $q->whereDate('transaction_date', $date))
+                ->sum('quantity');
+            $chartData[] = ['day' => $date->format('d/m'), 'qty' => $qty];
+        }
+
+        // 6. Riwayat Stok (Gabungan Beli & Jual Terakhir)
+        $stockHistory = $this->getStockHistory($id);
+
+        // 7. Tren Harga (Logic Snapshot)
+        $priceTrend = $this->calculatePriceTrend($product);
+        $product->financials = $financials;
+        $product->inventory = $inventory;
+        return [
+            'product' => $product,
+            'dss' => $dssData,
+            'chart_data' => $chartData,
+            'stock_history' => $stockHistory,
+            'price_trend' => $priceTrend
+        ];
+    }
+    private function getStockHistory($id)
+    {
+        $lastSales = SaleItem::with('sale')->where('product_id', $id)->latest()->limit(5)->get()
+            ->map(fn($item) => [
+                'type' => 'out',
+                'qty' => $item->quantity,
+                'date' => $item->sale->transaction_date ?? $item->created_at,
+                'note' => 'Terjual'
+            ]);
+
+        $lastPurchases = PurchaseItem::with('purchase')->where('product_id', $id)->latest()->limit(5)->get()
+            ->map(fn($item) => [
+                'type' => 'in',
+                'qty' => $item->quantity,
+                'date' => $item->purchase->transaction_date ?? $item->created_at,
+                'note' => 'Restock'
+            ]);
+
+        return collect($lastSales)->merge($lastPurchases)->sortByDesc('date')->values()->all();
+    }
+
+    private function calculatePriceTrend($product)
+    {
+        // Default
+        $trend = ['direction' => 'flat', 'diff' => 0, 'percent' => 0, 'old_price' => 0];
+
+        if (!empty($product->snapshot) && isset($product->snapshot['purchase_price'])) {
+            $current = $product->purchase_price;
+            $old = $product->snapshot['purchase_price'];
+            $diff = $current - $old;
+            $percent = $old > 0 ? ($diff / $old) * 100 : 0;
+
+            if ($diff > 0) {
+                $trend = ['direction' => 'up', 'diff' => $diff, 'percent' => round(abs($percent), 1), 'old_price' => $old];
+            } elseif ($diff < 0) {
+                $trend = ['direction' => 'down', 'diff' => abs($diff), 'percent' => round(abs($percent), 1), 'old_price' => $old];
+            }
+        }
+        return $trend;
+    }
     /**
      * Validasi dan simpan produk baru.
      *

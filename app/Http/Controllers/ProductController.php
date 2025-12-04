@@ -4,14 +4,19 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use App\Models\Product;
-use App\Services\BrandService;
+use App\Models\SaleItem;
+use App\Models\PurchaseItem;
+use App\Models\SmartInsight;
 use Illuminate\Http\Request;
 use App\Services\SizeService;
+use App\Services\TypeService;
 use App\Services\UnitService;
+use App\Services\BrandService;
+use App\Services\InsightService;
 use App\Services\ProductService;
 use App\Services\CategoryService;
 use App\Services\SupplierService;
-use App\Services\TypeService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
 
 class ProductController extends Controller
@@ -23,6 +28,7 @@ class ProductController extends Controller
     protected $supplierService;
     protected $brandService;
     protected $typeService;
+    protected $insightService;
 
     // 3. Inject semua service di constructor
     public function __construct(
@@ -32,7 +38,8 @@ class ProductController extends Controller
         SizeService $sizeService,
         SupplierService $supplierService,
         BrandService $brandService,
-        TypeService $typeService
+        TypeService $typeService,
+        InsightService $insightService
     ) {
         $this->productService = $productService;
         $this->categoryService = $categoryService;
@@ -41,6 +48,7 @@ class ProductController extends Controller
         $this->supplierService = $supplierService;
         $this->brandService = $brandService;
         $this->typeService = $typeService;
+        $this->insightService = $insightService;
     }
     private function getDropdownData(): array
     {
@@ -92,9 +100,14 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        return Inertia::render('Products/detail', [
-            'product' => $product->load(['category', 'unit', 'size', 'supplier']),
-        ]);
+        // 1. Jalankan Analisa DSS (Agar data fresh saat dibuka)
+        $this->insightService->runAnalysis();
+
+        // 2. Ambil Semua Data Detail dari Service
+        $data = $this->productService->getProductDetails($product->id);
+
+        // 3. Kirim ke Vue
+        return Inertia::render('Products/detail', $data);
     }
 
     /**

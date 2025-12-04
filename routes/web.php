@@ -1,9 +1,10 @@
 <?php
 
-use App\Http\Controllers\PaymentController;
 use Inertia\Inertia;
+use App\Services\InsightService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\SalesRecapController;
@@ -18,6 +19,13 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/test-dss', function (InsightService $service) {
+
+        // Jalankan Analisa
+        $service->runAnalysis();
+
+        return "Analisa DSS Selesai! Cek tabel smart_insights di database.";
+    })->name('test.dss');
     Route::controller(\App\Http\Controllers\DashboardController::class)->group(function () {
         Route::get('/dashboard', 'index')->name('dashboard');
     });
