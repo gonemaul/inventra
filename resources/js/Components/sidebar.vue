@@ -8,8 +8,6 @@ import { useExtended } from "@/Composable/useExtended";
 
 const { isSidebarOpen } = useSidebar();
 const { isExtended, toggleExtended } = useExtended();
-console.log(isExtended.value);
-console.log(isSidebarOpen.value);
 // const isExtended = ref(true); // State untuk melacak kondisi sidebar
 
 // const toggleSidebar = () => {
