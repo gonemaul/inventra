@@ -54,12 +54,12 @@ class ProductController extends Controller
     {
         return [
             'categories' => $this->categoryService->getAll(),
+            'brands' => $this->brandService->getAll(),
             'units' => $this->unitService->getAll(),
             'sizes' => $this->sizeService->getAll(),
             'suppliers' => $this->supplierService->getAll(),
+            'types' => $this->typeService->getAll(),
             'productStatuses' => Product::STATUSES,
-            'brand' => $this->brandService->getAll(),
-            'type' => $this->typeService->getAll(),
         ];
     }
     /**

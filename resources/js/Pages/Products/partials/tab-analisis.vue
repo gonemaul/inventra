@@ -4,7 +4,18 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    product: {
+        type: Object,
+        required: true,
+    },
 });
+
+const formatRupiah = (val) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(val);
 </script>
 <template>
     <div
@@ -30,6 +41,10 @@ const props = defineProps({
                         Barang ini masih menumpuk di gudang. Terakhir terjual
                         <strong>{{ inventory.last_sale }}</strong
                         >.
+                    </p>
+                    <p class="mt-1 text-sm text-yellow-700">
+                        Produk ini tidak bergerak selama
+                        <strong>{{ inventory.days_inactive }} hari</strong>.
                     </p>
                     <div
                         class="mt-2 text-xs font-mono bg-white p-1.5 rounded border border-gray-200 inline-block"

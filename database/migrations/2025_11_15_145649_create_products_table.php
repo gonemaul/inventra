@@ -30,13 +30,13 @@ return new class extends Migration
 
             $table->string('name')->index();
             $table->string('code')->unique();
-            $table->decimal('stock', 19, 4)->default(0);
+            $table->decimal('stock', 19, 4)->default(0)->index();
             $table->decimal('min_stock', 19, 4)->default(0);
-            $table->decimal('purchase_price', 19, 4)->default(0)->comment('Harga Beli');
-            $table->decimal('selling_price', 19, 4)->default(0)->comment('Harga Jual');
+            $table->decimal('purchase_price', 19, 4)->default(0)->comment('Harga Beli')->index();
+            $table->decimal('selling_price', 19, 4)->default(0)->comment('Harga Jual')->index();
             $table->text('description')->nullable();
             $table->string('image_path')->nullable();
-            $table->string('status');
+            $table->string('status')->index();
             $table->softDeletes(); // Menambahkan kolom deleted_at untuk soft deletes
             $table->timestamps();
         });

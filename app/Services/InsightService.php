@@ -201,7 +201,8 @@ class InsightService
     protected function analyzeDeadStock()
     {
         // Kriteria Dead Stock: Stok > 0 DAN Tidak laku > 90 Hari
-        $thresholdDate = Carbon::now()->subDays(90);
+        $THRESHOLD_DAYS = 90;
+        $thresholdDate = Carbon::now()->subDays($THRESHOLD_DAYS);
 
         // Ambil produk yang stoknya ada
         $products = Product::where('stock', '>', 0)->get();
@@ -224,7 +225,7 @@ class InsightService
                 $lastDate = Carbon::parse($lastSale->transaction_date);
                 if ($lastDate->lt($thresholdDate)) {
                     $isDeadStock = true;
-                    $daysInactive = $lastDate->diffInDays(now());
+                    $daysInactive = round($lastDate->diffInDays(now()));
                 }
             } else {
                 // Jika BELUM PERNAH laku sama sekali
@@ -232,7 +233,7 @@ class InsightService
                 $createdDate = Carbon::parse($product->created_at);
                 if ($createdDate->lt($thresholdDate)) {
                     $isDeadStock = true;
-                    $daysInactive = $createdDate->diffInDays(now());
+                    $daysInactive = round($createdDate->diffInDays(now()));
                 }
             }
 

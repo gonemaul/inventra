@@ -4,312 +4,546 @@ import { useForm, router } from "@inertiajs/vue3";
 import { useActionLoading } from "@/Composable/useActionLoading";
 
 const props = defineProps({
-    show: {
-        type: Boolean,
-        default: false,
-    },
-    filters: Object, // Filter yang sedang aktif
-    dropdowns: Object, // Data { categories: [], sizes: [], productStatuses: [] }
+    show: { type: Boolean, default: false },
+    filters: Object, // State filter dari URL
+    dropdowns: Object, // Data master dari Controller (categories, brands, suppliers, types, units, sizes)
 });
+
 const emit = defineEmits(["close"]);
 
+// --- OPSI SORTING ---
 const sortOptions = [
-    { value: "created_at", label: "Terbaru" },
-    { value: "name", label: "Nama" },
-    { value: "selling_price", label: "Harga" },
-    { value: "stock", label: "Stok" },
+    { value: "created_at", label: "Tanggal Dibuat" },
+    { value: "name", label: "Nama Produk" },
+    { value: "stock", label: "Jumlah Stok" },
+    { value: "selling_price", label: "Harga Jual" },
+    { value: "purchase_price", label: "Harga Beli" },
 ];
+
+// --- INIT FORM ---
 const form = useForm({
+    // 1. Relasi (Foreign Keys)
+    category_id: props.filters.category_id || "",
+    brand_id: props.filters.brand_id || "",
+    supplier_id: props.filters.supplier_id || "",
+    product_type_id: props.filters.product_type_id || "",
+    unit_id: props.filters.unit_id || "",
+    size_id: props.filters.size_id || "",
+
+    // 2. Range (Min-Max)
+    // Stok
+    min_stock: props.filters.stock_min || "",
+    max_stock: props.filters.stock_max || "",
+    // Harga Jual
+    min_price: props.filters.price_min || "",
+    max_price: props.filters.price_max || "",
+    // Harga Beli (Cost)
+    min_cost: props.filters.cost_min || "",
+    max_cost: props.filters.cost_max || "",
+
+    // 3. Status & System
+    status: props.filters.status || "",
+    trashed: props.filters.trashed || "", // '', 'with', 'only'
+
+    // 4. Sorting
     sort: props.filters.sort || "created_at",
     order: props.filters.order || "desc",
-    status: props.filters.status || "",
-    category_id: props.filters.category_id || "",
-    supplier_id: props.filters.supplier_id || "",
-
-    // Untuk filter ukuran (multi-select), kita gunakan array
-    sizes: props.filters.sizes || [],
-
-    // Range filter (nama field harus cocok dengan backend)
-    min_stock: props.filters.min_stock || "",
-    max_stock: props.filters.max_stock || "",
-    min_price: props.filters.min_price || "",
-    max_price: props.filters.max_price || "",
-    trashed: props.filters.trashed || false,
 });
 
 const { isActionLoading } = useActionLoading();
 
+// Helper: Bersihkan nilai kosong sebelum dikirim ke URL
 function clean(obj) {
     return Object.entries(obj).reduce((acc, [key, value]) => {
-        // Cek umum: bukan null, undefined, atau string kosong
-        if (typeof value === "boolean" && value === false) {
-            return acc;
-        }
         if (value !== null && value !== undefined && value !== "") {
-            // Cek khusus: bukan array kosong (untuk 'sizes')
-            if (!(Array.isArray(value) && value.length === 0)) {
-                acc[key] = value;
-            }
+            acc[key] = value;
         }
         return acc;
     }, {});
 }
-// 4. Helper untuk tombol Ukuran (multi-select)
-function toggleSize(sizeId) {
-    const index = form.sizes.indexOf(sizeId);
-    if (index > -1) {
-        form.sizes.splice(index, 1); // Hapus jika sudah ada
-    } else {
-        form.sizes.push(sizeId); // Tambah jika belum ada
-    }
-}
-function isSizeActive(sizeId) {
-    return form.sizes.includes(sizeId);
-}
 
-// 5. Aksi Tombol "Terapkan"
+// Action: Terapkan Filter
 function applyFilter() {
-    const modalFilters = form.data();
-    const searchFilter = { search: props.filters.search || "" };
-    const allFilters = { ...searchFilter, ...modalFilters };
-    const cleanModalFilters = clean(allFilters);
+    // Pertahankan search query jika ada
+    const currentSearch = props.filters.search
+        ? { search: props.filters.search }
+        : {};
+
+    // Mapping form ke nama parameter yang diharapkan Service
+    // Perhatikan mapping nama field form -> param url
+    const payload = {
+        ...currentSearch,
+        category_id: form.category_id,
+        brand_id: form.brand_id,
+        supplier_id: form.supplier_id,
+        product_type_id: form.product_type_id,
+        unit_id: form.unit_id,
+        size_id: form.size_id,
+        status: form.status,
+        trashed: form.trashed,
+        sort: form.sort,
+        order: form.order,
+
+        // Mapping Range (Form name -> URL param name)
+        stock_min: form.min_stock,
+        stock_max: form.max_stock,
+        price_min: form.min_price,
+        price_max: form.max_price,
+        cost_min: form.min_cost,
+        cost_max: form.max_cost,
+    };
+
+    const finalFilters = clean(payload);
+
     isActionLoading.value = true;
-    router.get(route("products.index"), cleanModalFilters, {
+    router.get(route("products.index"), finalFilters, {
         preserveState: true,
         replace: true,
         onFinish: () => {
-            isActionLoading.value = false; // Matikan loader
-            emit("close"); // Tutup modal
+            isActionLoading.value = false;
+            emit("close");
         },
     });
 }
 
-// 6. Aksi Tombol "Reset"
+// Action: Reset Filter
 function resetFilter() {
-    const cleanSearch = clean({ search: props.filters.search || "" });
+    const currentSearch = props.filters.search
+        ? { search: props.filters.search }
+        : {};
+
     isActionLoading.value = true;
-    router.get(route("products.index"), cleanSearch, {
+    router.get(route("products.index"), currentSearch, {
         preserveState: true,
         replace: true,
         onFinish: () => {
-            isActionLoading.value = false; // Matikan loader
-            emit("close"); // Tutup modal
+            isActionLoading.value = false;
             form.reset();
+            form.defaults();
+            emit("close");
         },
     });
 }
 </script>
+
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="lg"
-        ><div class="w-full p-4 bg-white shadow rounded-xl dark:bg-gray-800">
-            <h2
-                class="mb-4 text-lg font-semibold text-gray-800 dark:text-white"
+    <Modal :show="show" @close="$emit('close')" maxWidth="2xl">
+        <div
+            class="flex flex-col max-h-[85vh] bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden"
+        >
+            <div
+                class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800"
             >
-                Filter Produk
-            </h2>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Sortir</label
-                >
-                <div class="flex gap-2">
-                    <select
-                        v-model="form.sort"
-                        class="w-1/2 px-3 py-2 text-sm text-gray-800 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                <div>
+                    <h2
+                        class="flex items-center gap-2 text-lg font-bold text-gray-800 dark:text-white"
                     >
-                        <option
-                            v-for="opt in sortOptions"
-                            :key="opt.value"
-                            :value="opt.value"
+                        <svg
+                            class="w-5 h-5 text-lime-600"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
                         >
-                            {{ opt.label }}
-                        </option></select
-                    ><select
-                        v-model="form.order"
-                        class="w-1/2 px-3 py-2 text-sm text-gray-800 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                    >
-                        <option value="desc">Terbaru / Desc (Z-A)</option>
-                        <option value="asc">Terlama / Asc (A-Z)</option>
-                    </select>
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                            />
+                        </svg>
+                        Filter Lanjutan
+                    </h2>
+                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Saring data produk secara mendetail.
+                    </p>
                 </div>
-            </div>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Status</label
-                ><select
-                    v-model="form.status"
-                    class="w-full px-3 py-2 text-sm text-gray-800 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                <button
+                    @click="$emit('close')"
+                    class="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
                 >
-                    <option value="">Semua Status</option>
-                    <option
-                        v-for="status in dropdowns.productStatuses"
-                        :key="status"
-                        :value="status"
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
                     >
-                        {{ status.charAt(0).toUpperCase() + status.slice(1) }}
-                    </option>
-                </select>
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"
+                        />
+                    </svg>
+                </button>
             </div>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Kategori</label
-                ><select
-                    v-model="form.category_id"
-                    class="w-full px-3 py-2 text-sm text-gray-800 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                >
-                    <option value="">Semua Kategori</option>
-                    <option
-                        v-for="cat in dropdowns.categories"
-                        :key="cat.id"
-                        :value="cat.id"
+
+            <div class="flex-1 p-6 space-y-8 overflow-y-auto custom-scrollbar">
+                <section>
+                    <h3
+                        class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
                     >
-                        {{ cat.name }}
-                    </option>
-                </select>
-            </div>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Supplier</label
-                ><select
-                    v-model="form.supplier_id"
-                    class="w-full px-3 py-2 text-sm text-gray-800 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                >
-                    <option value="">Semua Supplier</option>
-                    <option
-                        v-for="cat in dropdowns.suppliers"
-                        :key="cat.id"
-                        :value="cat.id"
+                        Klasifikasi Produk
+                    </h3>
+                    <div
+                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-x-6 gap-y-4"
                     >
-                        {{ cat.name }}
-                    </option>
-                </select>
-            </div>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Ukuran</label
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Kategori</label
+                            >
+                            <select
+                                v-model="form.category_id"
+                                class="form-select"
+                            >
+                                <option value="">Semua Kategori</option>
+                                <option
+                                    v-for="opt in dropdowns.categories"
+                                    :key="opt.id"
+                                    :value="opt.id"
+                                >
+                                    {{ opt.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Tipe Produk</label
+                            >
+                            <select
+                                v-model="form.product_type_id"
+                                class="form-select"
+                            >
+                                <option value="">Semua Tipe</option>
+                                <option
+                                    v-for="opt in dropdowns.types"
+                                    :key="opt.id"
+                                    :value="opt.id"
+                                >
+                                    {{ opt.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Merk / Brand</label
+                            >
+                            <select v-model="form.brand_id" class="form-select">
+                                <option value="">Semua Merk</option>
+                                <option
+                                    v-for="opt in dropdowns.brands"
+                                    :key="opt.id"
+                                    :value="opt.id"
+                                >
+                                    {{ opt.name }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Supplier</label
+                            >
+                            <select
+                                v-model="form.supplier_id"
+                                class="form-select"
+                            >
+                                <option value="">Semua Supplier</option>
+                                <option
+                                    v-for="opt in dropdowns.suppliers"
+                                    :key="opt.id"
+                                    :value="opt.id"
+                                >
+                                    {{ opt.name }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3
+                        class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
+                    >
+                        Spesifikasi Fisik
+                    </h3>
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Satuan (Unit)</label
+                            >
+                            <select v-model="form.unit_id" class="form-select">
+                                <option value="">Semua Satuan</option>
+                                <option
+                                    v-for="opt in dropdowns.units"
+                                    :key="opt.id"
+                                    :value="opt.id"
+                                >
+                                    {{ opt.name }}
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Ukuran (Size)</label
+                            >
+                            <select v-model="form.size_id" class="form-select">
+                                <option value="">Semua Ukuran</option>
+                                <option
+                                    v-for="opt in dropdowns.sizes"
+                                    :key="opt.id"
+                                    :value="opt.id"
+                                >
+                                    {{ opt.name }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section>
+                    <h3
+                        class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
+                    >
+                        Rentang Nilai
+                    </h3>
+                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Jumlah Stok</label
+                            >
+                            <div class="flex gap-2">
+                                <input
+                                    type="number"
+                                    v-model="form.min_stock"
+                                    placeholder="Min"
+                                    class="px-1 text-center form-input"
+                                />
+                                <span class="self-center text-gray-400">-</span>
+                                <input
+                                    type="number"
+                                    v-model="form.max_stock"
+                                    placeholder="Max"
+                                    class="px-1 text-center form-input"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Harga Jual</label
+                            >
+                            <div class="flex gap-2">
+                                <input
+                                    type="number"
+                                    v-model="form.min_price"
+                                    placeholder="Min"
+                                    class="px-1 text-center form-input"
+                                />
+                                <span class="self-center text-gray-400">-</span>
+                                <input
+                                    type="number"
+                                    v-model="form.max_price"
+                                    placeholder="Max"
+                                    class="px-1 text-center form-input"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Harga Beli</label
+                            >
+                            <div class="flex gap-2">
+                                <input
+                                    type="number"
+                                    v-model="form.min_cost"
+                                    placeholder="Min"
+                                    class="px-1 text-center form-input"
+                                />
+                                <span class="self-center text-gray-400">-</span>
+                                <input
+                                    type="number"
+                                    v-model="form.max_cost"
+                                    placeholder="Max"
+                                    class="px-1 text-center form-input"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section
+                    class="p-4 border border-gray-100 bg-gray-50 dark:bg-gray-700/30 rounded-xl dark:border-gray-600"
                 >
-                <div class="flex flex-wrap gap-2">
+                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Status Produk</label
+                            >
+                            <select v-model="form.status" class="form-select">
+                                <option value="">Semua Status</option>
+                                <option value="active">Aktif (Tampil)</option>
+                                <option value="inactive">
+                                    Non-Aktif (Disembunyikan)
+                                </option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Data Terhapus</label
+                            >
+                            <select
+                                v-model="form.trashed"
+                                class="font-medium text-red-600 form-select"
+                            >
+                                <option value="">Sembunyikan Sampah</option>
+                                <option value="with">
+                                    Tampilkan Arsip Sampah
+                                </option>
+                                <option value="only">
+                                    Hanya Sampah (Recovery)
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="sm:col-span-2">
+                            <label
+                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                                >Urutkan Data</label
+                            >
+                            <div class="flex gap-2">
+                                <select
+                                    v-model="form.sort"
+                                    class="flex-1 form-select"
+                                >
+                                    <option
+                                        v-for="opt in sortOptions"
+                                        :key="opt.value"
+                                        :value="opt.value"
+                                    >
+                                        {{ opt.label }}
+                                    </option>
+                                </select>
+                                <div
+                                    class="flex overflow-hidden bg-white border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                                >
+                                    <button
+                                        type="button"
+                                        @click="form.order = 'asc'"
+                                        class="px-3 py-2 text-xs font-bold transition hover:bg-lime-50 dark:hover:bg-gray-600"
+                                        :class="
+                                            form.order === 'asc'
+                                                ? 'bg-lime-500 text-white hover:bg-lime-600'
+                                                : 'text-gray-600 dark:text-gray-300'
+                                        "
+                                    >
+                                        A-Z
+                                    </button>
+                                    <div
+                                        class="w-px bg-gray-300 dark:bg-gray-600"
+                                    ></div>
+                                    <button
+                                        type="button"
+                                        @click="form.order = 'desc'"
+                                        class="px-3 py-2 text-xs font-bold transition hover:bg-lime-50 dark:hover:bg-gray-600"
+                                        :class="
+                                            form.order === 'desc'
+                                                ? 'bg-lime-500 text-white hover:bg-lime-600'
+                                                : 'text-gray-600 dark:text-gray-300'
+                                        "
+                                    >
+                                        Z-A
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <div
+                class="flex flex-col-reverse items-center justify-between gap-4 p-5 border-t border-gray-100 sm:flex-row dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 sm:gap-0"
+            >
+                <button
+                    @click="resetFilter"
+                    class="text-xs font-bold text-gray-500 transition border-b border-gray-400 border-dashed hover:text-red-500 hover:border-red-500"
+                >
+                    Reset ke Default
+                </button>
+                <div class="flex w-full gap-3 sm:w-auto">
                     <button
-                        v-for="size in dropdowns.sizes"
-                        :key="size.id"
-                        class="px-3 py-1 text-sm text-gray-800 border border-gray-300 rounded-lg dark:border-gray-600 dark:text-gray-300"
-                        :class="{
-                            'bg-lime-500 text-white border-lime-500':
-                                isSizeActive(size.id),
-                            'hover:bg-lime-100 dark:hover:bg-gray-600':
-                                !isSizeActive(size.id),
-                        }"
-                        @click="toggleSize(size.id)"
+                        @click="$emit('close')"
+                        class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                     >
-                        {{ size.name }}
+                        Batal
                     </button>
-                </div>
-            </div>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Stok</label
-                >
-                <div class="flex gap-2">
-                    <input
-                        type="number"
-                        placeholder="Min"
-                        class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                        v-model="form.min_stock"
-                    />
-                    <input
-                        type="number"
-                        placeholder="Max"
-                        class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                        v-model="form.max_stock"
-                    />
-                </div>
-            </div>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Harga (Jual)</label
-                >
-                <div class="flex gap-2">
-                    <div class="flex flex-col gap-2">
-                        <input
-                            type="number"
-                            placeholder="Min"
-                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                            v-model="form.min_price"
-                        />
-                        <span class="text-xs text-gray-500">{{
-                            new Intl.NumberFormat("id-ID", {
-                                style: "currency",
-                                currency: "IDR",
-                                minimumFractionDigits: 0,
-                            }).format(form.min_price) || 0
-                        }}</span>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <input
-                            type="number"
-                            placeholder="Max"
-                            class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                            v-model="form.max_price"
-                        />
-                        <span class="text-xs text-gray-500">{{
-                            new Intl.NumberFormat("id-ID", {
-                                style: "currency",
-                                currency: "IDR",
-                                minimumFractionDigits: 0,
-                            }).format(form.max_price) || 0
-                        }}</span>
-                    </div>
-                </div>
-            </div>
-            <div class="block mb-4 mr-auto md:hidden">
-                <label class="flex items-center space-x-2 cursor-pointer">
-                    <input
-                        type="checkbox"
-                        v-model="form.trashed"
-                        class="border-gray-300 rounded dark:bg-gray-900 dark:border-gray-700 text-lime-600 focus:ring-lime-500"
-                    />
-                    <span class="text-sm text-gray-700 dark:text-gray-400">
-                        Hanya Tampilkan Sampah
-                    </span>
-                </label>
-            </div>
-            <div class="flex justify-center gap-2 md:justify-between">
-                <div class="hidden my-auto md:block">
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            v-model="form.trashed"
-                            class="border-gray-300 rounded dark:bg-gray-900 dark:border-gray-700 text-lime-600 focus:ring-lime-500"
-                        />
-                        <span class="text-sm text-gray-700 dark:text-gray-400">
-                            Hanya Tampilkan Sampah
-                        </span>
-                    </label>
-                </div>
-                <div class="flex gap-3">
                     <button
-                        class="px-4 py-2 text-sm font-medium text-white rounded-lg bg-lime-500 hover:bg-lime-600 disabled:opacity-50"
                         @click="applyFilter"
-                        :disabled="form.processing"
+                        class="flex-1 sm:flex-none px-8 py-2.5 rounded-xl bg-lime-500 hover:bg-lime-600 text-white font-bold text-sm shadow-md shadow-lime-200 dark:shadow-none transition flex items-center justify-center gap-2"
+                        :disabled="isActionLoading"
                     >
-                        {{
-                            form.processing ? "Menerapkan..." : "Terapkan"
-                        }}</button
-                    ><button
-                        class="px-4 py-2 text-sm font-medium bg-gray-200 rounded-lg hover:bg-gray-300 dark:bg-gray-600 dark:hover:bg-gray-500 dark:text-gray-200"
-                        @click="resetFilter"
-                        type="button"
-                    >
-                        Reset
+                        <svg
+                            v-if="isActionLoading"
+                            class="w-4 h-4 text-white animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                        <span>Terapkan Filter</span>
                     </button>
                 </div>
             </div>
-        </div></Modal
-    >
+        </div>
+    </Modal>
 </template>
+
+<style scoped>
+/* REUSABLE INPUT CLASS */
+.form-select,
+.form-input {
+    @apply w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all;
+}
+
+/* CUSTOM SCROLLBAR */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 20px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4b5563;
+}
+</style>

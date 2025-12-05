@@ -78,7 +78,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 >
                 <span
                     v-if="isMarginLow"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-yellow-400 text-yellow-900 rounded-md shadow-sm"
+                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-yellow-400 text-white rounded-md shadow-sm"
                     >⚠️ Margin</span
                 >
                 <span
@@ -111,7 +111,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                         >{{ data.brand?.name }}</span
                     >
                     <span
-                        class="truncate bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-[9px] text-gray-600"
+                        class="truncate bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-600 dark:text-gray-100 text-[9px] text-gray-600"
                         >{{ data.category?.name }} |
                         {{ data.product_type?.name }}</span
                     >
@@ -119,7 +119,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
 
                 <Link
                     :href="route('products.show', data.id)"
-                    class="block mb-2 text-lg font-bold leading-tight text-gray-900 transition dark:text-white hover:text-lime-600 line-clamp-2"
+                    class="block mb-2 text-lg font-bold leading-tight text-gray-900 transition dark:text-white hover:text-lime-600 dark:hover:text-lime-600 line-clamp-2"
                     :title="data.full_name"
                 >
                     {{ data.full_name || data.name }}

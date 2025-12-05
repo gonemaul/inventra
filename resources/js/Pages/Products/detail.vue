@@ -132,7 +132,10 @@ const maxChartValue = computed(() => {
                 </template>
 
                 <template #analisis>
-                    <TabAnalisis :inventory="product.inventory" />
+                    <TabAnalisis
+                        :inventory="product.inventory"
+                        :product="product"
+                    />
                 </template>
                 <template #forecast>
                     <TabForecasting :inventory="product.inventory" />

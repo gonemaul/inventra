@@ -85,7 +85,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 >
                     <span
                         v-if="isMarginLow"
-                        class="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-opacity-50 bg-yellow-400 text-yellow-900 rounded shadow-sm"
+                        class="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-opacity-50 bg-yellow-400 text-white rounded shadow-sm"
                     >
                         ⚠️ Margin
                     </span>
@@ -206,7 +206,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                                 data.financials.purchase_trend.direction ===
                                 'up'
                             "
-                            class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600 border border-green-100"
+                            class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100"
                             :title="
                                 `Modal Naik : ` +
                                 formatRupiah(
@@ -226,7 +226,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                                 data.financials.purchase_trend.direction ===
                                 'down'
                             "
-                            class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100"
+                            class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600 border border-green-100"
                             :title="
                                 `Modal Turun : ` +
                                 formatRupiah(

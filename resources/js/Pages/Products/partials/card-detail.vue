@@ -347,6 +347,11 @@ const isStockLow = computed(() => {
                                 )
                             }}
                         </span>
+                        <span class="text-green-600"
+                            >({{
+                                data.financials.selling_trend.percent
+                            }}%)</span
+                        >
                     </div>
                     <div
                         v-else-if="
@@ -361,6 +366,11 @@ const isStockLow = computed(() => {
                                     data.financials.selling_trend.diff_rp
                                 )
                             }}</span
+                        >
+                        <span class="text-red-500"
+                            >({{
+                                data.financials.selling_trend.percent
+                            }}%)</span
                         >
                     </div>
                     <div v-else class="text-[10px] text-blue-300 font-medium">

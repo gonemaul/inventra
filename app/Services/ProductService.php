@@ -148,20 +148,31 @@ class ProductService
 
         // 5. ANALISA DEAD STOCK (LOGIC SIMPLE)
         // Cek transaksi terakhir
+        $deadStockInsight = $product->insights->where('type', 'dead_stock')->first();
         $lastSaleDate = null;
         $isDeadStock = false;
+        $daysInactive = 0;
 
-        $lastItem = SaleItem::with('sale')
-            ->where('product_id', $product->id)
-            ->latest()
-            ->first();
+        if ($deadStockInsight) {
+            // Jika ada insight, BERARTI DIA DEAD STOCK. Ikuti data insight.
+            $isDeadStock = true;
+            $daysInactive = $deadStockInsight->payload['days_inactive'] ?? 0;
+            // Override status visual jika perlu
+            $status = 'dead';
+        } else {
+            $lastItem = SaleItem::with('sale')
+                ->where('product_id', $product->id)
+                ->latest()
+                ->first();
 
-        if ($lastItem) {
-            $lastSaleDate = $lastItem->sale->transaction_date;
-            // Jika tidak laku > 60 hari dan stok masih ada
-            if ($stock > 0 && Carbon::parse($lastSaleDate)->diffInDays(now()) > 60) {
-                $isDeadStock = true;
-                $status = 'dead';
+            if ($lastItem) {
+                $lastSaleDate = $lastItem->sale->transaction_date;
+                // Jika tidak laku > 60 hari dan stok masih ada
+                $daysInactive = round(Carbon::parse($lastSaleDate)->diffInDays(now()));
+                if ($stock > 0 && $daysInactive > 60) {
+                    $isDeadStock = true;
+                    $status = 'dead';
+                }
             }
         }
 
@@ -173,6 +184,7 @@ class ProductService
             'sales_30_days' => $sales30Days, // Total laku sebulan
             'suggested_qty' => $suggestedQty, // Saran beli
             'is_dead_stock' => $isDeadStock,
+            'days_inactive' => $daysInactive,
             'last_sale'    => $lastSaleDate ? Carbon::parse($lastSaleDate)->diffForHumans() : 'Belum pernah terjual'
         ];
     }
@@ -191,59 +203,61 @@ class ProductService
             $q->where('is_read', false);
         }]);
 
-        // 1. Filter 'trashed' (Sampah)
-        if (isset($params['trashed']) && $params['trashed']) {
-            $query->onlyTrashed();
-        }
-
-        // 2. Filter 'search' (Nama atau Kode)
-        if (isset($params['search']) && $params['search']) {
-            $search = $params['search'];
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('code', 'like', '%' . $search . '%');
+        // 1. SEARCH GLOBAL
+        $query->when($params['search'] ?? null, function ($q, $search) {
+            $q->where(function ($sub) use ($search) {
+                $sub->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
             });
-        }
-        if (isset($params['status']) && $params['status']) {
-            $query->where('status', $params['status']);
-        }
-        if (isset($params['category_id']) && $params['category_id']) {
-            $query->where('category_id', $params['category_id']);
-        }
-        if (isset($params['supplier_id']) && $params['supplier_id']) {
-            $query->where('supplier_id', $params['supplier_id']);
-        }
-        if (isset($params['sizes']) && is_array($params['sizes']) && count($params['sizes']) > 0) {
-            $query->whereIn('size_id', $params['sizes']);
-        }
-        if (isset($params['min_stock']) && is_numeric($params['min_stock'])) {
-            $query->where('stock', '>=', $params['min_stock']);
-        }
-        if (isset($params['max_stock']) && is_numeric($params['max_stock'])) {
-            $query->where('stock', '<=', $params['max_stock']);
-        }
-        if (isset($params['min_price']) && is_numeric($params['min_price'])) {
-            $query->where('selling_price', '>=', $params['min_price']);
-        }
-        if (isset($params['max_price']) && is_numeric($params['max_price'])) {
-            $query->where('selling_price', '<=', $params['max_price']);
-        }
-        $sortBy = $params['sort'] ?? 'created_at';
+        });
+
+        // 2. FILTER RELASI (Foreign Keys)
+        $query->when($params['category_id'] ?? null, fn($q, $v) => $q->where('category_id', $v));
+        $query->when($params['brand_id'] ?? null, fn($q, $v) => $q->where('brand_id', $v));
+        $query->when($params['unit_id'] ?? null, fn($q, $v) => $q->where('unit_id', $v));
+        $query->when($params['size_id'] ?? null, fn($q, $v) => $q->where('size_id', $v));
+        $query->when($params['supplier_id'] ?? null, fn($q, $v) => $q->where('supplier_id', $v));
+        $query->when($params['product_type_id'] ?? null, fn($q, $v) => $q->where('product_type_id', $v));
+
+        // 3. FILTER STATUS & TRASH
+        $query->when($params['status'] ?? null, fn($q, $v) => $q->where('status', $v));
+
+        $query->when($params['trashed'] ?? null, function ($q, $trashed) {
+            if ($trashed === 'with') $q->withTrashed();
+            if ($trashed === 'only') $q->onlyTrashed();
+        });
+
+        // 4. FILTER RANGE (Min - Max)
+        // Harga Jual
+        $query->when($params['price_min'] ?? null, fn($q, $v) => $q->where('selling_price', '>=', $v));
+        $query->when($params['price_max'] ?? null, fn($q, $v) => $q->where('selling_price', '<=', $v));
+        // Harga Beli
+        $query->when($params['cost_min'] ?? null, fn($q, $v) => $q->where('purchase_price', '>=', $v));
+        $query->when($params['cost_max'] ?? null, fn($q, $v) => $q->where('purchase_price', '<=', $v));
+        // Stok
+        $query->when($params['stock_min'] ?? null, fn($q, $v) => $q->where('stock', '>=', $v));
+        $query->when($params['stock_max'] ?? null, fn($q, $v) => $q->where('stock', '<=', $v));
+
+        // 5. SORTING
+        $sortField = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
 
-        // Whitelist untuk keamanan
-        $sortableColumns = ['created_at', 'name', 'selling_price', 'stock'];
-        if (!in_array($sortBy, $sortableColumns)) {
-            $sortBy = 'created_at';
+        $allowedSorts = ['name', 'selling_price', 'purchase_price', 'stock', 'created_at', 'code'];
+        if (in_array($sortField, $allowedSorts)) {
+            $query->orderBy($sortField, $sortDirection);
+        } else {
+            $query->orderBy('created_at', 'desc');
         }
+
         $perPage = $params['per_page'] ?? 10;
-        $products = $query->orderBy($sortBy, $sortDirection)
-            ->paginate($perPage)
+        $products = $query->paginate($perPage)
             ->withQueryString();
+
         $products->getCollection()->transform(function ($product) {
             $product->financials = $this->calculateFinancials($product);
             return $product;
         });
+
         return $products;
     }
 
