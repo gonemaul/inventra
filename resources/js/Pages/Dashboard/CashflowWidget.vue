@@ -21,8 +21,7 @@ const formatRupiah = (val) =>
         minimumFractionDigits: 0,
     }).format(val);
 
-// Logic visualisasi persentase bar (Estimasi)
-// Jika surplus: Bar Penuh. Jika defisit: Bar sesuai rasio uang masuk vs keluar.
+// Logic visualisasi persentase bar
 const healthPercent = computed(() => {
     if (props.cashflow.out === 0) return 100;
     const ratio = (props.cashflow.in / props.cashflow.out) * 100;
@@ -32,137 +31,125 @@ const healthPercent = computed(() => {
 
 <template>
     <div
-        class="flex flex-col justify-between h-full p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm rounded-2xl relative overflow-hidden"
+        class="relative flex flex-col justify-between h-full p-6 overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 rounded-2xl group"
     >
-        <div class="relative z-10">
-            <div class="flex items-center justify-between mb-2">
+        <div
+            class="absolute top-0 right-0 w-32 h-32 -mt-16 -mr-16 transition-all duration-700 rounded-full blur-3xl opacity-20"
+            :class="cashflow.balance >= 0 ? 'bg-lime-400' : 'bg-red-500'"
+        ></div>
+
+        <div class="relative z-10 flex items-start justify-between mb-2">
+            <div>
                 <p
-                    class="text-xs font-bold text-gray-400 uppercase tracking-widest"
+                    class="mb-1 text-xs font-bold tracking-widest text-gray-400 uppercase"
                 >
-                    Proyeksi Cashflow (7 Hari)
+                    Proyeksi Cashflow
                 </p>
                 <span
-                    class="px-2 py-0.5 text-[10px] font-bold rounded uppercase"
+                    class="inline-block px-2 py-0.5 rounded text-[10px] font-bold transition-colors"
                     :class="
                         cashflow.balance >= 0
-                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                            : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            ? 'bg-lime-50 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300'
+                            : 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                     "
                 >
-                    {{ cashflow.balance >= 0 ? "Surplus" : "Defisit" }}
+                    {{ cashflow.balance >= 0 ? "SURPLUS" : "DEFISIT" }}
                 </span>
             </div>
 
-            <div class="flex items-baseline gap-2 mb-4">
-                <h2
-                    class="text-3xl font-black tracking-tight"
-                    :class="
-                        cashflow.balance >= 0
-                            ? 'text-gray-800 dark:text-white'
-                            : 'text-red-600 dark:text-red-400'
-                    "
+            <div
+                class="flex items-center justify-center w-10 h-10 transition-colors border rounded-xl"
+                :class="
+                    cashflow.balance >= 0
+                        ? 'bg-lime-50 text-lime-600 border-lime-100 dark:bg-lime-900/20 dark:text-lime-400 dark:border-lime-800'
+                        : 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800'
+                "
+            >
+                <svg
+                    class="w-6 h-6"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
                 >
-                    {{ formatRupiah(cashflow.balance) }}
-                </h2>
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    ></path>
+                </svg>
             </div>
         </div>
 
-        <div
-            class="grid grid-cols-2 gap-4 py-3 border-t border-b border-gray-100 dark:border-gray-700 mb-4 relative z-10"
-        >
-            <div>
-                <p
-                    class="text-[10px] text-gray-400 uppercase font-semibold mb-1"
-                >
-                    Estimasi Masuk
-                </p>
-                <div
-                    class="flex items-center gap-1.5 text-green-600 dark:text-green-400"
-                >
-                    <svg
-                        class="w-4 h-4 bg-green-50 rounded-full p-0.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+        <div class="relative z-10 mt-2 mb-6">
+            <h2
+                class="text-3xl font-black tracking-tight"
+                :class="
+                    cashflow.balance >= 0
+                        ? 'text-gray-800 dark:text-white'
+                        : 'text-red-600 dark:text-red-400'
+                "
+            >
+                {{ formatRupiah(cashflow.balance) }}
+            </h2>
+            <p class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                Estimasi saldo 7 hari ke depan
+            </p>
+        </div>
+
+        <div class="relative z-10 grid grid-cols-2 gap-3 mb-4">
+            <div
+                class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-600"
+            >
+                <div class="flex items-center gap-1.5 mb-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-green-500"></div>
+                    <span class="text-[10px] uppercase font-bold text-gray-400"
+                        >Masuk</span
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                        ></path>
-                    </svg>
-                    <span class="font-bold text-sm">{{
-                        formatRupiah(cashflow.in)
-                    }}</span>
                 </div>
+                <p class="text-sm font-bold text-gray-700 dark:text-gray-200">
+                    {{ formatRupiah(cashflow.in) }}
+                </p>
             </div>
 
-            <div>
-                <p
-                    class="text-[10px] text-gray-400 uppercase font-semibold mb-1"
-                >
-                    Tagihan Keluar
-                </p>
-                <div
-                    class="flex items-center gap-1.5 text-red-600 dark:text-red-400"
-                >
-                    <svg
-                        class="w-4 h-4 bg-red-50 rounded-full p-0.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+            <div
+                class="p-2.5 rounded-lg bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-600"
+            >
+                <div class="flex items-center gap-1.5 mb-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                    <span class="text-[10px] uppercase font-bold text-gray-400"
+                        >Keluar</span
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
-                        ></path>
-                    </svg>
-                    <span class="font-bold text-sm">{{
-                        formatRupiah(cashflow.out)
-                    }}</span>
                 </div>
+                <p class="text-sm font-bold text-gray-700 dark:text-gray-200">
+                    {{ formatRupiah(cashflow.out) }}
+                </p>
             </div>
         </div>
 
-        <div class="mt-auto relative z-10">
+        <div class="relative z-10 mt-auto">
             <div class="flex justify-between text-[10px] text-gray-400 mb-1">
-                <span>Kesehatan Arus Kas</span>
+                <span>Rasio Kesehatan</span>
                 <span>{{ healthPercent.toFixed(0) }}%</span>
             </div>
 
             <div
-                class="w-full h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-3"
+                class="w-full h-2 mb-2 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-700"
             >
                 <div
-                    class="h-full rounded-full transition-all duration-1000"
+                    class="h-full transition-all duration-1000 ease-out rounded-full shadow-sm"
                     :class="
-                        cashflow.balance >= 0 ? 'bg-green-500' : 'bg-red-500'
+                        cashflow.balance >= 0 ? 'bg-lime-500' : 'bg-red-500'
                     "
                     :style="{ width: healthPercent + '%' }"
                 ></div>
             </div>
 
-            <p class="text-xs text-gray-500 dark:text-gray-400 leading-snug">
-                <span
-                    class="font-bold"
-                    :class="
-                        cashflow.balance >= 0
-                            ? 'text-green-600'
-                            : 'text-red-500'
-                    "
-                >
-                    {{ cashflow.balance >= 0 ? "Aman." : "Perhatian!" }}
-                </span>
+            <p
+                class="text-[10px] font-medium leading-snug text-gray-500 dark:text-gray-400"
+            >
                 {{ cashflow.message }}
             </p>
         </div>
-
-        <div
-            class="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 rounded-full opacity-20 filter blur-xl z-0"
-            :class="cashflow.balance >= 0 ? 'bg-green-400' : 'bg-red-400'"
-        ></div>
     </div>
 </template>
