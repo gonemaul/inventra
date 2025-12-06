@@ -112,11 +112,8 @@ class PurchaseService
                 'reference_no' => $this->generateReferenceNo($validatedData['supplier_id']),
                 'transaction_date' => $validatedData['transaction_date'],
                 'status' => Purchase::STATUS_DRAFT,
-                'notes' => $validatedData['notes'] ?? null,
-                'shipping_cost' => $validatedData['shipping_cost'] ?? 0,
-                'other_costs' => $validatedData['other_costs'] ?? 0,
+                'grand_total' => 0, // Akan dihitung ulang setelah item dibuat
             ]);
-
             // 4. Loop dan buat PurchaseItem
             foreach ($purchaseItemsData as $itemData) {
                 // Ambil data produk master untuk snapshot
@@ -156,7 +153,8 @@ class PurchaseService
 
             // 5. [OPSIONAL] Update grand_total di sini jika diperlukan,
             //    tapi karena kita hapus kolomnya, kita lewati.
-
+            $purchase->grand_total = $grandTotal;
+            $purchase->save();
             return $purchase;
         });
     }

@@ -7,6 +7,7 @@ use App\Models\Product;
 use App\Models\Purchase;
 use Illuminate\Http\Request;
 use App\Models\PurchaseInvoice;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Validation\Rule;
 use App\Services\InvoiceService;
 use App\Services\PurchaseService;
@@ -40,9 +41,6 @@ class PurchaseController extends Controller
     public function index(Request $request)
     {
         $purchases = $this->purchaseService->get($request->all());
-        // if ($request->wantsJson() || $request->ajax()) {
-        //     return response()->json($purchases); // <-- Kembalikan JSON MURNI
-        // }
         return Inertia::render('Purchases/index', [
             'purchases' => $purchases,
             'dropdowns' => [
@@ -128,15 +126,6 @@ class PurchaseController extends Controller
         ]);
         $purchase->loadSum('invoices', 'total_amount');
         $invoice = $purchase->invoices->first() ?? new PurchaseInvoice();
-        // if (!in_array($purchase->status, [
-        //     Purchase::STATUS_RECEIVED,
-        //     Purchase::STATUS_CHECKING,
-        //     Purchase::STATUS_COMPLETED,
-        //     Purchase::STATUS_CANCELLED
-        // ])) {
-        //     // Jika masih ordered/shipped, redirect ke index
-        //     return redirect()->route('purchases.index')->with('error', 'Detail validasi hanya bisa diakses setelah barang tiba (Status Received).');
-        // }
         return Inertia::render('Purchases/PurchaseDetail', [
             'purchase' => $purchase,
             'invoice' => $invoice,
@@ -348,5 +337,37 @@ class PurchaseController extends Controller
         $purchase->delete(); // Hapus header
 
         return Redirect::back()->with('success', 'Transaksi berhasil dihapus.');
+    }
+
+    public function print($id)
+    {
+        // 1. Ambil Data Lengkap
+        $purchase = Purchase::with([
+            'supplier',
+            'user',
+            'items.product.unit', // Relasi ke Unit produk
+            'items.product.size'  // Relasi ke Size produk
+        ])->findOrFail($id);
+
+        // 2. Data Toko (Hardcode dulu atau ambil dari Setting jika ada)
+        $storeProfile = [
+            'name' => 'INVENTRA CORP',
+            'address' => 'Jl. Raya Kediri No. 123, Jawa Timur',
+            'phone' => '0812-3456-7890',
+            'email' => 'admin@inventra.com'
+        ];
+
+        // 3. Load View PDF
+        $pdf = Pdf::loadView('exports.purchase_order', [
+            'po' => $purchase,
+            'store' => $storeProfile
+        ]);
+
+        $safeRef = str_replace(['/', '\\'], '-', $purchase->reference_no);
+        $filename = 'PO-' . $safeRef . '.pdf';
+
+        // 4. Set Kertas & Stream (Tampil di browser)
+        $pdf->setPaper('a4', 'portrait');
+        return $pdf->stream($filename);
     }
 }

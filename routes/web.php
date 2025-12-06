@@ -46,11 +46,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('purchases/{purchase}/status', 'updateStatus')
             ->name('purchases.update-status');
         // Rute detail
-        Route::get('purchases/{purchase}', [PurchaseController::class, 'checking'])
+        Route::get('purchases/{purchase}', 'checking')
             ->name('purchases.show');
         // Rute untuk Halaman Checking/Validasi (Flow Khusus)
-        Route::get('purchases/{purchase}/checking', [PurchaseController::class, 'checking'])
+        Route::get('purchases/{purchase}/checking', 'checking')
             ->name('purchases.checking');
+        Route::get('purchases/{id}/print', 'print')->name('purchases.print');
 
         // RUTE INVOICE
         // POST Rute untuk Upload Invoice
