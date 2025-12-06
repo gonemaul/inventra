@@ -12,6 +12,7 @@ import { throttle } from "lodash";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 import ImageModal from "@/Components/ImageModal.vue";
+import EmptyState from "./partials/EmptyState.vue";
 
 const props = defineProps({
     products: Object, // Berisi data produk yang sudah dipaginasi
@@ -97,6 +98,25 @@ const performSearch = throttle(() => {
     });
 }, 300);
 watch(search, performSearch);
+
+const isFiltering = computed(() => {
+    // Sesuaikan dengan props filters Anda
+    return props.filters;
+});
+const resetFilter = () => {
+    isActionLoading.value = true;
+    router.get(
+        route("products.index"),
+        { per_page: props.filters.per_page || 10 },
+        {
+            preserveState: true,
+            replace: true,
+            onFinish: () => {
+                isActionLoading.value = false;
+            },
+        }
+    );
+};
 </script>
 <template>
     <ImageModal
@@ -127,14 +147,14 @@ watch(search, performSearch);
                 ]"
             />
             <div
-                class="flex p-1 my-3 bg-white border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700"
+                class="flex gap-1 p-1 my-3 bg-white border border-gray-200 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700"
             >
                 <button
                     @click="viewMode = 'grid'"
                     :class="
                         viewMode === 'grid'
                             ? 'bg-lime-500 text-white'
-                            : 'text-gray-400 hover:bg-gray-100'
+                            : 'text-gray-400 hover:bg-gray-100 hover:text-lime-500'
                     "
                     class="p-2 transition rounded"
                     title="Mode Grid"
@@ -159,7 +179,7 @@ watch(search, performSearch);
                     :class="
                         viewMode === 'list'
                             ? 'bg-lime-500 text-white'
-                            : 'text-gray-400 hover:bg-gray-100'
+                            : 'text-gray-400 hover:bg-gray-100 hover:text-lime-500'
                     "
                     class="p-2 transition rounded"
                     title="Mode Daftar"
@@ -184,7 +204,7 @@ watch(search, performSearch);
                     :class="
                         viewMode === 'kanban'
                             ? 'bg-lime-500 text-white'
-                            : 'text-gray-400 hover:bg-gray-100'
+                            : 'text-gray-400 hover:bg-gray-100 hover:text-lime-500'
                     "
                     class="p-2 transition rounded"
                     title="Mode Analisa DSS"
@@ -209,47 +229,57 @@ watch(search, performSearch);
                 :metadata="products"
                 :filters="filters"
             />
-            <div
-                v-if="viewMode === 'grid'"
-                class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-            >
+            <div class="" v-if="products.data.length > 0">
                 <div
-                    v-for="product in products.data"
-                    :key="product.id"
-                    class="h-full"
+                    v-if="viewMode === 'grid'"
+                    class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
                 >
                     <ProductCardGrid
+                        v-for="product in products.data"
+                        :key="product.id"
                         :data="product"
                         @delete="openDeleteModal(product, false)"
                         @imageClick="openImageModal"
                     />
                 </div>
-            </div>
-            <div
-                v-else-if="viewMode === 'list'"
-                class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-1 lg:grid-cols-2"
-            >
                 <div
-                    v-if="products.data.length === 0"
-                    class="col-span-full text-center ..."
+                    v-else-if="viewMode === 'list'"
+                    class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-1 lg:grid-cols-2"
                 >
-                    <p class="text-gray-500 ...">
-                        Tidak ada produk yang ditemukan.
-                    </p>
+                    <ProductCardList
+                        v-for="product in products.data"
+                        :is-trash-view="isTrashView"
+                        :key="product.id"
+                        :data="product"
+                        @delete="openDeleteModal(product, false)"
+                        @forceDelete="openDeleteModal(product, true)"
+                        @restore="restoreProduct(product)"
+                        @imageClick="openImageModal"
+                    />
                 </div>
-                <ProductCardList
-                    v-for="product in products.data"
-                    :is-trash-view="isTrashView"
-                    :key="product.id"
-                    :data="product"
-                    @delete="openDeleteModal(product, false)"
-                    @forceDelete="openDeleteModal(product, true)"
-                    @restore="restoreProduct(product)"
-                    @imageClick="openImageModal"
-                />
+                <div v-else-if="viewMode === 'kanban'">
+                    <ProductKanbanBoard :products="products.data" />
+                </div>
             </div>
-            <div v-else-if="viewMode === 'kanban'">
-                <ProductKanbanBoard :products="products.data" />
+            <div v-else class="mt-8">
+                <EmptyState
+                    v-if="isFiltering"
+                    title="Tidak ditemukan"
+                    message="Maaf, tidak ada produk yang cocok dengan pencarian atau filter Anda. Coba atur ulang."
+                    icon="search"
+                    action-label="Reset Filter"
+                    action-type="button"
+                    @action="resetFilter"
+                />
+                <EmptyState
+                    v-else
+                    title="Belum ada Produk"
+                    message="Toko Anda masih kosong. Mulai tambahkan produk pertama Anda sekarang!"
+                    icon="box"
+                    action-label="Tambah Produk Baru"
+                    :action-url="route('products.create')"
+                    action-type="link"
+                />
             </div>
             <Pagination
                 v-if="products.data.length > 8"
