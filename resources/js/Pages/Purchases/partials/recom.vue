@@ -4,18 +4,17 @@ import axios from "axios";
 import Modal from "@/Components/Modal.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
+
 const props = defineProps({
     show: Boolean,
-    supplierId: [Number, String], // ID Supplier dari form header (untuk filter BE)
+    supplierId: [Number, String], // ID Supplier
 });
 const emit = defineEmits(["close", "add-items"]);
 
-// --- STATE INTERNAL MODAL ---
-const recommendations = ref([]); // Data yang diterima dari BE
+const recommendations = ref([]);
 const loading = ref(false);
-const selectedItems = ref([]); // ID produk yang dicentang user
+const selectedItems = ref([]);
 
-// Helper Rupiah
 const formatRupiah = (n) =>
     new Intl.NumberFormat("id-ID", {
         style: "currency",
@@ -23,21 +22,20 @@ const formatRupiah = (n) =>
         minimumFractionDigits: 0,
     }).format(n);
 
-// 1. FUNGSI FETCH DATA (Dipanggil saat modal show)
+// 1. FETCH DATA
 async function fetchRecommendations() {
-    if (!props.supplierId) return; // Jangan fetch jika supplier belum dipilih
-
+    if (!props.supplierId) return;
     loading.value = true;
     try {
-        // Panggil API Backend (yang sudah kita buat di PurchaseController)
-        const res = await axios.get(route("purchases.recommendations"), {
-            params: { supplier_id: props.supplierId },
-        });
-
+        const res = await axios.get(
+            route("purchases.recommendations", props.supplierId)
+        );
         recommendations.value = res.data;
-
-        // Atur default: Auto-check semua rekomendasi yang muncul
-        selectedItems.value = res.data.map((i) => i.product_id);
+        // Default: Centang semua yang kritis
+        selectedItems.value = res.data
+            .filter((i) => i.is_critical)
+            .map((i) => i.product_id);
+        // Atau centang semua: selectedItems.value = res.data.map(i => i.product_id);
     } catch (e) {
         console.error("Gagal fetch rekomendasi:", e);
         recommendations.value = [];
@@ -46,38 +44,28 @@ async function fetchRecommendations() {
     }
 }
 
-// 2. WATCHER (Pemicu Otomatis)
 watch(
     () => props.show,
     (isOpen) => {
-        if (isOpen) {
-            fetchRecommendations();
-        } else {
-            // Bersihkan state saat modal tertutup
-            recommendations.value = [];
-        }
+        if (isOpen) fetchRecommendations();
+        else recommendations.value = [];
     }
 );
 
-// 3. FUNGSI TAMBAH MASSAL (Handler Tombol 'Ambil Terpilih')
 function handleAdd() {
-    // Filter hanya item yang ID-nya ada di array 'selectedItems'
     const itemsToAdd = recommendations.value
         .filter((item) => selectedItems.value.includes(item.product_id))
         .map((item) => ({
-            // Kirim data lengkap yang dibutuhkan oleh usePurchaseCart.addMultipleItems
             ...item,
-            quantity: item.quantity, // Quantity ini adalah 'Saran Qty' dari BE
+            quantity: item.quantity,
             purchase_price: item.purchase_price,
         }));
 
     if (itemsToAdd.length === 0) return;
-
-    emit("add-items", itemsToAdd); // Kirim array item ke parent
+    emit("add-items", itemsToAdd);
     emit("close");
 }
 
-// 4. Aksi Cepat (Check/Uncheck All)
 const allChecked = computed({
     get() {
         return (
@@ -92,126 +80,83 @@ const allChecked = computed({
     },
 });
 </script>
+
 <template>
-    <Modal :show="show" @close="$emit('close')">
-        <!-- <div
-            class="w-full p-6 bg-white shadow-lg maxs-w-md rounded-xl dark:bg-gray-800"
-        >
-            <div
-                class="relative flex items-center justify-center pb-3 border-b"
-            >
-                <h2 class="text-lg font-semibold text-gray-800 dark:text-white">
-                    Rekomendasi Pembelian
-                </h2>
-                <button
-                    @click="$emit('close')"
-                    class="absolute right-0 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                >
-                    ✕
-                </button>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table
-                    class="w-full text-sm border border-gray-300 rounded-lg dark:border-gray-600"
-                >
-                    <thead class="bg-gray-100 dark:bg-gray-700 dark:text-white">
-                        <tr>
-                            <th class="px-3 py-2 text-left">
-                                <input type="checkbox" @change="toggleAll" />
-                            </th>
-                            <th class="px-3 py-2 text-left">Produk</th>
-                            <th class="px-3 py-2 text-center">Satuan</th>
-                            <th class="px-3 py-2 text-center">Stok</th>
-                            <th class="px-3 py-2 text-center">Rekom</th>
-                            <th class="px-3 py-2 text-center">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="(item, index) in items"
-                            :key="index"
-                            :class="
-                                item.inRAB
-                                    ? 'bg-yellow-100 dark:bg-yellow-800'
-                                    : ''
-                            "
-                            class="border-t border-gray-300 dark:border-gray-600 dark:text-white"
-                        >
-                            <td class="px-3 py-2">
-                                <input
-                                    type="checkbox"
-                                    v-model="selected"
-                                    :value="item.id"
-                                    :disabled="item.inRAB"
-                                />
-                            </td>
-                            <td class="px-3 py-2">{{ item.nama }}</td>
-                            <td class="px-3 py-2 text-center">
-                                {{ item.satuan }}
-                            </td>
-                            <td class="px-3 py-2 text-center">
-                                {{ item.stok }}
-                            </td>
-                            <td class="px-3 py-2 text-center">
-                                {{ item.rekom }}
-                            </td>
-                            <td class="px-3 py-2 text-center">
-                                <span
-                                    v-if="item.inRAB"
-                                    class="px-2 py-1 text-xs font-semibold text-yellow-700 bg-yellow-200 rounded dark:bg-yellow-600 dark:text-white"
-                                >
-                                    Sudah di RAB
-                                </span>
-                                <span
-                                    v-else
-                                    class="px-2 py-1 text-xs font-semibold text-green-700 bg-green-200 rounded dark:bg-green-600 dark:text-white"
-                                >
-                                    Baru
-                                </span>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="flex justify-end gap-2 mt-4">
-                <button
-                    @click="$emit('close')"
-                    class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 dark:bg-gray-600 dark:text-white dark:hover:bg-gray-500"
-                >
-                    Batal
-                </button>
-                <button
-                    @click="$emit('tambah', selected)"
-                    class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600"
-                >
-                    Tambah
-                </button>
-            </div>
-        </div> -->
+    <Modal :show="show" @close="$emit('close')" maxWidth="2xl">
         <div class="p-6 bg-white dark:bg-gray-800">
-            <h2
-                class="mb-4 text-lg font-medium text-gray-900 dark:text-gray-100"
-            >
-                💡 Rekomendasi Restock Cerdas
-            </h2>
-            <p class="mb-4 text-sm text-gray-500">
-                Daftar barang dari Supplier ini yang stoknya kritis (<span
-                    class="font-bold text-red-500"
-                    >Stok Kini &lt; Min Stok</span
-                >).
-            </p>
+            <div class="flex items-start justify-between mb-4">
+                <div>
+                    <h2
+                        class="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-gray-100"
+                    >
+                        💡 Rekomendasi Restock Cerdas
+                    </h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Daftar barang dari Supplier ini yang perlu dibeli
+                        berdasarkan
+                        <span class="font-bold text-blue-500">Forecasting</span>
+                        dan
+                        <span class="font-bold text-red-500">Stok Minimum</span
+                        >.
+                    </p>
+                </div>
+                <div
+                    class="px-3 py-1 text-xs font-bold text-blue-600 border border-blue-100 rounded-lg bg-blue-50"
+                >
+                    {{ recommendations.length }} Item Ditemukan
+                </div>
+            </div>
 
-            <div v-if="loading" class="py-8 text-center text-gray-500">
-                Menganalisa Stok dan Kebutuhan...
+            <div
+                v-if="loading"
+                class="flex flex-col items-center justify-center py-12 text-gray-500 animate-pulse"
+            >
+                <svg class="w-8 h-8 mb-2" fill="none" viewBox="0 0 24 24">
+                    <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                    ></circle>
+                    <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                </svg>
+                <span>Menganalisa Kebutuhan Stok...</span>
             </div>
 
             <div
                 v-else-if="recommendations.length === 0"
-                class="py-8 text-center text-gray-500"
+                class="flex flex-col items-center py-12 text-center text-gray-500"
             >
-                Semua stok dari Supplier ini masih aman.
+                <div
+                    class="flex items-center justify-center w-12 h-12 mb-2 text-green-600 bg-green-100 rounded-full"
+                >
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M5 13l4 4L19 7"
+                        ></path>
+                    </svg>
+                </div>
+                <span class="font-medium text-gray-800 dark:text-white"
+                    >Stok Aman!</span
+                >
+                <span class="mt-1 text-sm"
+                    >Tidak ada barang yang perlu di-restock dari supplier
+                    ini.</span
+                >
             </div>
 
             <div
@@ -222,64 +167,157 @@ const allChecked = computed({
                     class="min-w-full text-sm text-left divide-y divide-gray-200 dark:divide-gray-700"
                 >
                     <thead
-                        class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"
+                        class="sticky top-0 z-10 text-xs text-gray-700 uppercase shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-gray-400"
                     >
                         <tr>
-                            <th class="w-10 px-4 py-3">
+                            <th
+                                class="w-10 px-4 py-3 bg-gray-50 dark:bg-gray-700"
+                            >
                                 <input
                                     type="checkbox"
                                     v-model="allChecked"
-                                    class="border-gray-300 rounded text-lime-600 focus:ring-lime-500"
+                                    class="border-gray-300 rounded cursor-pointer text-lime-600 focus:ring-lime-500"
                                 />
                             </th>
-                            <th class="px-4 py-3">Produk</th>
-                            <th class="px-4 py-3 text-center">Stok/Min</th>
-                            <th class="px-4 py-3 text-center">Saran Qty</th>
-                            <th class="px-4 py-3 text-right">Harga Beli</th>
+                            <th class="px-4 py-3 bg-gray-50 dark:bg-gray-700">
+                                Produk
+                            </th>
+                            <th class="px-4 py-3 bg-gray-50 dark:bg-gray-700">
+                                Analisa / Alasan
+                            </th>
+                            <th
+                                class="px-4 py-3 text-center bg-gray-50 dark:bg-gray-700"
+                            >
+                                Stok
+                            </th>
+                            <th
+                                class="px-4 py-3 text-center bg-gray-50 dark:bg-gray-700"
+                            >
+                                Saran Qty
+                            </th>
+                            <th
+                                class="px-4 py-3 text-right bg-gray-50 dark:bg-gray-700"
+                            >
+                                Estimasi
+                            </th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody
+                        class="bg-white divide-y divide-gray-200 dark:divide-gray-700 dark:bg-gray-800"
+                    >
                         <tr
                             v-for="item in recommendations"
                             :key="item.product_id"
-                            class="border-b dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                            class="transition cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                            :class="{
+                                'bg-red-50/30 dark:bg-red-900/10':
+                                    item.is_critical,
+                            }"
+                            @click="
+                                !selectedItems.includes(item.product_id)
+                                    ? selectedItems.push(item.product_id)
+                                    : selectedItems.splice(
+                                          selectedItems.indexOf(
+                                              item.product_id
+                                          ),
+                                          1
+                                      )
+                            "
                         >
-                            <td class="px-4 py-2">
+                            <td class="px-4 py-3" @click.stop>
                                 <input
                                     type="checkbox"
                                     :value="item.product_id"
                                     v-model="selectedItems"
-                                    class="border-gray-300 rounded text-lime-600 focus:ring-lime-500"
+                                    class="border-gray-300 rounded cursor-pointer text-lime-600 focus:ring-lime-500"
                                 />
                             </td>
-                            <td class="px-4 py-2 font-medium">
-                                {{ item.name }}
-                                <div class="text-xs text-gray-500">
-                                    ({{ item.code }})
+
+                            <td class="px-4 py-3">
+                                <div class="flex items-center gap-3">
+                                    <div
+                                        class="flex-shrink-0 w-10 h-10 overflow-hidden bg-gray-100 border rounded"
+                                    >
+                                        <img
+                                            :src="
+                                                item.image_path
+                                                    ? '/storage/' +
+                                                      item.image_path
+                                                    : '/no-image.png'
+                                            "
+                                            class="object-contain w-full h-full"
+                                        />
+                                    </div>
+                                    <div>
+                                        <p
+                                            class="font-bold text-gray-800 dark:text-gray-200 line-clamp-1"
+                                            :title="item.name"
+                                        >
+                                            {{ item.name }}
+                                        </p>
+                                        <div
+                                            class="flex items-center gap-1 text-xs text-gray-500"
+                                        >
+                                            <span
+                                                class="px-1 font-mono bg-gray-100 rounded"
+                                                >{{ item.code }}</span
+                                            >
+                                            <span>• {{ item.brand }}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </td>
-                            <td class="px-4 py-2 text-center">
+
+                            <td class="px-4 py-3">
                                 <span
-                                    class="font-bold"
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold border shadow-sm"
                                     :class="
-                                        item.current_stock <= item.min_stock
-                                            ? 'text-red-500'
-                                            : 'text-green-500'
+                                        item.is_critical
+                                            ? 'bg-red-100 text-red-700 border-red-200'
+                                            : 'bg-yellow-100 text-yellow-700 border-yellow-200'
                                     "
                                 >
-                                    {{ item.current_stock }}
+                                    <span v-if="item.is_critical" class="mr-1"
+                                        >🚨</span
+                                    >
+                                    {{ item.reason }}
                                 </span>
-                                <span class="text-gray-400">
-                                    / {{ item.min_stock }}</span
+                            </td>
+
+                            <td class="px-4 py-3 text-center">
+                                <div class="flex flex-col items-center">
+                                    <span
+                                        class="font-bold"
+                                        :class="
+                                            item.current_stock <= item.min_stock
+                                                ? 'text-red-600'
+                                                : 'text-gray-700'
+                                        "
+                                    >
+                                        {{ item.current_stock }}
+                                    </span>
+                                    <span class="text-[10px] text-gray-400"
+                                        >Min: {{ item.min_stock }}</span
+                                    >
+                                </div>
+                            </td>
+
+                            <td class="px-4 py-3 text-center">
+                                <span
+                                    class="px-3 py-1 font-bold text-blue-700 border border-blue-200 rounded-lg shadow-sm bg-blue-50"
                                 >
+                                    {{ item.quantity }}
+                                </span>
                             </td>
+
                             <td
-                                class="px-4 py-2 font-bold text-center text-blue-600"
+                                class="px-4 py-3 font-medium text-right text-gray-600 dark:text-gray-300"
                             >
-                                {{ item.quantity }}
-                            </td>
-                            <td class="px-4 py-2 text-right">
-                                {{ formatRupiah(item.purchase_price) }}
+                                {{
+                                    formatRupiah(
+                                        item.purchase_price * item.quantity
+                                    )
+                                }}
                             </td>
                         </tr>
                     </tbody>
@@ -287,14 +325,33 @@ const allChecked = computed({
             </div>
 
             <div
-                class="flex justify-end gap-3 pt-4 mt-6 border-t dark:border-gray-700"
+                class="flex items-center justify-end gap-3 pt-4 mt-6 border-t dark:border-gray-700"
             >
-                <SecondaryButton @click="$emit('close')">Tutup</SecondaryButton>
+                <p class="mr-auto text-sm text-gray-500">
+                    {{ selectedItems.length }} item dipilih
+                </p>
+
+                <SecondaryButton @click="$emit('close')">Batal</SecondaryButton>
+
                 <PrimaryButton
                     @click="handleAdd"
                     :disabled="selectedItems.length === 0"
+                    class="flex items-center gap-2"
                 >
-                    Ambil Terpilih ({{ selectedItems.length }})
+                    <svg
+                        class="w-4 h-4"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 4v16m8-8H4"
+                        ></path>
+                    </svg>
+                    Masukkan ke Keranjang
                 </PrimaryButton>
             </div>
         </div>

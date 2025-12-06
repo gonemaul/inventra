@@ -118,14 +118,12 @@ class InsightService
     {
         // Ambil semua produk aktif
         $products = Product::with('supplier')->get();
-
         // Ambil data penjualan 30 hari terakhir untuk forecasting
         $startDate = Carbon::now()->subDays(30);
 
         foreach ($products as $product) {
             // A. LOGIC DATA PENJUALAN
             // Hitung total qty terjual 30 hari terakhir
-            // (Sesuaikan query ini dengan struktur tabel sale_items Anda)
             $totalSold30Days = DB::table('sale_items')
                 ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                 ->where('sale_items.product_id', $product->id)
@@ -136,59 +134,68 @@ class InsightService
             $avgDailySales = $totalSold30Days / 30;
 
             // B. LOGIC DETEKSI
-            $isCritical = false;
+            $severity = SmartInsight::SEVERITY_SAFE;
             $message = '';
-            $payload = [];
 
-            // Skenario 1: Stok Kosong Melompong (Realtime)
+            // Prediksi sisa hari (Matematika Murni)
+            $daysMath = $avgDailySales > 0 ? ($product->stock / $avgDailySales) : 999;
+
+            // --- LEVEL 1: OUT OF STOCK (Paling Parah) ---
             if ($product->stock <= 0) {
-                $isCritical = true;
+                $severity = SmartInsight::SEVERITY_CRITICAL;
                 $message = "Stok HABIS! Pelanggan tidak bisa beli.";
             }
-            // Skenario 2: Forecasting (Prediksi Habis < 3 Hari)
-            elseif ($avgDailySales > 0) {
-                $daysRemaining = $product->stock / $avgDailySales;
-
-                if ($daysRemaining < 3) {
-                    $isCritical = true;
-                    $estDate = Carbon::now()->addDays(ceil($daysRemaining))->isoFormat('dddd, D MMM');
-                    $message = "Diprediksi HABIS dalam " . ceil($daysRemaining) . " hari ({$estDate}).";
-                    $payload['avg_daily'] = number_format($avgDailySales, 1);
-                    $payload['days_left'] = ceil($daysRemaining);
-                }
+            // --- LEVEL 2: DANGER ZONE (Stok sisa 1-2 biji) ---
+            elseif ($product->stock <= 2 && $avgDailySales > 0) {
+                $severity = SmartInsight::SEVERITY_CRITICAL;
+                $message = "Stok Kritis (Sisa {$product->stock}). Segera restock!";
             }
-            // Skenario 3: Min Stock Manual (Cadangan logic jika data penjualan belum cukup)
+            // --- LEVEL 3: MIN STOCK MANUAL ---
             elseif ($product->stock <= $product->min_stock) {
-                $isCritical = true;
-                $message = "Stok di bawah batas minimum ({$product->min_stock}).";
+                $severity = SmartInsight::SEVERITY_WARNING;
+                $message = "Stok menipis (Di bawah batas minimum {$product->min_stock}).";
+            }
+            // --- LEVEL 4: FORECASTING (Prediksi Habis Cepat) ---
+            elseif ($daysMath < 3 && $avgDailySales > 0) {
+                $severity = SmartInsight::SEVERITY_CRITICAL;
+                $message = "Laris manis! Diprediksi HABIS dalam " . ceil($daysMath) . " hari.";
+            } elseif ($daysMath < 7 && $avgDailySales > 0) {
+                $severity = SmartInsight::SEVERITY_WARNING;
+                $message = "Perputaran cepat. Stok aman untuk < 1 minggu.";
             }
 
             // C. EKSEKUSI (SIMPAN KE TABLE INSIGHT)
-            if ($isCritical) {
-                // Simpan atau Update Insight yang sudah ada (biar gak spam duplikat)
+            // Cek apakah severity BUKAN safe
+            if ($severity !== SmartInsight::SEVERITY_SAFE) {
+
+                // Siapkan Payload
+                $payload = [
+                    'current_stock' => $product->stock,
+                    'min_stock' => $product->min_stock,
+                    'supplier' => $product->supplier->name ?? 'Tidak ada',
+                    'avg_daily' => number_format($avgDailySales, 1),
+                    'days_left' => $avgDailySales > 0 ? ceil($daysMath) : 999
+                ];
+
                 SmartInsight::updateOrCreate(
                     [
                         'product_id' => $product->id,
-                        'type' => 'restock', // Kunci unik per produk per tipe
-                        'is_read' => false,  // Hanya update jika belum dibaca
+                        'type' => SmartInsight::TYPE_RESTOCK,
                     ],
                     [
-                        'severity' => ($product->stock <= 0) ? 'critical' : 'warning',
-                        'title' => ($product->stock <= 0) ? 'Stok Habis: ' . $product->name : 'Restock Segera: ' . $product->name,
+                        'severity' => $severity, // Gunakan severity yang sudah dihitung di atas
+                        'title' => ($severity === SmartInsight::SEVERITY_CRITICAL) ? 'Stok Kritis: ' . $product->name : 'Perlu Restock: ' . $product->name,
                         'message' => $message,
-                        'payload' => array_merge($payload, [
-                            'current_stock' => $product->stock,
-                            'min_stock' => $product->min_stock,
-                            'supplier' => $product->supplier->name ?? 'Tidak ada'
-                        ]),
+                        'payload' => $payload,
                         'action_url' => '/purchases/create?product_id=' . $product->id,
-                        'updated_at' => now(), // Refresh waktu agar naik ke atas
+                        'is_read' => false, // Reset status baca agar muncul lagi di notif
+                        'updated_at' => now(),
                     ]
                 );
             } else {
-                // Jika stok sudah aman (misal baru belanja), HAPUS insight lama otomatis
+                // Jika stok sudah aman, HAPUS insight lama
                 SmartInsight::where('product_id', $product->id)
-                    ->where('type', 'restock')
+                    ->where('type', SmartInsight::TYPE_RESTOCK)
                     ->delete();
             }
         }

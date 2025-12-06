@@ -90,10 +90,10 @@ class PurchaseController extends Controller
      * Mengambil daftar produk yang direkomendasikan untuk dibeli.
      * Kriteria: Stock saat ini <= Minimum Stock, dan Filter Supplier.
      */
-    public function getRecommendations(Request $request)
+    public function getRecommendations($supplierId, Request $request)
     {
         if ($request->ajax()) {
-            $res = $this->purchaseService->getRecomendations($request);
+            $res = $this->purchaseService->getRecomendations($supplierId);
             return response()->json($res);
         }
     }

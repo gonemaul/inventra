@@ -83,7 +83,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::put('purchases/{purchase}', 'update')
             ->name('purchases.update');
         // Rute get rekomendasi
-        Route::get('purchases/recommendations', 'getRecommendations')
+        Route::get('purchases/recommendations/{supplierId}', 'getRecommendations')
             ->name('purchases.recommendations');
     });
 

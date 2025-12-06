@@ -24,6 +24,18 @@ class SmartInsight extends Model
         'is_notified' => 'boolean',
     ];
 
+    // --- KONSTANTA TYPE (JENIS ANALISA) ---
+    public const TYPE_RESTOCK = 'restock';
+    public const TYPE_DEAD_STOCK = 'dead_stock';
+    public const TYPE_MARGIN = 'margin_alert';
+    public const TYPE_TREND = 'trend';
+
+    // --- KONSTANTA SEVERITY (TINGKAT BAHAYA) ---
+    public const SEVERITY_CRITICAL = 'critical'; // Merah (Bahaya/Habis)
+    public const SEVERITY_WARNING = 'warning';   // Kuning (Hati-hati)
+    public const SEVERITY_INFO = 'info';         // Biru (Info positif)
+    public const SEVERITY_SAFE = 'safe';         // Hijau/Internal logic
+
     // Relasi ke Produk
     public function product()
     {

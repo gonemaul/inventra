@@ -2,14 +2,15 @@
 
 namespace App\Services;
 
-use App\Models\Purchase;
 use App\Models\Product;
-use App\Models\PurchaseInvoice; // Diperlukan jika ada logika invoice di service
+use App\Models\Purchase;
+use Illuminate\Support\Str;
+use App\Models\SmartInsight;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Str;
+use App\Models\PurchaseInvoice; // Diperlukan jika ada logika invoice di service
 
 class PurchaseService
 {
@@ -214,30 +215,66 @@ class PurchaseService
         return $purchase;
     }
 
-    public function getRecomendations($request)
+    public function getRecomendations($supplierId)
     {
-        $supplierId = $request->input('supplier_id');
-        $buffer = 5; // Buffer Qty Tambahan untuk berjaga-jaga
-        // 2. Bangun Query Cerdas
-        $recommendations = Product::query()
-            ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id')
-            ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name'])
-            ->where('status', 'active')
+        // --- STRATEGI BARU: GUNAKAN DATA DSS ---
 
-            // Filter Supplier (Jika supplier dipilih)
-            ->when($supplierId, fn($q) => $q->where('supplier_id', $supplierId))
+        // 1. Ambil ID Produk yang punya Insight 'Restock'
+        $insightProductIds = SmartInsight::where('type', 'restock')
+            // ->where('severity', 'critical') // Ambil yang kritis dulu
+            ->pluck('product_id')
+            ->toArray();
 
-            // Logika Kritis: Hanya ambil produk yang stoknya di bawah batas aman
-            ->whereColumn('stock', '<=', 'min_stock')
+        // 2. Query Utama: Gabungkan Produk Kritis DSS + Produk di Bawah Min Stock
+        $query = Product::query()
+            ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'supplier_id')
+            ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'insights']) // Eager load insights
+            ->where('status', 'active');
 
-            // Urutkan dari yang paling kritis (Stok Paling Rendah)
-            ->orderByRaw('min_stock - stock DESC')
-            ->limit(25) // Batasi hasilnya
-            ->get();
+        // Filter Supplier
+        if ($supplierId) {
+            $query->where('supplier_id', $supplierId);
+        }
 
-        // 3. Transformasi Data untuk Frontend
-        $formattedRecommendations = $recommendations->map(function ($item) use ($buffer) {
-            $neededQty = $item->min_stock - $item->stock;
+        // Logic Gabungan: (Ada di Insight Restock) ATAU (Stok <= Min Stock)
+        $query->where(function ($q) use ($insightProductIds) {
+            $q->whereIn('id', $insightProductIds)
+                ->orWhereColumn('stock', '<=', 'min_stock');
+        });
+
+        // 3. Eksekusi & Sorting
+        // Kita sort manual nanti di collection agar yang ada Insight-nya di paling atas
+        $products = $query->limit(50)->get();
+
+        // 4. Transformasi Data + Penambahan Logic Rekomendasi Qty
+        $formattedRecommendations = $products->map(function ($item) {
+
+            // Cek apakah produk ini punya insight restock?
+            $restockInsight = $item->insights->where('type', 'restock')->first();
+
+            // HITUNG JUMLAH SARAN BELI (SUGGESTED QTY)
+            $suggestedQty = 0;
+            $reason = '';
+
+            if ($restockInsight) {
+                // Skenario A: Dari Insight (Forecasting)
+                // Di InsightService kita sudah hitung "days_left".
+                // Kita bisa ambil payloadnya jika ada, atau hitung ulang target 14 hari.
+                $avgDaily = $restockInsight->payload['avg_daily'] ?? 0;
+
+                // Target stok aman untuk 14 hari
+                $targetStock = ceil($avgDaily * 14);
+                $suggestedQty = max(5, $targetStock - $item->stock); // Minimal beli 5 atau sesuai kebutuhan
+
+                $reason = "Prediksi habis dlm " . ($restockInsight->payload['days_left'] ?? '?') . " hari";
+            } else {
+                // Skenario B: Fallback Manual (Min Stock)
+                $needed = $item->min_stock - $item->stock;
+                $buffer = 5;
+                $suggestedQty = max(1, $needed + $buffer);
+
+                $reason = "Stok di bawah batas minimum";
+            }
 
             return [
                 'product_id' => $item->id,
@@ -247,41 +284,24 @@ class PurchaseService
                 'min_stock' => $item->min_stock,
                 'purchase_price' => $item->purchase_price,
 
-                // Perhitungan Saran Kuantitas: (Kekurangan Stok + Buffer)
-                'quantity' => (int)max(1, $neededQty + $buffer),
+                // Hasil Hitungan Cerdas
+                'quantity' => (int) $suggestedQty,
+                'reason' => $reason, // Info tambahan untuk ditampilkan di modal (misal badge)
+                'is_critical' => (bool) $restockInsight, // Flag untuk highlight warna merah
 
-                // Data Snapshot Sederhana
+                // Snapshot Data
                 'unit' => $item->unit->name ?? '-',
                 'size' => $item->size->name ?? '-',
                 'category' => $item->category->name ?? '-',
                 'brand' => $item->brand->name ?? '-',
+                'image_path' => $item->image_path
             ];
         });
 
-        return $formattedRecommendations;
+        // Sortir: Yang ada Insight Critical taruh paling atas
+        return $formattedRecommendations->sortByDesc('is_critical')->values();
     }
 
-    /**
-     * Helper untuk membuat Nomor Referensi unik (TRX-YYYYMM-XXXX).
-     */
-    // private function generateReferenceNo(): string
-    // {
-    //     $prefix = 'TRX-' . date('Ym');
-    //     // $supplierCode = str_pad((string)$supplierId, 3, '0', STR_PAD_LEFT);
-    //     $lastPurchase = Purchase::where('reference_no', 'like', $prefix . '%')
-    //         ->when(method_exists(Purchase::class, 'bootSoftDeletes'), function ($q) {
-    //             $q->withTrashed(); // Sertakan data yang sudah dihapus agar urutan terus maju
-    //         })
-    //         ->orderByDesc('id')
-    //         ->first();
-
-    //     $number = 1;
-    //     if ($lastPurchase) {
-    //         $number = (int)substr($lastPurchase->reference_no, -4) + 1;
-    //     }
-
-    //     return $prefix . '-' . str_pad($number, 4, '0', STR_PAD_LEFT);
-    // }
     /**
      * Generate No Transaksi: PO/YYMM/S-ID/XXX
      * Contoh: PO/2411/S-013/001

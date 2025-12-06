@@ -19,7 +19,6 @@ const toast = useToast();
 const props = defineProps({
     dropdowns: Object, // Berisi { suppliers: [], statuses: [] }
     products: Array, // Katalog produk LENGKAP untuk autocomplete
-    // recommendations: Array, // (Untuk Tahap 3)
 });
 const {
     cartItems,
