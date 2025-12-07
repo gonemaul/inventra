@@ -19,6 +19,7 @@ const props = defineProps({
     supplierCount: Number,
     brandCount: Number,
     productTypeCount: Number,
+    categories: Object,
 });
 const tabs = computed(() => [
     { key: "kategori", label: "Kategori", count: props.categoryCount },
@@ -42,7 +43,9 @@ const tabs = computed(() => [
         <div class="w-full space-y-5 max-w-screen">
             <Tabs :tabs="tabs" defaultTab="kategori">
                 <template #kategori><tabKategori /></template>
-                <template #product_type><tabType /></template>
+                <template #product_type
+                    ><tabType :categories="categories"
+                /></template>
                 <template #satuan><tabSatuan /></template>
                 <template #ukuran><tabUkuran /></template>
                 <template #brand><tabMerk /></template>

@@ -9,11 +9,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ProductType extends Model
 {
     use SoftDeletes;
-    protected $fillable = ['code', 'name', 'description'];
+    protected $fillable = ['category_id', 'code', 'name', 'description'];
     // Tipe ini milik satu kategori (Hirarki)
     public function category(): BelongsTo
     {
-        return $this->belongsTo(Category::class);
+        return $this->belongsTo(Category::class, 'category_id');
     }
 
     // Tipe ini memiliki banyak produk

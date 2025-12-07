@@ -22,8 +22,11 @@ const props = defineProps({
         type: String,
         default: "category",
     },
+    categories: {
+        type: Object,
+        default: () => ({}),
+    },
 });
-
 const routeConfig = {
     category: {
         create: {
@@ -101,6 +104,8 @@ const form = useForm({
     address: "",
     type: "",
     status: "",
+    // untuk type produk
+    category_id: null,
 });
 
 watch(
@@ -116,6 +121,7 @@ watch(
             form.address = newData.address || "";
             form.type = newData.type || "";
             form.status = newData.status || "";
+            form.category_id = newData.category_id || null;
             // (Tambahkan field supplier di sini nanti)
         } else {
             form.reset();
@@ -187,6 +193,33 @@ const submitForm = () => {
                 </button>
             </div>
             <form class="mt-4 space-y-4" @submit.prevent="submitForm">
+                <div v-if="dataType == 'type'">
+                    <label
+                        class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                        >Category<span class="text-red-500">*</span></label
+                    >
+                    <select
+                        class="w-full px-3 py-2 text-sm border border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                        v-model="form.category_id"
+                    >
+                        <option v-if="props.mode == 'create'" :value="null">
+                            Pilih Kategori
+                        </option>
+                        <option
+                            v-for="cat in props.categories"
+                            :key="cat.id"
+                            :value="cat.id"
+                        >
+                            {{ cat.name }}
+                        </option>
+                    </select>
+                    <p
+                        v-if="form.errors.category_id"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.category_id }}
+                    </p>
+                </div>
                 <div v-if="dataType != 'supplier'">
                     <label
                         class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"

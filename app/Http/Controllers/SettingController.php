@@ -49,6 +49,7 @@ class SettingController extends Controller
             'brandCount' => $this->brandService->getCount(),
             'productTypeCount' => $this->typeService->getCount(),
             'supplierCount' => $this->supplierService->getCount(),
+            'categories' => $this->categoryService->getAll(),
         ]);
     }
 

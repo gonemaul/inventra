@@ -37,6 +37,7 @@ class TypeService
         $perPage = $params['per_page'] ?? 10;
 
         return $query
+            ->with('category')
             ->orderBy($sortBy, $sortDirection)
             ->paginate($perPage)
             ->withQueryString();
@@ -48,6 +49,7 @@ class TypeService
             'code' => 'required|string|max:20|unique:product_types,code', // 'unique' di tabel 'product_types', kolom 'code'
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
+            'category_id' => 'required|exists:categories,id',
         ]);
 
         if ($validator->fails()) {
