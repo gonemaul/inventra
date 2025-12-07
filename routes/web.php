@@ -72,6 +72,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('invoices/{invoice}',  'updateInvoice')->name('purchases.updateInvoice');
             // MENGHAPUS INVOCIE
             Route::delete('invoices/{invoice}',  'destroyInvoice')->name('purchases.destroyInvoice');
+            // VALIDASI INVOICE
+            Route::put('invoices/{invoice}/validate', 'validateInvoice')->name('purchases.validateInvoice');
         });
 
         // POST Rute untuk Selesaikan validasi

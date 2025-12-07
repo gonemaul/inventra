@@ -91,7 +91,7 @@ class Product extends Model
     public function getFullNameAttribute()
     {
         $brand = $this->brand?->name;
-        $type  = $this->productType?->name;
+        $type  = $this->productType?->code;
         $size = $this->size ? $this->size->name : '';
 
         // LOGIKA PEMBERSIHAN (OPTIONAL TAPI PENTING)

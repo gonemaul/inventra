@@ -27,6 +27,7 @@ return new class extends Migration
 
             $table->decimal('rejected_quantity', 19, 4)->default(0)->comment('Barang rusak/ditolak saat terima');
             $table->string('rejection_note')->nullable()->comment('Alasan barang ditolak');
+            $table->string('item_status')->default('pending')->comment('Status item dalam proses penerimaan barang');
             $table->timestamps();
         });
     }

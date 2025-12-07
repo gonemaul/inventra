@@ -281,6 +281,32 @@ class PurchaseController extends Controller
     }
 
     /**
+     * Memvalidasi Nota (Action Validate dari InvoiceLinkagePage).
+     */
+    public function validateInvoice(Purchase $purchase, PurchaseInvoice $invoice)
+    {
+        // Guard: Pastikan transaksi masih dalam tahap CHECKING
+        if ($purchase->status !== Purchase::STATUS_CHECKING) {
+            return redirect()->back()->with('error', 'Invoice hanya dapat divalidasi saat status Checking.');
+        }
+        if ($invoice->status === PurchaseInvoice::STATUS_VALIDATED) {
+            return redirect()->back()->with('error', 'Invoice sudah divalidasi sebelumnya.');
+        }
+        if ($invoice->items()->count() === 0) {
+            return redirect()->back()->with('error', 'Tidak dapat memvalidasi invoice tanpa item yang ditautkan.');
+        }
+
+        try {
+            // Panggil Service untuk validasi invoice
+            $this->invoiceService->validateInvoice($invoice);
+
+            return redirect()->back()->with('success', 'Invoice berhasil divalidasi.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Gagal memvalidasi invoice: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Menyelesaikan transaksi (Action Final).
      */
     public function finalize(Request $request, Purchase $purchase)

@@ -20,14 +20,15 @@ class PurchaseInvoice extends Model
         'amount_paid',
         'due_date',
         'paid_at',
+        'status'
     ];
-    // const STATUS_UPLOADED = 'uploaded'; // Nota baru di-upload, belum divalidasi
-    // const STATUS_VALIDATED = 'validated'; // Item di nota sudah dicocokkan
+    const STATUS_UPLOADED = 'uploaded'; // Nota baru di-upload, belum divalidasi
+    const STATUS_VALIDATED = 'validated'; // Item di nota sudah dicocokkan
 
-    // const STATUSES = [
-    //     self::STATUS_UPLOADED,
-    //     self::STATUS_VALIDATED,
-    // ];
+    const STATUSES = [
+        self::STATUS_UPLOADED,
+        self::STATUS_VALIDATED,
+    ];
     const PAYMENT_STATUS_UNPAID = 'unpaid'; // Belum dibayar
     const PAYMENT_STATUS_PARTIAL = 'partial'; // Dicicil
     const PAYMENT_STATUS_PAID = 'paid'; // Lunas

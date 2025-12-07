@@ -54,12 +54,27 @@ const columns = [
     },
     {
         key: "payment_status",
-        label: "Status Bayar",
+        label: "Status Pembayaran",
         sortable: true,
-        width: "120px",
-        slot: "status",
+        width: "100px",
+        slot: "status_payment",
+        class: "text-center",
     },
-    { key: "aksi", label: "Aksi", width: "180px", slot: "aksi" },
+    {
+        key: "status",
+        label: "Status",
+        sortable: true,
+        width: "100px",
+        slot: "status",
+        class: "text-center",
+    },
+    {
+        key: "aksi",
+        label: "Aksi",
+        width: "180px",
+        slot: "aksi",
+        class: "text-right",
+    },
 ];
 </script>
 <template>
@@ -89,7 +104,7 @@ const columns = [
                     >{{ row.invoice_number }}</span
                 >
             </template>
-            <template #status="{ row }">
+            <template #status_payment="{ row }">
                 <span
                     :class="{
                         'px-2 py-1 text-white rounded': true,
@@ -97,14 +112,27 @@ const columns = [
                         'bg-yellow-600': row.payment_status === 'partial',
                         'bg-red-600': row.payment_status === 'unpaid',
                     }"
-                    class="text-xs uppercase"
+                    class="text-xs text-center uppercase"
                 >
                     {{ row.payment_status }}
                 </span>
             </template>
+            <template #status="{ row }">
+                <span
+                    :class="{
+                        'px-2 py-1 rounded': true,
+                        'bg-green-300': row.status === 'validated',
+                        'bg-yellow-300 text-yellow-900':
+                            row.status === 'uploaded',
+                    }"
+                    class="text-xs font-medium text-center uppercase"
+                >
+                    {{ row.status }}
+                </span>
+            </template>
 
             <template #aksi="{ row }">
-                <div class="flex flex-wrap gap-2">
+                <div class="flex flex-wrap justify-center gap-2">
                     <Link
                         :href="
                             route('purchases.linkInvoiceItems', {
@@ -132,7 +160,10 @@ const columns = [
                     </button>
                     <Link
                         :href="route('finance.detail', row.id)"
-                        v-if="row.payment_status !== 'paid'"
+                        v-if="
+                            row.payment_status !== 'paid' &&
+                            purchase.status === 'selesai'
+                        "
                         class="px-2 py-1 text-xs text-white rounded bg-lime-600 hover:bg-lime-700"
                     >
                         Bayar

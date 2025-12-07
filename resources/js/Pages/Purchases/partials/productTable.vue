@@ -44,50 +44,13 @@ const columns = [
         slot: "invoice",
     },
     {
-        key: "status",
+        key: "item_status",
         label: "Status",
         sortable: true,
         width: "120px",
         slot: "status",
     },
 ];
-function getItemValidationStatus(item) {
-    const qtyOrdered = item.product_snapshot.quantity;
-    const qtyReceived = item.quantity;
-    const priceOrdered = item.product_snapshot.purchase_price;
-    const priceReceived = item.purchase_price;
-
-    // --- LOGIKA 1: STATUS KUANTITAS ---
-    if (qtyOrdered === 0) {
-        // Jika Qty yang dipesan adalah 0, ini adalah barang baru/tambahan
-        // Kita asumsikan ini barang yang tidak ada di PO awal atau item substitusi.
-        return "Barang Baru";
-    }
-    if (qtyReceived === 0) {
-        // Jika Qty dipesan > 0 tapi diterima 0
-        return "Barang Kosong";
-    }
-    if (qtyReceived > qtyOrdered) {
-        return "Lebih";
-    }
-    if (qtyReceived < qtyOrdered) {
-        return "Kurang";
-    }
-
-    // Jika Qty Sesuai (qtyReceived === qtyOrdered), lanjutkan ke pengecekan Harga
-
-    // --- LOGIKA 2: STATUS HARGA (Hanya jika Qty Sesuai) ---
-    // Gunakan Number() untuk memastikan perbandingan harga numerik, bukan string
-    if (Number(priceReceived) > Number(priceOrdered)) {
-        return "Harga Naik";
-    }
-    if (Number(priceReceived) < Number(priceOrdered)) {
-        return "Harga Turun";
-    }
-
-    // --- LOGIKA 3: STATUS SEMPURNA ---
-    return "Sesuai";
-}
 function getComprehensiveValidationStatus(item) {
     const qtyOrdered = item.product_snapshot.quantity;
     const qtyReceived = item.quantity;
@@ -137,6 +100,14 @@ function getComprehensiveValidationStatus(item) {
     // Keduanya Sesuai
     return "SESUAI SEMPURNA";
 }
+const statuses = ref({
+    pending: "Pending",
+    fulfilled: "Sesuai",
+    partial: "Partial",
+    canceled: "Dibatalkan",
+    extra: "Susulan",
+    over: "Kelebihan",
+});
 </script>
 <template>
     <div
@@ -171,35 +142,15 @@ function getComprehensiveValidationStatus(item) {
                     :class="{
                         'px-2 py-1 rounded-md text-xs font-medium text-white': true,
                         // Prioritas Warna berdasarkan String Konten
-                        'bg-red-700':
-                            getComprehensiveValidationStatus(row).includes(
-                                'KOSONG'
-                            ) ||
-                            getComprehensiveValidationStatus(row).includes(
-                                'KURANG'
-                            ),
-                        'bg-purple-500':
-                            getComprehensiveValidationStatus(row).includes(
-                                'LEBIH'
-                            ),
-                        'bg-yellow-600':
-                            getComprehensiveValidationStatus(row).includes(
-                                'HARGA NAIK'
-                            ),
-                        'bg-yellow-400':
-                            getComprehensiveValidationStatus(row).includes(
-                                'HARGA TURUN'
-                            ),
-                        'bg-blue-500':
-                            getComprehensiveValidationStatus(row).includes(
-                                'BARU'
-                            ),
-                        'bg-green-500':
-                            getComprehensiveValidationStatus(row) ===
-                            'SESUAI SEMPURNA',
+                        'bg-gray-500': row.item_status === 'pending',
+                        'bg-green-500': row.item_status === 'fulfilled',
+                        'bg-yellow-600': row.item_status === 'partial',
+                        'bg-red-700': row.item_status === 'canceled',
+                        'bg-blue-500': row.item_status === 'extra',
+                        'bg-purple-500': row.item_status === 'over',
                     }"
                 >
-                    {{ (status = getComprehensiveValidationStatus(row)) }}
+                    {{ statuses[row.item_status] }}
                 </span>
             </template>
             <template #productDetail="{ row }">

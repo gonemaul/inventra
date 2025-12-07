@@ -206,7 +206,7 @@ const submitForm = () => {
                         Pilih Type
                     </option>
                     <option
-                        v-for="cat in dropdowns.type"
+                        v-for="cat in dropdowns.types"
                         :key="cat.id"
                         :value="cat.id"
                     >
@@ -281,7 +281,7 @@ const submitForm = () => {
                         Pilih Merk
                     </option>
                     <option
-                        v-for="size in dropdowns.brand"
+                        v-for="size in dropdowns.brands"
                         :key="size.id"
                         :value="size.id"
                     >

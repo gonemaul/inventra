@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('payment_status')->default('unpaid');
             $table->decimal('amount_paid', 19, 4)->default(0);
             $table->date('due_date')->nullable()->comment('Jatuh tempo pembayaran');
+            $table->string('status')->default('uploaded')->comment('Status validasi nota');
             $table->date('paid_at')->nullable()->comment('Tanggal lunas');
             $table->timestamps();
         });

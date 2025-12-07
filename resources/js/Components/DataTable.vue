@@ -419,12 +419,12 @@ watch(
                             "
                             :style="{ width: col.width || '150px' }"
                             :class="[
-                                'px-4 text-sm md:text-base py-2 border-b dark:border-gray-700 text-left select-none',
+                                'px-4 text-sm md:text-base py-2 border-b dark:border-gray-700 select-none',
                                 col.sortable ? 'cursor-pointer' : '',
                                 col.class,
                             ]"
                         >
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center justify-center gap-2">
                                 {{ col.label }}
                                 <span
                                     v-if="col.sortable"

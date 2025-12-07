@@ -65,19 +65,6 @@ const params = ref({
     page: props.purchases.current_page || 1, // Penting untuk pagination
 });
 
-function toggleDropdown(id, event) {
-    if (activeId.value === id) {
-        activeId.value = null;
-    } else {
-        const rect = event.target.getBoundingClientRect();
-        position.value = {
-            top: rect.bottom + window.scrollY,
-            left: rect.left + window.scrollX,
-        };
-        activeId.value = id;
-    }
-}
-
 const refreshTable = () => {
     // Memanggil fungsi fetchData di DataTable (jika mode Server Side Mandiri)
     // Jika mode Semi Side (Inertia), ini memicu reload prop Inertia
@@ -143,7 +130,7 @@ watch(
             preserveState: true, // Jangan scroll ke atas
             preserveScroll: true,
             replace: true, // Jangan penuh-penuhin history browser
-            only: ["purchases"], // Optimasi: Cuma update data tabel
+            only: ["purchases", "filters"], // Optimasi: Cuma update data tabel
             onFinish: () => {
                 isActionLoading.value = false;
             },
@@ -163,58 +150,29 @@ const activeFilterCount = computed(() => {
 const getActions = (row) => {
     const actions = [];
 
-    // --- A. AKSI STANDAR (Selalu Ada) ---
-    actions.push({
-        label: "📄 Detail",
-        icon: "eye",
-        type: "link",
-        route: route("purchases.show", row.id),
-    });
-    actions.push({
-        label: "Cetak PO",
-        icon: "print",
-        type: "print",
-        route: route("purchases.print", row.id),
-        target: "_blank",
-    });
-
     // --- B. AKSI OPERASIONAL (Conditional berdasarkan Status) ---
     switch (row.status) {
         case "draft":
             actions.push({
-                label: "✏️ Edit",
-                icon: "edit",
-                type: "link",
-                route: route("purchases.edit", row.id),
-            });
-            actions.push({
-                label: "▶️ Tandai Dipesan",
+                label: "Tandai Dipesan",
                 icon: "play",
                 type: "status",
                 newStatus: "dipesan",
             });
-            actions.push({ label: "🗑️ Hapus", icon: "delete", type: "delete" });
             break;
 
         case "dipesan":
             actions.push({
-                label: "🚚 Tandai Dikirim",
+                label: "Tandai Dikirim",
                 icon: "truck",
                 type: "status",
                 newStatus: "dikirim",
             });
-            actions.push({
-                label: "✏️ Edit",
-                icon: "edit",
-                type: "link",
-                route: route("purchases.edit", row.id),
-            });
-            actions.push({ label: "🗑️ Hapus", icon: "delete", type: "delete" });
             break;
 
         case "dikirim":
             actions.push({
-                label: "📦 Tandai Diterima",
+                label: "Tandai Diterima",
                 icon: "receive",
                 type: "status",
                 newStatus: "diterima",
@@ -223,14 +181,14 @@ const getActions = (row) => {
 
         case "diterima":
             actions.push({
-                label: "✅ Validasi Barang",
+                label: "Validasi Barang",
                 icon: "check",
                 type: "link",
                 route: route("purchases.checking", row.id),
                 isPrimary: true,
             });
             actions.push({
-                label: "🔄 Batalkan Terima",
+                label: "Batalkan Terima",
                 icon: "undo",
                 type: "status",
                 newStatus: "dikirim",
@@ -238,17 +196,8 @@ const getActions = (row) => {
             break;
 
         case "checking":
-            actions.push({
-                label: "✏️ Lanjut Checking",
-                icon: "edit",
-                type: "link",
-                route: route("purchases.checking", row.id),
-            });
-            break;
-
         case "completed":
         case "cancelled":
-            // Status final, hanya View dan Print yang tersedia (sudah di Aksi Standar)
             break;
     }
 
@@ -347,85 +296,23 @@ const getActions = (row) => {
                             {{ row.status }}
                         </span>
                     </template>
-                    <template #aksi="{ row }"
-                        ><OpsiTable
-                            v-if="row.deleted_at == null"
-                            :row-id="row.id"
-                            :active-id="activeId"
-                            :position="position"
-                            @toggle="toggleDropdown"
-                            @close="activeId = null"
-                        >
-                            <template
-                                v-for="(action, index) in getActions(row)"
-                                :key="index"
+                    <template #aksi="{ row }">
+                        <div class="inline-flex w-full gap-2">
+                            <Link
+                                v-if="row.status == 'checking'"
+                                :href="route('purchases.checking', row.id)"
+                                class="px-3 py-1 text-sm font-medium text-teal-600 transition border border-teal-200 rounded hover:text-teal-900 hover:bg-teal-300"
                             >
-                                <Link
-                                    v-if="action.type === 'link'"
-                                    :href="action.route"
-                                    :target="action.target || '_self'"
-                                    :class="{
-                                        'text-green-600 font-semibold':
-                                            action.isPrimary,
-                                        'border-b-2 border-gray-100':
-                                            action.label.includes('Detail'), // Garis pemisah
-                                    }"
-                                    class="block w-full px-4 py-2 text-sm text-left text-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-100"
-                                >
-                                    {{ action.label }}
-                                </Link>
-                                <a
-                                    v-else-if="action.type === 'print'"
-                                    :href="action.route"
-                                    target="action.target || '_self'"
-                                    class="block w-full px-4 py-2 text-sm text-left text-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-100"
-                                >
-                                    <span class="inline-flex gap-1">
-                                        <svg
-                                            class="w-5 h-5"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                                            ></path>
-                                        </svg>
-                                        {{ action.label }}
-                                    </span>
-                                </a>
-                                <button
-                                    v-else-if="action.type === 'status'"
-                                    @click="updateStatus(row, action.newStatus)"
-                                    :class="{
-                                        'text-lime-600 font-semibold':
-                                            action.isPrimary,
-                                        'border-b-2':
-                                            action.newStatus === 'ordered', // Garis pemisah
-                                    }"
-                                    class="block w-full px-4 py-2 text-sm text-left text-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-100"
-                                >
-                                    {{ action.label }}
-                                </button>
-
-                                <button
-                                    v-else-if="action.type === 'delete'"
-                                    @click="confirmDelete(row)"
-                                    class="block w-full px-4 py-2 text-sm text-left text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30"
-                                >
-                                    {{ action.label }}
-                                </button>
-
-                                <hr
-                                    v-if="action.newStatus === 'shipped'"
-                                    class="my-1 border-gray-200 dark:border-gray-600"
-                                />
-                            </template>
-                        </OpsiTable>
-                        <span v-else>Sudah dihapus</span>
+                                Validasi Barang
+                            </Link>
+                            <Link
+                                v-else
+                                :href="route('purchases.show', row.id)"
+                                class="px-3 py-1 text-sm font-medium text-indigo-600 transition border border-indigo-200 rounded hover:text-indigo-900 hover:bg-indigo-300"
+                            >
+                                Lihat Detail
+                            </Link>
+                        </div>
                     </template>
                 </DataTable>
             </div>

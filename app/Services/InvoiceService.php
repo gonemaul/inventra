@@ -45,7 +45,8 @@ class InvoiceService
                 'total_amount' => $validatedData['total_amount'],
                 'payment_status' => $validatedData['payment_status'],
                 'invoice_image' => $path, // Simpan path
-                'amount_paid' => ($validatedData['payment_status'] === 'paid') ? $validatedData['total_amount'] : 0,
+                'amount_paid' => ($validatedData['payment_status'] === PurchaseInvoice::PAYMENT_STATUS_PAID) ? $validatedData['total_amount'] : 0,
+                'status' => PurchaseInvoice::STATUS_UPLOADED,
             ]);
 
             return $invoice;
@@ -133,65 +134,50 @@ class InvoiceService
         });
     }
 
-    // public function linkItemsAndOverwritePrices(PurchaseInvoice $invoice, array $itemIds)
-    // {
-    //     // 1. Guard: Pastikan Nota sudah ada nominalnya
-    //     if ($invoice->total_amount <= 0) {
-    //         throw new \Exception('Nominal total nota tidak valid untuk perhitungan harga.');
-    //     }
 
-    //     // 2. Ambil semua item yang akan ditautkan
-    //     $itemsToLink = $invoice->purchase->items()
-    //         ->whereIn('id', $itemIds)
-    //         // Hanya izinkan item yang belum memiliki invoice (item tidak boleh ditautkan 2x)
-    //         ->whereNull('purchase_invoice_id')
-    //         ->get();
-
-    //     // Kuantitas total dari item yang akan ditautkan
-    //     $totalQuantity = $itemsToLink->sum('quantity');
-
-    //     if ($totalQuantity === 0) {
-    //         throw new \Exception('Item yang dipilih tidak memiliki kuantitas atau sudah ditautkan ke nota lain.');
-    //     }
-
-    //     // 3. Logika Overwrite Harga (Landed Cost Sederhana)
-    //     // [KRITIS] New HPP = Total Nominal Nota / Total Qty Item yang ditautkan
-    //     $newPricePerUnit = $invoice->total_amount / $totalQuantity;
-    //     $newPricePerUnit = round($newPricePerUnit, 4); // Bulatkan 4 desimal untuk presisi
-
-    //     // 4. DB TRANSACTION: Tautkan item dan update harganya
-    //     return DB::transaction(function () use ($invoice, $itemsToLink, $newPricePerUnit) {
-
-    //         foreach ($itemsToLink as $item) {
-    //             // Tautkan item ke Invoice
-    //             $item->purchase_invoice_id = $invoice->id;
-
-    //             // Update HPP dan Subtotal (Overwrite)
-    //             $item->purchase_price = $newPricePerUnit;
-    //             $item->subtotal = $item->quantity * $newPricePerUnit;
-
-    //             $item->save();
-    //         }
-    //         return true;
-    //     });
-    // }
     public function recalculateTotalAmount(PurchaseInvoice $invoice)
     {
-        // 1. [PERBAIKAN SINTAKS] Hitung total subtotal dari relasi items()
-        // Pastikan item() adalah relasi HasMany ke PurchaseItem
-        $newTotal = $invoice->items()->sum('subtotal');
+        foreach ($invoice->items as $item) {
+            // Ambil data pesanan
+            $snapshot = $item->product_snapshot;
+            $orderedQty = $snapshot['quantity'] ?? 0; // Qty Rencana
+            $receivedQty = $item->quantity;      // Qty Fisik
 
-        // 2. Gunakan DB Transaction untuk memastikan atomicity
-        DB::transaction(function () use ($invoice, $newTotal) {
+            // TENTUKAN STATUS
+            $status = PurchaseItem::STATUS_PENDING; // Default
 
-            // 3. Perbarui total_amount di Nota
-            $invoice->update(['total_amount' => $newTotal]);
-
-            // 4. [PENTING] Update amount_paid jika statusnya sudah LUNAS (Paid)
-            if ($invoice->payment_status === 'paid') {
-                $invoice->update(['amount_paid' => $newTotal]);
+            if ($orderedQty == 0 && $receivedQty > 0) {
+                // Kasus: Barang Baru / Susulan (Tidak ada di snapshot)
+                $status = PurchaseItem::STATUS_EXTRA;
+            } elseif ($receivedQty == 0) {
+                // Kasus: Barang tidak datang sama sekali
+                $status = PurchaseItem::STATUS_NONE;
+            } elseif ($receivedQty == $orderedQty) {
+                // Kasus: Pas mantab
+                $status = PurchaseItem::STATUS_SESUAI;
+            } elseif ($receivedQty < $orderedQty) {
+                // Kasus: Datang sebagian
+                $status = PurchaseItem::STATUS_PARTIAL;
+            } elseif ($receivedQty > $orderedQty) {
+                // Kasus: Bonus / Kelebihan kirim
+                $status = PurchaseItem::STATUS_OVER;
             }
-        });
+
+            // UPDATE ITEM
+            $item->update([
+                'item_status' => $status, // <--- SIMPAN STATUS DISINI
+            ]);
+        }
+    }
+    public function validateInvoice(PurchaseInvoice $invoice)
+    {
+        $totalReceived = $invoice->items()->sum('subtotal');
+        if ($totalReceived != $invoice->total_amount) {
+            throw new \Exception("Total amount pada nota ({$invoice->total_amount}) tidak sesuai dengan jumlah subtotal item yang diterima ({$totalReceived}). Silakan periksa kembali item yang tertaut.");
+        }
+
+        // Jika lolos semua pengecekan
+        $invoice->update(['status' => PurchaseInvoice::STATUS_VALIDATED]);
     }
     /**
      * Memproses array product_id untuk menautkan item PO yang ada atau membuat item baru.
@@ -226,6 +212,7 @@ class InvoiceService
                         throw new \Exception("Item '{$item->product_snapshot['name']}' sudah tertaut di nota lain. Unlink dulu jika ingin memindahkan.");
                     }
                     $item->purchase_invoice_id = $invoice->id;
+                    $item->item_status = PurchaseItem::STATUS_SESUAI; // Set status ke Pending saat ditautkan
                     $item->save();
                     $linkedItemsCount++;
                 }
@@ -264,13 +251,13 @@ class InvoiceService
                     'quantity' => 1, // Default Qty
                     'purchase_price' => $product->purchase_price, // Default Harga Master
                     'subtotal' => $product->purchase_price,
+                    'item_status' => PurchaseItem::STATUS_PENDING
                 ]);
                 $createdItemsCount++;
             } else {
                 throw new \InvalidArgumentException("Tipe aksi tidak dikenali (harus 'link' atau 'create').");
             }
 
-            $this->recalculateTotalAmount($invoice);
             return [
                 'linked' => $linkedItemsCount,
                 'created' => $createdItemsCount
@@ -292,14 +279,13 @@ class InvoiceService
             $unlinkedCount = $invoice->purchase->items()
                 ->whereIn('id', $itemIds)
                 ->where('purchase_invoice_id', $invoice->id) // Hanya item yang tertaut ke nota ini
-                ->update(['purchase_invoice_id' => null]);
+                ->update(['purchase_invoice_id' => null, 'item_status' => PurchaseItem::STATUS_PENDING]);
 
             if ($unlinkedCount === 0) {
                 throw new \Exception('Tidak ada item yang dilepas. Item mungkin sudah tertaut ke nota lain.');
             }
 
             // Catatan: Logika harga tidak diperlukan karena harga akan dihitung ulang saat di-link kembali.
-            $this->recalculateTotalAmount($invoice);
             return $unlinkedCount;
         });
     }

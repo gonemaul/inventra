@@ -68,7 +68,11 @@
                     <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
                         <InfoCard
                             label="Jumlah Nota"
-                            :value="data.invoices.length + ' Nota'"
+                            :value="
+                                isReceived
+                                    ? data.invoices.length + ' Nota'
+                                    : '-'
+                            "
                         />
                         <InfoCard
                             label="Nilai PO Awal"
@@ -78,7 +82,11 @@
 
                         <InfoCard
                             label="Nilai Fisik Diterima"
-                            :value="formatRupiah(total_rupiah_diterima)"
+                            :value="
+                                isReceived
+                                    ? formatRupiah(total_rupiah_diterima)
+                                    : '-'
+                            "
                             :format-value="formatRupiah"
                             highlight
                         />
@@ -110,7 +118,7 @@
 
                         <InfoCard
                             label="Macam Diterima"
-                            :value="total_macam_diterima"
+                            :value="isReceived ? total_macam_diterima : '-'"
                         />
 
                         <InfoCard
@@ -120,7 +128,7 @@
 
                         <InfoCard
                             label="Qty Total Diterima"
-                            :value="total_qty_diterima"
+                            :value="isReceived ? total_qty_diterima : '-'"
                         />
 
                         <InfoCard
@@ -171,6 +179,7 @@ import { Link } from "@inertiajs/vue3";
 // Asumsi Anda memiliki InfoCard di folder yang sama (./InfoCard.vue)
 import InfoCard from "./InfoCard.vue";
 import { usePurchaseAnalytics } from "@/Composable/usePurchaseAnalytics";
+import { computed } from "vue";
 
 const props = defineProps({
     data: {
@@ -200,6 +209,7 @@ function formatRupiah(value) {
         minimumFractionDigits: 0,
     }).format(value);
 }
+const isReceived = computed(() => props.data.status === "received");
 const totalAddedCost =
     (props.data.shipping_cost || 0) + (props.data.other_costs || 0);
 const total_nominal =

@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\Purchase;
 use Illuminate\Support\Str;
+use App\Models\PurchaseItem;
 use App\Models\SmartInsight;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
@@ -148,13 +149,13 @@ class PurchaseService
                     'quantity' => $itemData['quantity'],
                     'purchase_price' => $itemData['purchase_price'],
                     'subtotal' => $subtotal,
+                    'item_status' => PurchaseItem::STATUS_PENDING,
                 ]);
             }
 
             // 5. [OPSIONAL] Update grand_total di sini jika diperlukan,
             //    tapi karena kita hapus kolomnya, kita lewati.
-            $purchase->grand_total = $grandTotal;
-            $purchase->save();
+            $purchase->update(['total_item_price' => $grandTotal, 'grand_total' => $grandTotal]);
             return $purchase;
         });
     }
