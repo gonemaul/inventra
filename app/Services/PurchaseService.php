@@ -7,6 +7,7 @@ use App\Models\Purchase;
 use Illuminate\Support\Str;
 use App\Models\PurchaseItem;
 use App\Models\SmartInsight;
+use App\Models\StockMovement;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -15,6 +16,11 @@ use App\Models\PurchaseInvoice; // Diperlukan jika ada logika invoice di service
 
 class PurchaseService
 {
+    protected $stockService;
+    public function __construct(StockService $stockService)
+    {
+        $this->stockService = $stockService;
+    }
     /**
      * Mengambil data transaksi pembelian untuk halaman index (Index.vue).
      */
@@ -419,11 +425,6 @@ class PurchaseService
                 // 1. Hitung HPP Final Item Ini
                 // HPP = Harga Beli di Nota + Alokasi Biaya Tambahan
                 $finalHpp = $item->purchase_price + $costPerUnitAllocation;
-
-                // 2. Update Catatan Item (Simpan HPP Final untuk histori)
-                // Asumsi: Anda punya kolom 'final_hpp' di purchase_items, atau overwrite purchase_price
-                // Disarankan overwrite purchase_price agar konsisten, atau simpan di kolom baru.
-                // Disini kita simpan kalkulasi subtotal final.
                 $item->subtotal = $item->quantity * $finalHpp;
                 $item->save();
 
@@ -431,9 +432,16 @@ class PurchaseService
                 // Kita kirim array data yang ingin diubah
                 $product->updateWithSnapshot([
                     'purchase_price' => $finalHpp,
-                    'stock'          => $product->stock + $item->quantity, // Tambah stok
+                    // 'stock'          => $product->stock + $item->quantity, // Tambah stok
                     // 'supplier_id' => $purchase->supplier_id // (Opsional: update supplier default produk)
                 ], 'purchase'); // Reason: 'purchase'
+                $this->stockService->record(
+                    productId: $item->product_id,
+                    qty: $item->quantity, // Positif = Masuk
+                    type: StockMovement::TYPE_PURCHASE,
+                    ref: $purchase->reference_no, // Referensi PO / Invoice Supplier
+                    desc: 'Penerimaan Barang Pembelian'
+                );
             }
 
             return true;

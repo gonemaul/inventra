@@ -11,7 +11,9 @@ use App\Models\SaleItem;
 use App\Models\ProductType;
 use App\Models\PurchaseItem;
 use App\Models\SmartInsight;
+use App\Models\StockMovement;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -20,9 +22,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class ProductService
 {
     protected $insightService;
-    public function __construct(InsightService $insightService)
+    protected $stockService;
+    public function __construct(InsightService $insightService, StockService $stockService)
     {
         $this->insightService = $insightService;
+        $this->stockService = $stockService;
     }
     private function handleImageUpload($file, $existingPath = null)
     {
@@ -419,18 +423,30 @@ class ProductService
             $data['brand_id'],
             $data['size_id']
         );
-        $validatedData = $validator->validated();
-        $validatedData['code'] = $generatedCode;
-        if ($imageFile) {
-            $imageValidator = Validator::make(['image' => $imageFile], [
-                'image' => 'nullable|image|mimes:jpeg,png,webp|max:1024' // Maks 1MB
-            ]);
-            if ($imageValidator->fails()) throw new ValidationException($imageValidator);
+        return DB::transaction(function () use ($validator, $imageFile, $generatedCode) {
+            $validatedData = $validator->validated();
+            $validatedData['code'] = $generatedCode;
+            if ($imageFile) {
+                $imageValidator = Validator::make(['image' => $imageFile], [
+                    'image' => 'nullable|image|mimes:jpeg,png,webp|max:1024' // Maks 1MB
+                ]);
+                if ($imageValidator->fails()) throw new ValidationException($imageValidator);
 
-            // Simpan path ke data yang divalidasi
-            $validatedData['image_path'] = $this->handleImageUpload($imageFile);
-        }
-        return Product::create($validatedData);
+                // Simpan path ke data yang divalidasi
+                $validatedData['image_path'] = $this->handleImageUpload($imageFile);
+            }
+            $product = Product::create($validatedData);
+            if ($validatedData['stock'] > 0) {
+                $this->stockService->record(
+                    productId: $product->id,
+                    qty: $product->stock,
+                    type: StockMovement::TYPE_INITIAL,
+                    ref: 'INIT',
+                    desc: 'Stok Awal Produk Baru'
+                );
+            }
+            return true;
+        });
     }
 
     /**

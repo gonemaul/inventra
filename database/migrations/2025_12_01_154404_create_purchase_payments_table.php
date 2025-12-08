@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('purchase_invoice_id')->constrained()->cascadeOnDelete();
 
-            $table->decimal('amount', 15, 2); // Nominal bayar saat ini
+            $table->decimal('amount', 19, 4); // Nominal bayar saat ini
             $table->date('payment_date');
             $table->string('payment_method')->default('cash'); // cash, transfer
             $table->string('proof_image')->nullable(); // Bukti transfer

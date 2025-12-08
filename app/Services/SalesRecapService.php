@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Exception;
 use App\Models\Product;
+use App\Models\StockMovement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Sale;       // Revisi: Kita pakai nama model 'Sale' sesuai migrasi terakhir
@@ -45,6 +46,11 @@ class SalesRecapService
         "inch",
         "inci",
     ];
+    protected $stockService;
+    public function __construct(StockService $stockService)
+    {
+        $this->stockService = $stockService;
+    }
     /**
      * Mengambil data transaksi pembelian untuk halaman index (Index.vue).
      */
@@ -163,7 +169,15 @@ class SalesRecapService
                 ]);
 
                 // Update Stok Master (Berkurang)
-                $product->decrement('stock', $inputQty);
+                // $product->decrement('stock', $inputQty);
+
+                $this->stockService->record(
+                    productId: $product->id,
+                    qty: -abs($inputQty), // PASTIKAN NEGATIF (Keluar)
+                    type: 'sale',
+                    ref: $sale->reference_no, // No Nota Kasir
+                    desc: 'Penjualan Kasir'
+                );
 
                 // Akumulasi Header
                 $totalRevenue += $subtotal;
@@ -270,7 +284,14 @@ class SalesRecapService
                     'product_snapshot' => $snapshot,
                 ]);
 
-                $product->decrement('stock', $inputQty);
+                // $product->decrement('stock', $inputQty);
+                $this->stockService->record(
+                    productId: $product->id,
+                    qty: -abs($inputQty), // PASTIKAN NEGATIF (Keluar)
+                    type: StockMovement::TYPE_SALE,
+                    ref: $sale->reference_no, // No Nota Kasir
+                    desc: 'Update Penjualan Kasir'
+                );
 
                 $totalRevenue += $subtotal;
                 $totalProfit += $rowProfit;
