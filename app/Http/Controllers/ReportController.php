@@ -19,8 +19,63 @@ class ReportController extends Controller
 {
     public function index()
     {
+        $totalAsset = Product::sum(DB::raw('stock * purchase_price'));
+
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+        $currentRevenue = Sale::whereBetween('transaction_date', [$startOfMonth, $endOfMonth])
+            // ->where('status', '!=', 'cancelled')
+            ->sum('total_revenue');
+
+        $sixMonthsAgo = now()->subMonths(6)->startOfMonth();
+        $isSqlite = DB::connection()->getDriverName() === 'sqlite';
+        $monthQuery = $isSqlite
+            ? "strftime('%Y-%m', transaction_date)" // Syntax SQLite
+            : "DATE_FORMAT(transaction_date, '%Y-%m')"; // Syntax MySQL
+        $historicalSales = Sale::select(
+            DB::raw('sum(total_revenue) as monthly_total'),
+            DB::raw("$monthQuery as month")
+        )
+            // ->where('status', '!=', 'cancelled')
+            ->whereBetween('transaction_date', [$sixMonthsAgo, now()->subMonth()->endOfMonth()]) // Jangan hitung bulan ini karena belum selesai
+            ->groupBy('month')
+            ->get();
+
+        $avgRevenue = $historicalSales->count() > 0
+            ? $historicalSales->avg('monthly_total')
+            : 0;
+
+        $revenueProgress = $avgRevenue > 0 ? ($currentRevenue / $avgRevenue) * 100 : 0;
+
+        $debtDueSoon = PurchaseInvoice::where('payment_status', '!=', PurchaseInvoice::PAYMENT_STATUS_PAID)
+            ->whereBetween('due_date', [now()->toDateString(), now()->addDays(7)->toDateString()])
+            ->sum(DB::raw('total_amount - COALESCE(amount_paid, 0)'));
+
+        $currentCOGS = SaleItem::whereHas('sale', function ($q) use ($startOfMonth, $endOfMonth) {
+            $q->whereBetween('transaction_date', [$startOfMonth, $endOfMonth]);
+            // ->where('status', '!=', 'cancelled');
+        })
+            ->sum(DB::raw('quantity * capital_price'));
+
+        $currentExpenses = 0;
+        if (class_exists('App\Models\Expense')) {
+            $currentExpenses = Expense::whereBetween('date', [$startOfMonth, $endOfMonth])->sum('amount');
+        }
+        $netProfit = $currentRevenue - $currentCOGS - $currentExpenses;
+
+        $netMargin = $currentRevenue > 0 ? ($netProfit / $currentRevenue) * 100 : 0;
         // Render tampilan Menu Laporan
-        return Inertia::render('Reports/Index');
+        return Inertia::render('Reports/Index', [
+            'summary' => [
+                'total_asset' => (float) $totalAsset,
+                'current_revenue' => (float) $currentRevenue,
+                'avg_revenue' => (float) $avgRevenue,
+                'revenue_progress' => round($revenueProgress, 1),
+                'debt_due_soon' => (float) $debtDueSoon,
+                'net_profit' => (float) $netProfit,
+                'net_margin' => round($netMargin, 1)
+            ]
+        ]);
     }
 
     //PILAR 1

@@ -85,7 +85,7 @@ const columns = [
     <Head title="Keuangan" />
 
     <AuthenticatedLayout headerTitle="Keuangan">
-        <div class="w-full min-h-screen px-4 space-y-6">
+        <div class="w-full min-h-screen space-y-6">
             <!-- Atas -->
             <div
                 class="p-4 space-y-6 bg-gray-100 shadow-md dark:bg-customBg-tableDark rounded-xl"

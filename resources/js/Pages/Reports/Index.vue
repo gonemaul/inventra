@@ -2,103 +2,124 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link } from "@inertiajs/vue3";
 
+const props = defineProps({
+    summary: Object, // Data Real dari Backend
+});
+const formatRupiah = (val) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(val);
+const formatK = (val) => (val / 1000000).toFixed(1) + " Juta";
 // Data Menu (Ditambah fitur Export)
 const reportGroups = [
     {
         title: "INVENTORY",
-        subtitle: "Audit & Aset",
-        color: "from-emerald-500 to-teal-600",
-        icon: "box",
+        subtitle: "Stok & Aset",
+        color: "text-emerald-600 bg-emerald-50 border-emerald-200", // Icon Box Style
+        borderColor: "hover:border-emerald-400",
         items: [
             {
                 title: "Kartu Stok (Stock Card)",
                 desc: "Audit keluar-masuk barang per item.",
                 route: "reports.stock-card",
                 canExport: true,
+                icon: "📦",
             },
             {
                 title: "Valuasi Aset",
                 desc: "Total nilai uang dalam bentuk barang.",
                 route: "reports.stock-value",
                 canExport: true,
+                icon: "💰",
             },
             {
                 title: "Dead Stock Analysis",
                 desc: "Barang macet > 90 hari.",
                 route: "reports.dead-stock",
                 canExport: false,
+                icon: "🕸️",
             },
         ],
     },
     {
         title: "SALES",
-        subtitle: "Performa & Omzet",
-        color: "from-blue-500 to-indigo-600",
-        icon: "chart",
+        subtitle: "Omzet & Laba",
+        color: "text-blue-600 bg-blue-50 border-blue-200",
+        borderColor: "hover:border-blue-400",
         items: [
             {
                 title: "Laporan Omzet",
                 desc: "Rekap pendapatan harian/bulanan.",
                 route: "reports.sales-revenue",
                 canExport: true,
+                icon: "📈",
             },
             {
                 title: "Produk Terlaris (Pareto)",
                 desc: "20% Barang penyumbang 80% profit.",
                 route: "reports.top-products",
                 canExport: true,
+                icon: "🏆",
             },
             {
                 title: "Laba Kotor (Margin)",
                 desc: "Analisa keuntungan per transaksi.",
                 route: "reports.gross-profit",
                 canExport: true,
+                icon: "💵",
             },
         ],
     },
     {
         title: "PROCUREMENT",
-        subtitle: "Supplier & Hutang",
-        color: "from-orange-500 to-red-500",
-        icon: "truck",
+        subtitle: "Beli & Hutang",
+        color: "text-orange-600 bg-orange-50 border-orange-200",
+        borderColor: "hover:border-orange-400",
         items: [
             {
                 title: "Pembelian Supplier",
                 desc: "Volume belanja per vendor.",
                 route: "reports.purchase-supplier",
                 canExport: true,
+                icon: "🚚",
             },
             {
                 title: "Buku Hutang (AP)",
                 desc: "Jadwal jatuh tempo tagihan.",
                 route: "reports.accounts-payable",
                 canExport: true,
+                icon: "📜",
             },
             {
                 title: "Price Watch",
                 desc: "Tren kenaikan harga modal.",
                 route: "reports.price-watch",
                 canExport: false,
+                icon: "⚠️",
             },
         ],
     },
     {
         title: "FINANCE",
-        subtitle: "Kesehatan Bisnis",
-        color: "from-violet-500 to-purple-600",
-        icon: "wallet",
+        subtitle: "Keuangan Utama",
+        color: "text-purple-600 bg-purple-50 border-purple-200",
+        borderColor: "hover:border-purple-400",
         items: [
             {
                 title: "Laba Rugi (P&L)",
                 desc: "Net Profit (Omzet - HPP - Beban).",
                 route: "reports.profit-loss",
                 canExport: true,
+                icon: "📊",
             },
             {
                 title: "Arus Kas (Cashflow)",
                 desc: "Uang masuk vs keluar riil.",
                 route: "reports.cash-flow",
                 canExport: true,
+                icon: "💸",
             },
         ],
     },
@@ -110,7 +131,7 @@ const quickExport = (reportTitle, format) => {
 };
 </script>
 
-<template>
+<!-- <template>
     <Head title="Command Center" />
 
     <AuthenticatedLayout headerTitle="Executive Report Hub">
@@ -357,6 +378,222 @@ const quickExport = (reportTitle, format) => {
                                 </Link>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </AuthenticatedLayout>
+</template> -->
+<template>
+    <Head title="Command Center" />
+
+    <AuthenticatedLayout headerTitle="Executive Report Hub">
+        <div class="min-h-screen pb-20 space-y-8 bg-gray-50 dark:bg-gray-800">
+            <div class="grid grid-cols-1 gap-5 md:grid-cols-4">
+                <div
+                    class="relative p-6 overflow-hidden text-white border border-gray-700 shadow-xl bg-gradient-to-br from-gray-700 to-gray-900 dark:from-lime-600 dark:to-lime-950 rounded-2xl"
+                >
+                    <div class="relative z-10">
+                        <p
+                            class="text-[10px] font-bold tracking-widest text-gray-400 dark:text-gray-100 uppercase"
+                        >
+                            Total Aset Stok (HPP)
+                        </p>
+                        <h3
+                            class="mt-2 text-2xl font-black truncate"
+                            :title="formatRupiah(summary.total_asset)"
+                        >
+                            {{ formatK(summary.total_asset) }}
+                        </h3>
+                        <p
+                            class="mt-2 text-xs text-gray-400 dark:text-gray-200"
+                        >
+                            Nilai modal di gudang
+                        </p>
+                    </div>
+                    <div class="absolute -right-4 -bottom-4 opacity-10">
+                        <svg
+                            class="w-24 h-24"
+                            fill="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
+                            />
+                        </svg>
+                    </div>
+                </div>
+
+                <div
+                    class="p-6 bg-white border border-gray-300 shadow-lg rounded-2xl dark:bg-gray-800 dark:border-gray-600"
+                >
+                    <div class="flex items-start justify-between">
+                        <p
+                            class="text-[10px] font-bold tracking-widest text-gray-500 uppercase"
+                        >
+                            Omzet Bulan Ini
+                        </p>
+                        <span
+                            class="text-[10px] px-2 py-0.5 rounded-full font-bold"
+                            :class="
+                                summary.revenue_progress >= 100
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                            "
+                        >
+                            {{ summary.revenue_progress }}%
+                        </span>
+                    </div>
+                    <h3
+                        class="mt-2 text-2xl font-black text-gray-800 truncate dark:text-white"
+                        :title="formatRupiah(summary.current_revenue)"
+                    >
+                        {{ formatK(summary.current_revenue) }}
+                    </h3>
+
+                    <div
+                        class="w-full h-2 mt-4 overflow-hidden bg-gray-100 border border-gray-200 rounded-full dark:bg-gray-700"
+                    >
+                        <div
+                            class="h-2 transition-all duration-1000 bg-blue-600 rounded-full"
+                            :style="{
+                                width:
+                                    Math.min(summary.revenue_progress, 100) +
+                                    '%',
+                            }"
+                        ></div>
+                    </div>
+                    <p class="mt-2 text-[10px] text-gray-400 text-right">
+                        Target (Rata-rata): {{ formatK(summary.avg_revenue) }}
+                    </p>
+                </div>
+
+                <div
+                    class="p-6 bg-white border border-gray-300 shadow-lg rounded-2xl dark:bg-gray-800 dark:border-gray-600"
+                >
+                    <p
+                        class="text-[10px] font-bold tracking-widest text-gray-500 uppercase"
+                    >
+                        Hutang Jatuh Tempo
+                    </p>
+                    <h3
+                        class="mt-2 text-2xl font-black text-red-600 truncate"
+                        :title="formatRupiah(summary.debt_due_soon)"
+                    >
+                        {{ formatK(summary.debt_due_soon) }}
+                    </h3>
+                    <div
+                        class="flex items-center gap-2 mt-4 text-xs font-medium text-red-500"
+                    >
+                        <svg
+                            class="w-4 h-4 animate-pulse"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                        <span>Dalam 7 hari ke depan</span>
+                    </div>
+                </div>
+
+                <div
+                    class="p-6 bg-white border border-gray-300 shadow-lg rounded-2xl dark:bg-gray-800 dark:border-gray-600"
+                >
+                    <p
+                        class="text-[10px] font-bold tracking-widest text-gray-500 uppercase"
+                    >
+                        Est. Laba Bersih
+                    </p>
+                    <h3
+                        class="mt-2 text-2xl font-black truncate text-lime-600"
+                        :title="formatRupiah(summary.net_profit)"
+                    >
+                        {{ formatK(summary.net_profit) }}
+                    </h3>
+                    <p class="mt-4 text-xs text-gray-500">
+                        Margin Bersih:
+                        <span class="font-bold text-lime-700"
+                            >{{ summary.net_margin }}%</span
+                        >
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-4">
+                <div
+                    v-for="(group, idx) in reportGroups"
+                    :key="idx"
+                    class="space-y-4"
+                >
+                    <div class="flex items-center gap-2 px-1">
+                        <h3
+                            class="text-sm font-black tracking-wider text-gray-400 uppercase"
+                        >
+                            {{ group.title }}
+                        </h3>
+                        <div
+                            class="flex-1 h-px bg-gray-200 dark:bg-gray-700"
+                        ></div>
+                    </div>
+
+                    <div class="flex flex-col gap-4">
+                        <Link
+                            v-for="(item, i) in group.items"
+                            :key="i"
+                            :href="item.route !== '#' ? route(item.route) : '#'"
+                            class="relative p-5 transition-all duration-300 bg-white border border-gray-300 shadow-md group dark:bg-gray-800 rounded-xl dark:border-gray-600 hover:shadow-xl hover:-translate-y-1"
+                            :class="[
+                                group.borderColor,
+                                item.route === '#'
+                                    ? 'opacity-60 grayscale cursor-not-allowed'
+                                    : 'cursor-pointer',
+                            ]"
+                        >
+                            <div class="flex items-start justify-between mb-3">
+                                <div
+                                    class="flex items-center justify-center w-10 h-10 text-xl transition-colors border rounded-lg group-hover:scale-110"
+                                    :class="group.color"
+                                >
+                                    {{ item.icon }}
+                                </div>
+
+                                <div
+                                    v-if="item.route !== '#'"
+                                    class="text-gray-300 transition-colors group-hover:text-gray-600 dark:group-hover:text-white"
+                                >
+                                    <svg
+                                        class="w-5 h-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M9 5l7 7-7 7"
+                                        ></path>
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <h4
+                                class="font-bold text-gray-800 transition-colors dark:text-white group-hover:text-blue-600"
+                            >
+                                {{ item.title }}
+                            </h4>
+                            <p
+                                class="mt-1 text-xs leading-relaxed text-gray-500 dark:text-gray-400"
+                            >
+                                {{ item.desc }}
+                            </p>
+                        </Link>
                     </div>
                 </div>
             </div>
