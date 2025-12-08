@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Carbon\Carbon;
 use App\Models\Sale;
 use Inertia\Inertia;
+use App\Models\Expense;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\SaleItem;
 use App\Models\PurchaseItem;
 use Illuminate\Http\Request;
@@ -466,6 +468,112 @@ class ReportController extends Controller
             'data' => $history,
             'product' => $product,
             'summary' => $summary
+        ]);
+    }
+
+    //PILAR 4 FINANCE
+    /**
+     * Summary of profitLoss
+     * @param Request $request
+     * @return \Inertia\Response
+     * Laba Rugi
+     */
+    public function profitLoss(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+
+        // 1. REVENUE (Pendapatan Penjualan)
+        // Ambil total penjualan bersih (Status valid)
+        $revenue = Sale::whereBetween('transaction_date', [$startDate, $endDate])
+            // ->where('status', '!=', 'cancelled')
+            ->sum('grand_total');
+
+        // 2. COGS (Harga Pokok Penjualan)
+        // Ambil dari SaleItem agar akurat sesuai tanggal transaksi
+        $cogs = SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->whereBetween('sales.transaction_date', [$startDate, $endDate])
+            // ->where('sales.status', '!=', 'cancelled')
+            ->sum(DB::raw('sale_items.quantity * sale_items.capital_price'));
+
+        // 3. EXPENSES (Biaya Operasional)
+        $expenses = DB::table('expenses')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->sum('amount');
+
+        // Rincian Expenses per Kategori (Untuk Chart/Tabel)
+        $expenseDetails = DB::table('expenses')
+            ->whereBetween('date', [$startDate, $endDate])
+            ->select('category', DB::raw('SUM(amount) as total'))
+            ->groupBy('category')
+            ->get();
+
+        // 4. KALKULASI HASIL
+        $grossProfit = $revenue - $cogs;
+        $netProfit = $grossProfit - $expenses;
+
+        // Hitung Margin (%)
+        $grossMargin = $revenue > 0 ? ($grossProfit / $revenue) * 100 : 0;
+        $netMargin = $revenue > 0 ? ($netProfit / $revenue) * 100 : 0;
+
+        return Inertia::render('Reports/ProfitLoss', [
+            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
+            'data' => [
+                'revenue' => (float)$revenue,
+                'cogs' => (float)$cogs,
+                'expenses' => (float)$expenses,
+                'gross_profit' => (float)$grossProfit,
+                'net_profit' => (float)$netProfit,
+                'gross_margin' => round($grossMargin, 1),
+                'net_margin' => round($netMargin, 1),
+                'expense_details' => $expenseDetails
+            ]
+        ]);
+    }
+
+    /**
+     * Summary of cashFlow
+     * @param Request $request
+     * @return \Inertia\Response
+     * Arus Kas (CASHFLOW)
+     */
+    public function cashFlow(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+
+        // 1. CASH IN (Uang Masuk)
+        // Asumsi: Semua sales lunas/dp dihitung sebagai cash in
+        // Idealnya: Ambil dari tabel 'payments' jika ada. Jika tidak, pakai sales.paid_amount
+        $cashIn = Sale::whereBetween('transaction_date', [$startDate, $endDate])
+            ->where('status', '!=', 'cancelled')
+            ->sum('paid_amount'); // Menggunakan paid_amount (uang yg diterima kasir)
+
+        // 2. CASH OUT (Uang Keluar)
+        // A. Pembayaran ke Supplier
+        $paymentToSupplier = Purchase::whereBetween('transaction_date', [$startDate, $endDate])
+            ->sum('paid_amount'); // Asumsi: Pembayaran terjadi di tgl transaksi (Simplifikasi)
+
+        // B. Biaya Operasional
+        $operationalCost = Expense::whereBetween('date', [$startDate, $endDate])
+            ->sum('amount');
+
+        $totalCashOut = $paymentToSupplier + $operationalCost;
+        $netCashFlow = $cashIn - $totalCashOut;
+
+        return Inertia::render('Reports/CashFlow', [
+            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
+            'data' => [
+                'cash_in' => (float) $cashIn,
+                'cash_out' => (float) $totalCashOut,
+                'net_flow' => (float) $netCashFlow,
+                'breakdown' => [
+                    'sales' => (float) $cashIn,
+                    'supplier_payment' => (float) $paymentToSupplier,
+                    'expenses' => (float) $operationalCost
+                ]
+            ]
         ]);
     }
 }

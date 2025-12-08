@@ -91,13 +91,13 @@ const reportGroups = [
             {
                 title: "Laba Rugi (P&L)",
                 desc: "Net Profit (Omzet - HPP - Beban).",
-                route: "#",
+                route: "reports.profit-loss",
                 canExport: true,
             },
             {
                 title: "Arus Kas (Cashflow)",
                 desc: "Uang masuk vs keluar riil.",
-                route: "#",
+                route: "reports.cash-flow",
                 canExport: true,
             },
         ],

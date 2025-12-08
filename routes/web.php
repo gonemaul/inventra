@@ -120,7 +120,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/accounts-payable', [ReportController::class, 'accountsPayable'])->name('accounts-payable');
         Route::get('/price-watch', [ReportController::class, 'priceWatch'])->name('price-watch');
         // PILAR 4 FINANCE
-
+        Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
+        Route::get('/cash-flow', [ReportController::class, 'cashFlow'])->name('cash-flow');
     });
 
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
