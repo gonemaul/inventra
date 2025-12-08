@@ -3,7 +3,7 @@ import TextInput from "@/Components/TextInput.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import { Link, useForm } from "@inertiajs/vue3";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
 
 const props = defineProps({
@@ -36,6 +36,7 @@ const form = useForm({
     stock: props.product?.stock || 0,
     min_stock: props.product?.min_stock || 0,
     target_margin_percent: props.product?.target_margin_percent || 20,
+    margin_nominal: 0,
 
     // File (image akan berisi file baru, image_path untuk preview)
     image: null,
@@ -43,6 +44,64 @@ const form = useForm({
 const imagePreview = ref(
     props.product?.image_path ? `/storage/${props.product.image_path}` : null
 );
+
+const onPurchaseChange = () => {
+    const buy = parseFloat(form.purchase_price) || 0;
+    const percent = parseFloat(form.target_margin_percent) || 0;
+
+    // Hitung Nominal dari %
+    const nominal = buy * (percent / 100);
+    form.margin_nominal = Math.round(nominal);
+
+    // Hitung Harga Jual
+    form.selling_price = Math.round(buy + nominal);
+};
+
+const onSellingChange = () => {
+    const buy = parseFloat(form.purchase_price) || 0;
+    const sell = parseFloat(form.selling_price) || 0;
+
+    // Hitung Nominal (Selisih)
+    const nominal = sell - buy;
+    form.margin_nominal = nominal;
+
+    // Hitung Persen
+    if (buy > 0) {
+        form.target_margin_percent = parseFloat(
+            ((nominal / buy) * 100).toFixed(2)
+        );
+    } else {
+        form.target_margin_percent = 100; // Default jika harga beli 0
+    }
+};
+
+const onMarginPercentChange = () => {
+    const buy = parseFloat(form.purchase_price) || 0;
+    const percent = parseFloat(form.target_margin_percent) || 0;
+
+    // Hitung Nominal
+    const nominal = buy * (percent / 100);
+    form.margin_nominal = Math.round(nominal);
+
+    // Update Harga Jual
+    form.selling_price = Math.round(buy + nominal);
+};
+
+const onMarginNominalChange = () => {
+    const buy = parseFloat(form.purchase_price) || 0;
+    const nominal = parseFloat(form.margin_nominal) || 0;
+
+    // Update Harga Jual
+    form.selling_price = Math.round(buy + nominal);
+
+    // Hitung Persen
+    if (buy > 0) {
+        form.target_margin_percent = parseFloat(
+            ((nominal / buy) * 100).toFixed(2)
+        );
+    }
+};
+
 function handleFileChange(event) {
     const file = event.target.files[0];
     if (file) {
@@ -348,19 +407,25 @@ const submitForm = () => {
             <div class="flex-1">
                 <label
                     class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
-                    >Harga Beli<span class="text-red-500">*</span></label
+                    >Harga Beli (HPP)<span class="text-red-500">*</span></label
                 >
-                <TextInput
-                    v-model="form.purchase_price"
-                    class="w-full max-h-10"
-                    id="price_buy"
-                    type="number"
-                    min="0"
-                    name="price_buy"
-                    placeholder="Harga Beli"
-                />
+                <div class="relative">
+                    <span class="absolute text-sm text-gray-500 left-3 top-2"
+                        >Rp</span
+                    >
+                    <TextInput
+                        v-model="form.purchase_price"
+                        class="w-full py-2 pr-3 max-h-10 pl-9"
+                        @input="onPurchaseChange"
+                        id="price_buy"
+                        type="number"
+                        min="0"
+                        name="price_buy"
+                        placeholder="Harga Beli"
+                    />
+                </div>
                 <span class="flex justify-between">
-                    <p class="text-sm text-gray-500">
+                    <p class="ml-2 text-sm text-gray-500">
                         {{
                             new Intl.NumberFormat("id-ID", {
                                 style: "currency",
@@ -382,17 +447,23 @@ const submitForm = () => {
                     class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-100"
                     >Harga Jual<span class="text-red-500">*</span></label
                 >
-                <TextInput
-                    v-model="form.selling_price"
-                    class="w-full max-h-10"
-                    id="price_sell"
-                    type="number"
-                    min="0"
-                    name="price_sell"
-                    placeholder="Harga Jual"
-                />
+                <div class="relative">
+                    <span class="absolute text-sm text-gray-500 left-3 top-2"
+                        >Rp</span
+                    >
+                    <TextInput
+                        v-model="form.selling_price"
+                        class="w-full py-2 pr-3 max-h-10 pl-9"
+                        id="price_sell"
+                        type="number"
+                        min="0"
+                        @input="onSellingChange"
+                        name="price_sell"
+                        placeholder="Harga Jual"
+                    />
+                </div>
                 <span class="flex justify-between">
-                    <p class="text-sm text-gray-500">
+                    <p class="ml-2 text-sm text-gray-500">
                         {{
                             new Intl.NumberFormat("id-ID", {
                                 style: "currency",
@@ -412,7 +483,7 @@ const submitForm = () => {
         </div>
 
         <!-- Stock -->
-        <div class="grid grid-cols-1 gap-3 mt-4 md:grid-cols-4">
+        <div class="grid grid-cols-1 gap-3 mt-4 md:grid-cols-5">
             <div>
                 <label
                     class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-100"
@@ -455,23 +526,60 @@ const submitForm = () => {
             <div>
                 <label
                     class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-100"
-                    >Margin(%)<span class="text-red-500">*</span></label
+                    >Margin (Rp)<span class="text-red-500">*</span></label
                 >
-                <TextInput
-                    v-model="form.target_margin_percent"
-                    class="w-full max-h-10"
-                    id="target_margin_percent"
-                    type="number"
-                    min="0"
-                    name="target_margin_percent"
-                    placeholder="Min Stock"
-                />
-                <p
-                    v-if="form.errors.target_margin_percent"
-                    class="mt-1 text-sm text-red-500"
+                <div class="relative">
+                    <span class="absolute text-sm text-gray-500 left-3 top-2"
+                        >Rp</span
+                    >
+                    <TextInput
+                        v-model="form.margin_nominal"
+                        class="w-full py-2 pr-3 pl-9 max-h-10"
+                        id="margin_nominal"
+                        type="number"
+                        min="0"
+                        @input="onMarginNominalChange"
+                        name="margin_nominal"
+                        placeholder="Margin Nominal"
+                    />
+                    <p class="ml-2 text-sm text-gray-500">
+                        {{
+                            new Intl.NumberFormat("id-ID", {
+                                style: "currency",
+                                currency: "IDR",
+                                minimumFractionDigits: 0,
+                            }).format(form.margin_nominal) || 0
+                        }}
+                    </p>
+                </div>
+            </div>
+            <div>
+                <label
+                    class="block mb-1 text-sm font-medium text-gray-700 border-gray-400 dark:text-gray-100"
+                    >Margin (%)<span class="text-red-500">*</span></label
                 >
-                    {{ form.errors.target_margin_percent }}
-                </p>
+                <div class="relative">
+                    <TextInput
+                        v-model="form.target_margin_percent"
+                        class="w-full py-2 pl-3 pr-8 max-h-10"
+                        id="target_margin_percent"
+                        type="number"
+                        min="0"
+                        @input="onMarginPercentChange"
+                        name="target_margin_percent"
+                        placeholder="Margin Percent"
+                    />
+                    <span
+                        class="absolute text-sm font-bold text-gray-500 right-3 top-2"
+                        >%</span
+                    >
+                    <p
+                        v-if="form.errors.target_margin_percent"
+                        class="mt-1 text-sm text-red-500"
+                    >
+                        {{ form.errors.target_margin_percent }}
+                    </p>
+                </div>
             </div>
             <div>
                 <label
