@@ -39,19 +39,19 @@ const reportGroups = [
             {
                 title: "Laporan Omzet",
                 desc: "Rekap pendapatan harian/bulanan.",
-                route: "#",
+                route: "reports.sales-revenue",
                 canExport: true,
             },
             {
                 title: "Produk Terlaris (Pareto)",
                 desc: "20% Barang penyumbang 80% profit.",
-                route: "#",
+                route: "reports.top-products",
                 canExport: true,
             },
             {
                 title: "Laba Kotor (Margin)",
                 desc: "Analisa keuntungan per transaksi.",
-                route: "#",
+                route: "reports.gross-profit",
                 canExport: true,
             },
         ],

@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon;
+use App\Models\Sale;
 use Inertia\Inertia;
 use App\Models\Product;
+use App\Models\SaleItem;
 use Illuminate\Http\Request;
 use App\Models\StockMovement;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -15,6 +18,15 @@ class ReportController extends Controller
         // Render tampilan Menu Laporan
         return Inertia::render('Reports/Index');
     }
+
+    //PILAR 1
+    /**
+     * Summary of stockCard
+     * @param Request $request
+     * @return \Inertia\Response
+     * Kartu Stock
+     * Traking keluar masuk stok per produk
+     */
     public function stockCard(Request $request)
     {
         // Default Tanggal: Awal bulan ini s/d Hari ini
@@ -61,6 +73,13 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * Summary of stockValue
+     * @param Request $request
+     * @return \Inertia\Response
+     * Valuasi Aset
+     * Total nilai uang dalam bentuk barang
+     */
     public function stockValue(Request $request)
     {
         // Ambil produk yang punya stok saja (agar laporan tidak penuh sampah stok 0)
@@ -93,6 +112,13 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * Summary of deadStock
+     * @param Request $request
+     * @return \Inertia\Response
+     * Dead Stock Analis
+     * Deteksi barang macet atau mati
+     */
     public function deadStock(Request $request)
     {
         // Default ambang batas: 90 Hari (3 Bulan)
@@ -143,6 +169,152 @@ class ReportController extends Controller
             'products' => $products,
             'filters' => ['days' => $thresholdDays],
             'total_frozen_asset' => $products->sum('asset_value'),
+        ]);
+    }
+
+    //PILAR 2 SALES
+    /**
+     * Summary of salesRevenue
+     * @param Request $request
+     * @return \Inertia\Response
+     * Laporan Omset
+     */
+    public function salesRevenue(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+
+        // 1. Query Agregat Harian (Untuk Grafik & Tabel)
+        $dailySales = Sale::whereBetween('transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->select(
+                DB::raw('DATE(transaction_date) as date'),
+                DB::raw('SUM(total_revenue) as revenue'),
+                DB::raw('COUNT(id) as transaction_count')
+            )
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
+            ->get();
+
+        // 2. Hitung Total Summary
+        $summary = [
+            'total_revenue' => $dailySales->sum('revenue'),
+            'total_transactions' => $dailySales->sum('transaction_count'),
+            // Rata-rata nilai belanja per orang (Basket Size)
+            'average_basket_size' => $dailySales->sum('transaction_count') > 0
+                ? $dailySales->sum('revenue') / $dailySales->sum('transaction_count')
+                : 0
+        ];
+
+        return Inertia::render('Reports/SalesRevenue', [
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
+            'data' => $dailySales,
+            'summary' => $summary
+        ]);
+    }
+
+    /**
+     * Summary of topProducts
+     * @param Request $request
+     * @return \Inertia\Response
+     * Produk Terlaris (Pareto)
+     * 20% barang penyumbang 80% profit
+     */
+    public function topProducts(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+        $limit = $request->input('limit', 10); // Top 10, 20, 50
+        $sortBy = $request->input('sort_by', 'total_qty'); // 'total_qty' atau 'total_revenue'
+
+        // Query Aggregation
+        $products = SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('products', 'products.id', '=', 'sale_items.product_id')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id') // Optional: ambil kategori
+            ->whereBetween('sales.transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->select(
+                'products.name',
+                'products.code',
+                'categories.name as category_name',
+                DB::raw('SUM(sale_items.quantity) as total_qty'),
+                DB::raw('SUM(sale_items.subtotal) as total_revenue')
+            )
+            ->groupBy('sale_items.product_id', 'products.name', 'products.code', 'categories.name')
+            ->orderByDesc($sortBy) // Sort dinamis (Qty atau Omzet)
+            ->limit($limit)
+            ->get();
+
+        return Inertia::render('Reports/TopProducts', [
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'limit' => $limit,
+                'sort_by' => $sortBy
+            ],
+            'data' => $products
+        ]);
+    }
+
+    /**
+     * Summary of grossProfit
+     * @param Request $request
+     * @return \Inertia\Response
+     * Laba kotor (margin)
+     * Analisa keuntungan per transaksi
+     */
+    public function grossProfit(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+
+        // Query Agregat Per Produk
+        // Asumsi: tabel sale_items punya kolom 'purchase_price' (HPP saat jual)
+        $items = SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('products', 'products.id', '=', 'sale_items.product_id')
+            ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
+            ->whereBetween('sales.transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            // ->where('sales.status', '!=', 'cancelled')
+            ->select(
+                'products.name',
+                'products.code',
+                'categories.name as category_name',
+                DB::raw('SUM(sale_items.quantity) as total_qty'),
+                DB::raw('SUM(sale_items.subtotal) as total_revenue'), // Omzet
+                DB::raw('SUM(sale_items.quantity * sale_items.capital_price) as total_cogs') // HPP
+            )
+            ->groupBy('sale_items.product_id', 'products.name', 'products.code', 'categories.name')
+            ->get()
+            ->map(function ($item) {
+                $grossProfit = $item->total_revenue - $item->total_cogs;
+                $marginPercent = $item->total_revenue > 0
+                    ? ($grossProfit / $item->total_revenue) * 100
+                    : 0;
+
+                return [
+                    'name' => $item->name,
+                    'code' => $item->code,
+                    'category' => $item->category_name ?? '-',
+                    'qty' => $item->total_qty,
+                    'revenue' => $item->total_revenue,
+                    'cogs' => $item->total_cogs,
+                    'profit' => $grossProfit,
+                    'margin' => round($marginPercent, 1)
+                ];
+            })
+            ->sortByDesc('profit') // Default urutkan dari profit terbesar (Sultan)
+            ->values();
+
+        return Inertia::render('Reports/GrossProfit', [
+            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
+            'data' => $items,
+            'summary' => [
+                'total_profit' => $items->sum('profit'),
+                'avg_margin' => $items->count() > 0 ? round($items->avg('margin'), 1) : 0
+            ]
         ]);
     }
 }

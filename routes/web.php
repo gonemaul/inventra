@@ -107,9 +107,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Laporan
     Route::controller(ReportController::class)->prefix('reports')->name('reports.')->group(function () {
         Route::get('/', 'index')->name('index');
+        // PILAR 1 INVENTORY
         Route::get('/stock-card', 'stockCard')->name('stock-card');
         Route::get('/stock-value',  'stockValue')->name('stock-value');
         Route::get('/dead-stock', 'deadStock')->name('dead-stock');
+        // PILAR 2 SALES
+        Route::get('/sales-revenue', [ReportController::class, 'salesRevenue'])->name('sales-revenue');
+        Route::get('/top-products', [ReportController::class, 'topProducts'])->name('top-products');
+        Route::get('/gross-profit', [ReportController::class, 'grossProfit'])->name('gross-profit');
     });
 
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
