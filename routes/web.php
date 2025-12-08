@@ -7,6 +7,7 @@ use Illuminate\Foundation\Application;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SalesRecapController;
 
 Route::get('/', function () {
@@ -103,9 +104,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{id}/pay', 'store')->name('store');
     });
 
+    // Laporan
+    Route::controller(ReportController::class)->prefix('reports')->name('reports.')->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/stock-card', 'stockCard')->name('stock-card');
+        Route::get('/stock-value',  'stockValue')->name('stock-value');
+        Route::get('/dead-stock', 'deadStock')->name('dead-stock');
+    });
+
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
     Route::resource('sales', SalesRecapController::class);
-    Route::resource('reports',  \App\Http\Controllers\ReportController::class);
+    // Route::resource('reports',  \App\Http\Controllers\ReportController::class);
 
     // Setting Route DATA MASTER
     Route::controller(\App\Http\Controllers\SettingController::class)->group(function () {

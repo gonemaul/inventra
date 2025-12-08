@@ -254,6 +254,23 @@ class Product extends Model
         return $new > $old ? 'up_bad' : 'down_good'; // Untuk HPP (HPP naik itu buruk)
     }
 
+    /**
+     * Summary of lastSale
+     * @return \Illuminate\Database\Eloquent\Relations\HasOne<StockMovement, Product>
+     * Dipakai di report dead stock
+     * Mengambil 1 data movement tipe 'sale' yang paling baru
+     */
+    public function lastSale()
+    {
+        return $this->hasOne(StockMovement::class)
+            ->where('type', StockMovement::TYPE_SALE)
+            ->latestOfMany();
+    }
+
+    public function movements()
+    {
+        return $this->hasMany(StockMovement::class);
+    }
 
     public function insights()
     {

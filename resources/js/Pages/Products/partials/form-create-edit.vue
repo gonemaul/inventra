@@ -563,7 +563,7 @@ const submitForm = () => {
                         v-model="form.target_margin_percent"
                         class="w-full py-2 pl-3 pr-8 max-h-10"
                         id="target_margin_percent"
-                        type="number"
+                        type="text"
                         min="0"
                         @input="onMarginPercentChange"
                         name="target_margin_percent"
