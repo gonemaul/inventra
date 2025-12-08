@@ -7,8 +7,10 @@ use App\Models\Sale;
 use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\SaleItem;
+use App\Models\PurchaseItem;
 use Illuminate\Http\Request;
 use App\Models\StockMovement;
+use App\Models\PurchaseInvoice;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
@@ -315,6 +317,155 @@ class ReportController extends Controller
                 'total_profit' => $items->sum('profit'),
                 'avg_margin' => $items->count() > 0 ? round($items->avg('margin'), 1) : 0
             ]
+        ]);
+    }
+
+    //  PILAR 3 SUPPLIER DAN TAGIHAN
+    /**
+     * Summary of purchaseBySupplier
+     * @param Request $request
+     * @return \Inertia\Response
+     * Pembelian Supplier
+     * Volume belanja per vendor
+     */
+    public function purchaseBySupplier(Request $request)
+    {
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->toDateString());
+
+        // Query Agregat
+        $data = PurchaseInvoice::query()
+            ->join('purchases', 'purchases.id', '=', 'purchase_invoices.purchase_id')
+            ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
+            ->whereBetween('purchase_invoices.invoice_date', [$startDate, $endDate])
+            ->select(
+                'suppliers.name',
+                DB::raw('COUNT(purchase_invoices.id) as total_trx'),
+                DB::raw('SUM(purchase_invoices.total_amount) as total_spend')
+            )
+            ->groupBy('suppliers.id', 'suppliers.name')
+            ->orderByDesc('total_spend') // Urutkan dari belanja terbesar
+            ->get();
+
+        return Inertia::render('Reports/PurchaseBySupplier', [
+            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
+            'data' => $data,
+            'total_all_spend' => $data->sum('total_spend')
+        ]);
+    }
+
+    /**
+     * Summary of accountsPayable
+     * @return \Inertia\Response
+     * Buku Hutang
+     * Jadwal jatuh tempo hutang
+     */
+    public function accountsPayable()
+    {
+        // Ambil Invoice yang Belum Lunas
+        $invoices = PurchaseInvoice::with(['purchase.supplier'])
+            ->whereIn('payment_status', ['unpaid', 'partial'])
+            ->orderBy('due_date', 'asc') // Paling urgent di atas
+            ->get()
+            ->map(function ($inv) {
+                // Hitung Hari Jatuh Tempo (Aging)
+                // Positif = Lewat Jatuh Tempo (Telat)
+                // Negatif = Masih Aman
+                $daysOverdue = now()->diffInDays($inv->due_date, false) * -1; // Dibalik logicnya biar enak
+
+                return [
+                    'id' => $inv->id,
+                    'invoice_number' => $inv->invoice_number,
+                    'supplier_name' => $inv->purchase->supplier->name ?? 'Umum',
+                    'invoice_date' => $inv->invoice_date,
+                    'due_date' => $inv->due_date,
+                    'total_amount' => $inv->total_amount,
+                    'paid_amount' => $inv->paid_amount ?? 0, // Asumsi ada kolom ini
+                    'remaining_amount' => $inv->total_amount - ($inv->paid_amount ?? 0),
+                    'status' => $inv->payment_status,
+                    'days_overdue' => (int) $daysOverdue
+                ];
+            });
+
+        return Inertia::render('Reports/AccountsPayable', [
+            'invoices' => $invoices,
+            'summary' => [
+                'total_debt' => $invoices->sum('remaining_amount'),
+                'overdue_debt' => $invoices->where('days_overdue', '>', 0)->sum('remaining_amount'),
+                'count' => $invoices->count()
+            ]
+        ]);
+    }
+
+    /**
+     * Summary of priceWatch
+     * @param Request $request
+     * @return \Inertia\Response
+     * Price Watch
+     * Tren kenaikan harga modal
+     */
+    public function priceWatch(Request $request)
+    {
+        $productId = $request->input('product_id');
+        $startDate = $request->input('start_date', now()->subMonths(6)->toDateString()); // Default 6 bulan terakhir
+        $endDate = $request->input('end_date', now()->toDateString());
+
+        $history = [];
+        $product = null;
+        $summary = [];
+
+        if ($productId) {
+            $product = Product::select('id', 'name', 'code', 'stock', 'purchase_price', 'selling_price')
+                ->find($productId);
+
+            // Ambil History Pembelian Barang Tersebut
+            $history = PurchaseItem::query()
+                ->join('purchases', 'purchases.id', '=', 'purchase_items.purchase_id')
+                ->join('suppliers', 'suppliers.id', '=', 'purchases.supplier_id')
+                ->where('purchase_items.product_id', $productId)
+                ->whereBetween('purchases.transaction_date', [$startDate, $endDate])
+                ->where('purchases.status', '!=', 'cancelled') // Hanya yang valid
+                ->select(
+                    'purchases.transaction_date',
+                    'purchases.reference_no',
+                    'suppliers.name as supplier_name',
+                    'purchase_items.quantity',
+                    'purchase_items.purchase_price' // Harga Beli saat itu
+                )
+                ->orderBy('purchases.transaction_date', 'asc') // Urut kronologis
+                ->get();
+
+            // Hitung Statistik Sederhana
+            if ($history->count() > 0) {
+                $lowest = $history->min('purchase_price');
+                $highest = $history->max('purchase_price');
+                $average = $history->avg('purchase_price');
+                $latest = $history->last()->purchase_price;
+
+                // Trend: Bandingkan harga awal periode vs akhir periode
+                $firstPrice = $history->first()->purchase_price;
+                $trend = $latest - $firstPrice; // Positif = Naik, Negatif = Turun
+
+                $summary = [
+                    'min' => $lowest,
+                    'max' => $highest,
+                    'avg' => round($average),
+                    'trend' => $trend,
+                    'latest' => $latest
+                ];
+            }
+        }
+
+        return Inertia::render('Reports/PriceWatch', [
+            'products' => Product::select('id', 'code', 'name')->orderBy('name')->get(), // Dropdown
+            'filters' => [
+                'product_id' => $productId,
+                'start_date' => $startDate,
+                'end_date' => $endDate
+            ],
+            'data' => $history,
+            'product' => $product,
+            'summary' => $summary
         ]);
     }
 }

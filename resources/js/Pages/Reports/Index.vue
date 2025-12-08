@@ -65,19 +65,19 @@ const reportGroups = [
             {
                 title: "Pembelian Supplier",
                 desc: "Volume belanja per vendor.",
-                route: "#",
+                route: "reports.purchase-supplier",
                 canExport: true,
             },
             {
                 title: "Buku Hutang (AP)",
                 desc: "Jadwal jatuh tempo tagihan.",
-                route: "#",
+                route: "reports.accounts-payable",
                 canExport: true,
             },
             {
                 title: "Price Watch",
                 desc: "Tren kenaikan harga modal.",
-                route: "#",
+                route: "reports.price-watch",
                 canExport: false,
             },
         ],

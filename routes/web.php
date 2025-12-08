@@ -115,6 +115,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/sales-revenue', [ReportController::class, 'salesRevenue'])->name('sales-revenue');
         Route::get('/top-products', [ReportController::class, 'topProducts'])->name('top-products');
         Route::get('/gross-profit', [ReportController::class, 'grossProfit'])->name('gross-profit');
+        // PILAR 3 SUPPLIER & HUTANG
+        Route::get('/purchase-supplier', [ReportController::class, 'purchaseBySupplier'])->name('purchase-supplier');
+        Route::get('/accounts-payable', [ReportController::class, 'accountsPayable'])->name('accounts-payable');
+        Route::get('/price-watch', [ReportController::class, 'priceWatch'])->name('price-watch');
+        // PILAR 4 FINANCE
+
     });
 
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
