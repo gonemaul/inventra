@@ -128,11 +128,12 @@ const formatDate = (date) =>
                                 "
                             ></div>
                             <div>
-                                <p
-                                    class="text-sm font-bold text-gray-700 dark:text-gray-200"
+                                <Link
+                                    :href="route('purchases.show', po.id)"
+                                    class="text-sm font-bold text-gray-700 transition dark:hover:text-lime-500 hover:text-lime-500 dark:text-gray-200"
                                 >
                                     {{ po.reference_no }}
-                                </p>
+                                </Link>
                                 <p
                                     class="text-xs text-gray-500 dark:text-gray-400"
                                 >
@@ -290,11 +291,12 @@ const formatDate = (date) =>
                             </div>
 
                             <div>
-                                <p
-                                    class="text-sm font-bold text-gray-700 dark:text-gray-200 line-clamp-1"
+                                <Link
+                                    :href="route('finance.show', bill.id)"
+                                    class="text-sm font-bold text-gray-700 transition hover:text-lime-500 dark:hover:text-lime-500 dark:text-gray-200 line-clamp-1"
                                 >
                                     #{{ bill.invoice_number }}
-                                </p>
+                                </Link>
                                 <p
                                     class="text-xs text-gray-500 dark:text-gray-400 line-clamp-1"
                                 >

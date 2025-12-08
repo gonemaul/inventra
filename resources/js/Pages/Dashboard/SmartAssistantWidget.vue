@@ -17,7 +17,7 @@ const handleInsight = (url) => {
 
 <template>
     <div
-        class="flex flex-col h-full overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-800 dark:border-gray-700 rounded-2xl"
+        class="flex flex-col h-full overflow-hidden bg-white border border-gray-200 shadow-sm shadow-gray-200 dark:bg-gray-800 dark:border-gray-700 rounded-2xl"
     >
         <div
             class="flex items-center justify-between p-5 border-b-2 border-gray-200 shadow-sm dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800"

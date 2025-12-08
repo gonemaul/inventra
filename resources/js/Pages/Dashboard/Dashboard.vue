@@ -69,7 +69,7 @@ const chartLabels = computed(() =>
 
             <div class="grid grid-cols-1 gap-6 mb-8 lg:grid-cols-3">
                 <div
-                    class="p-6 bg-white border border-gray-100 shadow-sm dark:bg-gray-800 dark:border-gray-700 lg:col-span-2 rounded-2xl"
+                    class="p-6 bg-white border border-gray-200 shadow-sm shadow-gray-200 dark:bg-gray-800 dark:border-gray-700 lg:col-span-2 rounded-2xl"
                 >
                     <div class="flex items-center justify-between mb-6">
                         <div class="flex items-center gap-3">

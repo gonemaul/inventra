@@ -35,7 +35,7 @@ const formatDate = (dateString) => {
 
 <template>
     <div
-        class="flex flex-col mb-8 overflow-hidden bg-white border-2 shadow-sm border-lime-300 dark:bg-gray-800 rounded-2xl dark:border-gray-700"
+        class="flex flex-col mb-8 overflow-hidden bg-white border border-gray-200 shadow-sm shadow-gray-200 dark:bg-gray-800 dark:border-gray-700 rounded-2xl"
     >
         <div
             class="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800"
@@ -43,7 +43,24 @@ const formatDate = (dateString) => {
             <h3
                 class="flex items-center gap-2 font-bold text-gray-800 dark:text-white"
             >
-                <span>🧾</span> Transaksi Terakhir
+                <div
+                    class="flex items-center justify-center w-10 h-10 rounded-lg text-lime-600 bg-lime-50 dark:bg-lime-900/20 dark:text-lime-400"
+                >
+                    <svg
+                        class="w-6 h-6"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                        ></path>
+                    </svg>
+                </div>
+                Transaksi Terakhir
             </h3>
             <Link
                 :href="route('sales.index')"
@@ -139,7 +156,7 @@ const formatDate = (dateString) => {
                     <tr v-if="sales.length === 0">
                         <td
                             colspan="3"
-                            class="px-6 py-10 text-center text-gray-400 dark:text-gray-500"
+                            class="px-6 py-10 text-center text-gray-400 dark:text-gray-300"
                         >
                             <div class="flex flex-col items-center gap-2">
                                 <svg
