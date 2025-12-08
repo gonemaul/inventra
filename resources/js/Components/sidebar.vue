@@ -74,7 +74,7 @@ const navigation = [
         :class="[
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full',
             isExtended ? 'w-64 p-6' : 'w-20 p-4',
-            'fixed top-0 left-0 z-50 flex flex-col justify-between h-full transition-transform duration-200 ease-in-out transform shadow-2xl dark:bg-customBg-tableDark dark:text-customText-dark dark:border-borderc-dark bg-customBg-tableLight text-customText-light border-r border-borderc-light lg:translate-x-0',
+            'fixed top-0 left-0 overflow-auto z-50 flex flex-col justify-between h-full transition-transform duration-200 ease-in-out transform shadow-2xl dark:bg-customBg-tableDark dark:text-customText-dark dark:border-borderc-dark bg-customBg-tableLight text-customText-light border-r border-borderc-light lg:translate-x-0',
         ]"
     >
         <div class="flex items-center mb-6">
@@ -137,7 +137,7 @@ const navigation = [
         <div
             :class="
                 isSidebarOpen
-                    ? 'flex justify-between pl-3 text-lg font-medium transition-all duration-200 bg-white border-2 rounded-lg border-lime-500 bg-opacity-80 text-lime-500 lg:hidden'
+                    ? 'flex justify-between pl-3 mt-10 text-lg font-medium transition-all duration-200 bg-white border-2 rounded-lg border-lime-500 bg-opacity-80 text-lime-500 lg:hidden'
                     : 'hidden'
             "
         >
