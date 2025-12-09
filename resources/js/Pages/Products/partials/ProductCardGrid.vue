@@ -181,9 +181,47 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                             </svg>
                         </Link>
                         <button
+                            :title="'Hapus ' + data.name"
                             v-if="!isTrashed"
                             @click="emit('delete', data)"
                             class="p-2 text-red-600 transition bg-red-100 rounded-lg hover:bg-red-500 hover:text-red-100"
+                        >
+                            <svg
+                                class="w-3 h-3 sm:w-5 sm:h-5"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                            >
+                                <path
+                                    d="M18.9395 8.69727C19.1385 8.69738 19.3191 8.78402 19.4619 8.93066C19.5952 9.08766 19.663 9.28326 19.6436 9.48926C19.6429 9.56521 19.1099 16.2984 18.8057 19.1338C18.6151 20.8747 17.493 21.9319 15.8096 21.9609C14.5151 21.9899 13.2497 22 12.0039 22C10.6812 22 9.3874 21.9899 8.13184 21.9609C6.50488 21.9218 5.38206 20.8457 5.20117 19.1338C4.88816 16.2881 4.36472 9.56385 4.35449 9.48926C4.34477 9.28326 4.41071 9.08766 4.54492 8.93066C4.67715 8.78375 4.86811 8.69731 5.06836 8.69727H18.9395ZM14.0645 2C14.9485 2 15.7382 2.61708 15.9668 3.49707L16.1309 4.22656C16.2631 4.82145 16.778 5.24302 17.3711 5.24316H20.2871C20.676 5.24316 20.9998 5.56576 21 5.97656V6.35742C20.9998 6.75821 20.676 7.09082 20.2871 7.09082H3.71387C3.32402 7.09082 3.00025 6.75821 3 6.35742V5.97656C3.00021 5.56576 3.324 5.24316 3.71387 5.24316H6.62988C7.22203 5.24301 7.7369 4.82143 7.87012 4.22754L8.02344 3.5459C8.26078 2.61698 9.04181 2 9.93555 2H14.0645Z"
+                                    fill="currentColor"
+                                />
+                            </svg>
+                        </button>
+                        <button
+                            :title="'Pulihkan ' + data.name"
+                            v-if="isTrashed"
+                            @click="emit('restore', data)"
+                            class="p-2 transition rounded-lg text-lime-600 bg-lime-100 hover:bg-lime-500 hover:text-lime-100"
+                        >
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                ></path>
+                            </svg>
+                        </button>
+                        <button
+                            :title="'Hapus Permanen ' + data.name"
+                            v-if="isTrashed"
+                            @click="emit('forceDelete', data)"
+                            class="p-2 text-red-100 transition bg-red-600 rounded-lg hover:text-red-600 hover:bg-red-200"
                         >
                             <svg
                                 class="w-3 h-3 sm:w-5 sm:h-5"

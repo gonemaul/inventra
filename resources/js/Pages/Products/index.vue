@@ -239,6 +239,8 @@ const resetFilter = () => {
                         :key="product.id"
                         :data="product"
                         @delete="openDeleteModal(product, false)"
+                        @forceDelete="openDeleteModal(product, true)"
+                        @restore="restoreProduct(product)"
                         @imageClick="openImageModal"
                     />
                 </div>
