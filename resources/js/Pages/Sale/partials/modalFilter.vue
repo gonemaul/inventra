@@ -69,6 +69,14 @@ function resetFilter() {
         },
     });
 }
+const formatRupiah = (value) => {
+    if (!value) return "0";
+    return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(value);
+};
 </script>
 <template>
     <Modal :show="show" @close="$emit('close')" maxWidth="lg"
@@ -104,37 +112,28 @@ function resetFilter() {
                     >Total Omset</label
                 >
                 <div class="flex gap-2">
-                    <div class="flex flex-col w-1/2 gap-2">
+                    <div class="flex-1">
                         <input
                             type="number"
                             placeholder="Min"
-                            class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                            class="px-1 text-center form-input"
                             v-model.number="form.min_revenue"
                         />
-                        <span class="text-xs text-gray-500">{{
-                            new Intl.NumberFormat("id-ID", {
-                                style: "currency",
-                                currency: "IDR",
-                                minimumFractionDigits: 0,
-                            }).format(form.min_revenue) || 0
-                        }}</span>
+                        <p class="text-[10px] text-gray-400 mt-1 text-left">
+                            {{ formatRupiah(form.min_revenue) }}
+                        </p>
                     </div>
-                    <div class="flex flex-col w-1/2 gap-2">
+                    <span class="self-start mt-2 text-gray-400">-</span>
+                    <div class="flex-1">
                         <input
                             type="number"
                             placeholder="Max"
-                            class="px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
+                            class="px-1 text-center form-input"
                             v-model.number="form.max_revenue"
                         />
-                        <span class="text-xs text-gray-500">
-                            {{
-                                new Intl.NumberFormat("id-ID", {
-                                    style: "currency",
-                                    currency: "IDR",
-                                    minimumFractionDigits: 0,
-                                }).format(form.max_revenue) || 0
-                            }}</span
-                        >
+                        <p class="text-[10px] text-gray-400 mt-1 text-left">
+                            {{ formatRupiah(form.max_revenue) }}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -156,3 +155,8 @@ function resetFilter() {
         </div></Modal
     >
 </template>
+<style scoped>
+.form-input {
+    @apply w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all;
+}
+</style>

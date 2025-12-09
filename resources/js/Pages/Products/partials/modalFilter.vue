@@ -124,6 +124,14 @@ function resetFilter() {
         },
     });
 }
+const formatRupiah = (value) => {
+    if (!value) return "0";
+    return new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(value);
+};
 </script>
 
 <template>
@@ -343,19 +351,35 @@ function resetFilter() {
                                 >Harga Jual</label
                             >
                             <div class="flex gap-2">
-                                <input
-                                    type="number"
-                                    v-model="form.min_price"
-                                    placeholder="Min"
-                                    class="px-1 text-center form-input"
-                                />
-                                <span class="self-center text-gray-400">-</span>
-                                <input
-                                    type="number"
-                                    v-model="form.max_price"
-                                    placeholder="Max"
-                                    class="px-1 text-center form-input"
-                                />
+                                <div class="">
+                                    <input
+                                        type="number"
+                                        v-model="form.min_price"
+                                        placeholder="Min"
+                                        class="px-1 text-center form-input"
+                                    />
+                                    <p
+                                        class="text-[10px] text-gray-400 mt-1 text-left"
+                                    >
+                                        {{ formatRupiah(form.min_price) }}
+                                    </p>
+                                </div>
+                                <span class="self-start mt-2 text-gray-400"
+                                    >-</span
+                                >
+                                <div>
+                                    <input
+                                        type="number"
+                                        v-model="form.max_price"
+                                        placeholder="Max"
+                                        class="px-1 text-center form-input"
+                                    />
+                                    <p
+                                        class="text-[10px] text-gray-400 mt-1 text-left"
+                                    >
+                                        {{ formatRupiah(form.max_price) }}
+                                    </p>
+                                </div>
                             </div>
                         </div>
 
@@ -365,19 +389,35 @@ function resetFilter() {
                                 >Harga Beli</label
                             >
                             <div class="flex gap-2">
-                                <input
-                                    type="number"
-                                    v-model="form.min_cost"
-                                    placeholder="Min"
-                                    class="px-1 text-center form-input"
-                                />
-                                <span class="self-center text-gray-400">-</span>
-                                <input
-                                    type="number"
-                                    v-model="form.max_cost"
-                                    placeholder="Max"
-                                    class="px-1 text-center form-input"
-                                />
+                                <div class="">
+                                    <input
+                                        type="number"
+                                        v-model="form.min_cost"
+                                        placeholder="Min"
+                                        class="px-1 text-center form-input"
+                                    />
+                                    <p
+                                        class="text-[10px] text-gray-400 mt-1 text-left"
+                                    >
+                                        {{ formatRupiah(form.min_cost) }}
+                                    </p>
+                                </div>
+                                <span class="self-start mt-2 text-gray-400"
+                                    >-</span
+                                >
+                                <div class="">
+                                    <input
+                                        type="number"
+                                        v-model="form.max_cost"
+                                        placeholder="Max"
+                                        class="px-1 text-center form-input"
+                                    />
+                                    <p
+                                        class="text-[10px] text-gray-400 mt-1 text-left"
+                                    >
+                                        {{ formatRupiah(form.max_cost) }}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>

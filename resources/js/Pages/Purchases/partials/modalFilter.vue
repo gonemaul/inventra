@@ -226,7 +226,7 @@ const formatRupiah = (value) => {
                         >Total Nominal (Grand Total)</label
                     >
                     <div class="flex gap-3">
-                        <div class="w-1/2">
+                        <div class="flex-1">
                             <div class="relative">
                                 <span
                                     class="absolute text-xs text-gray-500 left-3 top-2"
@@ -239,13 +239,12 @@ const formatRupiah = (value) => {
                                     placeholder="Min"
                                 />
                             </div>
-                            <p
-                                class="text-[10px] text-gray-400 mt-1 text-right"
-                            >
+                            <p class="text-[10px] text-gray-400 mt-1 text-left">
                                 {{ formatRupiah(form.min_total) }}
                             </p>
                         </div>
-                        <div class="w-1/2">
+                        <span class="self-start mt-2 text-gray-400">-</span>
+                        <div class="flex-1">
                             <div class="relative">
                                 <span
                                     class="absolute text-xs text-gray-500 left-3 top-2"
@@ -258,9 +257,7 @@ const formatRupiah = (value) => {
                                     placeholder="Max"
                                 />
                             </div>
-                            <p
-                                class="text-[10px] text-gray-400 mt-1 text-right"
-                            >
+                            <p class="text-[10px] text-gray-400 mt-1 text-left">
                                 {{ formatRupiah(form.max_total) }}
                             </p>
                         </div>
