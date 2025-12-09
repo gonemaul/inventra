@@ -312,7 +312,7 @@ const columns = [
                         >
                             <!-- Button Bayar (muncul kalau belum lunas) -->
                             <Link
-                                :href="route('finance.detail', row.id)"
+                                :href="route('finance.show', row.id)"
                                 v-if="row.amount_paid < row.total_amount"
                                 class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
                             >
@@ -339,7 +339,7 @@ const columns = [
 
                             <!-- Button Lihat -->
                             <Link
-                                :href="route('finance.detail', row.id)"
+                                :href="route('finance.show', row.id)"
                                 class="p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-600"
                             >
                                 <svg

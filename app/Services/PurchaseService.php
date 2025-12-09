@@ -27,8 +27,7 @@ class PurchaseService
     public function get(array $params)
     {
         $query = Purchase::query()
-            ->with(['supplier', 'user', 'invoices'])
-            ->withSum('items', 'subtotal');
+            ->with(['supplier', 'user', 'invoices']);
 
         // 1. Filter Trashed (Sampah)
         $query->when($params['trashed'] ?? false, function ($q) {
@@ -44,26 +43,19 @@ class PurchaseService
                     });
             });
         });
-
         // 3. Filter Status & Supplier (Simple Where)
-        $query->when($params['status'] ?? null, fn($q, $status) => $q->where('status', $status))
-            ->when($params['supplier_id'] ?? null, fn($q, $id) => $q->where('supplier_id', $id));
+        $query->when($params['status'] ?? null, fn($q, $status) => $q->where('status', $status));
+        $query->when($params['supplier_id'] ?? null, fn($q, $id) => $q->where('supplier_id', $id));
+        $query->when($params['user_id'] ?? null, fn($q, $id) => $q->where('user_id', $id));
 
         // 4. Filter Tanggal (Date Range)
         $query->when($params['min_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '>=', $date))
             ->when($params['max_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '<=', $date));
 
         // 5. Filter Rentang Total (Having Aggregates)
-        // Kita cek is_numeric di dalam closure untuk keamanan
-        $query->when($params['min_total'] ?? null, function ($q, $min) {
-            $cleanMin = trim($min);
-            if (is_numeric($min)) $q->whereRaw('(SELECT SUM(subtotal) FROM purchase_items WHERE purchase_items.purchase_id = purchases.id) >= ?', (float)$cleanMin);
-        });
+        $query->when($params['min_total'] ?? null, fn($q, $total) => $q->where('grand_total', '>=', $total))
+            ->when($params['max_total'] ?? null, fn($q, $total) => $q->where('grand_total', '<=', $total));
 
-        $query->when($params['max_total'] ?? null, function ($q, $max) {
-            $cleanMax = trim($max);
-            if (is_numeric($max)) $q->whereRaw('(SELECT SUM(subtotal) FROM purchase_items WHERE purchase_items.purchase_id = purchases.id) <= ?', (float)$cleanMax);
-        });
 
         // --- SORTING & PAGINASI ---
         $sortBy = $params['sort'] ?? 'transaction_date';

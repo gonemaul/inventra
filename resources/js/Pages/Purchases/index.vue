@@ -2,12 +2,9 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link } from "@inertiajs/vue3";
 import DataTable from "@/Components/DataTable.vue";
-import OpsiTable from "@/Components/OpsiTable.vue";
 import Filter from "@/Components/Filter.vue";
 import FilterModal from "./partials/modalFilter.vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
-import DeleteConfirm from "@/Components/DeleteConfirm.vue";
-import ConfirmModal from "@/Components/ConfirmModal.vue";
 import { router } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { throttle } from "lodash";
@@ -18,14 +15,10 @@ const props = defineProps({
     purchases: Object,
 });
 
-const activeId = ref(null);
-const position = ref({ top: 0, left: 0 });
 const search = ref(props.filters.search || "");
 const showFilterModal = ref(false);
 const { isActionLoading } = useActionLoading();
-const showConfirmDelete = ref(null);
 const showTrashed = ref(false);
-const showConfirmModal = ref(false); // State untuk menampilkan modal
 const columns = [
     {
         key: "transaction_date",
@@ -44,7 +37,7 @@ const columns = [
         slot: "supplier",
     },
     {
-        key: "items_sum_subtotal",
+        key: "grand_total",
         label: "Total Belanja",
         sortable: true,
         format: "rupiah",
@@ -83,34 +76,6 @@ const performSearch = throttle(() => {
     });
 }, 300);
 
-const updateStatus = (row, newStatus) => {
-    const config = {
-        title: `Konfirmasi Perubahan Status`,
-        message: `Anda yakin ingin mengubah status transaksi ${
-            row.reference_no
-        } menjadi ${newStatus.toUpperCase()}?`,
-        itemName: row.reference_no,
-        url: route("purchases.update-status", { purchase: row.id }),
-        method: "put",
-        // Tambahkan data status yang akan dikirim
-        data: { status: newStatus },
-    };
-    showConfirmModal.value.open(config);
-};
-
-const confirmDelete = (row) => {
-    const config = {
-        title: `Hapus transaksi ${row.reference_no}?`,
-        message: `Aksi ini akan menghapus semua item terkait dan tidak dapat dibatalkan. Status saat ini: ${row.status}`,
-        itemName: row.name,
-        url: route("purchases.destroy", {
-            purchase: row.id,
-            permanen: false,
-        }),
-    };
-    showConfirmDelete.value.open(config);
-};
-
 // WATHCH
 watch(showTrashed, (newValue) => {
     if (newValue === true) {
@@ -146,71 +111,12 @@ const activeFilterCount = computed(() => {
     const ignoredKeys = ["search", "page", "per_page"];
     return filterKeys.filter((key) => !ignoredKeys.includes(key)).length;
 });
-
-const getActions = (row) => {
-    const actions = [];
-
-    // --- B. AKSI OPERASIONAL (Conditional berdasarkan Status) ---
-    switch (row.status) {
-        case "draft":
-            actions.push({
-                label: "Tandai Dipesan",
-                icon: "play",
-                type: "status",
-                newStatus: "dipesan",
-            });
-            break;
-
-        case "dipesan":
-            actions.push({
-                label: "Tandai Dikirim",
-                icon: "truck",
-                type: "status",
-                newStatus: "dikirim",
-            });
-            break;
-
-        case "dikirim":
-            actions.push({
-                label: "Tandai Diterima",
-                icon: "receive",
-                type: "status",
-                newStatus: "diterima",
-            });
-            break;
-
-        case "diterima":
-            actions.push({
-                label: "Validasi Barang",
-                icon: "check",
-                type: "link",
-                route: route("purchases.checking", row.id),
-                isPrimary: true,
-            });
-            actions.push({
-                label: "Batalkan Terima",
-                icon: "undo",
-                type: "status",
-                newStatus: "dikirim",
-            }); // Kembali ke shipped
-            break;
-
-        case "checking":
-        case "completed":
-        case "cancelled":
-            break;
-    }
-
-    return actions;
-};
 </script>
 
 <template>
     <Head title="Pembelian" />
 
     <AuthenticatedLayout headerTitle="Pembelian">
-        <DeleteConfirm ref="showConfirmDelete" @success="refreshTable" />
-        <ConfirmModal ref="showConfirmModal" @success="refreshTable" />
         <div class="w-full min-h-screen space-y-6">
             <Filter
                 :filters="filters"

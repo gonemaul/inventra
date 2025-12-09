@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Purchase;
@@ -45,7 +46,8 @@ class PurchaseController extends Controller
             'purchases' => $purchases,
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
-                'purchaseStatuses' => Purchase::STATUSES
+                'purchaseStatuses' => Purchase::STATUSES,
+                'users' => User::select('id', 'name')->get(),
             ],
             'filters' => $request->all(),
         ]);
@@ -122,7 +124,7 @@ class PurchaseController extends Controller
             'items.product.productType',
             'items.product.unit',
             'items.invoice',
-            'invoices' // Nota yang sudah di-upload
+            'invoices.items' // Nota yang sudah di-upload
         ]);
         $purchase->loadSum('invoices', 'total_amount');
         $invoice = $purchase->invoices->first() ?? new PurchaseInvoice();

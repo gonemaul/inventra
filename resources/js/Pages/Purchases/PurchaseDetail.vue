@@ -60,11 +60,9 @@ const allowFinalize = computed(() => {
     if (p.invoices.length === 0) return false;
     const allInvoicesValid = p.invoices.every((inv) => {
         const isValid = inv.status === "validated";
-        const hasItems =
-            (inv.items && inv.items.length > 0) || inv.items_count > 0;
+        const hasItems = inv.items && inv.items.length > 0;
         return isValid && hasItems;
     });
-
     return allInvoicesValid;
 });
 const canEditDeleteInvoice = computed(() =>

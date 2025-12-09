@@ -101,7 +101,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Keuangan
     Route::controller(PaymentController::class)->prefix('finance')->name('finance.')->group(function () {
         Route::get('/', 'index')->name('index');
-        Route::get('/{id}', 'show')->name('detail');
+        Route::get('/{id}', 'show')->name('show');
         Route::post('/{id}/pay', 'store')->name('store');
     });
 

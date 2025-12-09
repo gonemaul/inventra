@@ -49,10 +49,7 @@ const executeAction = () => {
     const inertiaMethod = method.value.toLowerCase();
     router[inertiaMethod](deleteUrl.value, data.value || {}, {
         preserveScroll: true,
-        // Kita hanya re-fetch flash message dan filters, agar table di-refresh
-        only: ["flash", "purchases", "filters"],
         onSuccess: () => {
-            // Success handler di Induk akan menerima toast
             close();
             emit("close");
         },
@@ -89,7 +86,7 @@ const emit = defineEmits(["close", "success"]);
             </p>
 
             <div class="flex justify-end gap-3 mt-4">
-                <SecondaryButton @click="emit('close')" type="button">
+                <SecondaryButton @click="close" type="button">
                     Batal
                 </SecondaryButton>
 
