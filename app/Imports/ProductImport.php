@@ -2,18 +2,19 @@
 
 namespace App\Imports;
 
+use App\Models\Size;
+use App\Models\Unit;
+use App\Models\Brand;
 use App\Models\Product;
 use App\Models\Category;
-use App\Models\Unit;
 use App\Models\Supplier;
-use App\Models\Brand;
 use App\Models\ProductType;
-use App\Models\Size;
 use Maatwebsite\Excel\Concerns\ToModel;
+use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class ProductImport implements ToModel, WithHeadingRow, WithValidation
+class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmptyRows
 {
     // Cache Memori (Key = Nama di Excel, Value = ID Database)
     protected $categories;

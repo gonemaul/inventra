@@ -64,14 +64,14 @@ class Product extends Model
         static::creating(function ($product) {
             // Jika slug belum diisi atau produk baru dibuat
             if (empty($product->slug) || $product->isDirty('name')) {
-                $product->slug = Str::slug($product->name);
+                $product->slug = Str::slug($product->name . ' ' . $product->code);
             }
 
             $originalSlug = $product->slug;
             $count = 1;
 
             // Loop untuk cek apakah slug sudah ada di database
-            while (static::where('slug', $product->slug)->exists()) {
+            while (static::withTrashed()->where('slug', $product->slug)->exists()) {
                 $product->slug = $originalSlug . '-' . $count++;
             }
         });
