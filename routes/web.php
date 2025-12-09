@@ -4,10 +4,11 @@ use Inertia\Inertia;
 use App\Services\InsightService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
-use App\Http\Controllers\ReportController;
+use App\Http\Controllers\DataImportController;
 use App\Http\Controllers\SalesRecapController;
 
 Route::get('/', function () {
@@ -169,6 +170,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('supplier/{id}', 'updateSupplier')->name('updateSupplier');
             Route::delete('supplier/{id}', 'deleteSupplier')->name('deleteSupplier');
         });
+        // import backup
+        Route::get('/import/template', [DataImportController::class, 'downloadTemplate'])->name('import.template');
+        Route::post('/import', [DataImportController::class, 'store'])->name('import.store');
     });
 });
 
