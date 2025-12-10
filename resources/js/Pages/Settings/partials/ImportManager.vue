@@ -1,12 +1,7 @@
 <script setup>
-import { useForm } from "@inertiajs/vue3";
 import { ref } from "vue";
+import { useForm } from "@inertiajs/vue3";
 
-const props = defineProps({
-    errors: Object, // Error dari backend (termasuk import_errors)
-});
-
-// Pilihan Target
 const importTargets = [
     { label: "Kategori Produk", value: "categories" },
     // { label: "Satuan (Unit)", value: "units" },
@@ -51,7 +46,6 @@ const submitImport = () => {
     });
 };
 </script>
-
 <template>
     <div
         class="p-6 bg-white border border-gray-200 rounded-lg shadow dark:bg-gray-800 dark:border-gray-700"

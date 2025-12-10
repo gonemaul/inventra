@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\Carbon;
 use Inertia\Inertia;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use App\Services\SizeService;
-use App\Services\UnitService;
-use App\Services\CategoryService;
-use App\Services\SupplierService;
-use App\Services\BrandService;
 use App\Services\TypeService;
+use App\Services\UnitService;
+use App\Services\BrandService;
+use App\Services\CategoryService;
 
+use App\Services\SupplierService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 
 
@@ -40,8 +42,33 @@ class SettingController extends Controller
         $this->supplierService = $supplierService;
     }
 
+    private function formatSize($bytes)
+    {
+        $units = ['B', 'KB', 'MB', 'GB'];
+        for ($i = 0; $bytes > 1024; $i++) $bytes /= 1024;
+        return round($bytes, 2) . ' ' . $units[$i];
+    }
     public function index()
     {
+        $appName = config('backup.backup.name');
+        $disk = Storage::disk('public');
+        $files = $disk->exists($appName) ? $disk->files($appName) : [];
+        $settingInfo = \App\Models\Setting::where('key', 'enable_auto_backup')->first();
+        $isAutoBackup = $settingInfo && $settingInfo->value === 'true';
+        $backups = [];
+        foreach ($files as $file) {
+            if (str_ends_with($file, '.zip')) {
+                $backups[] = [
+                    'name' => basename($file),
+                    'size' => $this->formatSize($disk->size($file)), // Pastikan ada helper formatSize
+                    'date' => Carbon::createFromTimestamp($disk->lastModified($file))->diffForHumans(),
+                    'timestamp' => $disk->lastModified($file) // Untuk sorting
+                ];
+            }
+        }
+
+        // Urutkan terbaru
+        usort($backups, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
         return Inertia::render('Settings/index', [
             'categoryCount' => $this->categoryService->getCount(),
             'unitCount' => $this->unitService->getCount(),
@@ -50,6 +77,8 @@ class SettingController extends Controller
             'productTypeCount' => $this->typeService->getCount(),
             'supplierCount' => $this->supplierService->getCount(),
             'categories' => $this->categoryService->getAll(),
+            'backups' => $backups,
+            'autoBackupEnabled' => $isAutoBackup,
         ]);
     }
 

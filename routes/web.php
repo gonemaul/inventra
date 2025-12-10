@@ -4,10 +4,12 @@ use Inertia\Inertia;
 use App\Services\InsightService;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\DataImportController;
 use App\Http\Controllers\SalesRecapController;
 
@@ -170,9 +172,29 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('supplier/{id}', 'updateSupplier')->name('updateSupplier');
             Route::delete('supplier/{id}', 'deleteSupplier')->name('deleteSupplier');
         });
-        // import backup
-        Route::get('/import/template', [DataImportController::class, 'downloadTemplate'])->name('import.template');
-        Route::post('/import', [DataImportController::class, 'store'])->name('import.store');
+        // Backup
+        Route::prefix('settings/backups')->name('backups.')->group(function () {
+            // A. Aksi Dasar (Create, Delete, Download)
+            Route::post('/', [BackupController::class, 'store'])->name('store');
+            Route::delete('/{fileName}', [BackupController::class, 'destroy'])->name('destroy');
+            Route::get('/download/{fileName}', [BackupController::class, 'download'])->name('download');
+
+            // B. Pengaturan Jadwal Otomatis (Toggle Switch)
+            Route::post('/setting', [BackupController::class, 'updateSetting'])->name('update-setting');
+
+            // C. Aksi Restore (Pemulihan Database)
+            Route::post('/restore/{fileName}', [BackupController::class, 'restore'])->name('restore');
+            Route::post('/upload-restore', [BackupController::class, 'uploadRestore'])->name('upload-restore');
+        });
+        // 3. GROUP IMPORT & EXPORT (Untuk Tab Sebelahnya)
+        Route::prefix('settings/data')->name('data.')->group(function () {
+            // Export (Download)
+            Route::get('/export/download', [DataExportController::class, 'download'])->name('export.download');
+
+            // Import (Upload)
+            Route::get('/import/template', [DataImportController::class, 'downloadTemplate'])->name('import.template');
+            Route::post('/import', [DataImportController::class, 'store'])->name('import.store');
+        });
     });
 });
 

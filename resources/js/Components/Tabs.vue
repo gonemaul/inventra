@@ -18,7 +18,7 @@
                 >
                     <span>{{ tab.label }}</span>
                     <span
-                        v-if="tab.count !== undefined && tab.key !== 'backup'"
+                        v-if="tab.count !== undefined && tab.count !== 0"
                         class="flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-gray-700 rounded-full dark:bg-lime-500"
                     >
                         {{ tab.count }}
