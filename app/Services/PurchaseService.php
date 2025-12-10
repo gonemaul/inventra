@@ -349,7 +349,7 @@ class PurchaseService
      * @param Purchase $purchase
      * @param array $extraCosts ['shipping_cost' => 0, 'other_costs' => 0]
      */
-    public function finalizeTransaction(Purchase $purchase, array $extraCosts)
+    public function finalizeTransaction(Purchase $purchase, array $extraCosts, TelegramService $telegram)
     {
         // --- LAYER 1: VALIDASI DATA (CRITICAL) ---
 
@@ -394,7 +394,7 @@ class PurchaseService
 
         // --- LAYER 3: EKSEKUSI DATABASE (TRANSACTION) ---
 
-        return DB::transaction(function () use ($extraCosts, $purchase, $shippingCost, $otherCosts, $costPerUnitAllocation) {
+        return DB::transaction(function () use ($extraCosts, $purchase, $shippingCost, $otherCosts, $costPerUnitAllocation, $telegram) {
 
             // A. Update Header Transaksi
             $purchase->update([
@@ -406,6 +406,7 @@ class PurchaseService
                 // 'completed_at' => now(),
             ]);
 
+            $marginAlerts = [];
             // B. Proses Setiap Item
             foreach ($purchase->items as $item) {
                 // Skip barang kosong
@@ -419,6 +420,9 @@ class PurchaseService
                 $finalHpp = $item->purchase_price + $costPerUnitAllocation;
                 $item->subtotal = $item->quantity * $finalHpp;
                 $item->save();
+
+                $newCost = $finalHpp; // Harga Beli Baru
+                $currentSelling = $product->selling_price;
 
                 // Panggil fungsi sakti tadi
                 // Kita kirim array data yang ingin diubah
@@ -434,6 +438,22 @@ class PurchaseService
                     ref: $purchase->reference_no, // Referensi PO / Invoice Supplier
                     desc: 'Penerimaan Barang Pembelian'
                 );
+
+                // hitung margin baru
+                $marginRp = $currentSelling - $newCost;
+                $marginPercent = $currentSelling > 0 ? ($marginRp / $currentSelling) * 100 : 0;
+
+                // Jika Margin < 10% (Bahaya) atau Negatif (Rugi)
+                if ($marginPercent < 10) {
+                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: " . number_format($newCost) . "\nJual: " . number_format($currentSelling) . "\nMargin: <b>" . round($marginPercent, 1) . "%</b> (Tipis!)";
+                }
+            }
+            if (!empty($marginAlerts)) {
+                $msg = "🚨 <b>MARGIN GUARDIAN ALERT!</b>\n";
+                $msg .= "Ada kenaikan harga modal di PO #{$purchase->reference_no}, segera update harga jual!\n\n";
+                $msg .= implode("\n\n", $marginAlerts);
+
+                $telegram->send($msg);
             }
 
             return true;
