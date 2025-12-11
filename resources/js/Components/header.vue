@@ -3,6 +3,7 @@ import Dropdown from "@/Components/Dropdown.vue";
 import DropdownLink from "@/Components/DropdownLink.vue";
 import { useDarkMode } from "@/Composable/useDarkMode";
 import { useSidebar } from "@/Composable/useSidebar";
+import { Link } from "@inertiajs/vue3";
 
 const { isDark, toggleDark } = useDarkMode();
 const { isSidebarOpen, toggleSidebar } = useSidebar();
@@ -124,6 +125,54 @@ defineProps({
                         fill="currentColor"
                     />
                 </svg>
+            </div>
+            <div
+                class="items-center hidden pr-4 mr-4 space-x-2 border-r border-gray-200 lg:flex dark:border-gray-700"
+            >
+                <Link
+                    :href="route('sales.pos')"
+                    class="flex items-center gap-2 px-4 py-2 bg-lime-500 hover:bg-lime-600 text-white rounded-lg shadow-sm shadow-lime-500/30 transition-all transform hover:-translate-y-0.5 active:translate-y-0 active:shadow-none group"
+                >
+                    <svg
+                        class="w-5 h-5 transition-transform group-hover:rotate-12"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                        ></path>
+                    </svg>
+
+                    <span class="text-sm font-bold tracking-wide">POS</span>
+                </Link>
+
+                <Link
+                    :href="route('sales.create')"
+                    class="flex items-center gap-2 px-3 py-2 text-gray-500 transition-colors rounded-lg dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 hover:bg-lime-50 dark:hover:bg-gray-700 group"
+                    title="Input Rekap Harian"
+                >
+                    <svg
+                        class="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                        ></path>
+                    </svg>
+
+                    <span class="hidden text-sm font-medium xl:inline-block"
+                        >Rekap</span
+                    >
+                </Link>
             </div>
             <div class="hidden lg:ms-3 lg:flex lg:items-center">
                 <!-- Settings Dropdown -->

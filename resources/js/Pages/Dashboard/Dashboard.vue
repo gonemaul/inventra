@@ -21,7 +21,6 @@ const props = defineProps({
     purchases: Object, // { total_spend_month: 0, count_pending: 0, recent: [] }
     finance: Object, // { total_debt: 0, due_soon_count: 0, recent_bills: [] }
 });
-console.log(props.health);
 // --- HELPERS ---
 const formatRupiah = (val) =>
     new Intl.NumberFormat("id-ID", {
