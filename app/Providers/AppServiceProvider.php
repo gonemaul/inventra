@@ -9,6 +9,11 @@ use League\Flysystem\Filesystem;        // <--- Tambahkan ini
 use Illuminate\Filesystem\FilesystemAdapter; // <--- Tambahkan ini
 use Masbug\Flysystem\GoogleDriveAdapter; // <--- Tambahkan ini
 use Google\Service\Drive;
+use Illuminate\Support\Facades\Event;
+use App\Listeners\BackupTelegramNotification;
+use Spatie\Backup\Events\BackupWasSuccessful;
+use Spatie\Backup\Events\BackupHasFailed;
+use Spatie\Backup\Events\CleanupWasSuccessful;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +30,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Event::listen(
+            BackupWasSuccessful::class,
+            BackupTelegramNotification::class,
+        );
+
+        Event::listen(
+            BackupHasFailed::class,
+            BackupTelegramNotification::class,
+        );
         try {
             Storage::extend('google', function ($app, $config) {
                 $client = new \Google\Client();

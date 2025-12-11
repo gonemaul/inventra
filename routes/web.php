@@ -2,6 +2,7 @@
 
 use Inertia\Inertia;
 use App\Services\InsightService;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\BackupController;
@@ -207,6 +208,26 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::get('/test-telegram', function () {
+    $token = env('TELEGRAM_BOT_TOKEN');
+    $chatId = env('TELEGRAM_CHAT_ID');
+
+    if (!$token || !$chatId) {
+        return "ERROR: Token atau Chat ID belum terbaca di .env";
+    }
+
+    try {
+        $response = Http::withoutVerifying()->post("https://api.telegram.org/bot{$token}/sendMessage", [
+            'chat_id' => $chatId,
+            'text' => '🔔 Halo! Ini tes notifikasi dari Laravel.',
+        ]);
+
+        return $response->json();
+    } catch (\Exception $e) {
+        return "ERROR: " . $e->getMessage();
+    }
 });
 
 require __DIR__ . '/auth.php';
