@@ -100,6 +100,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::controller(SalesRecapController::class)->group(function () {
         Route::get('/sales/search-product', 'searchProduct')
             ->name('sales.search-product');
+        Route::get('/sales/pos', 'posIndex')->name('sales.pos');
+        Route::post('/sales/pos/store', 'store')->name('sales.pos.store');
     });
 
     // Keuangan

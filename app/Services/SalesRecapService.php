@@ -95,16 +95,21 @@ class SalesRecapService
     public function storeRecap(array $data)
     {
         return DB::transaction(function () use ($data) {
-
+            $transactionDate = ($data['input_type'] === 'recap' && $data['created_at'])
+                ? $data['created_at']
+                : now();
             // 1. Buat Header Sales
             $sale = Sale::create([
                 'reference_no' => $this->generateReferenceNo($data['report_date']),
                 'transaction_date' => $data['report_date'],
                 'user_id' => Auth::id(),
+                'customer_id' => $data['customer_id'], // Simpan ID Member
+                'input_type' => $data['input_type'],   // Simpan Tipe Input
                 'notes' => $data['notes'] ?? null,
                 'total_revenue' => 0, // Nanti diupdate
                 'total_profit' => 0,  // Nanti diupdate
-                'financial_summary' => []
+                'financial_summary' => [],
+                'created_at' => $transactionDate,
             ]);
 
             $totalRevenue = 0;

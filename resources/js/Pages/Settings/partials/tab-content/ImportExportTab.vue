@@ -26,8 +26,6 @@ const triggerExport = (type) => {
 
 // --- LOGIC IMPORT ---
 const importTargets = [
-    { label: "Kategori Produk", value: "categories" },
-    { label: "Satuan (Unit)", value: "units" },
     { label: "Data Produk", value: "products" },
     { label: "Data Supplier", value: "suppliers" },
 ];

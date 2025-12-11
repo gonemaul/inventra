@@ -10,12 +10,15 @@ class Sale extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'input_type',
         'reference_no',
         'transaction_date',
         'total_revenue',
         'total_profit',
         'user_id',
+        'customer_id',
         'notes',
+        'payment_method',
         'financial_summary'
     ];
 
@@ -26,6 +29,11 @@ class Sale extends Model
         'financial_summary' => 'array'
     ];
 
+    const TYPE_REKAP = 'recap';
+    const TYPE_POS = 'pos';
+
+    const PAYMENT_METHOD_CASH = 'cash';
+    const PAYMENT_METHOD_EWALLET = 'e-wallet';
     // Relasi ke Item Penjualan
     public function items()
     {
@@ -36,5 +44,10 @@ class Sale extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 }

@@ -5,17 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\Sale;
 use Inertia\Inertia;
 use App\Models\Product;
+use App\Models\Customer;
 use Illuminate\Http\Request;
+use App\Services\CategoryService;
 use App\Services\SalesRecapService;
 use Illuminate\Support\Facades\Redirect;
 
 class SalesRecapController extends Controller
 {
     protected $service;
+    protected $categoryService;
 
-    public function __construct(SalesRecapService $service)
+    public function __construct(SalesRecapService $service, CategoryService $categoryService)
     {
         $this->service = $service;
+        $this->categoryService = $categoryService;
     }
     /**
      * Display a listing of the resource.
@@ -29,6 +33,14 @@ class SalesRecapController extends Controller
         ]);
     }
 
+    public function posIndex(Request $request)
+    {
+        return Inertia::render('Pos/Index', [
+            'products' => Product::get(),
+            'categories' => $this->categoryService->getAll(),
+            'customers' => Customer::orderBy('name')->get(),
+        ]);
+    }
     /**
      * Show the form for creating a new resource.
      */
@@ -44,7 +56,10 @@ class SalesRecapController extends Controller
     {
         // Validasi Array Items
         $validated = $request->validate([
+            'input_type' => 'required|in:realtime,recap',
+            'customer_id' => 'nullable|exists:customers,id',
             'report_date' => 'required|date|before_or_equal:today',
+            'created_at' => 'nullable|date',
             'notes' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
