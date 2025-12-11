@@ -40,6 +40,8 @@ const {
 const searchQuery = ref("");
 const selectedCategory = ref("all");
 const showMobileCart = ref(false);
+const showPaymentOptions = ref(false);
+
 const memberSearch = ref("");
 const showConfirmModal = ref(false);
 const processingTransaction = ref(false);
@@ -710,95 +712,24 @@ const rp = (n) =>
             </div>
 
             <div
-                class="shrink-0 p-5 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-10"
+                class="shrink-0 bg-gray-50 dark:bg-gray-900 border-t dark:border-gray-700 shadow-[0_-5px_15px_rgba(0,0,0,0.05)] z-10 transition-all duration-300"
             >
-                <div class="grid grid-cols-4 gap-2 mb-3">
-                    <button
-                        @click="resetPayment"
-                        class="flex items-center justify-center h-8 text-xs font-bold text-red-600 transition bg-red-100 border border-red-200 dark:bg-red-900/30 dark:border-red-800 rounded-xl dark:text-red-400 active:scale-95"
-                    >
-                        C
-                    </button>
-
-                    <button
-                        v-for="suggestion in moneySuggestions"
-                        :key="suggestion.label"
-                        @click="handleMoneyClick(suggestion)"
-                        :class="
-                            suggestion.class ||
-                            'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-lime-500 hover:text-lime-600 dark:hover:text-lime-400'
-                        "
-                        class="h-8 flex items-center justify-center rounded-xl text-[10px] sm:text-xs font-bold shadow-sm transition active:scale-95 active:bg-gray-50 dark:active:bg-gray-700"
-                    >
-                        {{ suggestion.label }}
-                    </button>
-                </div>
-
-                <div
-                    class="relative p-3 mb-4 transition bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700 focus-within:ring-2 focus-within:ring-lime-500 focus-within:border-lime-500"
-                >
-                    <div class="flex justify-between mb-1">
-                        <label
-                            class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"
-                            >Total Tagihan</label
-                        >
-                        <span
-                            class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"
-                            >Uang Diterima</span
-                        >
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span
-                            class="text-base font-black text-gray-800 dark:text-white"
-                            >{{ rp(grandTotal) }}</span
-                        >
-                        <div class="w-1/2">
-                            <MoneyInput
-                                v-model="form.payment_amount"
-                                placeholder="0"
-                                class="w-full p-0 text-lg font-black text-right bg-transparent border-none text-lime-600 dark:text-lime-400 focus:ring-0"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div
-                    v-if="form.payment_amount > 0"
-                    class="flex justify-between px-1 mb-4 text-sm"
+                <button
+                    @click="showPaymentOptions = !showPaymentOptions"
+                    class="flex items-center justify-center w-full py-2 text-gray-400 transition border-b cursor-pointer hover:text-lime-600 hover:bg-gray-100 dark:hover:bg-gray-800 dark:border-gray-800"
                 >
                     <span
-                        :class="
-                            form.payment_amount < grandTotal
-                                ? 'text-red-500 font-bold'
-                                : 'text-gray-500'
-                        "
+                        class="text-[10px] font-bold uppercase tracking-widest mr-1"
                     >
                         {{
-                            form.payment_amount < grandTotal
-                                ? "⚠️ KURANG BAYAR"
-                                : "Kembalian Anda"
+                            showPaymentOptions
+                                ? "Tutup Opsi"
+                                : "Metode & Uang Pas"
                         }}
                     </span>
-                    <span
-                        :class="
-                            form.payment_amount < grandTotal
-                                ? 'text-red-500'
-                                : 'text-gray-800 dark:text-white'
-                        "
-                        class="text-lg font-black"
-                    >
-                        {{ rp(Math.abs(changeAmount)) }}
-                    </span>
-                </div>
-
-                <button
-                    @click="handleCheckoutClick"
-                    :disabled="!form.items.length"
-                    class="w-full py-3.5 bg-lime-500 hover:bg-lime-600 text-white font-bold rounded-2xl shadow-lg shadow-lime-500/30 disabled:opacity-50 text-sm transition-all active:scale-95 flex justify-center items-center gap-2 group"
-                >
-                    <span>PROSES PEMBAYARAN</span>
                     <svg
-                        class="w-4 h-4 transition group-hover:translate-x-1"
+                        :class="{ 'rotate-180': showPaymentOptions }"
+                        class="w-4 h-4 transition-transform duration-300"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -807,10 +738,145 @@ const rp = (n) =>
                             stroke-linecap="round"
                             stroke-linejoin="round"
                             stroke-width="2"
-                            d="M14 5l7 7m0 0l-7 7m7-7H3"
+                            d="M5 15l7-7 7 7"
                         ></path>
                     </svg>
                 </button>
+
+                <div class="p-5 pt-2">
+                    <div
+                        v-show="showPaymentOptions"
+                        class="pb-2 mb-4 border-b border-gray-200 border-dashed animate-fade-in-down dark:border-gray-700"
+                    >
+                        <label
+                            class="text-[9px] font-bold text-gray-400 uppercase mb-2 block"
+                            >Metode Pembayaran</label
+                        >
+                        <div class="grid grid-cols-3 gap-2 mb-4">
+                            <button
+                                v-for="method in ['cash', 'transfer', 'qris']"
+                                :key="method"
+                                @click="form.payment_method = method"
+                                :class="
+                                    form.payment_method === method
+                                        ? 'bg-lime-500 text-white border-lime-500 shadow-md ring-2 ring-lime-500/20'
+                                        : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700'
+                                "
+                                class="h-9 rounded-lg text-[10px] font-bold uppercase border transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                            >
+                                <span v-if="method === 'cash'">💵</span>
+                                <span v-else-if="method === 'transfer'"
+                                    >🏦</span
+                                >
+                                <span v-else>📱</span>
+                                {{ method }}
+                            </button>
+                        </div>
+
+                        <label
+                            class="text-[9px] font-bold text-gray-400 uppercase mb-2 block"
+                            >Pecahan Uang</label
+                        >
+                        <div class="grid grid-cols-4 gap-2">
+                            <button
+                                @click="resetPayment"
+                                class="flex items-center justify-center text-xs font-bold text-red-500 transition border border-red-100 rounded-lg h-9 bg-red-50 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400 active:scale-95"
+                            >
+                                C
+                            </button>
+                            <button
+                                v-for="suggestion in moneySuggestions"
+                                :key="suggestion.label"
+                                @click="handleMoneyClick(suggestion)"
+                                :class="
+                                    suggestion.class ||
+                                    'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-lime-500 hover:text-lime-600'
+                                "
+                                class="h-9 flex items-center justify-center rounded-lg text-[10px] font-bold shadow-sm transition active:scale-95"
+                            >
+                                {{ suggestion.label }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div
+                        class="relative p-3 mb-4 transition bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700 focus-within:ring-2 focus-within:ring-lime-500 focus-within:border-lime-500"
+                    >
+                        <div class="flex justify-between mb-1">
+                            <label
+                                class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"
+                                >Tagihan</label
+                            >
+                            <span
+                                class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"
+                                >Bayar ({{ form.payment_method }})</span
+                            >
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span
+                                class="text-base font-black text-gray-800 dark:text-white"
+                                >{{ rp(grandTotal) }}</span
+                            >
+                            <div class="relative w-1/2">
+                                <MoneyInput
+                                    v-model="form.payment_amount"
+                                    placeholder="0"
+                                    class="w-full p-0 text-lg font-black text-right bg-transparent border-none text-lime-600 dark:text-lime-400 focus:ring-0"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        v-if="form.payment_amount > 0"
+                        class="flex justify-between px-1 mb-4 text-sm animate-fade-in"
+                    >
+                        <span
+                            :class="
+                                form.payment_amount < grandTotal
+                                    ? 'text-red-500 font-bold text-[14px]'
+                                    : 'text-gray-500 text-[12px]'
+                            "
+                        >
+                            {{
+                                form.payment_amount < grandTotal
+                                    ? "⚠️ KURANG"
+                                    : "Kembalian"
+                            }}
+                        </span>
+                        <span
+                            :class="
+                                form.payment_amount < grandTotal
+                                    ? 'text-red-500'
+                                    : 'text-gray-800 dark:text-white'
+                            "
+                            class="font-black text-[14px]"
+                        >
+                            {{ rp(Math.abs(changeAmount)) }}
+                        </span>
+                    </div>
+
+                    <button
+                        @click="handleCheckoutClick"
+                        :disabled="!form.items.length"
+                        class="w-full py-3.5 bg-lime-500 hover:bg-lime-600 text-white font-bold rounded-2xl shadow-lg shadow-lime-500/30 disabled:opacity-50 text-sm transition-all active:scale-95 flex justify-center items-center gap-2 group"
+                    >
+                        <span>PROSES SEKARANG</span>
+                        <svg
+                            class="w-4 h-4 transition group-hover:translate-x-1"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M14 5l7 7m0 0l-7 7m7-7H3"
+                            ></path>
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -929,6 +995,19 @@ const rp = (n) =>
 </template>
 
 <style>
+.animate-fade-in-down {
+    animation: fadeInDown 0.3s ease-out;
+}
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
     -webkit-appearance: none;
