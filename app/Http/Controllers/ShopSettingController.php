@@ -5,9 +5,16 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Setting;
 use Illuminate\Support\Facades\Storage;
+use App\Services\ImageService;
 
 class ShopSettingController extends Controller
 {
+    protected $imageService;
+
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
     public function update(Request $request)
     {
         // 1. Validasi
@@ -16,22 +23,20 @@ class ShopSettingController extends Controller
             'shop_phone'     => 'nullable|string|max:20',
             'shop_address'   => 'nullable|string',
             'receipt_footer' => 'nullable|string', // Pesan di bawah struk
-            'shop_logo'      => 'nullable|image|max:1024', // Max 1MB
+            'shop_logo'      => 'nullable|image|max:20480',
         ]);
 
         // 2. Handle Upload Logo (Jika ada file baru)
         if ($request->hasFile('shop_logo')) {
             // Hapus logo lama jika ada
             $oldLogo = Setting::where('key', 'shop_logo')->value('value');
-            if ($oldLogo && Storage::disk('public')->exists($oldLogo)) {
-                Storage::disk('public')->delete($oldLogo);
-            }
-
-            // Upload logo baru ke folder 'public/shop'
-            $path = $request->file('shop_logo')->store('shop', 'public');
-
+            $newPath = $this->imageService->upload(
+                $request->file('shop_logo'),
+                'shop',
+                $oldLogo
+            );
             // Simpan path ke DB
-            Setting::updateOrCreate(['key' => 'shop_logo'], ['value' => $path]);
+            Setting::updateOrCreate(['key' => 'shop_logo'], ['value' => $newPath]);
         }
 
         // 3. Update Text Fields (Looping biar ringkas)

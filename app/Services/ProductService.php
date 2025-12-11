@@ -23,26 +23,21 @@ class ProductService
 {
     protected $insightService;
     protected $stockService;
-    public function __construct(InsightService $insightService, StockService $stockService)
+    protected $imageService;
+    public function __construct(InsightService $insightService, StockService $stockService, ImageService $imageService)
     {
         $this->insightService = $insightService;
         $this->stockService = $stockService;
+        $this->imageService = $imageService;
     }
     private function handleImageUpload($file, $existingPath = null)
     {
-        // 1. Hapus gambar lama jika ada file baru
-        if ($existingPath && $file) {
-            Storage::disk('public')->delete($existingPath);
-        }
-
-        // 2. Jika ada file baru, simpan
-        if ($file) {
-            // Simpan di storage/app/public/products
-            return $file->store('products', 'public');
-        }
-
-        // 3. Jika tidak ada file baru, kembalikan path lama
-        return $existingPath;
+        $newPath = $this->imageService->upload(
+            $file,
+            'products',
+            $existingPath
+        );
+        return $newPath;
     }
     /**
      * LOGIC PUSAT: MENGHITUNG METRIK KEUANGAN
@@ -428,7 +423,7 @@ class ProductService
             $validatedData['code'] = $generatedCode;
             if ($imageFile) {
                 $imageValidator = Validator::make(['image' => $imageFile], [
-                    'image' => 'nullable|image|mimes:jpeg,png,webp|max:1024' // Maks 1MB
+                    'image' => 'nullable|image|mimes:jpeg,png,webp|max:20480' // Maks 1MB
                 ]);
                 if ($imageValidator->fails()) throw new ValidationException($imageValidator);
 
@@ -491,7 +486,7 @@ class ProductService
         // 3. Validasi dan proses gambar HANYA JIKA ada
         if ($imageFile) {
             $imageValidator = Validator::make(['image' => $imageFile], [
-                'image' => 'nullable|image|mimes:jpeg,png,webp|max:1024'
+                'image' => 'nullable|image|mimes:jpeg,png,webp|max:20480'
             ]);
             if ($imageValidator->fails()) throw new ValidationException($imageValidator);
 

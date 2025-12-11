@@ -13,6 +13,11 @@ use Illuminate\Validation\ValidationException;
 
 class InvoiceService
 {
+    protected $imageService;
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
     /**
      * Menyimpan dan Mengunggah Nota Baru.
      */
@@ -24,7 +29,7 @@ class InvoiceService
             'due_date' => 'nullable|date|after_or_equal:invoice_date',
             'total_amount' => 'required|numeric|min:0',
             'payment_status' => 'required|in:' . implode(',', PurchaseInvoice::PAYMENT_STATUSES),
-            'invoice_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:2048', // Max 2MB
+            'invoice_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:20480', // Max 2MB
         ]);
 
         if ($validator->fails()) {
@@ -35,7 +40,10 @@ class InvoiceService
 
         return DB::transaction(function () use ($validatedData, $purchase) {
             // 1. Upload File
-            $path = $validatedData['invoice_image']->store('purchases/invoices', 'public');
+            $newPath = $this->imageService->upload(
+                $validatedData['invoice_image'],
+                'purchases/invoices',
+            );
 
             // 2. Buat Record Invoice
             $invoice = $purchase->invoices()->create([
@@ -44,7 +52,7 @@ class InvoiceService
                 'due_date' => $validatedData['due_date'],
                 'total_amount' => $validatedData['total_amount'],
                 'payment_status' => $validatedData['payment_status'],
-                'invoice_image' => $path, // Simpan path
+                'invoice_image' => $newPath, // Simpan path
                 'amount_paid' => ($validatedData['payment_status'] === PurchaseInvoice::PAYMENT_STATUS_PAID) ? $validatedData['total_amount'] : 0,
                 'status' => PurchaseInvoice::STATUS_UPLOADED,
             ]);
@@ -67,7 +75,7 @@ class InvoiceService
             'due_date' => 'nullable|date|after_or_equal:invoice_date',
             'total_amount' => 'required|numeric|min:1',
             'payment_status' => 'required|in:' . implode(',', PurchaseInvoice::PAYMENT_STATUSES),
-            'invoice_image' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:2048',
+            'invoice_image' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:20480',
         ]);
         if ($validator->fails()) {
             throw new ValidationException($validator);
@@ -76,16 +84,13 @@ class InvoiceService
         $validatedData = $validator->validated();
 
         return DB::transaction(function () use ($validatedData, $invoice) {
-            $path = $invoice->invoice_image;
-
             // 3. Handle File Update
             if (isset($validatedData['invoice_image'])) {
-                // Hapus file lama jika ada
-                if ($path) {
-                    Storage::disk('public')->delete($path);
-                }
-                // Upload file baru
-                $path = $validatedData['invoice_image']->store('purchases/invoices', 'public');
+                $newPath = $this->imageService->upload(
+                    $validatedData['invoice_image'],
+                    'purchases/invoices',
+                    $invoice->invoice_image
+                );
             }
 
             // 4. Update Record
@@ -95,7 +100,7 @@ class InvoiceService
                 'due_date' => $validatedData['due_date'],
                 'total_amount' => $validatedData['total_amount'],
                 'payment_status' => $validatedData['payment_status'],
-                'invoice_image' => $path,
+                'invoice_image' => $newPath,
                 'amount_paid' => ($validatedData['payment_status'] === PurchaseInvoice::PAYMENT_STATUS_PAID) ? $validatedData['total_amount'] : $invoice->amount_paid,
             ]);
 

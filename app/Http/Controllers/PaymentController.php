@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Inertia\Inertia;
 use Illuminate\Http\Request;
+use App\Services\ImageService;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchasePayment;
 use Illuminate\Validation\Rule;
@@ -13,6 +14,11 @@ use Illuminate\Support\Facades\Storage;
 
 class PaymentController extends Controller
 {
+    protected $imageService;
+    public function __construct(ImageService $imageService)
+    {
+        $this->imageService = $imageService;
+    }
     private function stats()
     {
         $today = now()->format('Y-m-d');
@@ -120,7 +126,7 @@ class PaymentController extends Controller
             'amount' => ['required', 'numeric', 'min:1', "max:{$remainingDebt}"],
             'payment_date' => 'required|date',
             'payment_method' => ['required', Rule::in(PurchasePayment::PAYMENT_METHODS)],
-            'proof_image' => 'nullable|image|max:2048', // Max 2MB
+            'proof_image' => 'nullable|image|max:20480', // Max 2MB
             'notes' => 'nullable|string|max:500',
         ], [
             'amount.max' => 'Nominal pembayaran melebihi sisa hutang saat ini.',
@@ -129,9 +135,11 @@ class PaymentController extends Controller
         try {
             DB::transaction(function () use ($request, $invoice) {
                 // 1. Upload Gambar Bukti (Jika ada)
-                $imagePath = null;
                 if ($request->hasFile('proof_image')) {
-                    $imagePath = $request->file('proof_image')->store('payment_proofs', 'public');
+                    $newPath = $this->imageService->upload(
+                        $request->file('proof_image'),
+                        'payment_proofs',
+                    );
                 }
 
                 // 2. Simpan History Pembayaran
@@ -139,7 +147,7 @@ class PaymentController extends Controller
                     'amount' => $request->amount,
                     'payment_date' => $request->payment_date,
                     'payment_method' => $request->payment_method ?? 'cash',
-                    'proof_image' => $imagePath,
+                    'proof_image' => $newPath ?? null,
                     'notes' => $request->notes,
                     'created_by' => Auth::id(),
                 ]);
