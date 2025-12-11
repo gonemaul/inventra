@@ -102,6 +102,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('sales.search-product');
         Route::get('/sales/pos', 'posIndex')->name('sales.pos');
         Route::post('/sales/pos/store', 'store')->name('sales.pos.store');
+        Route::get('/sales/{sale}/print',  'print')->name('sales.print');
     });
 
     // Keuangan

@@ -20,7 +20,7 @@ const form = useForm({
 
 // Logic Preview Gambar (Agar saat pilih file, gambar langsung berubah tanpa refresh)
 const previewImage = ref(
-    props.settings.shop_logo ? "/storage/" + props.settings.shop_logo : "#"
+    props.settings.shop_logo ? "/storage/" + props.settings.shop_logo : false
 );
 
 const handleFileChange = (e) => {
@@ -36,7 +36,7 @@ const submit = () => {
     isActionLoading.value = true;
     form.post(route("settings.shop.update"), {
         preserveScroll: true,
-        onSuccess: () => {
+        onFinish: () => {
             isActionLoading.value = false;
             // Optional: reset file input
         },

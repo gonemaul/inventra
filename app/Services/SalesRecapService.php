@@ -95,7 +95,7 @@ class SalesRecapService
     public function storeRecap(array $data)
     {
         return DB::transaction(function () use ($data) {
-            $transactionDate = ($data['input_type'] === 'recap' && $data['created_at'])
+            $transactionDate = ($data['input_type'] === Sale::TYPE_REKAP && $data['created_at'])
                 ? $data['created_at']
                 : now();
             // 1. Buat Header Sales
@@ -103,9 +103,11 @@ class SalesRecapService
                 'reference_no' => $this->generateReferenceNo($data['report_date']),
                 'transaction_date' => $data['report_date'],
                 'user_id' => Auth::id(),
-                'customer_id' => $data['customer_id'], // Simpan ID Member
+                'customer_id' => $data['customer_id'] ?? null, // Simpan ID Member
                 'input_type' => $data['input_type'],   // Simpan Tipe Input
                 'notes' => $data['notes'] ?? null,
+
+                'payment_method' => $data['payment_method'] ?? Sale::PAYMENT_METHOD_CASH,
                 'total_revenue' => 0, // Nanti diupdate
                 'total_profit' => 0,  // Nanti diupdate
                 'financial_summary' => [],
@@ -140,9 +142,9 @@ class SalesRecapService
                 }
 
                 // Jika harga jual < harga modal, sistem bisa menolak atau membiarkan
-                if ($itemData['selling_price'] < $product->purchase_price) {
-                    throw new Exception("Harga jual {$product->name} di bawah modal! Cek harga.");
-                }
+                // if ($itemData['selling_price'] < $product->purchase_price) {
+                //     throw new Exception("Harga jual {$product->name} di bawah modal! Cek harga.");
+                // }
 
                 // PENTING: Ambil HPP saat ini dari Master Product
                 $capitalPrice = $product->purchase_price;
@@ -173,9 +175,6 @@ class SalesRecapService
                     'product_snapshot' => $snapshot,
                 ]);
 
-                // Update Stok Master (Berkurang)
-                // $product->decrement('stock', $inputQty);
-
                 $this->stockService->record(
                     productId: $product->id,
                     qty: -abs($inputQty), // PASTIKAN NEGATIF (Keluar)
@@ -198,7 +197,9 @@ class SalesRecapService
                 // Kita simpan ringkasan di JSON (sesuai migrasi) agar dashboard ringan
                 'financial_summary' => [
                     'item_count' => $itemsCount,
-                    'total_qty' => $totalQty
+                    'total_qty' => $totalQty,
+                    'payment_amount' => $data['payment_amount'] ?? 0,      // Uang diterima
+                    'change_amount'  => $data['change_amount'] ?? 0,       // Kembalian
                 ]
             ]);
 

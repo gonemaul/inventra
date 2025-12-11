@@ -7,6 +7,7 @@ use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Customer;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use App\Services\CategoryService;
 use App\Services\SalesRecapService;
 use Illuminate\Support\Facades\Redirect;
@@ -35,10 +36,10 @@ class SalesRecapController extends Controller
 
     public function posIndex(Request $request)
     {
-        return Inertia::render('Pos/Index', [
-            'products' => Product::get(),
+        return Inertia::render('Sale/Pos/index', [
+            'products' => Product::with('category')->where('stock', '>', 0)->orderBy('name')->get(),
             'categories' => $this->categoryService->getAll(),
-            'customers' => Customer::orderBy('name')->get(),
+            'customers' => Customer::select('id', 'name', 'member_code', 'phone')->get(),
         ]);
     }
     /**
@@ -56,10 +57,13 @@ class SalesRecapController extends Controller
     {
         // Validasi Array Items
         $validated = $request->validate([
-            'input_type' => 'required|in:realtime,recap',
+            'input_type' => ['required', Rule::in(Sale::TYPES)],
             'customer_id' => 'nullable|exists:customers,id',
             'report_date' => 'required|date|before_or_equal:today',
             'created_at' => 'nullable|date',
+            'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
+            'payment_amount' => 'numeric|min:0',
+            'change_amount' => 'numeric|min:0',
             'notes' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
@@ -72,10 +76,14 @@ class SalesRecapController extends Controller
         ]);
 
         try {
-            $this->service->storeRecap($validated);
+            $sale = $this->service->storeRecap($validated);
 
-            return Redirect::route('sales.index')
-                ->with('success', 'Rekap penjualan berhasil disimpan.');
+            $printUrl = $request->print_invoice ? route('sales.print', $sale->id) : null;
+            $message = $validated['input_type'] == Sale::TYPE_REALTIME ? 'Transaksi Berhasil!' : 'Rekap penjualan berhasil disimpan.';
+            return redirect()->back()->with([
+                'success' => $message,
+                'print_url' => $printUrl // Kirim URL struk ke frontend
+            ]);
         } catch (\Exception $e) {
             return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
@@ -181,5 +189,14 @@ class SalesRecapController extends Controller
         } catch (\Exception $e) {
             return Redirect::back()->with('error', 'Gagal menghapus: ');
         }
+    }
+
+    public function print(Sale $sale)
+    {
+        // Load relasi item & produk
+        $sale->load(['items.product', 'user', 'customer']);
+
+        // Return view blade khusus struk
+        return view('print.receipt', compact('sale'));
     }
 }

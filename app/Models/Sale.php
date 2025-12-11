@@ -30,10 +30,18 @@ class Sale extends Model
     ];
 
     const TYPE_REKAP = 'recap';
-    const TYPE_POS = 'pos';
+    const TYPE_REALTIME = 'realtime';
 
+    const TYPES = [
+        self::TYPE_REALTIME,
+        self::TYPE_REKAP
+    ];
     const PAYMENT_METHOD_CASH = 'cash';
     const PAYMENT_METHOD_EWALLET = 'e-wallet';
+    const PAYMENT_METHODS = [
+        self::PAYMENT_METHOD_CASH,
+        self::PAYMENT_METHOD_EWALLET
+    ];
     // Relasi ke Item Penjualan
     public function items()
     {
