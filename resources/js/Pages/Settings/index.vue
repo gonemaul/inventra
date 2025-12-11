@@ -11,6 +11,7 @@ import tabBackupRestore from "./partials/tab-content/BackupRestoreTab.vue";
 import tabImportEksport from "./partials/tab-content/ImportExportTab.vue";
 import tabType from "./partials/tab-content/tab-type.vue";
 import TabMerk from "./partials/tab-content/tab-merk.vue";
+import tabShop from "./partials/tab-content/ShopTab.vue";
 
 const props = defineProps({
     categoryCount: Number,
@@ -22,6 +23,7 @@ const props = defineProps({
     categories: Object,
     backups: Array,
     autoBackupEnabled: Boolean,
+    shopSettings: Object,
 });
 const tabs = computed(() => [
     { key: "kategori", label: "Kategori", count: props.categoryCount },
@@ -34,6 +36,7 @@ const tabs = computed(() => [
     { key: "ukuran", label: "Ukuran", count: props.sizeCount },
     { key: "brand", label: "Merk", count: props.brandCount },
     { key: "supplier", label: "Supplier", count: props.supplierCount },
+    { key: "info_toko", label: "Info Toko", count: 0 },
     { key: "import_eksport", label: "Import & Eksport", count: 0 },
     { key: "backup_restore", label: "Backup & Restore", count: 0 },
 ]);
@@ -53,6 +56,9 @@ const tabs = computed(() => [
                 <template #ukuran><tabUkuran /></template>
                 <template #brand><tabMerk /></template>
                 <template #supplier><tabSupplier /></template>
+                <template #info_toko
+                    ><tabShop :settings="shopSettings"
+                /></template>
                 <template #import_eksport><tabImportEksport /></template>
                 <template #backup_restore
                     ><tabBackupRestore

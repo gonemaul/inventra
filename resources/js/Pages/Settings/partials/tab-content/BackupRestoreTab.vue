@@ -2,7 +2,6 @@
 import { router } from "@inertiajs/vue3";
 import { ref } from "vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
-import { useToast } from "vue-toastification";
 
 // Menerima data dari Parent (Settings/Index.vue)
 const props = defineProps({
@@ -10,10 +9,8 @@ const props = defineProps({
     autoBackupEnabled: Boolean, // Status ON/OFF jadwal otomatis (dari DB settings)
 });
 
-const processing = ref(false);
 const fileInput = ref(null);
 const { isActionLoading } = useActionLoading();
-const toast = useToast();
 
 // ---------------------------------------------------------
 // 1. LOGIC OTOMATISASI (JADWAL)

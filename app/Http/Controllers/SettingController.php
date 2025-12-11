@@ -69,6 +69,11 @@ class SettingController extends Controller
 
         // Urutkan terbaru
         usort($backups, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+        // data toko
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        // $logoUrl = isset($settings['shop_logo'])
+        //     ? '/storage/' + $settings['shop_logo']
+        //     : null;
         return Inertia::render('Settings/index', [
             'categoryCount' => $this->categoryService->getCount(),
             'unitCount' => $this->unitService->getCount(),
@@ -79,6 +84,8 @@ class SettingController extends Controller
             'categories' => $this->categoryService->getAll(),
             'backups' => $backups,
             'autoBackupEnabled' => $isAutoBackup,
+            'shopSettings' => $settings,
+            // 'shopLogo' => $logoUrl
         ]);
     }
 

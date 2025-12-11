@@ -13,6 +13,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\DataImportController;
 use App\Http\Controllers\SalesRecapController;
+use App\Http\Controllers\ShopSettingController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -173,6 +174,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('supplier/{id}', 'updateSupplier')->name('updateSupplier');
             Route::delete('supplier/{id}', 'deleteSupplier')->name('deleteSupplier');
         });
+        // Setting toko
+        Route::post('settings/shop', [ShopSettingController::class, 'update'])->name('settings.shop.update');
         // Backup
         Route::prefix('settings/backups')->name('backups.')->group(function () {
             // A. Aksi Dasar (Create, Delete, Download)
