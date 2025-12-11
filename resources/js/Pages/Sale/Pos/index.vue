@@ -1,6 +1,7 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
 import { ref, computed } from "vue";
+import { usePage } from "@inertiajs/vue3";
 import { usePosRealtime } from "@/Composable/usePosRealtime";
 import MoneyInput from "../partials/MoneyInput.vue";
 
@@ -102,10 +103,23 @@ const handleCheckoutClick = () => {
 
 const confirmTransaction = (shouldPrint) => {
     submitTransaction(shouldPrint, {
-        onSuccess: () => {
+        onSuccess: (page) => {
             // Tutup modal & drawer HP setelah sukses reset data
             showConfirmModal.value = false;
             showMobileCart.value = false;
+
+            console.log("Flash Data:", page.props.flash);
+            const printUrl = page.props.flash?.print_url;
+            console.log("Print URL:", printUrl);
+            if (shouldPrint && printUrl) {
+                // Buka Tab Baru untuk Print
+                // Gunakan setTimeout agar tidak dianggap pop-up spam oleh browser
+                setTimeout(() => {
+                    window.open(printUrl, "_blank", "width=300,height=600");
+                }, 50);
+            } else if (shouldPrint && !printUrl) {
+                alert("Gagal mendapatkan URL Print dari server.");
+            }
         },
     });
 };

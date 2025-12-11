@@ -362,10 +362,7 @@ export function usePosRealtime(props) {
                 if (callbacks.onFinish) callbacks.onFinish();
             },
             onSuccess: (page) => {
-                // --- CLEANUP (RESET DATA) ---
-                // Ini yang kemarin hilang di Index.vue
                 localStorage.removeItem(STORAGE_KEY);
-
                 form.reset();
                 form.items = []; // Kosongkan cart visual
 
@@ -374,13 +371,9 @@ export function usePosRealtime(props) {
 
                 toast.success("Transaksi Berhasil!");
 
-                // Cek URL Print dari Backend
-                const printUrl = page.props.flash?.print_url;
-                if (printInvoice && printUrl) {
-                    window.open(printUrl, "_blank", "width=400,height=600");
+                if (callbacks.onSuccess) {
+                    callbacks.onSuccess(page);
                 }
-
-                if (callbacks.onSuccess) callbacks.onSuccess();
             },
             onError: (errors) => {
                 console.error(errors);
