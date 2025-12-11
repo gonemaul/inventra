@@ -38,7 +38,7 @@ const rp = (n) =>
 
     <AuthenticatedLayout>
         <div
-            class="flex flex-col w-full gap-4 h-[85vh] overflow-hidden lg:flex-row"
+            class="flex flex-col w-full gap-4 lg:h-[85vh] h-[100vh] overflow-hidden lg:flex-row"
         >
             <div
                 class="w-full lg:w-[40%] flex flex-col bg-white dark:bg-gray-800 rounded-2xl shadow-md border border-gray-300 dark:border-gray-700 overflow-hidden h-1/2 lg:h-full"
@@ -171,7 +171,7 @@ const rp = (n) =>
                 </div>
 
                 <div
-                    class="relative flex-1 min-h-0 overflow-y-auto bg-white custom-scroll dark:bg-gray-800"
+                    class="relative flex-1 min-h-0 overflow-auto bg-white custom-scroll custom-scroll-x dark:bg-gray-800"
                 >
                     <table class="w-full text-left border-collapse">
                         <thead
@@ -179,7 +179,7 @@ const rp = (n) =>
                         >
                             <tr>
                                 <th
-                                    class="w-1/2 p-3 bg-gray-100 dark:bg-gray-900"
+                                    class="p-3 bg-gray-100 min-w-48 lg:min-w-1/2 dark:bg-gray-900"
                                 >
                                     Produk
                                 </th>
@@ -274,7 +274,7 @@ const rp = (n) =>
                 </div>
 
                 <div
-                    class="flex items-center justify-between gap-4 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0"
+                    class="items-center justify-between gap-4 p-4 border-t border-gray-200 lg:flex dark:border-gray-700 bg-gray-50 dark:bg-gray-900 shrink-0"
                 >
                     <div>
                         <span
@@ -282,49 +282,53 @@ const rp = (n) =>
                             >Total Omzet</span
                         >
                         <div
-                            class="mt-1 text-2xl font-black leading-none text-gray-900 dark:text-white"
+                            class="mt-1 text-xl font-black leading-none text-gray-900 lg:text-2xl dark:text-white"
                         >
                             {{ rp(totalRevenue) }}
                         </div>
                     </div>
 
-                    <div class="w-full sm:flex-1">
-                        <div class="relative">
-                            <input
-                                type="text"
-                                v-model="form.notes"
-                                placeholder="Tambahkan Catatan Transaksi (Opsional)..."
-                                class="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-lime-500 focus:border-transparent transition-all shadow-inner"
-                            />
-                            <span class="absolute text-gray-400 left-3 top-3">
-                                <svg
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
+                    <div class="flex items-center gap-3 mt-2 lg:mt-0">
+                        <div class="w-full sm:flex-1">
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    v-model="form.notes"
+                                    placeholder="Tambahkan Catatan Transaksi (Opsional)..."
+                                    class="w-full pl-9 pr-4 py-2.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-sm text-gray-800 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-lime-500 focus:border-transparent transition-all shadow-inner"
+                                />
+                                <span
+                                    class="absolute text-gray-400 left-3 top-3"
                                 >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
-                                    ></path>
-                                </svg>
-                            </span>
+                                    <svg
+                                        class="w-4 h-4"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"
+                                        ></path>
+                                    </svg>
+                                </span>
+                            </div>
                         </div>
-                    </div>
 
-                    <button
-                        @click="processRecap"
-                        :disabled="!cart.length || form.processing"
-                        class="flex items-center gap-2 px-6 py-3 font-bold text-white transition shadow-lg bg-lime-500 hover:bg-lime-600 rounded-xl shadow-lime-500/30 disabled:opacity-50 active:scale-95"
-                    >
-                        <span
-                            v-if="form.processing"
-                            class="w-4 h-4 border-2 border-white rounded-full animate-spin border-t-transparent"
-                        ></span>
-                        <span>SIMPAN</span>
-                    </button>
+                        <button
+                            @click="processRecap"
+                            :disabled="!cart.length || form.processing"
+                            class="flex items-center gap-2 px-4 py-2 font-bold text-white transition shadow-lg lg:px-6 lg:py-3 bg-lime-500 hover:bg-lime-600 rounded-xl shadow-lime-500/30 disabled:opacity-50 active:scale-95"
+                        >
+                            <span
+                                v-if="form.processing"
+                                class="w-4 h-4 border-2 border-white rounded-full animate-spin border-t-transparent"
+                            ></span>
+                            <span>SIMPAN</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
