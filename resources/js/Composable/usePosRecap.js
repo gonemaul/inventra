@@ -1,309 +1,205 @@
-import { ref, computed, watch, onMounted } from "vue"; // Tambah onMounted
-import { useForm, usePage } from "@inertiajs/vue3"; // Tambah usePage untuk Toast manual jika perlu
-import axios from "axios";
-import debounce from "lodash/debounce";
+import { ref, computed, watch, onMounted } from "vue";
+import { useForm } from "@inertiajs/vue3";
 import { useToast } from "vue-toastification";
 
-export function useSaleLogic(props) {
-    // --- STATE ---
+export function usePosRecap(props) {
     const toast = useToast();
-    const STORAGE_KEY = "POS_RECAP_DRAFT_V1"; // Key unik
-    const form = useForm({
-        report_date:
-            props?.sale?.transaction_date ||
-            new Date().toISOString().substr(0, 10),
-        items: [],
-    });
+    const STORAGE_KEY = "POS_RECAP_DRAFT_V2";
 
-    const searchResults = ref([]);
-    const isLoadingSearch = ref(false);
+    // --- STATE ---
+    const searchQuery = ref("");
+    const selectedCategory = ref("all");
+    const cart = ref([]);
 
-    // --- CONFIG ---
-    const DECIMAL_UNITS = [
-        // Berat
-        "kg",
-        "kilogram",
-        "gram",
-        "gr",
-        "g",
-        "ons",
-        "ton",
-        "kwintal",
-        "mg",
+    // Default Tanggal hari ini (YYYY-MM-DD)
+    const transactionDate = ref(new Date().toISOString().slice(0, 10));
 
-        // Volume
-        "liter",
-        "ltr",
-        "l",
-        "ml",
-        "cc",
-        "m3",
-        "kubik",
-        "galon",
-
-        // Panjang/Luas
-        "meter",
-        "mtr",
-        "m",
-        "cm",
-        "mm",
-        "m2",
-        "yard",
-        "kaki",
-        "inch",
-        "inci",
-    ];
-
-    // --- 1. LOCAL STORAGE LOGIC (FIX BUG 1) ---
+    // --- LOCAL STORAGE LOGIC ---
     onMounted(() => {
-        const savedData = localStorage.getItem(STORAGE_KEY);
-        let localItems = [];
-        let localNotes = "";
-        let dbItems = [];
-        if (savedData) {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
             try {
-                const parsed = JSON.parse(savedData);
-                if (parsed.items && parsed.items.length > 0) {
-                    localItems = parsed.items;
-                    localNotes = parsed.notes || "";
-                }
+                const parsed = JSON.parse(saved);
+                cart.value = parsed.cart || [];
+                transactionDate.value =
+                    parsed.date || new Date().toISOString().slice(0, 10);
             } catch (e) {
                 localStorage.removeItem(STORAGE_KEY);
             }
         }
-        if (props?.mode === "edit" && props.sale?.items) {
-            dbItems = props.sale.items.map((item) => ({
-                product_id: item.product_id,
-                code: item.product_snapshot?.code,
-                name: item.product_snapshot?.name, // Pakai nama snapshot biar aman
-                unit: item.product_snapshot?.unit,
-                category: item.product_snapshot?.category,
-                brand: item.product_snapshot?.brand,
-                stock_max:
-                    parseFloat(item.product?.stock || 0) +
-                    parseFloat(item.quantity),
-                image: item.product?.image,
-                selling_price: parseFloat(item.selling_price),
-                is_price_locked: true,
-                is_total_locked: true,
-                quantity: parseFloat(item.quantity),
-                subtotal: parseFloat(item.subtotal),
-            }));
-            if (localItems.length > 0) {
-                form.items = [...dbItems, ...localItems];
-                form.notes = localNotes ? localNotes : props.sale?.notes || "";
-                console.log("Data digabung: Database + Local Storage");
-            } else {
-                form.items = dbItems;
-                form.notes = props.sale?.notes || "";
-            }
-        } else {
-            if (localItems.length > 0) {
-                form.items = localItems;
-                form.notes = localNotes;
-            }
-        }
     });
 
-    // Simpan setiap kali item berubah
     watch(
-        () => form.items,
-        (newItems) => {
+        [cart, transactionDate],
+        () => {
             localStorage.setItem(
                 STORAGE_KEY,
                 JSON.stringify({
-                    items: newItems,
-                    notes: form.notes,
+                    cart: cart.value,
+                    date: transactionDate.value,
                 })
             );
         },
         { deep: true }
     );
 
-    // --- HELPERS ---
-    const isDecimalAllowed = (unit) =>
-        unit && DECIMAL_UNITS.includes(unit.toLowerCase());
+    // --- CART ACTIONS ---
 
-    const checkIntegerInput = (event, unit) => {
-        if (isDecimalAllowed(unit)) return;
-        if (event.key === "." || event.key === ",") event.preventDefault();
-    };
-
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(val);
-
-    // Cek apakah ada item yang quantity-nya 0 atau kurang
-    const hasInvalidQty = computed(() => {
-        return form.items.some((item) => parseFloat(item.quantity) <= 0);
-    });
-    const hasStockError = computed(() => {
-        return form.items.some(
-            (item) => parseFloat(item.quantity) > parseFloat(item.stock_max)
-        );
-    });
-    // --- CORE ACTIONS ---
-    const addItem = (product) => {
-        if (parseFloat(product.stock) <= 0) {
-            toast.error("Stok habis. Tidak bisa ditambahkan.");
+    // 1. Tambah Produk
+    const addToCart = (product) => {
+        if (product.stock <= 0) {
+            toast.error(`Stok ${product.name} Habis!`);
             return;
         }
 
-        const existingItem = form.items.find(
-            (i) => i.product_id === product.id
-        );
+        const existing = cart.value.find((item) => item.id === product.id);
 
-        if (existingItem) {
-            if (existingItem.quantity + 1 > product.stock) {
-                toast.error("Melebihi sisa stok!");
-                return;
+        if (existing) {
+            // Cek stok sebelum nambah
+            if (existing.quantity < product.stock) {
+                existing.quantity++;
+            } else {
+                toast.warning(`Stok maksimal tercapai (${product.stock})`);
             }
-            existingItem.quantity++;
-            calculateSubtotal(existingItem);
         } else {
-            form.items.push({
-                product_id: product.id,
-                code: product.code,
+            // Item Baru
+            cart.value.push({
+                id: product.id,
                 name: product.name,
-                unit: product.unit,
-                category: product.category?.name || "-", // Tambahan Detail (Fix Bug 5)
-                brand: product.brand || "-", // Tambahan Detail (Fix Bug 5)
-                stock_max: parseFloat(product.stock),
-                image: product.image,
-                selling_price: parseFloat(product.price),
-                is_price_locked: true,
-                is_total_locked: true,
+                code: product.code,
+                image: product.image_path, // Pastikan sesuai nama kolom di DB
+                selling_price: product.selling_price, // Harga Jual (Bisa diedit nanti)
+                purchase_price: product.purchase_price, // HPP (Disimpan untuk profit)
+                stock: product.stock, // Untuk validasi
                 quantity: 1,
-                subtotal: parseFloat(product.price),
             });
         }
     };
 
-    const removeItem = (index) => form.items.splice(index, 1);
-
-    const calculateSubtotal = (item) => {
-        const qty = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.selling_price) || 0;
-        item.subtotal = Math.round(qty * price);
+    // 2. Hapus Item
+    const removeItem = (index) => {
+        cart.value.splice(index, 1);
     };
 
-    const calculateQty = (item) => {
-        const total = parseFloat(item.subtotal) || 0;
-        const price = parseFloat(item.selling_price) || 0;
-        if (price > 0) {
-            let result = total / price;
-            item.quantity = isDecimalAllowed(item.unit)
-                ? parseFloat(result.toFixed(4))
-                : Math.round(result);
+    // 3. Reset Cart
+    const clearCart = () => {
+        if (confirm("Hapus semua data rekap?")) {
+            cart.value = [];
+            localStorage.removeItem(STORAGE_KEY);
         }
     };
 
-    const handleSearch = debounce(async (query) => {
-        if (!query) {
-            searchResults.value = [];
-            return;
-        }
+    // --- SEARCH & FILTER ---
+    const filteredProducts = computed(() => {
+        let items = props.products || [];
 
-        isLoadingSearch.value = true; // Set Loading True (Fix Bug 3)
-        try {
-            const response = await axios.get(route("sales.search-product"), {
-                params: { query },
-            });
-            searchResults.value = response.data;
-            console.log(response);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            isLoadingSearch.value = false;
-        } // Set Loading False
-    }, 300);
-
-    // --- SUBMIT (FIX BUG 2) ---
-    const submitForm = () => {
-        // Validasi Klien
-        if (form.items.length === 0) {
-            toast.error("Keranjang masih kosong!"); // Bisa diganti Toast jika punya library
-            return;
-        }
-        if (hasInvalidQty.value) {
-            toast.error(
-                "Ada produk dengan Qty 0. Mohon isi jumlah barang atau hapus dari list."
+        // Filter Kategori
+        if (selectedCategory.value !== "all") {
+            items = items.filter(
+                (p) => p.category_id === selectedCategory.value
             );
-            return;
         }
-        // Validasi 3: [BARU] Over Stock
-        if (hasStockError.value) {
-            // Cari nama barangnya biar user tau
-            const badItem = form.items.find(
-                (item) => parseFloat(item.quantity) > parseFloat(item.stock_max)
-            );
-            toast.error(
-                `Stok tidak cukup untuk produk: ${badItem.name}. (Sisa: ${badItem.stock_max})`
-            );
-            return;
-        }
-        if (props?.mode === "edit") {
-            form.put(route("sales.update", props.sale.id), {
-                onSuccess: () => {
-                    localStorage.removeItem(STORAGE_KEY); // Bersihkan draft
-                    form.reset();
-                    form.items = [];
-                },
-                onError: (errors) => {
-                    // Inertia otomatis handle flash error, tapi kita bisa tambah toast.error manual
-                    console.error(errors);
-                    toast.error("Gagal menyimpan. Periksa inputan.");
-                },
-            });
-        } else if (props?.mode === "create") {
-            console.log("store");
-            form.post(route("sales.store"), {
-                onSuccess: () => {
-                    localStorage.removeItem(STORAGE_KEY); // Bersihkan draft
-                    form.reset();
-                    form.items = [];
-                },
-                onError: (errors) => {
-                    // Inertia otomatis handle flash error, tapi kita bisa tambah toast.error manual
-                    console.error(errors);
-                    toast.error("Gagal menyimpan. Periksa inputan.");
-                },
-            });
-        }
-    };
 
-    const totalQty = computed(() =>
-        form.items.reduce(
-            (sum, item) => sum + (parseFloat(item.quantity) || 0),
+        // Filter Search (Nama atau Kode)
+        if (searchQuery.value) {
+            const q = searchQuery.value.toLowerCase();
+            items = items.filter(
+                (p) =>
+                    p.name.toLowerCase().includes(q) ||
+                    (p.code && p.code.toLowerCase().includes(q))
+            );
+        }
+        return items;
+    });
+
+    // --- CALCULATIONS ---
+    const totalRevenue = computed(() => {
+        return cart.value.reduce(
+            (acc, item) => acc + item.selling_price * item.quantity,
             0
-        )
-    );
-    const grandTotal = computed(() =>
-        form.items.reduce(
-            (sum, item) => sum + (parseFloat(item.subtotal) || 0),
-            0
-        )
-    );
+        );
+    });
+
+    const totalProfit = computed(() => {
+        return cart.value.reduce((acc, item) => {
+            const margin = item.selling_price - item.purchase_price;
+            return acc + margin * item.quantity;
+        }, 0);
+    });
+
+    // --- SUBMIT RECAP ---
+    const form = useForm({
+        input_type: "recap",
+        transaction_date: null, // Diisi saat submit
+        items: [],
+        total_revenue: 0,
+        total_profit: 0,
+
+        // Data Pembayaran (Untuk Rekap dianggap Tunai Pas)
+        payment_method: "cash",
+        payment_amount: 0,
+        change_amount: 0,
+
+        customer_id: null,
+        notes: "",
+    });
+
+    const processRecap = () => {
+        // Validasi Dasar
+        if (cart.value.length === 0) return toast.error("Data masih kosong!");
+        if (!transactionDate.value) return toast.error("Pilih tanggal rekap!");
+
+        // Validasi Qty Invalid
+        const hasInvalidQty = cart.value.some((item) => item.quantity <= 0);
+        if (hasInvalidQty) return toast.error("Ada produk dengan jumlah 0!");
+
+        // Mapping Data ke Form
+        form.transaction_date = transactionDate.value;
+        form.items = cart.value.map((item) => ({
+            product_id: item.id,
+            quantity: item.quantity, // Frontend pakai 'qty', Controller harus mapping ke 'quantity' atau sebaliknya
+            selling_price: item.selling_price,
+            purchase_price: item.purchase_price,
+        }));
+
+        form.total_revenue = parseFloat(totalRevenue.value);
+        form.total_profit = parseFloat(totalProfit.value);
+
+        // Rekap dianggap uang pas
+        form.payment_amount = parseFloat(totalRevenue.value);
+        form.change_amount = 0;
+
+        // Kirim
+        form.post(route("sales.pos.store"), {
+            onSuccess: () => {
+                cart.value = [];
+                localStorage.removeItem(STORAGE_KEY);
+                toast.success("Rekap Berhasil Disimpan!");
+            },
+            onError: (err) => {
+                console.error(err);
+                toast.error("Gagal menyimpan rekap.");
+            },
+        });
+    };
 
     return {
-        form,
-        searchResults,
-        isLoadingSearch,
-        addItem,
+        // State
+        searchQuery,
+        selectedCategory,
+        cart,
+        transactionDate,
+        form, // Untuk loading state (form.processing)
+
+        // Computed
+        filteredProducts,
+        totalRevenue,
+        totalProfit,
+
+        // Actions
+        addToCart,
         removeItem,
-        handleSearch,
-        calculateSubtotal,
-        calculateQty,
-        checkIntegerInput,
-        isDecimalAllowed,
-        formatCurrency,
-        totalQty,
-        grandTotal,
-        hasInvalidQty,
-        hasStockError,
-        submitForm, // Return fungsi submit baru
+        clearCart,
+        processRecap,
     };
 }

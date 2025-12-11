@@ -47,7 +47,10 @@ class SalesRecapController extends Controller
      */
     public function create()
     {
-        return Inertia::render('Sale/form', ['mode' => 'create']);
+        return Inertia::render('Sale/form', [
+            'products' => Product::with('category')->where('stock', '>', 0)->orderBy('name')->get(),
+            'categories' => $this->categoryService->getAll(),
+        ]);
     }
 
     /**
@@ -62,7 +65,7 @@ class SalesRecapController extends Controller
             'report_date' => 'required|date|before_or_equal:today',
             'created_at' => 'nullable|date',
             'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
-            'payment_amount' => 'numeric|min:0',
+            'payment_amount' => 'nullable|numeric|min:0',
             'change_amount' => 'numeric|min:0',
             'notes' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',

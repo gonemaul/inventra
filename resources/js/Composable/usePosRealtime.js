@@ -165,7 +165,7 @@ export function usePosRealtime(props) {
     // 1. Product Actions
     const addItem = (product) => {
         if (parseFloat(product.stock) <= 0) {
-            toast.error("Stok habis. Tidak bisa ditambahkan.");
+            toast.error(`Stok ${product.name} habis. Tidak bisa ditambahkan.`);
             return;
         }
 
