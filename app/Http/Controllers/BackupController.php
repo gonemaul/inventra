@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use ZipArchive;
+use Carbon\Carbon;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Symfony\Component\Process\Process;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
-use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class BackupController extends Controller
@@ -34,7 +37,10 @@ class BackupController extends Controller
             }
             //     // Log output artisan untuk debugging jika perlu
             // Log::info("Backup Output: " . Artisan::output());
-
+            Cache::forever('last_backup_info', [
+                'date'     => Carbon::now()->translatedFormat('d F Y, H:i:s'), // Format: 13 Desember 2025, 12:00:00
+                'user'     => auth()->user()->name ?? 'System' // Opsional: siapa yang merestore
+            ]);
             return back()->with('success', 'Backup database berhasil dibuat!');
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal membuat backup: ' . $e->getMessage());
@@ -47,7 +53,7 @@ class BackupController extends Controller
         $path = $this->getBackupPath($fileName);
 
         if (Storage::disk('public')->exists($path)) {
-            return Storage::disk('public')->download();
+            return Storage::disk('public')->download($path);
         }
         return back()->with('error', 'File tidak ditemukan.');
     }
@@ -91,7 +97,7 @@ class BackupController extends Controller
             return back()->with('error', 'File backup tidak ditemukan di server.');
         }
 
-        return $this->processRestore($fullPath);
+        return $this->processRestore($fullPath, $fileName);
     }
 
     // 3. RESTORE DARI UPLOAD
@@ -102,54 +108,86 @@ class BackupController extends Controller
         ]);
 
         $file = $request->file('backup_file');
+        $originalName = $file->getClientOriginalName();
+        // Gunakan nama unik agar tidak bentrok kalau ada 2 admin upload barengan
+        $fileName = 'restore_temp_' . time() . '.zip';
 
-        // Simpan sementara di folder temp
-        $tempPath = $file->storeAs('temp', 'restore_temp.zip');
-        $fullPath = storage_path('app/' . $tempPath);
+        // 1. Simpan ke Public Disk
+        $tempPath = Storage::disk('public')->putFileAs('temp', $file, $fileName);
+        $fullPath = Storage::disk('public')->path($tempPath);
 
-        $result = $this->processRestore($fullPath);
+        // Pastikan file permission aman untuk dibaca ZipArchive (terutama di Docker)
+        @chmod($fullPath, 0644);
 
-        // Hapus file temp setelah selesai
-        Storage::delete($tempPath);
+        try {
+            // 2. Proses Restore
+            $result = $this->processRestore($fullPath, $originalName . ' (Uploaded)');
 
-        return $result;
+            return $result;
+        } catch (\Exception $e) {
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        } finally {
+            // 3. Hapus file temp (WAJIB PAKAI DISK PUBLIC)
+            // Menggunakan finally agar sukses/gagal file tetap dihapus
+            if (Storage::disk('public')->exists($tempPath)) {
+                Storage::disk('public')->delete($tempPath);
+            }
+        }
     }
 
-    private function processRestore($zipPath)
+    private function processRestore($zipPath, $displayName)
     {
-        // A. EKSTRAK ZIP
-        $zip = new ZipArchive;
-        if ($zip->open($zipPath) !== TRUE) {
-            return back()->with('error', 'Gagal membuka file ZIP.');
-        }
+        // A. PERSIAPAN FOLDER EKSTRAK
+        // Gunakan folder unik untuk setiap proses agar tidak tercampur
+        $extractDirName = 'temp/restore_' . time();
+        $extractPath = Storage::path($extractDirName); // Path absolut sistem
 
-        // Buat folder temp untuk hasil ekstrak
-        $extractPath = storage_path('app/temp_restore');
-        if (!is_dir($extractPath)) mkdir($extractPath);
-
-        $zip->extractTo($extractPath);
-        $zip->close();
-
-        // B. CARI FILE .SQL HASIL EKSTRAK
-        $sqlFile = $this->findSqlFile($extractPath);
-
-        if (!$sqlFile) {
+        // Pastikan folder bersih dari awal
+        if (is_dir($extractPath)) {
             $this->deleteDirectory($extractPath);
-            return back()->with('error', 'File SQL tidak ditemukan dalam backup ini.');
         }
+        mkdir($extractPath, 0755, true);
 
-        // C. JALANKAN SYSTEM COMMAND (IMPORT)
         try {
+            // B. EKSTRAK ZIP
+            $zip = new ZipArchive;
+            if ($zip->open($zipPath) !== TRUE) {
+                return back()->with('error', 'Gagal membuka file ZIP. File mungkin korup.');
+            }
+
+            $zip->extractTo($extractPath);
+            $zip->close();
+
+            // C. CARI FILE .SQL
+            $sqlFile = $this->findSqlFile($extractPath);
+
+            if (!$sqlFile) {
+                return back()->with('error', 'File SQL tidak ditemukan dalam backup ini.');
+            }
+
+            // D. JALANKAN IMPORT
             $this->executeSystemRestore($sqlFile);
-
-            // Bersihkan sisa ekstrak
-            $this->deleteDirectory($extractPath);
-
+            Cache::forever('last_restore_info', [
+                'filename' => $displayName,
+                'date'     => Carbon::now()->translatedFormat('d F Y, H:i:s'), // Format: 13 Desember 2025, 12:00:00
+                'user'     => auth()->user()->name ?? 'System' // Opsional: siapa yang merestore
+            ]);
+            // Setting::updateOrCreate(['key' => 'last_restore'], ['value' => now()]);
+            // Setting::updateOrCreate(['key' => 'last_restore_file'], ['value' => ]);
             return back()->with('success', 'Database berhasil dipulihkan!');
         } catch (\Exception $e) {
-            // Bersihkan sisa ekstrak jika gagal
-            $this->deleteDirectory($extractPath);
             return back()->with('error', 'Gagal restore: ' . $e->getMessage());
+        } finally {
+            // E. BERSIHKAN FOLDER HASIL EKSTRAK (PENTING)
+            // Hapus folder temp ekstrak baik sukses maupun gagal
+            if (is_dir($extractPath)) {
+                // Hapus folder recursively (pastikan Anda punya fungsi deleteDirectory atau gunakan File facade)
+                // Jika pakai Laravel File Facade:
+                // \Illuminate\Support\Facades\File::deleteDirectory($extractPath);
+
+                // Atau pakai fungsi manual Anda:
+                $this->deleteDirectory($extractPath);
+            }
         }
     }
 

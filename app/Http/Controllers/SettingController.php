@@ -13,6 +13,7 @@ use App\Services\BrandService;
 use App\Services\CategoryService;
 
 use App\Services\SupplierService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 
@@ -69,11 +70,13 @@ class SettingController extends Controller
 
         // Urutkan terbaru
         usort($backups, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+
+        $lastRestore = Cache::get('last_restore_info') ?? [];
+        $lastBackup = [];
         // data toko
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
-        // $logoUrl = isset($settings['shop_logo'])
-        //     ? '/storage/' + $settings['shop_logo']
-        //     : null;
+        // $logoUrl = isset($settings['shop_logo']) ? Storage::disk('s3')->url($this->$settings['shop_logo']) : null;
+        $settings['shop_logo'] = isset($settings['shop_logo']) ? Storage::disk('s3')->url($settings['shop_logo']) : null;
         return Inertia::render('Settings/index', [
             'categoryCount' => $this->categoryService->getCount(),
             'unitCount' => $this->unitService->getCount(),
@@ -84,6 +87,8 @@ class SettingController extends Controller
             'categories' => $this->categoryService->getAll(),
             'backups' => $backups,
             'autoBackupEnabled' => $isAutoBackup,
+            'lastRestore' => $lastRestore,
+            'lastBackup' => $lastBackup,
             'shopSettings' => $settings,
             // 'shopLogo' => $logoUrl
         ]);

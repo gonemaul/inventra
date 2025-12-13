@@ -22,19 +22,19 @@ if ($autoBackupEnabled) {
     Schedule::command('backup:run --only-db --only-to-disk=public --disable-notifications')
         ->hourly()
         ->skip(function () {
-            return date('H') == '23'; // Jangan jalan jam 23:00 (karena ada heavy backup)
+            return date('H') == '22'; // Jangan jalan jam 23:00 (karena ada heavy backup)
         })
         ->timezone('Asia/Jakarta');
 
     // 2. HEAVY BACKUP (Setiap Hari Jam 23:00 / Tutup Toko)
     // Backup DB + Files + Upload Google Drive + Hapus Backup Lama
     Schedule::command('backup:run --disable-notifications')
-        ->dailyAt('23:00')
+        ->dailyAt('22:00')
         ->timezone('Asia/Jakarta');
 
     // 3. CLEANUP (Bersihkan file lama setelah Heavy Backup)
     Schedule::command('backup:clean --disable-notifications')
-        ->dailyAt('23:30')
+        ->dailyAt('22:30')
         ->timezone('Asia/Jakarta');
 }
 // php artisan schedule:run

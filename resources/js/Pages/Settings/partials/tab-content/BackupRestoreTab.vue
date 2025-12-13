@@ -7,6 +7,8 @@ import { useActionLoading } from "@/Composable/useActionLoading";
 const props = defineProps({
     backups: Array, // List file backup
     autoBackupEnabled: Boolean, // Status ON/OFF jadwal otomatis (dari DB settings)
+    lastRestore: Object,
+    lastBackup: Object,
 });
 
 const fileInput = ref(null);
@@ -226,6 +228,25 @@ const deleteBackup = (fileName) => {
                     </svg>
                     <span>+ Buat Backup Baru</span>
                 </button>
+                <span
+                    class="flex justify-between mt-1"
+                    v-if="Object.keys(lastBackup).length > 0"
+                >
+                    <p class="text-xs text-indigo-700 dark:text-indigo-300">
+                        Terakhir dibakcup tanggal :
+                        <strong>{{ lastBackup["date"] }}</strong>
+                    </p>
+                    <p class="text-xs text-indigo-700 dark:text-indigo-300">
+                        Oleh :
+                        <strong>{{ lastBackup["date"] }}</strong>
+                    </p>
+                </span>
+                <p
+                    v-else
+                    class="text-xs text-center text-indigo-700 dark:text-indigo-300"
+                >
+                    Belum pernah dibackup
+                </p>
             </div>
 
             <div
@@ -271,6 +292,30 @@ const deleteBackup = (fileName) => {
                     </svg>
                     <span>Upload & Restore</span>
                 </button>
+                <span
+                    class="flex justify-between mt-1"
+                    v-if="Object.keys(lastRestore).length > 0"
+                >
+                    <p class="text-xs text-orange-700 dark:text-orange-300">
+                        Terakhir dipulihkan tanggal :
+                        <Strong>{{ lastRestore["date"] }}</Strong>
+                    </p>
+                    <p class="text-xs text-orange-700 dark:text-orange-300">
+                        Oleh :
+                        <Strong>{{ lastRestore["user"] }}</Strong>
+                    </p>
+
+                    <p class="text-xs text-orange-700 dark:text-orange-300">
+                        Dari :
+                        <strong>{{ lastRestore["filename"] }}</strong>
+                    </p>
+                </span>
+                <p
+                    v-else
+                    class="mt-3 text-xs text-center text-orange-700 dark:text-orange-300"
+                >
+                    Belum pernah pemulihan
+                </p>
             </div>
         </div>
 

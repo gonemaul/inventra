@@ -15,11 +15,12 @@ const form = useForm({
     shop_address: props.settings.shop_address || "",
     receipt_footer:
         props.settings.receipt_footer || "Terima Kasih, Datang Kembali!",
-    shop_logo: null, // Untuk file upload
+    shop_logo: props.settings.shop_logo, // Untuk file upload
 });
+console.log(props.settings);
 
 // Logic Preview Gambar (Agar saat pilih file, gambar langsung berubah tanpa refresh)
-const previewImage = ref(props.settings.shop_url ?? false);
+const previewImage = ref(props.settings.shop_logo ?? false);
 
 const handleFileChange = (e) => {
     const file = e.target.files[0];

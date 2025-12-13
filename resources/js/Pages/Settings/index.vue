@@ -23,6 +23,8 @@ const props = defineProps({
     categories: Object,
     backups: Array,
     autoBackupEnabled: Boolean,
+    lastRestore: Object,
+    lastBackup: Object,
     shopSettings: Object,
 });
 const tabs = computed(() => [
@@ -64,6 +66,8 @@ const tabs = computed(() => [
                     ><tabBackupRestore
                         :backups="backups"
                         :autoBackupEnabled="autoBackupEnabled"
+                        :lastRestore="lastRestore"
+                        :lastBackup="lastBackup"
                 /></template>
             </Tabs>
         </div>
