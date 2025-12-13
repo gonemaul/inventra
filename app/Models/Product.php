@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Product extends Model
 {
     use HasFactory, SoftDeletes;
-    protected $appends = ['full_name', 'market_insight'];
+    protected $appends = ['full_name', 'market_insight', 'image_url'];
     protected $casts = [
         'snapshot' => 'array', // Otomatis convert JSON ke Array
     ];
@@ -80,9 +80,18 @@ class Product extends Model
     {
         static::forceDeleting(function (Product $product) {
             if ($product->image_path) {
-                Storage::disk('public')->delete($product->image_path);
+                Storage::disk('s3')->delete($product->image_path);
             }
         });
+    }
+    public function getImageUrlAttribute()
+    {
+        // Jika kolom image kosong, return null atau gambar placeholder
+        if (!$this->image_path) {
+            return '/no-image.png';
+        } else {
+            return Storage::disk('s3')->url($this->image_path);
+        }
     }
     /**
      * Accessor: Menggabungkan Atribut menjadi Nama Lengkap

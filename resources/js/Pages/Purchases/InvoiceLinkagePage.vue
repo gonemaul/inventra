@@ -1202,7 +1202,7 @@ const validateInvoice = () => {
                         </div>
                     </div>
 
-                    <div v-if="invoice.invoice_image" class="mt-auto">
+                    <div v-if="invoice.invoice_url" class="mt-auto">
                         <p
                             class="mb-2 text-[10px] font-bold text-gray-400 uppercase tracking-wider"
                         >
@@ -1212,13 +1212,13 @@ const validateInvoice = () => {
                             class="relative overflow-hidden border border-gray-200 cursor-pointer group rounded-xl dark:border-gray-600"
                             @click="
                                 openImageModal(
-                                    invoice.invoice_image,
+                                    invoice.invoice_url,
                                     invoice.invoice_number
                                 )
                             "
                         >
                             <img
-                                :src="`/storage/${invoice.invoice_image}`"
+                                :src="`/storage/${invoice.invoice_url}`"
                                 alt="Bukti Nota"
                                 class="object-cover w-full h-24 transition duration-500 group-hover:scale-110 group-hover:opacity-75"
                             />

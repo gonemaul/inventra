@@ -41,11 +41,7 @@ const insightData = computed(() => {
             class="relative flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-900 dark:border-gray-600"
         >
             <img
-                :src="
-                    data.image_path
-                        ? '/storage/' + data.image_path
-                        : '/no-image.png'
-                "
+                :src="data.image_url"
                 class="object-contain w-full h-full transition-transform group-hover:scale-110"
             />
 

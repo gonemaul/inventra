@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class PurchaseInvoice extends Model
 {
     use HasFactory;
+    protected $appends = ['invoice_url'];
     protected $fillable = [
         'purchase_id',
         'invoice_number',
@@ -39,6 +41,15 @@ class PurchaseInvoice extends Model
         self::PAYMENT_STATUS_PAID,
     ];
 
+    public function getInvoiceUrlAttribute()
+    {
+        // Jika kolom image kosong, return null atau gambar placeholder
+        if (!$this->invoice_image) {
+            return '/no-image.png';
+        } else {
+            return Storage::disk('s3')->url($this->invoice_image);
+        }
+    }
     public function getRemainingBalanceAttribute()
     {
         return $this->total_amount - $this->amount_paid;

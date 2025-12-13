@@ -98,9 +98,7 @@ const columns = [
             <template #invoice="{ row }">
                 <span
                     class="text-blue-500 cursor-pointer"
-                    @click="
-                        openImageModal(row.invoice_image, row.invoice_number)
-                    "
+                    @click="openImageModal(row.invoice_url, row.invoice_number)"
                     >{{ row.invoice_number }}</span
                 >
             </template>

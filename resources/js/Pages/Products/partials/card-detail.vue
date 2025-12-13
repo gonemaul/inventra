@@ -9,8 +9,6 @@ const props = defineProps({
     price_trend: Object,
 });
 
-console.log(props.data);
-console.log(props.dss);
 const showDelete = ref(false);
 const formatRupiah = (val) =>
     new Intl.NumberFormat("id-ID", {
@@ -100,16 +98,12 @@ const isStockLow = computed(() => {
                 class="relative flex-1 w-full min-h-[160px] md:h-full flex items-center justify-center p-4 overflow-hidden group"
             >
                 <img
-                    :src="
-                        data.image_path
-                            ? '/storage/' + data.image_path
-                            : '/no-image.png'
-                    "
+                    :src="data.image_url"
                     :alt="data.name"
                     class="object-contain max-w-full max-h-full transition-transform duration-500 cursor-pointer group-hover:scale-110"
                     @click="
                         $emit('imageClick', {
-                            path: data.image_path,
+                            path: data.image_url,
                             name: data.name,
                         })
                     "

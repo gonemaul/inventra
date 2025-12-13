@@ -18,8 +18,8 @@ class ImageService
     public function upload($file, $path, $oldFile = null)
     {
         // 1. Hapus file lama jika ada
-        if ($oldFile && Storage::disk('public')->exists($oldFile)) {
-            Storage::disk('public')->delete($oldFile);
+        if ($oldFile && Storage::exists($oldFile)) {
+            Storage::delete($oldFile);
         }
 
         // 2. Cek Ukuran File (Bytes)
@@ -42,7 +42,7 @@ class ImageService
             $encoded = $image->toWebp(75);
 
             // Simpan ke Storage Public
-            Storage::disk('public')->put($destinationPath, (string) $encoded);
+            Storage::put($destinationPath, (string) $encoded);
         } else {
             // JIKA < 2MB:
             // Tetap kita convert ke WebP supaya format seragam, tapi kualitas 90%
@@ -50,7 +50,7 @@ class ImageService
             $image = $manager->read($file);
             $encoded = $image->toWebp(90);
 
-            Storage::disk('public')->put($destinationPath, (string) $encoded);
+            Storage::disk('s3')->put($destinationPath, (string) $encoded);
 
             // ATAU: Jika ingin simpan mentah-mentah (tanpa ubah format) pakai ini:
             // $path = $file->store($path, 'public');

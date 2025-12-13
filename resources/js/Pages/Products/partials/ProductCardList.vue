@@ -49,17 +49,13 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 class="relative flex items-center justify-center flex-1 p-2 overflow-hidden cursor-pointer"
                 @click="
                     emit('imageClick', {
-                        path: data.image_path,
+                        path: data.image_url,
                         name: data.name,
                     })
                 "
             >
                 <img
-                    :src="
-                        data.image_path
-                            ? '/storage/' + data.image_path
-                            : '/no-image.png'
-                    "
+                    :src="data.image_url"
                     :alt="data.name"
                     class="object-contain w-full h-full transition-transform duration-500 max-h-28 group-hover:scale-110"
                 />

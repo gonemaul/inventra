@@ -41,9 +41,7 @@ const form = useForm({
     // File (image akan berisi file baru, image_path untuk preview)
     image: null,
 });
-const imagePreview = ref(
-    props.product?.image_path ? `/storage/${props.product.image_path}` : null
-);
+const imagePreview = ref(props.product?.image_url ?? null);
 
 const onPurchaseChange = () => {
     const buy = parseFloat(form.purchase_price) || 0;

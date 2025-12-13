@@ -21,7 +21,7 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const fullImageUrl = computed(() => {
-    return props.imageUrl ? `/storage/${props.imageUrl}` : null;
+    return props.imageUrl ?? null;
 });
 
 // 2. Tambahkan state untuk loading

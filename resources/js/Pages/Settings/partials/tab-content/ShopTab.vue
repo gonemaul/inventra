@@ -19,9 +19,7 @@ const form = useForm({
 });
 
 // Logic Preview Gambar (Agar saat pilih file, gambar langsung berubah tanpa refresh)
-const previewImage = ref(
-    props.settings.shop_logo ? "/storage/" + props.settings.shop_logo : false
-);
+const previewImage = ref(props.settings.shop_url ?? false);
 
 const handleFileChange = (e) => {
     const file = e.target.files[0];
