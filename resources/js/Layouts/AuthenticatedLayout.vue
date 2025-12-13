@@ -88,7 +88,7 @@ defineProps({
                 :title="headerTitle"
             />
             <main
-                class="flex-1 p-6 bg-customBg-light text-customText-light dark:bg-customBg-dark dark:text-customText-dark"
+                class="flex-1 p-2 lg:p-6 bg-customBg-light text-customText-light dark:bg-customBg-dark dark:text-customText-dark"
             >
                 <slot />
             </main>

@@ -1,21 +1,17 @@
 <script setup>
+import { ref, computed, onMounted, onUnmounted } from "vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head } from "@inertiajs/vue3";
-import Tabs from "@/Components/Tabs.vue";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
+
 import DeleteConfirm from "@/Components/DeleteConfirm.vue";
-import FinalizeModal from "./partials/FinalizeModal.vue";
-import { Link } from "@inertiajs/vue3";
-// Komponen Anak
-import InvoiceForm from "./partials/InvoiceForm.vue";
-import InvoiceTransactionTable from "./partials/invoiceTable.vue"; // Menggunakan nama yang sudah diperbaiki
-import ItemValidationTable from "./partials/productTable.vue"; // Menggunakan nama yang sesuai dengan fungsinya
-import HeaderDetail from "./partials/HeaderDetail.vue";
-import OrderImageModal from "./Components/OrderImageModal.vue";
 import ConfirmModal from "@/Components/ConfirmModal.vue";
-// Logic
-import { ref, computed, onMounted } from "vue";
-import { useForm, router } from "@inertiajs/vue3";
+import FinalizeModal from "./partials/FinalizeModal.vue";
+import OrderImageModal from "./Components/OrderImageModal.vue";
+import InvoiceForm from "./partials/InvoiceForm.vue";
+
+// Import Anak
+import DesktopDetail from "./partials/Detail/DesktopDetail.vue";
+import MobileDetail from "./partials/Detail/MobileDetail.vue";
 
 const props = defineProps({
     purchase: Object, // Data transaksi utama (purchase, items, supplier)
@@ -33,13 +29,22 @@ const editingInvoiceData = ref(null);
 const showFinalizeModal = ref(false);
 const showConfirmModal = ref(false);
 
+// State Deteksi Layar
+const isMobile = ref(window.innerWidth < 1024);
+const updateScreenSize = () => {
+    isMobile.value = window.innerWidth < 1024;
+};
+
 onMounted(() => {
+    window.addEventListener("resize", updateScreenSize);
     // Kunci logikanya: Jika status 'received' DAN belum ada ID invoice (props.invoice.id == 0 atau null)
     if (props.purchase.status === "diterima" && !props.invoice.id) {
         // [AKSI OTOMATIS] Buka modal Create Invoice
         openCreateInvoiceModal();
     }
 });
+onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
+
 // --- 2. STATE UNTUK ITEM (Validasi Rejected Qty) ---
 const validationItems = ref(
     props.purchase.items.map((item) => ({
@@ -183,14 +188,26 @@ const getActions = (row) => {
     return actions;
 };
 
-// Tabs definition
-const tabs = [
-    { key: "invoices", label: "Invoice & Pembayaran" }, // Label disesuaikan
-    { key: "products", label: "Validasi Item" },
-];
+// // Tabs definition
+// const tabs = [
+//     { key: "invoices", label: "Invoice & Pembayaran" }, // Label disesuaikan
+//     { key: "products", label: "Validasi Item" },
+// ];
+
+const actions = {
+    openCreateInvoiceModal,
+    handleEditInvoice,
+    handleDeleteInvoice,
+    handleDelete,
+    updateStatus,
+    openFinalizeModal,
+    getActions, // Method helper status button
+    openImageModal: () => (showImageModal.value = true),
+};
 </script>
 <template>
     <Head :title="`Detail - ${purchase.reference_no}`"></Head>
+
     <DeleteConfirm ref="deleteModalRef" @success="handleInvoiceSaved" />
     <ConfirmModal ref="showConfirmModal" @success="handleInvoiceSaved" />
     <FinalizeModal
@@ -204,161 +221,34 @@ const tabs = [
         :store-name="$page.props.auth.user.store_name || 'INVENTRA STORE'"
         @close="showImageModal = false"
     />
-    <AuthenticatedLayout :showSidebar="false" :showHeader="false">
-        <div
-            class="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-300"
-        >
-            <Link
-                :href="route('purchases.index')"
-                class="flex items-center transition hover:text-indigo-600"
-            >
-                <svg
-                    class="w-4 h-4 mr-1"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                    ></path>
-                </svg>
-                Riwayat
-            </Link>
-            <span>/</span>
-            <span>Detail Pembelian # {{ purchase.reference_no }}</span>
+    <InvoiceForm
+        :show="showInvoiceModal"
+        :purchaseId="purchase.id"
+        :editingInvoice="editingInvoiceData"
+        :paymentStatuses="paymentStatuses"
+        @close="showInvoiceModal = false"
+        @invoice-saved="handleInvoiceSaved"
+    />
+    <AuthenticatedLayout :showSidebar="!isMobile" :showHeader="!isMobile">
+        <div v-if="isMobile">
+            <MobileDetail
+                v-bind="props"
+                :actions="actions"
+                :validationItems="validationItems"
+                :allowFinalize="allowFinalize"
+                :canEditDeleteInvoice="canEditDeleteInvoice"
+                :isEditing="isEditing"
+            />
         </div>
-        <HeaderDetail :data="props.purchase" :mode="type" />
-        <InvoiceForm
-            :show="showInvoiceModal"
-            :purchaseId="purchase.id"
-            :editingInvoice="editingInvoiceData"
-            :paymentStatuses="paymentStatuses"
-            @close="showInvoiceModal = false"
-            @invoice-saved="handleInvoiceSaved"
-        />
-        <div class="flex justify-end gap-2 mt-4">
-            <button
-                v-for="(action, index) in getActions(purchase)"
-                :key="index"
-                @click="updateStatus(purchase, action.newStatus)"
-                :class="{
-                    'text-lime-600 font-semibold': action.isPrimary,
-                    'border-b-2': action.newStatus === 'ordered', // Garis pemisah
-                }"
-                class="px-3 py-1 text-sm font-medium text-white transition border rounded-lg shadow-sm bg-lime-500 hover:bg-lime-600 dark:hover:bg-lime-700 dark:text-gray-100 active:scale-95"
-                :title="action.label"
-            >
-                {{ action.label }}
-            </button>
-            <PrimaryButton
-                v-if="purchase.status === 'checking'"
-                :disable="!allowFinalize"
-                @click="openFinalizeModal"
-                :class="{ 'opacity-50 cursor-not-allowed': !allowFinalize }"
-            >
-                Selesaikan Validasi
-            </PrimaryButton>
-            <Link
-                v-if="isEditing"
-                class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-yellow-500 rounded-lg shadow-sm hover:bg-yellow-600 active:scale-95"
-                title="Edit Order"
-                ><svg
-                    class="w-3 h-3 sm:w-5 sm:h-5"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                >
-                    <path
-                        d="M19.9902 18.9531C20.5471 18.9534 21 19.4124 21 19.9766C21 20.5418 20.5471 20.9998 19.9902 21H14.2793C13.7224 20.9998 13.2695 20.5419 13.2695 19.9766C13.2696 19.4124 13.7224 18.9533 14.2793 18.9531H19.9902ZM12.2412 3.95703C13.1538 2.78531 14.7463 2.67799 16.0303 3.69922L17.5049 4.87109C18.1097 5.34407 18.5134 5.96737 18.6514 6.62305C18.8105 7.34415 18.6403 8.05244 18.1631 8.66504L9.37598 20.0283C8.97274 20.544 8.37869 20.834 7.74219 20.8447L4.24023 20.8877C4.0493 20.8876 3.89009 20.7589 3.84766 20.5762L3.05176 17.125C2.91398 16.4909 3.05194 15.8352 3.45508 15.3301L9.68457 7.26758C9.79068 7.13908 9.98121 7.11856 10.1084 7.21387L12.7295 9.2998C12.8993 9.43955 13.1329 9.51467 13.377 9.48242C13.8969 9.41792 14.2474 8.94469 14.1943 8.43945C14.1625 8.18164 14.0349 7.96685 13.8652 7.80566C13.8122 7.76267 11.3184 5.7627 11.3184 5.7627C11.1593 5.63368 11.1276 5.39743 11.2549 5.2373L12.2412 3.95703Z"
-                        fill="currentColor"
-                    />
-                </svg>
-                Edit
-            </Link>
-            <button
-                v-if="isEditing"
-                @click="handleDelete"
-                class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-red-500 rounded-lg shadow-sm hover:bg-red-600 active:scale-95"
-            >
-                <svg
-                    class="w-3 h-3 sm:w-5 sm:h-5"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                >
-                    <path
-                        d="M18.9395 8.69727C19.1385 8.69738 19.3191 8.78402 19.4619 8.93066C19.5952 9.08766 19.663 9.28326 19.6436 9.48926C19.6429 9.56521 19.1099 16.2984 18.8057 19.1338C18.6151 20.8747 17.493 21.9319 15.8096 21.9609C14.5151 21.9899 13.2497 22 12.0039 22C10.6812 22 9.3874 21.9899 8.13184 21.9609C6.50488 21.9218 5.38206 20.8457 5.20117 19.1338C4.88816 16.2881 4.36472 9.56385 4.35449 9.48926C4.34477 9.28326 4.41071 9.08766 4.54492 8.93066C4.67715 8.78375 4.86811 8.69731 5.06836 8.69727H18.9395ZM14.0645 2C14.9485 2 15.7382 2.61708 15.9668 3.49707L16.1309 4.22656C16.2631 4.82145 16.778 5.24302 17.3711 5.24316H20.2871C20.676 5.24316 20.9998 5.56576 21 5.97656V6.35742C20.9998 6.75821 20.676 7.09082 20.2871 7.09082H3.71387C3.32402 7.09082 3.00025 6.75821 3 6.35742V5.97656C3.00021 5.56576 3.324 5.24316 3.71387 5.24316H6.62988C7.22203 5.24301 7.7369 4.82143 7.87012 4.22754L8.02344 3.5459C8.26078 2.61698 9.04181 2 9.93555 2H14.0645Z"
-                        fill="currentColor"
-                    />
-                </svg>
-                Hapus
-            </button>
-            <a
-                :href="route('purchases.print', purchase.id)"
-                target="_blank"
-                class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-gray-500 rounded-lg shadow-sm hover:bg-gray-600 active:scale-95"
-                title="Cetak Purchase Order (PO)"
-            >
-                <svg
-                    class="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"
-                    ></path>
-                </svg>
-                <span>Cetak Order</span>
-            </a>
-
-            <button
-                v-if="purchase.status === 'draft'"
-                @click="showImageModal = true"
-                class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-green-500 rounded-lg shadow-sm hover:bg-green-600 active:scale-95"
-                title="Kirim Pesanan via WhatsApp"
-            >
-                <svg
-                    class="w-5 h-5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                    xmlns="http://www.w3.org/2000/svg"
-                >
-                    <path
-                        d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"
-                    />
-                </svg>
-                <span>Order via WA</span>
-            </button>
-        </div>
-        <div class="w-full mt-4 space-y-6">
-            <Tabs :tabs="tabs" defaultTab="invoices">
-                <template #invoices>
-                    <div
-                        v-if="canEditDeleteInvoice"
-                        class="flex justify-end mb-4"
-                    >
-                        <PrimaryButton @click="openCreateInvoiceModal">
-                            + Tambah Nota Baru
-                        </PrimaryButton>
-                    </div>
-
-                    <InvoiceTransactionTable
-                        :purchase="purchase"
-                        :isCheckingMode="isCheckingMode"
-                        :canEditDelete="canEditDeleteInvoice"
-                        @edit-invoice="handleEditInvoice"
-                        @delete-invoice="handleDeleteInvoice(invoice)"
-                    />
-                </template>
-                <template #products>
-                    <ItemValidationTable :items="validationItems" />
-                </template>
-            </Tabs>
+        <div v-else>
+            <DesktopDetail
+                v-bind="props"
+                :actions="actions"
+                :validationItems="validationItems"
+                :allowFinalize="allowFinalize"
+                :canEditDeleteInvoice="canEditDeleteInvoice"
+                :isEditing="isEditing"
+            />
         </div>
     </AuthenticatedLayout>
 </template>
