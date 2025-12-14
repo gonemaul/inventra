@@ -1,27 +1,50 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
-import { ref, computed, nextTick, onBeforeUnmount } from "vue";
+import { ref } from "vue";
 import { usePosRealtime } from "@/Composable/usePosRealtime";
 import MoneyInput from "../partials/MoneyInput.vue";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import ConfirmSubmit from "./ConfirmSubmit.vue";
+import ScannerBox from "./ScannerBox.vue";
+import { useToast } from "vue-toastification";
 
 const props = defineProps({
-    products: Array,
     categories: Array,
     customers: Array,
 });
 
 // --- PANGGIL COMPOSABLE ---
 const {
-    // State
+    // 1. STATE FORM & DATA
     form,
-    searchResults,
-    isLoadingSearch,
-    memberSearchResults,
-    isLoadingMember,
-    selectedMember,
+    filteredProducts, // Ganti 'products' atau 'searchResults' dengan ini
+    isFetchingData, // Untuk indikator loading di search bar
 
-    // Computed
+    // 2. SEARCH & FILTER
+    searchQuery, // v-model ke input cari barang
+    selectedCategory, // v-model ke dropdown kategori
+    loadMoreProducts, // Fungsi untuk infinite scroll
+
+    // Scanner
+    startScanner,
+    stopScanner,
+    activeScannerType,
+    showScanner,
+    // scannerType,
+
+    // 3. MEMBER / PELANGGAN
+    memberSearch, // v-model input cari member
+    memberSearchResults, // Array hasil pencarian member
+    isLoadingMember, // Loading status member
+    selectedMember, // Object member terpilih
+    selectMember, // Aksi pilih member
+    removeMember, // Aksi hapus member terpilih
+
+    // 4. CART ACTIONS
+    addItem,
+    removeItem,
+    updateQty,
+
+    // 5. CALCULATIONS (Untuk di Footer/Cart)
     subTotal,
     discountAmount,
     grandTotal,
@@ -30,199 +53,47 @@ const {
     hasInvalidQty,
     moneySuggestions,
 
-    // Core Actions
-    addItem,
-    removeItem,
-    updateQty,
-
-    // Calculation Actions
+    // 6. PAYMENT ACTIONS
     recalcFromQty,
     recalcFromSubtotal,
     recalcFromPrice,
-
-    // Payment Actions
     handleMoneyClick,
     resetPayment,
-    // handleCheckoutClick,
-
-    // Search Actions
-    handleSearch,
-    handleSearchMember,
-    selectMember,
-
     submitTransaction,
+
+    // Utils
     rp,
 } = usePosRealtime(props);
 
 // --- STATE LOKAL UI (Client Side Search) ---
-const searchQuery = ref("");
-const selectedCategory = ref("all");
+const toast = useToast();
 const showMobileCart = ref(false);
 const showPaymentOptions = ref(false);
 
-const memberSearch = ref("");
+// const memberSearch = ref("");
 const showConfirmModal = ref(false);
-const processingTransaction = ref(false);
 
-// [BARU] State Scanner
-const activeScannerType = ref(null); // nil, 'product', atau 'member'
-const html5QrCode = ref(null);
-
-// --- LOGIC SEARCH PRODUK (CLIENT SIDE) ---
-// Kita filter dari props.products biar cepat (tanpa request server)
-const filteredProducts = computed(() => {
-    let items = props.products;
-
-    // Filter Kategori
-    if (selectedCategory.value !== "all") {
-        items = items.filter((p) => p.category_id === selectedCategory.value);
+// Berfungsi mendeteksi jika user scroll mentok bawah -> load data lagi
+const handleScroll = (e) => {
+    const { scrollTop, clientHeight, scrollHeight } = e.target;
+    // Toleransi 50px sebelum mentok bawah
+    if (scrollTop + clientHeight >= scrollHeight - 50) {
+        loadMoreProducts();
     }
-
-    // Filter Search
-    if (searchQuery.value) {
-        const q = searchQuery.value.toLowerCase();
-        items = items.filter(
-            (p) =>
-                p.name.toLowerCase().includes(q) ||
-                (p.code && p.code.toLowerCase().includes(q))
-        );
-    }
-    return items;
-});
-
-// --- LOGIC SEARCH MEMBER (CLIENT SIDE) ---
-const filteredCustomers = computed(() => {
-    if (!memberSearch.value) return [];
-    const q = memberSearch.value.toLowerCase();
-    return props.customers
-        .filter(
-            (c) =>
-                c.name.toLowerCase().includes(q) ||
-                (c.member_code && c.member_code.toLowerCase().includes(q)) ||
-                (c.phone && c.phone.includes(q))
-        )
-        .slice(0, 5);
-});
-
-const handleSelectMember = (c) => {
-    selectMember(c); // Panggil fungsi dari composable
-    memberSearch.value = "";
-};
-
-// --- [BARU] LOGIC CAMERA SCANNER ---
-const startScanner = async (type) => {
-    activeScannerType.value = type;
-    await nextTick(); // Tunggu DOM render div id="reader"
-
-    const formatsToSupport = [
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.QR_CODE,
-    ];
-    const qrCode = new Html5Qrcode("reader");
-    html5QrCode.value = qrCode;
-
-    qrCode
-        .start(
-            { facingMode: "environment" }, // Pakai kamera belakang
-            {
-                fps: 10,
-                qrbox: { width: 250, height: 150 },
-                formatsToSupport: formatsToSupport,
-            },
-            (decodedText) => {
-                // SAAT SCAN BERHASIL
-                handleScanSuccess(decodedText);
-            },
-            (errorMessage) => {
-                // ignore errors while scanning
-            }
-        )
-        .catch((err) => {
-            console.log(err);
-            activeScannerType.value = null;
-            alert("Gagal membuka kamera. Pastikan izin diberikan.");
-        });
-};
-
-const stopScanner = () => {
-    if (html5QrCode.value) {
-        html5QrCode.value
-            .stop()
-            .then(() => {
-                html5QrCode.value.clear();
-                activeScannerType.value = null;
-            })
-            .catch((err) => console.log(err));
-    } else {
-        activeScannerType.value = null;
-    }
-};
-
-const handleScanSuccess = (code) => {
-    // 1. JIKA SCAN PRODUK
-    if (activeScannerType.value === "product") {
-        const product = props.products.find(
-            (p) => p.code == code || p.sku == code
-        );
-        if (product) {
-            addItem(product);
-            // Opsional: Beep Sound
-        } else {
-            alert(`Produk ${code} tidak ditemukan!`);
-        }
-    }
-    // 2. JIKA SCAN MEMBER
-    else if (activeScannerType.value === "member") {
-        // Cari member berdasarkan Member Code ATAU No HP
-        const member = props.customers.find(
-            (c) => c.member_code == code || c.phone == code
-        );
-
-        if (member) {
-            handleSelectMember(member); // Pilih member
-            stopScanner(); // Langsung tutup kamera kalau member ketemu
-            alert(`Member: ${member.name}`);
-        } else {
-            alert(`Member ${code} tidak terdaftar!`);
-        }
-    }
-};
-
-onBeforeUnmount(() => {
-    if (html5QrCode.value && html5QrCode.value.isScanning) {
-        html5QrCode.value.stop();
-    }
-});
-
-const handleCheckoutClick = () => {
-    // 1. Validasi Keranjang
-    if (form.items.length === 0) return alert("Keranjang belanja kosong!");
-
-    // 2. Validasi Stok & Qty (Ambil dari composable)
-    if (hasInvalidQty.value) return alert("Ada produk dengan Qty 0!");
-    // if (hasStockError.value) return alert("Ada produk melebihi stok tersedia!");
-
-    // 3. Validasi Uang
-    if (!isPaymentSufficient.value) return alert("Uang pembayaran kurang!");
-
-    // Jika aman, buka modal
-    showConfirmModal.value = true;
 };
 
 const confirmTransaction = (shouldPrint) => {
+    if (form.items.length === 0) return toast.error("Keranjang kosong!");
+    if (hasInvalidQty.value) return toast.error("Qty tidak valid!");
+    if (form.payment_method === "cash" && !isPaymentSufficient.value)
+        return toast.error("Uang kurang!");
     submitTransaction(shouldPrint, {
         onSuccess: (page) => {
             // Tutup modal & drawer HP setelah sukses reset data
             showConfirmModal.value = false;
             showMobileCart.value = false;
-
-            console.log("Flash Data:", page.props.flash);
             const printUrl = page.props.flash?.print_url;
-            console.log("Print URL:", printUrl);
             if (shouldPrint && printUrl) {
-                // Buka Tab Baru untuk Print
-                // Gunakan setTimeout agar tidak dianggap pop-up spam oleh browser
                 setTimeout(() => {
                     window.open(printUrl, "_blank", "width=300,height=600");
                 }, 50);
@@ -236,7 +107,18 @@ const confirmTransaction = (shouldPrint) => {
 
 <template>
     <Head title="Kasir POS" />
-
+    <ConfirmSubmit
+        :showConfirmModal="showConfirmModal"
+        :changeAmount="changeAmount"
+        @close="showConfirmModal = false"
+        @confirmTransaction="confirmTransaction"
+    />
+    <ScannerBox
+        :showScanner="showScanner"
+        :activeScannerType="activeScannerType"
+        @close="showScanner = false"
+        @stopScanner="stopScanner"
+    />
     <div
         class="flex flex-col lg:flex-row h-[100dvh] w-full bg-gray-100 dark:bg-gray-900 overflow-hidden font-sans transition-colors duration-300"
     >
@@ -270,7 +152,22 @@ const confirmTransaction = (shouldPrint) => {
                         class="w-full pl-9 pr-10 py-2.5 bg-gray-100 dark:bg-gray-900 border-none rounded-xl focus:ring-2 focus:ring-lime-500 text-sm dark:text-white transition-all shadow-inner"
                     />
                     <span class="absolute text-gray-400 left-3 top-3">🔍</span>
-
+                    <div
+                        v-if="isFetchingData"
+                        class="absolute right-11 top-3.5 flex items-center gap-2"
+                    >
+                        <span class="text-[10px] text-gray-400 italic"
+                            >Syncing...</span
+                        >
+                        <span class="relative flex w-2 h-2">
+                            <span
+                                class="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-lime-400"
+                            ></span>
+                            <span
+                                class="relative inline-flex w-2 h-2 rounded-full bg-lime-500"
+                            ></span>
+                        </span>
+                    </div>
                     <button
                         @click="startScanner('product')"
                         class="absolute right-1.5 top-1.5 p-1 bg-white dark:bg-gray-700 rounded-lg shadow-sm text-gray-600 dark:text-gray-200 hover:text-lime-600 hover:bg-lime-50 transition border border-gray-200 dark:border-gray-600"
@@ -330,7 +227,8 @@ const confirmTransaction = (shouldPrint) => {
             </div>
 
             <div
-                class="flex-1 p-4 overflow-y-auto bg-gray-100 custom-scroll pb-28 lg:pb-4 dark:bg-gray-900"
+                class="h-[calc(100vh-220px)] flex-1 p-4 overflow-y-auto bg-gray-100 custom-scroll pb-28 lg:pb-4 dark:bg-gray-900"
+                @scroll="handleScroll"
             >
                 <div
                     class="grid grid-cols-2 gap-3 pb-20 md:grid-cols-3 lg:grid-cols-4"
@@ -464,11 +362,32 @@ const confirmTransaction = (shouldPrint) => {
                     </div>
                 </div>
                 <div
-                    v-if="filteredProducts.length === 0"
-                    class="mt-20 text-sm text-center text-gray-400"
+                    v-if="isFetchingData && filteredProducts.length === 0"
+                    class="py-10 text-center"
                 >
-                    <p class="mb-2 text-4xl">🔍</p>
+                    <div
+                        class="w-8 h-8 mx-auto mb-2 border-b-2 rounded-full animate-spin border-lime-500"
+                    ></div>
+                    <span class="text-xs text-gray-400"
+                        >Memuat database produk...</span
+                    >
+                </div>
+                <div
+                    v-else-if="filteredProducts.length === 0"
+                    class="py-10 text-center text-gray-400"
+                >
+                    <span class="block mb-2 text-2xl">🤷‍♂️</span>
                     Produk tidak ditemukan
+                </div>
+
+                <div
+                    v-if="
+                        filteredProducts.length > 0 &&
+                        filteredProducts.length % 20 === 0
+                    "
+                    class="py-4 text-center text-[10px] text-gray-400"
+                >
+                    Scroll untuk memuat lebih banyak...
                 </div>
             </div>
 
@@ -608,13 +527,13 @@ const confirmTransaction = (shouldPrint) => {
                         </svg>
                     </button>
                     <div
-                        v-if="filteredCustomers.length"
+                        v-if="memberSearchResults.length"
                         class="absolute left-0 z-50 w-full mt-2 overflow-hidden bg-white border shadow-xl top-full dark:bg-gray-800 dark:border-gray-600 rounded-xl"
                     >
                         <div
-                            v-for="c in filteredCustomers"
+                            v-for="c in memberSearchResults"
                             :key="c.id"
-                            @click="handleSelectMember(c)"
+                            @click="selectMember(c)"
                             class="p-3 text-xs text-gray-800 border-b cursor-pointer hover:bg-lime-50 dark:hover:bg-gray-700 dark:border-gray-700 dark:text-gray-200 last:border-0"
                         >
                             <b>{{ c.name }}</b>
@@ -646,7 +565,7 @@ const confirmTransaction = (shouldPrint) => {
                         </div>
                     </div>
                     <button
-                        @click="handleSelectMember(null)"
+                        @click="selectMember(null)"
                         class="p-1 text-gray-400 hover:text-red-500"
                     >
                         <svg
@@ -712,6 +631,15 @@ const confirmTransaction = (shouldPrint) => {
                                 >
                                     / {{ item.unit.name }}
                                 </span>
+                                <span
+                                    class="text-[10px] font-bold"
+                                    :class="
+                                        item.stock_max <= 5
+                                            ? 'text-red-500'
+                                            : 'text-green-500'
+                                    "
+                                    >( Stok : {{ item.stock_max }} )</span
+                                >
                             </div>
                         </div>
                         <button
@@ -1099,7 +1027,7 @@ const confirmTransaction = (shouldPrint) => {
                             </div>
 
                             <button
-                                @click="handleCheckoutClick"
+                                @click="showConfirmModal = true"
                                 :disabled="!form.items.length"
                                 :class="[
                                     !form.items.length
@@ -1136,118 +1064,6 @@ const confirmTransaction = (shouldPrint) => {
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <div
-        v-if="activeScannerType"
-        class="fixed inset-0 z-[70] bg-black flex flex-col animate-fade-in"
-    >
-        <div
-            class="absolute top-0 z-10 flex items-center justify-between w-full p-4 text-white bg-black/50 backdrop-blur-sm"
-        >
-            <div class="flex items-center gap-2">
-                <span v-if="activeScannerType === 'product'">📦</span>
-                <span v-else>👤</span>
-
-                <span class="text-lg font-bold">
-                    Scan
-                    {{ activeScannerType === "product" ? "Produk" : "Member" }}
-                </span>
-            </div>
-            <button
-                @click="stopScanner"
-                class="p-2 transition rounded-full bg-gray-800/80 hover:bg-gray-700"
-            >
-                ✕
-            </button>
-        </div>
-
-        <div id="reader" class="w-full h-full bg-black"></div>
-
-        <div class="absolute w-full px-4 text-center bottom-10">
-            <div
-                class="inline-block px-4 py-2 text-sm text-white border rounded-full bg-black/60 backdrop-blur-md border-white/20"
-            >
-                Arahkan kamera ke
-                {{
-                    activeScannerType === "product"
-                        ? "Barcode Barang"
-                        : "Kartu/QR Member"
-                }}
-            </div>
-        </div>
-    </div>
-
-    <div
-        v-if="showConfirmModal"
-        class="fixed inset-0 z-[60] flex items-center justify-center p-4 animate-fade-in"
-    >
-        <div
-            class="absolute inset-0 transition-opacity bg-gray-900/70 backdrop-blur-sm"
-            @click="showConfirmModal = false"
-        ></div>
-        <div
-            class="relative z-10 w-full max-w-sm p-6 overflow-hidden text-center transition-all transform scale-100 bg-white shadow-2xl dark:bg-gray-800 rounded-3xl"
-        >
-            <div
-                class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-lime-100 dark:bg-lime-900/30 text-lime-600 dark:text-lime-400 animate-bounce-subtle"
-            >
-                <svg
-                    class="w-8 h-8"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    ></path>
-                </svg>
-            </div>
-
-            <h3 class="mb-2 text-xl font-black text-gray-800 dark:text-white">
-                Simpan Transaksi?
-            </h3>
-            <p
-                class="pb-4 mb-6 text-sm text-gray-500 border-b dark:text-gray-400 dark:border-gray-700"
-            >
-                Kembalian:
-                <span class="block mt-1 text-lg font-bold text-lime-600">{{
-                    rp(Math.abs(changeAmount))
-                }}</span>
-            </p>
-
-            <div class="flex flex-col gap-3">
-                <button
-                    @click="confirmTransaction(true)"
-                    :disabled="processingTransaction"
-                    class="w-full py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-2xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2"
-                >
-                    <span
-                        v-if="processingTransaction"
-                        class="w-4 h-4 border-2 border-current rounded-full animate-spin border-t-transparent"
-                    ></span>
-                    <span v-else>🖨️ Simpan & Cetak</span>
-                </button>
-
-                <button
-                    @click="confirmTransaction(false)"
-                    :disabled="processingTransaction"
-                    class="w-full py-3.5 bg-lime-500 text-white font-bold rounded-2xl shadow-lg transition active:scale-95"
-                >
-                    💾 Simpan Saja
-                </button>
-
-                <button
-                    @click="showConfirmModal = false"
-                    class="mt-2 text-xs font-medium text-gray-400 hover:text-gray-600"
-                >
-                    Batal / Revisi
-                </button>
             </div>
         </div>
     </div>

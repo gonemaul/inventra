@@ -1,4 +1,12 @@
-import { ref, computed, watch, onMounted } from "vue";
+import {
+    ref,
+    computed,
+    watch,
+    onMounted,
+    onBeforeUnmount,
+    nextTick,
+} from "vue";
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { useForm } from "@inertiajs/vue3";
 import axios from "axios";
 import debounce from "lodash/debounce";
@@ -6,41 +14,70 @@ import { useToast } from "vue-toastification";
 
 export function usePosRealtime(props) {
     const toast = useToast();
-    const STORAGE_KEY = "POS_REALTIME_DRAFT_V3"; // Naikkan versi key biar fresh
+    const STORAGE_KEY = "POS_REALTIME_DRAFT_V3";
 
-    // --- STATE UI ---
-    const searchResults = ref([]);
+    // --- 1. STATE & DATA ---
+
+    // State Pencarian Produk (Lokal)
+    const searchQuery = ref("");
+    const selectedCategory = ref("all");
+
+    // State Database Produk (Ribuan Data)
+    const allProducts = ref([]);
+    const isFetchingData = ref(false);
+    const displayLimit = ref(5); // Lazy render limit
+
+    // State Member
+    const memberSearch = ref("");
     const memberSearchResults = ref([]);
-    const isLoadingSearch = ref(false);
     const isLoadingMember = ref(false);
     const selectedMember = ref(null);
 
-    // --- FORM UTAMA ---
+    // State scanner
+    const activeScannerType = ref(null); // nil, 'product', atau 'member'
+    const showScanner = ref(false);
+    const scannerType = ref("single"); //single, multi
+    const html5QrCode = ref(null);
+
+    // --- 2. FORM TRANSAKSI ---
     const form = useForm({
         input_type: "realtime",
         report_date: new Date().toISOString().slice(0, 10),
         items: [],
 
-        // Data Transaksi
+        // Pembayaran
         customer_id: null,
         payment_amount: 0,
         change_amount: 0,
         payment_method: "cash",
 
-        // Fitur Baru
-        discount_type: "fixed", // 'fixed' or 'percent'
-        discount_value: 0, // Nominal atau Angka Persen
+        // Diskon & Notes
+        discount_type: "fixed",
+        discount_value: 0,
         notes: "",
     });
 
-    // --- 1. LOCAL STORAGE LOGIC ---
-    onMounted(() => {
+    // --- 3. LIFECYCLE & INITIAL LOAD ---
+
+    onMounted(async () => {
+        // A. Load Produk Background
+        isFetchingData.value = true;
+        try {
+            const response = await axios.get(route("sales.products.lite"));
+            allProducts.value = response.data;
+        } catch (e) {
+            console.error("Gagal load produk:", e);
+            toast.error("Gagal memuat database produk");
+        } finally {
+            isFetchingData.value = false;
+        }
+
+        // B. Restore Local Storage (Draft)
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (savedData) {
             try {
                 const parsed = JSON.parse(savedData);
                 if (parsed.items) form.items = parsed.items;
-
                 form.payment_amount = parsed.payment_amount || 0;
                 form.payment_method = parsed.payment_method || "cash";
                 form.notes = parsed.notes || "";
@@ -57,7 +94,7 @@ export function usePosRealtime(props) {
         }
     });
 
-    // Auto Save
+    // Auto Save ke LocalStorage
     watch(
         [
             () => form.items,
@@ -84,9 +121,159 @@ export function usePosRealtime(props) {
         { deep: true }
     );
 
-    // --- 2. CALCULATIONS (CORE) ---
+    // --- [BARU] LOGIC CAMERA SCANNER ---
+    const startScanner = async (type, metode = "single") => {
+        activeScannerType.value = type;
+        scannerType.value = metode;
+        showScanner.value = true;
 
-    // Total Harga Barang (Sebelum Diskon Global)
+        await nextTick(); // Tunggu DOM render div id="reader"
+
+        const formatsToSupport = [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.QR_CODE,
+        ];
+        const qrCode = new Html5Qrcode("reader");
+        html5QrCode.value = qrCode;
+
+        qrCode
+            .start(
+                { facingMode: "environment" }, // Pakai kamera belakang
+                {
+                    fps: 10,
+                    qrbox: { width: 250, height: 150 },
+                    formatsToSupport: formatsToSupport,
+                },
+                (decodedText) => {
+                    // SAAT SCAN BERHASIL
+                    handleScanSuccess(decodedText);
+                },
+                (errorMessage) => {
+                    // ignore errors while scanning
+                }
+            )
+            .catch((err) => {
+                console.log(err);
+                activeScannerType.value = null;
+                showScanner.value = false;
+                alert("Gagal membuka kamera. Pastikan izin diberikan.");
+            });
+    };
+
+    const stopScanner = () => {
+        if (html5QrCode.value) {
+            html5QrCode.value
+                .stop()
+                .then(() => {
+                    html5QrCode.value.clear();
+                    activeScannerType.value = null;
+                    showScanner.value = false;
+                })
+                .catch((err) => console.log(err));
+        } else {
+            activeScannerType.value = null;
+            showScanner.value = false;
+        }
+    };
+
+    const handleScanSuccess = (code) => {
+        // 1. JIKA SCAN PRODUK
+        if (activeScannerType.value === "product") {
+            const product = props.products.find((p) => p.code == code);
+            if (product) {
+                addItem(product);
+                if (scannerType.value === "single") {
+                    stopScanner();
+                }
+            } else {
+                alert(`Produk ${code} tidak ditemukan!`);
+            }
+        }
+        // 2. JIKA SCAN MEMBER
+        else if (activeScannerType.value === "member") {
+            // Cari member berdasarkan Member Code ATAU No HP
+            const member = props.customers.find(
+                (c) => c.member_code == code || c.phone == code
+            );
+
+            if (member) {
+                selectMember(member); // Pilih member
+                stopScanner(); // Langsung tutup kamera kalau member ketemu
+                alert(`Member: ${member.name}`);
+            } else {
+                alert(`Member ${code} tidak terdaftar!`);
+            }
+        }
+    };
+
+    onBeforeUnmount(() => {
+        if (html5QrCode.value && html5QrCode.value.isScanning) {
+            html5QrCode.value.stop();
+        }
+    });
+
+    // --- 4. FILTERING LOGIC (OPTIMIZED) ---
+
+    // Filter Produk (Lokal)
+    const filteredProducts = computed(() => {
+        let result = allProducts.value;
+
+        // A. Filter Kategori
+        if (selectedCategory.value !== "all") {
+            result = result.filter(
+                (p) => p.category_id === selectedCategory.value
+            );
+        }
+
+        // B. Filter Search
+        if (searchQuery.value) {
+            const q = searchQuery.value.toLowerCase();
+            result = result.filter(
+                (p) =>
+                    p.name.toLowerCase().includes(q) ||
+                    p.code.toLowerCase().includes(q)
+            );
+        }
+
+        // C. Limit Render (Lazy Load)
+        return result.slice(0, displayLimit.value);
+    });
+
+    // Infinite Scroll Trigger
+    const loadMoreProducts = () => {
+        if (displayLimit.value < allProducts.value.length) {
+            displayLimit.value += 20;
+        }
+    };
+
+    // Filter Member (Server Side Search)
+    const handleSearchMember = debounce(async (query) => {
+        if (!query) {
+            memberSearchResults.value = [];
+            return;
+        }
+        isLoadingMember.value = true;
+        try {
+            // Pastikan route ini ada: Route::get('/sales/api/customers', ...)
+            const response = await axios.get(route("sales.search-customer"), {
+                params: { query },
+            });
+            memberSearchResults.value = response.data;
+        } catch (e) {
+            console.error(e);
+        } finally {
+            isLoadingMember.value = false;
+        }
+    }, 300);
+
+    // Watch perubahan input member search untuk trigger API
+    watch(memberSearch, (val) => {
+        handleSearchMember(val);
+    });
+
+    // --- 5. CALCULATIONS ---
+
     const subTotal = computed(() => {
         return form.items.reduce(
             (sum, item) => sum + (parseFloat(item.subtotal) || 0),
@@ -94,94 +281,66 @@ export function usePosRealtime(props) {
         );
     });
 
-    // Hitung Diskon Global
     const discountAmount = computed(() => {
         const val = parseFloat(form.discount_value) || 0;
         if (val <= 0) return 0;
-
         if (form.discount_type === "percent") {
-            // Max 100%
             const percent = val > 100 ? 100 : val;
             return Math.round((subTotal.value * percent) / 100);
-        } else {
-            // Fixed Rupiah
-            return val > subTotal.value ? subTotal.value : val;
         }
+        return val > subTotal.value ? subTotal.value : val;
     });
 
-    // Grand Total (Harus Dibayar)
     const grandTotal = computed(() => {
         const total = subTotal.value - discountAmount.value;
         return total > 0 ? total : 0;
     });
 
-    // Kembalian
     const changeAmount = computed(() => {
         const pay = parseFloat(form.payment_amount) || 0;
         return pay - grandTotal.value;
     });
 
-    // Validasi Pembayaran
     const isPaymentSufficient = computed(() => {
-        // Jika metode bukan cash (transfer/qris), biasanya dianggap pas
         if (form.payment_method !== "cash") return true;
         return (parseFloat(form.payment_amount) || 0) >= grandTotal.value;
     });
 
-    // Validasi Item Invalid (Untuk disable tombol checkout)
     const hasInvalidQty = computed(() => {
         return form.items.some(
             (item) => item.quantity <= 0 || isNaN(item.quantity)
         );
     });
 
-    // --- 3. MONEY SUGGESTIONS (SARAN UANG) ---
+    // --- 6. MONEY SUGGESTIONS ---
     const moneySuggestions = computed(() => {
         const total = grandTotal.value;
         if (total <= 0) return [];
-
-        const suggestions = [
-            {
-                label: "Uang Pas",
-                value: total,
-                class: "bg-lime-50 text-lime-600 border-lime-200",
-            },
-        ];
-
-        // Logic Pecahan Indonesia
+        const suggestions = [{ label: "Uang Pas", value: total }];
         const fractions = [2000, 5000, 10000, 20000, 50000, 100000];
 
-        // Cari pecahan terdekat di atas total
         fractions.forEach((frac) => {
-            if (frac > total) {
-                // Jangan duplikat jika sudah ada
-                if (!suggestions.find((s) => s.value === frac)) {
-                    suggestions.push({ label: rp(frac), value: frac });
-                }
+            if (frac > total && !suggestions.find((s) => s.value === frac)) {
+                suggestions.push({ label: rp(frac), value: frac });
             }
         });
-
-        // Tambahkan kelipatan 50rb/100rb terdekat jika nominal besar
         if (total > 50000) {
             const next50 = Math.ceil(total / 50000) * 50000;
             if (!suggestions.find((s) => s.value === next50)) {
                 suggestions.push({ label: rp(next50), value: next50 });
             }
         }
-
-        // Batasi max 4 saran biar layout rapi
         return suggestions.slice(0, 4);
     });
 
     const handleMoneyClick = (suggestion) => {
         form.payment_amount = suggestion.value;
     };
-
     const resetPayment = () => {
         form.payment_amount = 0;
     };
 
-    // --- 4. ITEM LOGIC & UPDATE QTY ---
+    // --- 7. CART ACTIONS & LOGIC ---
 
     const addItem = (product) => {
         if (parseFloat(product.stock) <= 0) {
@@ -219,65 +378,50 @@ export function usePosRealtime(props) {
 
     const removeItem = (index) => form.items.splice(index, 1);
 
-    // FUNGSI UPDATE QTY (Dipakai tombol +/-)
     const updateQty = (index, change) => {
         const item = form.items[index];
         const newQty = parseFloat(item.quantity) + change;
 
-        // Validasi
         if (newQty > item.stock_max) {
             toast.warning(`Stok sisa ${item.stock_max}`);
             return;
         }
         if (newQty <= 0) {
-            // Opsional: Hapus item atau set ke 1
-            if (confirm("Hapus item ini?")) {
-                removeItem(index);
-            }
+            if (confirm("Hapus item ini?")) removeItem(index);
             return;
         }
-
         item.quantity = newQty;
-        recalcFromQty(item); // Hitung ulang subtotal
+        recalcFromQty(item);
     };
 
-    // --- RECALCULATION LOGIC (Yang sudah kita bahas) ---
-
-    // A. User Ubah Qty -> Hitung Subtotal
+    // Recalculation Logics
     const recalcFromQty = (item) => {
         const isDecimal = item.unit?.is_decimal === 1;
         if (!isDecimal) {
             item.quantity = Math.round(item.quantity);
             if (item.quantity < 1) item.quantity = 1;
         }
-
         if (item.quantity > item.stock_max) {
-            toast.warning(`Stok sisa ${item.stock_max}`);
             item.quantity = item.stock_max;
+            toast.warning(`Stok sisa ${item.stock_max}`);
         }
-
         item.subtotal = Math.round(item.quantity * item.selling_price);
     };
 
-    // B. User Ubah Subtotal (Beli Nominal) -> Hitung Qty atau Harga
     const recalcFromSubtotal = (item) => {
         const targetSubtotal = parseFloat(item.subtotal) || 0;
         const currentPrice = parseFloat(item.selling_price) || 0;
         if (currentPrice <= 0) return;
 
-        const isDecimal = item.unit?.is_decimal === 1;
-
-        if (isDecimal) {
-            // Kasus Desimal: Ubah Qty
+        if (item.unit?.is_decimal === 1) {
             let newQty = targetSubtotal / currentPrice;
             if (newQty > item.stock_max) {
-                toast.warning("Melebihi sisa stok!");
                 newQty = item.stock_max;
                 item.subtotal = Math.round(newQty * currentPrice);
+                toast.warning("Melebihi sisa stok!");
             }
             item.quantity = parseFloat(newQty.toFixed(4));
         } else {
-            // Kasus Integer: Ubah Harga Satuan (Dangerous)
             if (
                 confirm(
                     `⚠️ Ubah harga satuan agar sesuai total Rp ${rp(
@@ -285,87 +429,29 @@ export function usePosRealtime(props) {
                     )}?`
                 )
             ) {
-                if (item.quantity > 0) {
-                    const newPrice = targetSubtotal / item.quantity;
-                    item.selling_price = Math.round(newPrice);
-                }
+                if (item.quantity > 0)
+                    item.selling_price = Math.round(
+                        targetSubtotal / item.quantity
+                    );
             } else {
-                // Cancel: Reset subtotal
                 item.subtotal = Math.round(item.quantity * item.selling_price);
             }
         }
     };
 
-    // C. User Ubah Harga Satuan -> Hitung Subtotal
     const recalcFromPrice = (item) => {
         item.subtotal = Math.round(item.quantity * item.selling_price);
     };
 
-    // --- 5. SEARCH ACTIONS ---
-
-    const handleSearch = debounce(async (query) => {
-        if (!query) {
-            searchResults.value = [];
-            return;
-        }
-        isLoadingSearch.value = true;
-        try {
-            const response = await axios.get(route("sales.search-product"), {
-                params: { query },
-            });
-            searchResults.value = response.data;
-        } catch (e) {
-            console.error(e);
-        } finally {
-            isLoadingSearch.value = false;
-        }
-    }, 300);
-
-    const handleSearchMember = debounce(async (query) => {
-        if (!query) {
-            memberSearchResults.value = [];
-            return;
-        }
-        isLoadingMember.value = true;
-        try {
-            const response = await axios.get(route("sales.search-customer"), {
-                params: { query },
-            });
-            memberSearchResults.value = response.data;
-        } catch (e) {
-            console.error(e);
-        } finally {
-            isLoadingMember.value = false;
-        }
-    }, 300);
-
+    // Member Selection
     const selectMember = (member) => {
         selectedMember.value = member;
         form.customer_id = member.id;
         memberSearchResults.value = [];
+        memberSearch.value = ""; // Clear input
     };
 
-    // --- 6. SUBMIT & CHECKOUT ---
-
-    // Wrapper untuk tombol "Proses Sekarang"
-    const handleCheckoutClick = () => {
-        // 1. Cek Keranjang
-        if (form.items.length === 0)
-            return toast.error("Keranjang masih kosong!");
-
-        // 2. Cek Qty Invalid
-        if (hasInvalidQty.value)
-            return toast.error("Ada item dengan jumlah 0 atau minus!");
-
-        // 3. Cek Pembayaran (Khusus metode Cash)
-        if (form.payment_method === "cash" && !isPaymentSufficient.value) {
-            return toast.error("Uang pembayaran kurang!");
-        }
-
-        // Lanjut Submit
-        submitTransaction();
-    };
-
+    // --- 8. CHECKOUT ---
     const submitTransaction = (printInvoice = false, callbacks = {}) => {
         form.change_amount = changeAmount.value;
         form.payment_amount = parseFloat(form.payment_amount);
@@ -381,7 +467,7 @@ export function usePosRealtime(props) {
                 form.reset();
                 form.items = [];
                 selectedMember.value = null;
-                toast.success("Transaksi Berhasil!");
+                // toast.success("Transaksi Berhasil!");
                 if (callbacks.onSuccess) callbacks.onSuccess(page);
             },
             onError: (err) => {
@@ -391,7 +477,6 @@ export function usePosRealtime(props) {
         });
     };
 
-    // Helper Formatter
     const rp = (val) =>
         new Intl.NumberFormat("id-ID", {
             style: "currency",
@@ -399,16 +484,38 @@ export function usePosRealtime(props) {
             minimumFractionDigits: 0,
         }).format(val);
 
+    // --- RETURN ---
     return {
-        // State
+        // State Form & Data
         form,
-        searchResults,
-        isLoadingSearch,
+        allProducts,
+        filteredProducts,
+        isFetchingData,
+
+        // Scanner
+        startScanner,
+        stopScanner,
+        activeScannerType,
+        scannerType,
+        showScanner,
+
+        // Search & Filters
+        searchQuery,
+        selectedCategory,
+        loadMoreProducts,
+
+        // Member
+        memberSearch,
         memberSearchResults,
         isLoadingMember,
         selectedMember,
+        selectMember,
+        removeMember: () => {
+            selectedMember.value = null;
+            form.customer_id = null;
+        },
 
-        // Computed
+        // Computed Values
         subTotal,
         discountAmount,
         grandTotal,
@@ -417,31 +524,18 @@ export function usePosRealtime(props) {
         hasInvalidQty,
         moneySuggestions,
 
-        // Core Actions
+        // Actions
         addItem,
         removeItem,
         updateQty,
-
-        // Calculation Actions
         recalcFromQty,
         recalcFromSubtotal,
         recalcFromPrice,
-
-        // Payment Actions
         handleMoneyClick,
         resetPayment,
-        handleCheckoutClick,
-
-        // Search Actions
-        handleSearch,
-        handleSearchMember,
-        selectMember,
-        removeMember: () => {
-            selectedMember.value = null;
-            form.customer_id = null;
-        },
-
         submitTransaction,
+
+        // Utils
         rp,
     };
 }

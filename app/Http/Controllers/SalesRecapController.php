@@ -37,7 +37,6 @@ class SalesRecapController extends Controller
     public function posIndex(Request $request)
     {
         return Inertia::render('Sale/Pos/index', [
-            'products' => Product::with(['category', 'unit'])->where('stock', '>', 0)->orderBy('name')->get(),
             'categories' => $this->categoryService->getAll(),
             'customers' => Customer::select('id', 'name', 'member_code', 'phone')->get(),
         ]);
@@ -235,6 +234,7 @@ class SalesRecapController extends Controller
                 'id',
                 'code',
                 'name',
+                'category_id',
                 'selling_price', // atau price
                 'stock',
                 'image_path', // string pendek
