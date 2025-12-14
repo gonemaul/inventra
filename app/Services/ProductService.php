@@ -396,7 +396,7 @@ class ProductService
 
             // Detail Produk
             'name' => 'required|string|max:255',
-            // 'code' => 'string|max:255|unique:products,code', // 'code' dari migrasi Anda
+            'code' => 'nullable|string|max:255|unique:products,code', // 'code' dari migrasi Anda
             'description' => 'required|string',
             // 'image_path' => 'nullable|string|max:255', // 'image_path' dari migrasi Anda
             'status' => ['required', Rule::in(Product::STATUSES)], // Validasi string 'active'/'draft'
@@ -420,7 +420,9 @@ class ProductService
         );
         return DB::transaction(function () use ($validator, $imageFile, $generatedCode) {
             $validatedData = $validator->validated();
-            $validatedData['code'] = $generatedCode;
+            if (!$validatedData['code']) {
+                $validatedData['code'] = $generatedCode;
+            }
             if ($imageFile) {
                 $imageValidator = Validator::make(['image' => $imageFile], [
                     'image' => 'nullable|image|mimes:jpeg,png,webp|max:20480' // Maks 1MB

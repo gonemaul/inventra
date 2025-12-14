@@ -54,7 +54,7 @@ class BackupTelegramNotification
         // 3. JIKA CLEANUP (BERSIH-BERSIH) SUKSES
         elseif ($event instanceof CleanupWasSuccessful) {
             // Opsional: Aktifkan jika ingin notif saat file lama dihapus
-            // $message = "🧹 *CLEANUP SELESAI* \nFile backup lama berhasil dihapus untuk menghemat ruang.";
+            $message = "🧹 *CLEANUP SELESAI* \nFile backup lama berhasil dihapus untuk menghemat ruang.";
         }
 
         // --- KIRIM KE TELEGRAM ---
