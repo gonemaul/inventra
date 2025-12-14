@@ -69,11 +69,11 @@ class MasterDataSeeder extends Seeder
 
         // --- Units (Minimal 5) ---
         $units = [
-            ['name' => 'Pcs', 'code' => 'PCS', 'description' => 'Satuan dasar per buah.'],
-            ['name' => 'Botol', 'code' => 'BTL', 'description' => 'Kemasan botol kecil/retail.'],
-            ['name' => 'Dus', 'code' => 'DUS', 'description' => 'Satuan kardus isi 12/24.'],
-            ['name' => 'Liter', 'code' => 'LTR', 'description' => 'Satuan ukur cairan.'],
-            ['name' => 'Set', 'code' => 'SET', 'description' => 'Satu set (misal: 1 set kampas rem).'],
+            ['name' => 'Pcs', 'code' => 'PCS', 'description' => 'Satuan dasar per buah.', 'is_decimal' => false],
+            ['name' => 'Botol', 'code' => 'BTL', 'description' => 'Kemasan botol kecil/retail.', 'is_decimal' => false],
+            ['name' => 'Dus', 'code' => 'DUS', 'description' => 'Satuan kardus isi 12/24.', 'is_decimal' => false],
+            ['name' => 'Liter', 'code' => 'LTR', 'description' => 'Satuan ukur cairan.', 'is_decimal' => true],
+            ['name' => 'Set', 'code' => 'SET', 'description' => 'Satu set (misal: 1 set kampas rem).', 'is_decimal' => false],
         ];
         Unit::insert($units);
 

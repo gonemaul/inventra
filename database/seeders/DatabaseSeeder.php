@@ -35,6 +35,7 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call(MasterDataSeeder::class);
+        $this->call(SettingSeeder::class);
         // $this->call(ProductSeeder::class);
         // Product::create([
         //     'category_id' => 1,

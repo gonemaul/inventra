@@ -37,7 +37,7 @@ class SalesRecapController extends Controller
     public function posIndex(Request $request)
     {
         return Inertia::render('Sale/Pos/index', [
-            'products' => Product::with('category')->where('stock', '>', 0)->orderBy('name')->get(),
+            'products' => Product::with(['category', 'unit'])->where('stock', '>', 0)->orderBy('name')->get(),
             'categories' => $this->categoryService->getAll(),
             'customers' => Customer::select('id', 'name', 'member_code', 'phone')->get(),
         ]);
@@ -68,9 +68,31 @@ class SalesRecapController extends Controller
             'payment_amount' => 'nullable|numeric|min:0',
             'change_amount' => 'numeric|min:0',
             'notes' => 'nullable|string|max:500',
+            'discount_type' => ['nullable', Rule::in(Sale::DISCON_TYPES)],
+            'discount_value' => 'nullable|numeric|min:0',
+            // validasi items
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|numeric|min:0.0001', // Support Desimal
+            'items.*.quantity' => [
+                'required',
+                'numeric',
+                'min:0.0001',
+                // Custom Validation: Cek apakah unit mengizinkan desimal
+                function ($attribute, $value, $fail) use ($request) {
+                    // Ambil index dari items.*.qty (ex: items.0.qty -> 0)
+                    $index = explode('.', $attribute)[1];
+                    $productId = $request->input("items.{$index}.id");
+
+                    $product = Product::with('unit')->find($productId);
+
+                    if ($product && $product->unit && !$product->unit->is_decimal) {
+                        // Jika unit TIDAK boleh desimal, cek apakah nilai integer
+                        if (floor($value) != $value) {
+                            $fail("Produk {$product->name} (Satuan: {$product->unit->name}) tidak boleh pecahan (koma).");
+                        }
+                    }
+                }
+            ], // Support Desimal
             'items.*.selling_price' => 'required|numeric|min:0',
         ], [
             'items.min' => 'Keranjang penjualan tidak boleh kosong.',
@@ -201,5 +223,30 @@ class SalesRecapController extends Controller
 
         // Return view blade khusus struk
         return view('print.receipt', compact('sale'));
+    }
+
+    public function getAllProductsLite()
+    {
+        // Gunakan cursor atau chunk jika datanya puluhan ribu,
+        // tapi untuk < 10.000, get() dengan select spesifik sudah sangat cepat.
+
+        $products = Product::query()
+            ->select([
+                'id',
+                'code',
+                'name',
+                'selling_price', // atau price
+                'stock',
+                'image_path', // string pendek
+                'unit_id'
+            ])
+            ->with(['unit:id,name,is_decimal']) // Eager load unit, ambil nama saja
+            ->where('stock', '>', 0) // Opsional: hanya yang ada stok
+            ->orderBy('name')
+            ->get();
+
+        // Transform sedikit agar payload makin kecil (Opsional)
+        // Di sini kita kirim raw JSON agar cepat
+        return response()->json($products);
     }
 }

@@ -50,7 +50,6 @@ const submitImport = () => {
 
     importForm.post(route("data.import.store"), {
         onSuccess: () => {
-            alert("Import Berhasil!");
             importForm.reset();
             fileInput.value.value = null;
         },

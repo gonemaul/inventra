@@ -42,6 +42,13 @@ class Sale extends Model
         self::PAYMENT_METHOD_CASH,
         self::PAYMENT_METHOD_EWALLET
     ];
+
+    const DISCON_PERCENT = 'percent';
+    const DISCON_FIXED = 'fixed';
+    const DISCON_TYPES = [
+        self::DISCON_PERCENT,
+        self::DISCON_FIXED
+    ];
     // Relasi ke Item Penjualan
     public function items()
     {

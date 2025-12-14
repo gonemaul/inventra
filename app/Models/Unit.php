@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Unit extends Model
 {
     use SoftDeletes;
-    protected $fillable = ['code', 'name', 'description'];
+    protected $fillable = ['code', 'name', 'description', 'is_decimal'];
 }

@@ -12,40 +12,6 @@ use App\Models\SalesRecap; // Pastikan Model bernama Sale (sesuai migrasi terakh
 
 class SalesRecapService
 {
-    protected $decimalUnits = [
-        // Berat
-        "kg",
-        "kilogram",
-        "gram",
-        "gr",
-        "g",
-        "ons",
-        "ton",
-        "kwintal",
-        "mg",
-
-        // Volume
-        "liter",
-        "ltr",
-        "l",
-        "ml",
-        "cc",
-        "m3",
-        "kubik",
-        "galon",
-
-        // Panjang/Luas
-        "meter",
-        "mtr",
-        "m",
-        "cm",
-        "mm",
-        "m2",
-        "yard",
-        "kaki",
-        "inch",
-        "inci",
-    ];
     protected $stockService;
     public function __construct(StockService $stockService)
     {
@@ -132,14 +98,14 @@ class SalesRecapService
                     throw new Exception("Stok tidak cukup untuk produk: {$product->name}. Sisa: {$product->stock}");
                 }
 
-                $unitName = strtolower($product->unit->name ?? '');
-                $isDecimalAllowed = in_array($unitName, $this->decimalUnits);
+                // $unitName = strtolower($product->unit->name ?? '');
+                // $isDecimalAllowed = in_array($unitName, $this->decimalUnits);
 
-                // Cek apakah inputQty mengandung koma (misal 1.5)
-                // fmod(1.5, 1) hasilnya 0.5. fmod(1.0, 1) hasilnya 0.
-                if (!$isDecimalAllowed && fmod($inputQty, 1) !== 0.0) {
-                    throw new Exception("Produk {$product->name} dengan satuan '{$product->unit->name}' tidak boleh desimal (0.xx).");
-                }
+                // // Cek apakah inputQty mengandung koma (misal 1.5)
+                // // fmod(1.5, 1) hasilnya 0.5. fmod(1.0, 1) hasilnya 0.
+                // if (!$isDecimalAllowed && fmod($inputQty, 1) !== 0.0) {
+                //     throw new Exception("Produk {$product->name} dengan satuan '{$product->unit->name}' tidak boleh desimal (0.xx).");
+                // }
 
                 // Jika harga jual < harga modal, sistem bisa menolak atau membiarkan
                 // if ($itemData['selling_price'] < $product->purchase_price) {
@@ -190,11 +156,26 @@ class SalesRecapService
                 $totalQty += $inputQty;
             }
 
+            $discountTotal = 0;
+            if ($data['discount_value'] > 0) {
+                if ($data['discount_type'] === Sale::DISCON_PERCENT) {
+                    $discountTotal = ($totalRevenue * $data['discount_value']) / 100;
+                } else {
+                    $discountTotal = $data['discount_value'];
+                }
+            }
+
+            if ($discountTotal > $totalRevenue) $discountTotal = $totalRevenue;
+
+            $grandTotal = $totalRevenue - $discountTotal;
+
             // 3. Update Header dengan Total Final
             $sale->update(attributes: [
-                'total_revenue' => $totalRevenue,
+                'total_revenue' => $grandTotal,
                 'total_profit' => $totalProfit,
-                // Kita simpan ringkasan di JSON (sesuai migrasi) agar dashboard ringan
+                'discount_type' => $data['discount_type'], // 'percent' atau 'fixed'
+                'discount_value' => $data['discount_value'], // Input user
+                'discount_total' => $discountTotal, // Rupiah potongannya
                 'financial_summary' => [
                     'item_count' => $itemsCount,
                     'total_qty' => $totalQty,

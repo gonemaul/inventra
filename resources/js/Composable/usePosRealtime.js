@@ -1,66 +1,37 @@
 import { ref, computed, watch, onMounted } from "vue";
-import { useForm, usePage } from "@inertiajs/vue3";
+import { useForm } from "@inertiajs/vue3";
 import axios from "axios";
 import debounce from "lodash/debounce";
 import { useToast } from "vue-toastification";
 
 export function usePosRealtime(props) {
-    // --- STATE ---
     const toast = useToast();
-    const STORAGE_KEY = "POS_REALTIME_DRAFT_V1"; // Key BEDA dengan Recap
+    const STORAGE_KEY = "POS_REALTIME_DRAFT_V3"; // Naikkan versi key biar fresh
 
+    // --- STATE UI ---
+    const searchResults = ref([]);
+    const memberSearchResults = ref([]);
+    const isLoadingSearch = ref(false);
+    const isLoadingMember = ref(false);
+    const selectedMember = ref(null);
+
+    // --- FORM UTAMA ---
     const form = useForm({
-        input_type: "realtime", // Penanda khusus Realtime
-        report_date: new Date().toISOString().substr(0, 10), // Tetap kirim tanggal hari ini
+        input_type: "realtime",
+        report_date: new Date().toISOString().slice(0, 10),
         items: [],
 
-        // --- TAMBAHAN KHUSUS POS ---
+        // Data Transaksi
         customer_id: null,
         payment_amount: 0,
         change_amount: 0,
         payment_method: "cash",
+
+        // Fitur Baru
+        discount_type: "fixed", // 'fixed' or 'percent'
+        discount_value: 0, // Nominal atau Angka Persen
         notes: "",
     });
-
-    // State Produk
-    const searchResults = ref([]);
-    const isLoadingSearch = ref(false);
-
-    // State Member (Baru)
-    const memberSearchResults = ref([]);
-    const isLoadingMember = ref(false);
-    const selectedMember = ref(null);
-
-    // --- CONFIG (SAMA) ---
-    const DECIMAL_UNITS = [
-        "kg",
-        "kilogram",
-        "gram",
-        "gr",
-        "g",
-        "ons",
-        "ton",
-        "kwintal",
-        "mg",
-        "liter",
-        "ltr",
-        "l",
-        "ml",
-        "cc",
-        "m3",
-        "kubik",
-        "galon",
-        "meter",
-        "mtr",
-        "m",
-        "cm",
-        "mm",
-        "m2",
-        "yard",
-        "kaki",
-        "inch",
-        "inci",
-    ];
 
     // --- 1. LOCAL STORAGE LOGIC ---
     onMounted(() => {
@@ -68,36 +39,32 @@ export function usePosRealtime(props) {
         if (savedData) {
             try {
                 const parsed = JSON.parse(savedData);
+                if (parsed.items) form.items = parsed.items;
 
-                // Restore Items
-                if (parsed.items && parsed.items.length > 0) {
-                    form.items = parsed.items;
-                }
-
-                // Restore Payment & Notes
                 form.payment_amount = parsed.payment_amount || 0;
                 form.payment_method = parsed.payment_method || "cash";
                 form.notes = parsed.notes || "";
+                form.discount_type = parsed.discount_type || "fixed";
+                form.discount_value = parsed.discount_value || 0;
 
-                // Restore Member
                 if (parsed.selectedMember) {
                     selectedMember.value = parsed.selectedMember;
                     form.customer_id = parsed.selectedMember.id;
                 }
             } catch (e) {
-                console.error("Error parsing local storage", e);
                 localStorage.removeItem(STORAGE_KEY);
             }
         }
     });
 
-    // Simpan setiap kali ada perubahan data penting
+    // Auto Save
     watch(
         [
             () => form.items,
             () => form.customer_id,
             () => form.payment_amount,
-            () => selectedMember.value,
+            () => form.discount_value,
+            () => form.notes,
         ],
         () => {
             localStorage.setItem(
@@ -108,64 +75,117 @@ export function usePosRealtime(props) {
                     payment_amount: form.payment_amount,
                     payment_method: form.payment_method,
                     notes: form.notes,
-                    selectedMember: selectedMember.value, // Simpan object member biar nama gak ilang
+                    discount_type: form.discount_type,
+                    discount_value: form.discount_value,
+                    selectedMember: selectedMember.value,
                 })
             );
         },
         { deep: true }
     );
 
-    // --- HELPERS (SAMA) ---
-    const isDecimalAllowed = (unit) =>
-        unit && DECIMAL_UNITS.includes(unit.toLowerCase());
+    // --- 2. CALCULATIONS (CORE) ---
 
-    const checkIntegerInput = (event, unit) => {
-        if (isDecimalAllowed(unit)) return;
-        if (event.key === "." || event.key === ",") event.preventDefault();
-    };
-
-    const formatCurrency = (val) =>
-        new Intl.NumberFormat("id-ID", {
-            style: "currency",
-            currency: "IDR",
-            minimumFractionDigits: 0,
-        }).format(val);
-
-    // --- COMPUTED VALIDATIONS ---
-    const hasInvalidQty = computed(() => {
-        return form.items.some((item) => parseFloat(item.quantity) <= 0);
-    });
-
-    const hasStockError = computed(() => {
-        return form.items.some(
-            (item) => parseFloat(item.quantity) > parseFloat(item.stock_max)
+    // Total Harga Barang (Sebelum Diskon Global)
+    const subTotal = computed(() => {
+        return form.items.reduce(
+            (sum, item) => sum + (parseFloat(item.subtotal) || 0),
+            0
         );
     });
 
-    const grandTotal = computed(() =>
-        form.items.reduce(
-            (sum, item) => sum + (parseFloat(item.subtotal) || 0),
-            0
-        )
-    );
+    // Hitung Diskon Global
+    const discountAmount = computed(() => {
+        const val = parseFloat(form.discount_value) || 0;
+        if (val <= 0) return 0;
 
-    // Hitung Kembalian Otomatis
-    const changeAmount = computed(() => {
-        const pay = parseFloat(form.payment_amount) || 0;
-        const total = grandTotal.value;
-        return pay - total;
+        if (form.discount_type === "percent") {
+            // Max 100%
+            const percent = val > 100 ? 100 : val;
+            return Math.round((subTotal.value * percent) / 100);
+        } else {
+            // Fixed Rupiah
+            return val > subTotal.value ? subTotal.value : val;
+        }
     });
 
+    // Grand Total (Harus Dibayar)
+    const grandTotal = computed(() => {
+        const total = subTotal.value - discountAmount.value;
+        return total > 0 ? total : 0;
+    });
+
+    // Kembalian
+    const changeAmount = computed(() => {
+        const pay = parseFloat(form.payment_amount) || 0;
+        return pay - grandTotal.value;
+    });
+
+    // Validasi Pembayaran
     const isPaymentSufficient = computed(() => {
+        // Jika metode bukan cash (transfer/qris), biasanya dianggap pas
+        if (form.payment_method !== "cash") return true;
         return (parseFloat(form.payment_amount) || 0) >= grandTotal.value;
     });
 
-    // --- ACTIONS ---
+    // Validasi Item Invalid (Untuk disable tombol checkout)
+    const hasInvalidQty = computed(() => {
+        return form.items.some(
+            (item) => item.quantity <= 0 || isNaN(item.quantity)
+        );
+    });
 
-    // 1. Product Actions
+    // --- 3. MONEY SUGGESTIONS (SARAN UANG) ---
+    const moneySuggestions = computed(() => {
+        const total = grandTotal.value;
+        if (total <= 0) return [];
+
+        const suggestions = [
+            {
+                label: "Uang Pas",
+                value: total,
+                class: "bg-lime-50 text-lime-600 border-lime-200",
+            },
+        ];
+
+        // Logic Pecahan Indonesia
+        const fractions = [2000, 5000, 10000, 20000, 50000, 100000];
+
+        // Cari pecahan terdekat di atas total
+        fractions.forEach((frac) => {
+            if (frac > total) {
+                // Jangan duplikat jika sudah ada
+                if (!suggestions.find((s) => s.value === frac)) {
+                    suggestions.push({ label: rp(frac), value: frac });
+                }
+            }
+        });
+
+        // Tambahkan kelipatan 50rb/100rb terdekat jika nominal besar
+        if (total > 50000) {
+            const next50 = Math.ceil(total / 50000) * 50000;
+            if (!suggestions.find((s) => s.value === next50)) {
+                suggestions.push({ label: rp(next50), value: next50 });
+            }
+        }
+
+        // Batasi max 4 saran biar layout rapi
+        return suggestions.slice(0, 4);
+    });
+
+    const handleMoneyClick = (suggestion) => {
+        form.payment_amount = suggestion.value;
+    };
+
+    const resetPayment = () => {
+        form.payment_amount = 0;
+    };
+
+    // --- 4. ITEM LOGIC & UPDATE QTY ---
+
     const addItem = (product) => {
         if (parseFloat(product.stock) <= 0) {
-            toast.error(`Stok ${product.name} habis. Tidak bisa ditambahkan.`);
+            toast.error("Stok habis!");
             return;
         }
 
@@ -175,74 +195,114 @@ export function usePosRealtime(props) {
 
         if (existingItem) {
             if (existingItem.quantity + 1 > product.stock) {
-                toast.error("Melebihi sisa stok!");
+                toast.warning("Stok maksimal!");
                 return;
             }
             existingItem.quantity++;
-            calculateSubtotal(existingItem);
+            recalcFromQty(existingItem);
         } else {
+            const price = parseFloat(product.selling_price || product.price);
             form.items.push({
                 product_id: product.id,
                 code: product.code,
                 name: product.name,
                 unit: product.unit,
-                category: product.category?.name || "-",
-                brand: product.brand || "-",
                 stock_max: parseFloat(product.stock),
                 image: product.image_path,
-                selling_price: parseFloat(
-                    product.selling_price || product.price
-                ), // Handle nama kolom beda
+                selling_price: price,
+                original_price: price,
                 quantity: 1,
-                subtotal: parseFloat(product.selling_price || product.price),
-                // Flag untuk POS
-                is_price_locked: true,
+                subtotal: price,
             });
         }
     };
 
     const removeItem = (index) => form.items.splice(index, 1);
 
-    // Helper khusus POS: Update Qty via Tombol +/-
+    // FUNGSI UPDATE QTY (Dipakai tombol +/-)
     const updateQty = (index, change) => {
         const item = form.items[index];
         const newQty = parseFloat(item.quantity) + change;
 
+        // Validasi
         if (newQty > item.stock_max) {
-            toast.error("Stok Maksimal!");
+            toast.warning(`Stok sisa ${item.stock_max}`);
             return;
         }
         if (newQty <= 0) {
-            // Opsional: Hapus jika 0 atau biarkan 0 tapi validasi nanti
-            removeItem(index);
+            // Opsional: Hapus item atau set ke 1
+            if (confirm("Hapus item ini?")) {
+                removeItem(index);
+            }
             return;
         }
 
         item.quantity = newQty;
-        calculateSubtotal(item);
+        recalcFromQty(item); // Hitung ulang subtotal
     };
 
-    const calculateSubtotal = (item) => {
-        const qty = parseFloat(item.quantity) || 0;
-        const price = parseFloat(item.selling_price) || 0;
-        item.subtotal = Math.round(qty * price);
+    // --- RECALCULATION LOGIC (Yang sudah kita bahas) ---
+
+    // A. User Ubah Qty -> Hitung Subtotal
+    const recalcFromQty = (item) => {
+        const isDecimal = item.unit?.is_decimal === 1;
+        if (!isDecimal) {
+            item.quantity = Math.round(item.quantity);
+            if (item.quantity < 1) item.quantity = 1;
+        }
+
+        if (item.quantity > item.stock_max) {
+            toast.warning(`Stok sisa ${item.stock_max}`);
+            item.quantity = item.stock_max;
+        }
+
+        item.subtotal = Math.round(item.quantity * item.selling_price);
     };
 
-    // Fungsi handle input manual qty (biar sinkron dengan logic rekap)
-    const calculateQty = (item) => {
-        // Di POS biasanya kita edit Qty -> Subtotal berubah.
-        // Tapi kalau mau edit Subtotal -> Qty berubah (Logic Rekap), fungsi ini tetap ada.
-        const total = parseFloat(item.subtotal) || 0;
-        const price = parseFloat(item.selling_price) || 0;
-        if (price > 0) {
-            let result = total / price;
-            item.quantity = isDecimalAllowed(item.unit)
-                ? parseFloat(result.toFixed(4))
-                : Math.round(result);
+    // B. User Ubah Subtotal (Beli Nominal) -> Hitung Qty atau Harga
+    const recalcFromSubtotal = (item) => {
+        const targetSubtotal = parseFloat(item.subtotal) || 0;
+        const currentPrice = parseFloat(item.selling_price) || 0;
+        if (currentPrice <= 0) return;
+
+        const isDecimal = item.unit?.is_decimal === 1;
+
+        if (isDecimal) {
+            // Kasus Desimal: Ubah Qty
+            let newQty = targetSubtotal / currentPrice;
+            if (newQty > item.stock_max) {
+                toast.warning("Melebihi sisa stok!");
+                newQty = item.stock_max;
+                item.subtotal = Math.round(newQty * currentPrice);
+            }
+            item.quantity = parseFloat(newQty.toFixed(4));
+        } else {
+            // Kasus Integer: Ubah Harga Satuan (Dangerous)
+            if (
+                confirm(
+                    `⚠️ Ubah harga satuan agar sesuai total Rp ${rp(
+                        targetSubtotal
+                    )}?`
+                )
+            ) {
+                if (item.quantity > 0) {
+                    const newPrice = targetSubtotal / item.quantity;
+                    item.selling_price = Math.round(newPrice);
+                }
+            } else {
+                // Cancel: Reset subtotal
+                item.subtotal = Math.round(item.quantity * item.selling_price);
+            }
         }
     };
 
-    // 2. Search Product Action
+    // C. User Ubah Harga Satuan -> Hitung Subtotal
+    const recalcFromPrice = (item) => {
+        item.subtotal = Math.round(item.quantity * item.selling_price);
+    };
+
+    // --- 5. SEARCH ACTIONS ---
+
     const handleSearch = debounce(async (query) => {
         if (!query) {
             searchResults.value = [];
@@ -261,7 +321,6 @@ export function usePosRealtime(props) {
         }
     }, 300);
 
-    // 3. Search Member Action (BARU)
     const handleSearchMember = debounce(async (query) => {
         if (!query) {
             memberSearchResults.value = [];
@@ -269,7 +328,6 @@ export function usePosRealtime(props) {
         }
         isLoadingMember.value = true;
         try {
-            // Asumsi ada route sales.search-customer
             const response = await axios.get(route("sales.search-customer"), {
                 params: { query },
             });
@@ -284,140 +342,106 @@ export function usePosRealtime(props) {
     const selectMember = (member) => {
         selectedMember.value = member;
         form.customer_id = member.id;
-        memberSearchResults.value = []; // Clear hasil search
+        memberSearchResults.value = [];
     };
 
-    const removeMember = () => {
-        selectedMember.value = null;
-        form.customer_id = null;
+    // --- 6. SUBMIT & CHECKOUT ---
+
+    // Wrapper untuk tombol "Proses Sekarang"
+    const handleCheckoutClick = () => {
+        // 1. Cek Keranjang
+        if (form.items.length === 0)
+            return toast.error("Keranjang masih kosong!");
+
+        // 2. Cek Qty Invalid
+        if (hasInvalidQty.value)
+            return toast.error("Ada item dengan jumlah 0 atau minus!");
+
+        // 3. Cek Pembayaran (Khusus metode Cash)
+        if (form.payment_method === "cash" && !isPaymentSufficient.value) {
+            return toast.error("Uang pembayaran kurang!");
+        }
+
+        // Lanjut Submit
+        submitTransaction();
     };
 
-    // --- SUBMIT ---
-    const submitForm = () => {
-        // 1. Validasi Keranjang Kosong
-        if (form.items.length === 0) {
-            toast.error("Keranjang belanja kosong!");
-            return;
-        }
-
-        // 2. Validasi Qty Invalid
-        if (hasInvalidQty.value) {
-            toast.error("Ada produk dengan Qty 0.");
-            return;
-        }
-
-        // 3. Validasi Stok
-        if (hasStockError.value) {
-            const badItem = form.items.find(
-                (item) => parseFloat(item.quantity) > parseFloat(item.stock_max)
-            );
-            toast.error(`Stok tidak cukup: ${badItem.name}`);
-            return;
-        }
-
-        // 4. Validasi Pembayaran (KHUSUS POS)
-        if (!isPaymentSufficient.value) {
-            toast.error("Uang pembayaran kurang!");
-            return;
-        }
-
-        // Hitung Kembalian sebelum kirim (Opsional, backend bisa hitung ulang)
+    const submitTransaction = (printInvoice = false, callbacks = {}) => {
         form.change_amount = changeAmount.value;
+        form.payment_amount = parseFloat(form.payment_amount);
 
-        // Post ke Route Store
-        form.post(route("sales.pos.store"), {
-            onSuccess: () => {
+        form.transform((data) => ({
+            ...data,
+            print_invoice: printInvoice,
+        })).post(route("sales.pos.store"), {
+            onStart: callbacks.onStart,
+            onFinish: callbacks.onFinish,
+            onSuccess: (page) => {
                 localStorage.removeItem(STORAGE_KEY);
                 form.reset();
                 form.items = [];
                 selectedMember.value = null;
-                // Toast success otomatis dari Inertia flash message atau manual:
                 toast.success("Transaksi Berhasil!");
+                if (callbacks.onSuccess) callbacks.onSuccess(page);
             },
-            onError: (errors) => {
-                console.error(errors);
-                toast.error("Gagal memproses transaksi.");
+            onError: (err) => {
+                console.error(err);
+                toast.error("Gagal memproses transaksi");
             },
         });
     };
-    const submitTransaction = (printInvoice = false, callbacks = {}) => {
-        // 1. Validasi Ulang (Safety Layer)
-        if (form.items.length === 0) return toast.error("Keranjang kosong!");
-        if (hasInvalidQty.value) return toast.error("Qty tidak valid!");
-        if (hasStockError.value) return toast.error("Stok tidak cukup!");
-        if (!isPaymentSufficient.value) return toast.error("Uang kurang!");
 
-        // Hitung kembalian final
-        form.change_amount = changeAmount.value;
-
-        // 2. Transform Data (Sisipkan flag print) & POST
-        form.transform((data) => ({
-            ...data,
-            print_invoice: printInvoice, // Kirim status cetak ke backend
-        })).post(route("sales.pos.store"), {
-            onStart: () => {
-                if (callbacks.onStart) callbacks.onStart();
-            },
-            onFinish: () => {
-                if (callbacks.onFinish) callbacks.onFinish();
-            },
-            onSuccess: (page) => {
-                localStorage.removeItem(STORAGE_KEY);
-                form.reset();
-                form.items = []; // Kosongkan cart visual
-
-                selectedMember.value = null;
-                memberSearchResults.value = [];
-
-                toast.success("Transaksi Berhasil!");
-
-                if (callbacks.onSuccess) {
-                    callbacks.onSuccess(page);
-                }
-            },
-            onError: (errors) => {
-                console.error(errors);
-                toast.error("Gagal menyimpan transaksi.");
-            },
-        });
-    };
+    // Helper Formatter
+    const rp = (val) =>
+        new Intl.NumberFormat("id-ID", {
+            style: "currency",
+            currency: "IDR",
+            minimumFractionDigits: 0,
+        }).format(val);
 
     return {
         // State
         form,
         searchResults,
         isLoadingSearch,
-
-        // State Member
         memberSearchResults,
         isLoadingMember,
         selectedMember,
 
-        // Actions Product
-        addItem,
-        removeItem,
-        updateQty, // New helper
-        handleSearch,
-        calculateSubtotal,
-        calculateQty,
-
-        // Actions Member
-        handleSearchMember,
-        selectMember,
-        removeMember,
-
-        // Helper & Validations
-        checkIntegerInput,
-        formatCurrency,
+        // Computed
+        subTotal,
+        discountAmount,
         grandTotal,
-        hasInvalidQty,
-        hasStockError,
-
-        // Payment Validations
         changeAmount,
         isPaymentSufficient,
+        hasInvalidQty,
+        moneySuggestions,
 
-        // Core
+        // Core Actions
+        addItem,
+        removeItem,
+        updateQty,
+
+        // Calculation Actions
+        recalcFromQty,
+        recalcFromSubtotal,
+        recalcFromPrice,
+
+        // Payment Actions
+        handleMoneyClick,
+        resetPayment,
+        handleCheckoutClick,
+
+        // Search Actions
+        handleSearch,
+        handleSearchMember,
+        selectMember,
+        removeMember: () => {
+            selectedMember.value = null;
+            form.customer_id = null;
+        },
+
         submitTransaction,
+        rp,
     };
 }
