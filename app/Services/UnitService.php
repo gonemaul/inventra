@@ -43,6 +43,7 @@ class UnitService
             'code' => 'required|string|max:20|unique:units,code', // 'unique' di tabel 'units', kolom 'code'
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
+            'is_decimal' => 'boolean'
         ]);
 
         if ($validator->fails()) {

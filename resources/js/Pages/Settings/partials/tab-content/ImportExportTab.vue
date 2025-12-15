@@ -127,7 +127,7 @@ const submitImport = () => {
                         type="file"
                         ref="fileInput"
                         accept=".xlsx"
-                        class="block w-full mt-1 text-sm text-gray-500 border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-bold file:bg-lime-50 file:text-lime-700 hover:file:bg-lime-100"
+                        class="block w-full mt-1 text-sm text-gray-500 border border-gray-300 rounded-lg file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-bold file:bg-lime-50 file:text-lime-700 hover:file:bg-lime-100"
                     />
                 </div>
 
@@ -145,14 +145,44 @@ const submitImport = () => {
 
                 <div
                     v-if="importErrors.length > 0"
-                    class="p-3 mt-4 overflow-y-auto text-xs text-red-600 border border-red-200 rounded-lg bg-red-50 max-h-32"
+                    class="p-4 mt-4 border border-red-200 rounded-lg bg-red-50 dark:bg-red-900/20 dark:border-red-800"
                 >
-                    <strong>Gagal Import:</strong>
-                    <ul class="mt-1 list-disc list-inside">
-                        <li v-for="(err, i) in importErrors" :key="i">
-                            {{ err }}
-                        </li>
-                    </ul>
+                    <div class="flex items-start">
+                        <div class="flex-shrink-0">
+                            <svg
+                                class="w-5 h-5 text-red-400 dark:text-red-300"
+                                viewBox="0 0 20 20"
+                                fill="currentColor"
+                                aria-hidden="true"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                        </div>
+
+                        <div class="w-full ml-3">
+                            <h3
+                                class="text-sm font-semibold text-red-800 dark:text-red-200"
+                            >
+                                Gagal Import ({{ importErrors.length }} baris)
+                            </h3>
+                            <div
+                                class="mt-2 overflow-y-auto text-sm text-red-700 max-h-40 dark:text-red-300"
+                            >
+                                <ul class="pl-5 space-y-1 list-disc">
+                                    <li
+                                        v-for="(err, i) in importErrors"
+                                        :key="i"
+                                    >
+                                        {{ err }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

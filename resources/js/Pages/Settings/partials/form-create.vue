@@ -106,6 +106,8 @@ const form = useForm({
     status: "",
     // untuk type produk
     category_id: null,
+    // field satuan
+    is_decimal: false,
 });
 
 watch(
@@ -122,6 +124,7 @@ watch(
             form.type = newData.type || "";
             form.status = newData.status || "";
             form.category_id = newData.category_id || null;
+            form.is_decimal = newData.is_decimal || false;
             // (Tambahkan field supplier di sini nanti)
         } else {
             form.reset();
@@ -141,6 +144,8 @@ const modalTitle = computed(() => {
                 : "Edit Tipe Produk";
         case "unit":
             return props.mode === "create" ? "Tambah Satuan" : "Edit Satuan";
+        case "size":
+            return props.mode === "create" ? "Tambah Ukuran" : "Edit Ukuran";
         case "brand":
             return props.mode === "create" ? "Tambah Merk" : "Edit Merk";
         case "supplier":
@@ -353,7 +358,7 @@ const submitForm = () => {
                         {{ form.errors.status }}
                     </p>
                 </div>
-                <div class="">
+                <div>
                     <label
                         class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
                         >Catatan / Deskripsi
@@ -369,6 +374,24 @@ const submitForm = () => {
                         class="mt-1 text-xs text-red-500"
                     >
                         {{ form.errors.description }}
+                    </p>
+                </div>
+                <div v-if="dataType == 'unit'">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            v-model="form.is_decimal"
+                            class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 ..."
+                        />
+                        <span class="text-sm text-gray-600 dark:text-gray-400">
+                            Izinkan diecer (ex. liter, meter)
+                        </span>
+                    </label>
+                    <p
+                        v-if="form.errors.is_decimal"
+                        class="mt-1 text-xs text-red-500"
+                    >
+                        {{ form.errors.is_decimal }}
                     </p>
                 </div>
                 <div class="flex justify-end gap-2 pt-3 border-t">

@@ -77,7 +77,7 @@ class SupplierService
         $validator = Validator::make($data, [
             'name' => 'required|string|max:255|unique:suppliers,name',
             'phone' => 'required|string|max:20',
-            'address' => 'required|string}max:200',
+            'address' => 'required|string|max:200',
             'status' => ['required', Rule::in(Supplier::STATUSES)], // Asumsi 1 (true) = Aktif, 0 (false) = Tidak Aktif
             'type' => ['required', Rule::in(Supplier::TYPES)], // Misal: 'Distributor', 'Grosir', 'Importir'
             'description' => 'nullable|string|max:250',

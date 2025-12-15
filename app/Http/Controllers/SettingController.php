@@ -72,7 +72,7 @@ class SettingController extends Controller
         usort($backups, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
 
         $lastRestore = Cache::get('last_restore_info') ?? [];
-        $lastBackup = [];
+        $lastBackup = Cache::get('last_backup_info') ?? [];
         // data toko
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
         // $logoUrl = isset($settings['shop_logo']) ? Storage::disk('s3')->url($this->$settings['shop_logo']) : null;

@@ -333,7 +333,7 @@ const deleteBackup = (fileName) => {
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
                     <thead
-                        class="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700/50"
+                        class="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700/50 dark:text-gray-300"
                     >
                         <tr>
                             <th class="px-6 py-3">Waktu Backup</th>
@@ -356,7 +356,7 @@ const deleteBackup = (fileName) => {
                                 {{ file.date }}
                             </td>
                             <td
-                                class="px-6 py-4 font-mono text-xs text-gray-500"
+                                class="px-6 py-4 font-mono text-xs text-gray-500 dark:text-gray-300"
                             >
                                 {{ file.name }}
                             </td>
