@@ -21,7 +21,7 @@ const displayValue = computed({
 <template>
     <div class="relative">
         <span
-            class="absolute font-bold text-gray-500 -translate-y-1/2 left-3 top-1/2"
+            class="absolute text-lg font-bold text-gray-500 -translate-y-1/2 dark:text-gray-400 left-3 top-1/2"
             >Rp</span
         >
         <input
