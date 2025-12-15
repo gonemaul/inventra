@@ -67,9 +67,9 @@
 <body onload="window.print()">
     <div class="container">
         <div class="text-center">
-            <div class="bold" style="font-size: 14px;">{{ config('app.name', 'INVENTRA POS') }}</div>
-            <div>Jl. Contoh No. 123, Kota Kediri</div>
-            <div>Telp: 0812-3456-7890</div>
+            <div class="bold" style="font-size: 14px;">{{ $settings['shop_name'] }}</div>
+            <div>{{ $settings['shop_address'] }}</div>
+            <div>{{ $settings['shop_phone'] }}</div>
         </div>
 
         <div class="border-bottom"></div>
@@ -78,9 +78,7 @@
             No: {{ $sale->reference_no ?? 'INV-' . $sale->id }}<br>
             Tgl: {{ date('d/m/Y H:i', strtotime($sale->created_at)) }}<br>
             Kasir: {{ $sale->user->name ?? 'Admin' }}<br>
-            @if ($sale->customer)
-                Member: {{ $sale->customer->name }}
-            @endif
+            Member: {{ $sale->customer->name ?? 'Umum' }}
         </div>
 
         <div class="border-bottom"></div>

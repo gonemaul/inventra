@@ -238,7 +238,7 @@ const deleteBackup = (fileName) => {
                     </p>
                     <p class="text-xs text-indigo-700 dark:text-indigo-300">
                         Oleh :
-                        <strong>{{ lastBackup["date"] }}</strong>
+                        <strong>{{ lastBackup["user"] }}</strong>
                     </p>
                 </span>
                 <p

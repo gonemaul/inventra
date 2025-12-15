@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Services\CategoryService;
 use App\Services\SalesRecapService;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
 
 class SalesRecapController extends Controller
@@ -219,9 +220,10 @@ class SalesRecapController extends Controller
     {
         // Load relasi item & produk
         $sale->load(['items.product', 'user', 'customer']);
-
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
+        $settings['shop_logo'] = isset($settings['shop_logo']) ? Storage::disk('s3')->url($settings['shop_logo']) : null;
         // Return view blade khusus struk
-        return view('print.receipt', compact('sale'));
+        return view('print.receipt', ['sale', 'settings']);
     }
 
     public function getAllProductsLite()
