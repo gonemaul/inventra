@@ -12,7 +12,7 @@ const props = defineProps({
     },
 });
 const showPaymentOptions = ref(false);
-const emit = defineEmits(["showDesktop"]);
+const emit = defineEmits(["showDesktop", "showBayar"]);
 const {
     form,
     // 3. MEMBER / PELANGGAN
@@ -37,6 +37,7 @@ const {
     handleMoneyClick,
     resetPayment,
 
+    startScanner,
     removeItem,
     updateQty,
     rp,
@@ -439,9 +440,9 @@ const {
                                     ]"
                                 >
                                     <span v-if="method === 'cash'">💵</span>
-                                    <span v-else-if="method === 'transfer'"
+                                    <!-- <span v-else-if="method === 'transfer'"
                                         >🏦</span
-                                    >
+                                    > -->
                                     <span v-else>📱</span>
                                     {{ method }}
                                 </button>
@@ -626,7 +627,7 @@ const {
                         </div>
 
                         <button
-                            @click="showConfirmModal = true"
+                            @click="$emit('showBayar')"
                             :disabled="
                                 !form.items.length ||
                                 (!isPaymentSufficient &&

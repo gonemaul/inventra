@@ -7,6 +7,7 @@ import ConfirmSubmit from "./ConfirmSubmit.vue";
 import ScannerBox from "./ScannerBox.vue";
 import { useToast } from "vue-toastification";
 import Cart from "./Cart.vue";
+import ScannerModeModal from "./ScannerModeModal.vue";
 
 const props = defineProps({
     categories: Array,
@@ -29,7 +30,7 @@ const {
     stopScanner,
     activeScannerType,
     showScanner,
-    // scannerType,
+    scannerType,
     // 4. CART ACTIONS
     addItem,
     grandTotal,
@@ -44,8 +45,7 @@ const {
 // --- STATE LOKAL UI (Client Side Search) ---
 const toast = useToast();
 const showMobileCart = ref(false);
-
-// const memberSearch = ref("");
+const showScannerModal = ref(false);
 const showConfirmModal = ref(false);
 
 // Berfungsi mendeteksi jika user scroll mentok bawah -> load data lagi
@@ -55,6 +55,10 @@ const handleScroll = (e) => {
     if (scrollTop + clientHeight >= scrollHeight - 50) {
         loadMoreProducts();
     }
+};
+
+const openScanProduk = () => {
+    showScannerModal.value = true;
 };
 
 const confirmTransaction = (shouldPrint) => {
@@ -94,7 +98,11 @@ const confirmTransaction = (shouldPrint) => {
         @close="showScanner = false"
         @stopScanner="stopScanner"
     />
-
+    <ScannerModeModal
+        :show="showScannerModal"
+        @close="showScannerModal = false"
+        @mode-selected="startScanner"
+    />
     <div
         class="flex flex-col lg:flex-row h-[100dvh] w-full bg-gray-100 dark:bg-gray-900 overflow-hidden font-sans transition-colors duration-300"
     >
@@ -145,7 +153,7 @@ const confirmTransaction = (shouldPrint) => {
                         </span>
                     </div>
                     <button
-                        @click="startScanner('product')"
+                        @click="openScanProduk()"
                         class="absolute right-1.5 top-1.5 p-1 bg-white dark:bg-gray-700 rounded-lg shadow-sm text-gray-600 dark:text-gray-200 hover:text-lime-600 hover:bg-lime-50 transition border border-gray-200 dark:border-gray-600"
                         title="Scan Produk"
                     >
@@ -230,7 +238,7 @@ const confirmTransaction = (shouldPrint) => {
                             />
 
                             <div
-                                class="flex flex-col items-center justify-center w-full h-full text-gray-500 bg-gray-300 dark:text-gray-700 dark:bg-gray-500"
+                                class="flex flex-col items-center justify-center w-full h-full text-gray-500 bg-gray-300 dark:text-gray-700 dark:bg-gray-400"
                             >
                                 <svg
                                     class="w-10 h-10"
@@ -351,10 +359,84 @@ const confirmTransaction = (shouldPrint) => {
                 </div>
                 <div
                     v-else-if="filteredProducts.length === 0"
-                    class="py-10 text-center text-gray-400"
+                    class="flex flex-col items-center justify-center px-4 py-16 text-center animate-fade-in"
                 >
-                    <span class="block mb-2 text-2xl">🤷‍♂️</span>
-                    Produk tidak ditemukan
+                    <div class="relative mb-6">
+                        <div
+                            class="flex items-center justify-center w-24 h-24 rounded-full shadow-inner bg-gray-50 dark:bg-gray-800"
+                        >
+                            <svg
+                                class="w-12 h-12 text-gray-300 dark:text-gray-600"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="1.5"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                            </svg>
+                        </div>
+
+                        <div
+                            class="absolute -top-2 -right-2 bg-white dark:bg-gray-700 rounded-full p-1.5 shadow-md border border-gray-100 dark:border-gray-600"
+                        >
+                            <div
+                                class="p-1 rounded-full bg-lime-100 dark:bg-lime-900/50"
+                            >
+                                <svg
+                                    class="w-5 h-5 text-lime-500 dark:text-lime-400"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2.5"
+                                        d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01"
+                                    />
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3
+                        class="mb-2 text-lg font-bold text-gray-900 dark:text-white"
+                    >
+                        Produk tidak ditemukan
+                    </h3>
+                    <p
+                        class="max-w-xs mx-auto mb-6 text-sm leading-relaxed text-gray-500 dark:text-gray-400"
+                    >
+                        Kami tidak dapat menemukan produk dengan kata kunci atau
+                        kategori tersebut.
+                    </p>
+
+                    <button
+                        @click="
+                            search = '';
+                            selectedCategory = 'all';
+                        "
+                        class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 border border-gray-200 dark:border-gray-700 hover:border-lime-500 hover:text-lime-600 dark:hover:border-lime-500 dark:hover:text-lime-400 shadow-sm hover:shadow-md"
+                    >
+                        <svg
+                            class="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                            />
+                        </svg>
+                        Reset Pencarian
+                    </button>
                 </div>
 
                 <div
@@ -422,6 +504,7 @@ const confirmTransaction = (shouldPrint) => {
         <Cart
             :showMobileCart="showMobileCart"
             :reprops="pos"
+            @showBayar="showConfirmModal = true"
             @showDesktop="showMobileCart = false"
         />
     </div>

@@ -248,28 +248,20 @@ export function usePosRealtime(props) {
     };
 
     // Filter Member (Server Side Search)
-    const handleSearchMember = debounce(async (query) => {
-        if (!query) {
+    const handleSearchMember = computed(() => {
+        if (!memberSearch) {
             memberSearchResults.value = [];
             return;
         }
-        isLoadingMember.value = true;
-        try {
-            // Pastikan route ini ada: Route::get('/sales/api/customers', ...)
-            const response = await axios.get(route("sales.search-customer"), {
-                params: { query },
-            });
-            memberSearchResults.value = response.data;
-        } catch (e) {
-            console.error(e);
-        } finally {
-            isLoadingMember.value = false;
+        if (memberSearch.value) {
+            const q = memberSearch.value.toLowerCase();
+            result = props.customers.filter(
+                (c) =>
+                    c.name.toLowerCase().includes(q) ||
+                    c.code.toLowerCase().includes(q)
+            );
         }
-    }, 300);
-
-    // Watch perubahan input member search untuk trigger API
-    watch(memberSearch, (val) => {
-        handleSearchMember(val);
+        memberSearchResults.value = result.slice(0, 5);
     });
 
     // --- 5. CALCULATIONS ---
@@ -293,7 +285,12 @@ export function usePosRealtime(props) {
 
     const grandTotal = computed(() => {
         const total = subTotal.value - discountAmount.value;
-        return total > 0 ? total : 0;
+        const grand = total > 0 ? total : 0;
+        if (grand === 0) {
+            form.payment_amount = 0;
+            form.discount_value = 0;
+        }
+        return grand;
     });
 
     const changeAmount = computed(() => {
@@ -302,7 +299,8 @@ export function usePosRealtime(props) {
     });
 
     const isPaymentSufficient = computed(() => {
-        if (form.payment_method !== "cash") return true;
+        if (form.payment_method !== "cash" && form.payment_method !== "")
+            return true;
         return (parseFloat(form.payment_amount) || 0) >= grandTotal.value;
     });
 
