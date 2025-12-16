@@ -38,15 +38,41 @@ const insightData = computed(() => {
         @click="emit('click')"
     >
         <div
-            class="relative flex items-center justify-center flex-shrink-0 w-16 h-16 overflow-hidden border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-900 dark:border-gray-600"
+            class="relative flex-shrink-0 w-16 h-16 overflow-hidden bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-800 dark:border-gray-700 group"
         >
+            <div
+                class="absolute inset-0 z-0 flex flex-col items-center justify-center w-full h-full transition-colors bg-gray-100 dark:bg-gray-800"
+            >
+                <svg
+                    class="w-5 h-5 text-gray-400 dark:text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    ></path>
+                </svg>
+                <span
+                    class="text-[8px] font-bold text-gray-400 dark:text-gray-500 mt-0.5"
+                    >NO IMG</span
+                >
+            </div>
+
             <img
                 :src="data.image_url"
-                class="object-contain w-full h-full transition-transform group-hover:scale-110"
+                loading="lazy"
+                decoding="async"
+                onload="this.classList.remove('opacity-0')"
+                onerror="this.style.display='none'"
+                class="absolute inset-0 z-10 object-contain w-full h-full p-1 transition-transform duration-300 bg-white opacity-0 dark:bg-gray-800 group-hover:scale-110"
             />
 
             <div
-                class="absolute top-1 left-1 w-2.5 h-2.5 rounded-full border border-white shadow-sm"
+                class="absolute top-1 left-1 z-20 w-2.5 h-2.5 rounded-full border border-white shadow-sm ring-1 ring-black/5"
                 :class="
                     data.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
                 "

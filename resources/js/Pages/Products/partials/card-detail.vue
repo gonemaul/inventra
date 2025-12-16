@@ -28,79 +28,44 @@ const isStockLow = computed(() => {
 <template>
     <Delete :show="showDelete" @close="showDelete = false" />
     <div
-        class="flex flex-col overflow-hidden bg-white border-l-4 shadow-md md:flex-row dark:bg-gray-800 rounded-xl border-lime-500"
+        class="flex flex-col overflow-hidden bg-white border-t border-l-4 shadow-md md:flex-row dark:bg-gray-800 rounded-xl border-lime-500"
     >
-        <!-- <div
-            class="relative flex items-center justify-center w-full p-6 border-b border-gray-100 md:w-56 lg:w-64 bg-gray-50 dark:bg-gray-900 md:border-b-0 md:border-r dark:border-gray-700"
-        >
-            <div
-                class="relative flex flex-col flex-shrink-0 w-full h-40 md:h-full"
-            >
-                <img
-                    :src="
-                        data.image_path
-                            ? '/storage/' + data.image_path
-                            : '/no-image.png'
-                    "
-                    :alt="data.name"
-                    class="object-contain max-w-full max-h-full transition-transform cursor-pointer hover:scale-105"
-                    @click="
-                        $emit('imageClick', {
-                            path: data.image_path,
-                            name: data.name,
-                        })
-                    "
-                />
-                <div class="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
-                    <span
-                        v-if="dss?.is_trending"
-                        class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-purple-600 text-white rounded shadow-sm animate-pulse flex items-center gap-1"
-                    >
-                        🔥 <span class="hidden sm:inline">Trending</span>
-                    </span>
-                    <span
-                        v-if="dss?.is_dead_stock"
-                        class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-gray-600 text-white rounded shadow-sm flex items-center gap-1"
-                    >
-                        🐢 <span class="hidden sm:inline">Slow</span>
-                    </span>
-                </div>
-                <div
-                    class="absolute z-10 justify-between gap-1 md:flex bottom-3 left-2"
-                >
-                    <span
-                        v-if="dss?.is_margin_low"
-                        class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-yellow-400/80 text-yellow-900 rounded shadow-sm flex items-center gap-1"
-                    >
-                        ⚠️ <span class="hidden sm:inline">Margin</span>
-                    </span>
-                    <span
-                        v-if="isStockLow"
-                        class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-red-500/80 text-white rounded shadow-sm flex items-center gap-1"
-                    >
-                        🚨 <span class="hidden sm:inline">Stok</span>
-                    </span>
-                </div>
-            </div>
-            <div
-                class="py-1 text-[10px] font-bold text-center text-white uppercase tracking-wider"
-                :class="
-                    data.status === 'active' ? 'bg-lime-500' : 'bg-gray-400'
-                "
-            >
-                {{ data.status === "active" ? "Aktif" : "Non-Aktif" }}
-            </div>
-        </div> -->
         <div
             class="flex flex-col w-full border-b border-gray-100 md:w-56 lg:w-64 bg-gray-50 dark:bg-gray-900 md:border-b-0 md:border-r dark:border-gray-700"
         >
             <div
                 class="relative flex-1 w-full min-h-[160px] md:h-full flex items-center justify-center p-4 overflow-hidden group"
             >
+                <div
+                    class="absolute inset-0 z-0 flex flex-col items-center justify-center w-full h-full transition-colors duration-300 bg-gray-100 border border-gray-200 dark:bg-gray-700 dark:border-gray-800"
+                >
+                    <svg
+                        class="w-10 h-10 mb-2 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        ></path>
+                    </svg>
+                    <span
+                        class="text-[10px] font-bold text-gray-400 tracking-wider"
+                    >
+                        NO IMG
+                    </span>
+                </div>
                 <img
                     :src="data.image_url"
                     :alt="data.name"
-                    class="object-contain max-w-full max-h-full transition-transform duration-500 cursor-pointer group-hover:scale-110"
+                    loading="lazy"
+                    decoding="async"
+                    onload="this.classList.remove('opacity-0')"
+                    onerror="this.style.display='none'"
+                    class="absolute inset-0 z-10 object-contain max-w-full max-h-full transition-transform duration-500 opacity-0 cursor-pointer group-hover:scale-110"
                     @click="
                         $emit('imageClick', {
                             path: data.image_url,
@@ -141,12 +106,24 @@ const isStockLow = computed(() => {
             </div>
 
             <div
-                class="py-1.5 text-[10px] font-bold text-center text-white uppercase tracking-wider w-full"
+                class="group relative py-1.5 text-[10px] font-bold text-center text-white uppercase tracking-wider w-full transition-colors cursor-help hover:bg-cyan-500 overflow-hidden"
                 :class="
                     data.status === 'active' ? 'bg-lime-500' : 'bg-gray-400'
                 "
             >
-                {{ data.status === "active" ? "Aktif" : "Non-Aktif" }}
+                <div
+                    class="transition-all duration-300 ease-in-out transform group-hover:-translate-y-[150%] group-hover:opacity-0"
+                >
+                    {{ data.status === "active" ? "Aktif" : "Non-Aktif" }}
+                </div>
+
+                <div
+                    class="absolute inset-0 flex items-center justify-center px-1 transition-all duration-300 ease-in-out transform translate-y-[150%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
+                >
+                    <span class="w-full text-center truncate">
+                        {{ data.supplier?.name || "Tanpa Supplier" }}
+                    </span>
+                </div>
             </div>
         </div>
 

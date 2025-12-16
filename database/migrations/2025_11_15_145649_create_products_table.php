@@ -26,7 +26,7 @@ return new class extends Migration
                 ->onDelete('restrict');
             $table->foreignId('supplier_id')
                 ->constrained('suppliers') // Merujuk ke tabel 'suppliers'
-                ->onDelete('set null');
+                ->onDelete('restrict');
 
             $table->string('name')->index();
             $table->string('code')->unique();

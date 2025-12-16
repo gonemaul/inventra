@@ -3,7 +3,7 @@ import TextInput from "@/Components/TextInput.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import { Link, useForm } from "@inertiajs/vue3";
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
 
 const props = defineProps({
@@ -42,6 +42,13 @@ const form = useForm({
     image: null,
 });
 const imagePreview = ref(props.product?.image_url ?? null);
+
+onMounted(async () => {
+    const buy = parseFloat(form.purchase_price) || 0;
+    const percent = parseFloat(form.target_margin_percent) || 0;
+    const nominal = buy * (percent / 100);
+    form.margin_nominal = Math.round(nominal);
+});
 
 const onPurchaseChange = () => {
     const buy = parseFloat(form.purchase_price) || 0;
@@ -147,11 +154,12 @@ const submitForm = () => {
                     <img
                         v-if="imagePreview"
                         :src="imagePreview"
+                        onload="this.classList.remove('opacity-0')"
+                        onerror="this.style.display='none'"
                         alt="Preview"
-                        class="object-cover w-full h-full rounded-lg"
+                        class="object-cover w-full h-full rounded-lg opacity-0"
                     />
                     <div
-                        v-else
                         class="flex flex-col items-center justify-center w-full h-full pt-5 pb-6"
                     >
                         <p

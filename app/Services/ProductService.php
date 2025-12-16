@@ -279,7 +279,8 @@ class ProductService
         // 1. Jalankan Analisa DSS (Agar data selalu fresh saat dibuka)
         $this->insightService->runAnalysis();
         // 2. Ambil Data Produk & Relasi
-        $product = Product::with(['category', 'unit', 'size', 'supplier', 'brand', 'productType'])
+        $product = Product::with(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType::id,name'])
+            ->select(['id', 'code', 'name', 'stock', 'min_stock', 'image_url', 'status', 'purchase_price', 'selling_price', 'supplier_id', 'brand_id', 'category_id', 'product_type_id', 'size_id', 'unit_id'])
             ->withTrashed() // Handle jika produk soft deleted
             ->findOrFail($id);
 
@@ -309,13 +310,24 @@ class ProductService
         $dssData['avg_daily'] = $salesStats > 0 ? round($salesStats / 30, 1) : 0;
 
         // 5. Data Grafik (7 Hari Terakhir)
+        $startDate = now()->subDays(6)->startOfDay();
+        $endDate = now()->endOfDay();
+        $rawData = SaleItem::where('product_id', $id)
+            ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startDate, $endDate]))
+            ->with('sale:id,transaction_date') // Eager load tanggalnya
+            ->get();
         $chartData = [];
         for ($i = 6; $i >= 0; $i--) {
-            $date = now()->subDays($i);
-            $qty = SaleItem::where('product_id', $id)
-                ->whereHas('sale', fn($q) => $q->whereDate('transaction_date', $date))
-                ->sum('quantity');
-            $chartData[] = ['day' => $date->format('d/m'), 'qty' => $qty];
+            $dateCheck = now()->subDays($i)->format('Y-m-d');
+            $displayDate = now()->subDays($i)->format('d/m'); // Format untuk Chart (16/12)
+
+            // Filter collection yang sudah ditarik di atas
+            $qty = $rawData->filter(function ($item) use ($dateCheck) {
+                // Pastikan sale tidak null dan tanggalnya cocok
+                return $item->sale && $item->sale->transaction_date->format('Y-m-d') === $dateCheck;
+            })->sum('quantity');
+
+            $chartData[] = ['day' => $displayDate, 'qty' => $qty];
         }
 
         // 6. Riwayat Stok (Gabungan Beli & Jual Terakhir)

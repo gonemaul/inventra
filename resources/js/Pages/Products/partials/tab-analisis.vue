@@ -1,4 +1,6 @@
 <script setup>
+import { computed } from "vue";
+import VueApexCharts from "vue3-apexcharts";
 const props = defineProps({
     inventory: {
         type: Object,
@@ -8,14 +10,85 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    chart_data: Array,
 });
-
 const formatRupiah = (val) =>
     new Intl.NumberFormat("id-ID", {
         style: "currency",
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(val);
+
+// 1. Mengambil data angka untuk Series
+const series = computed(() => [
+    {
+        name: "Terjual",
+        data: props.chart_data.map((d) => d.qty),
+    },
+]);
+const chartOptions = computed(() => {
+    // Ambil label dari data (misal: Senin, Selasa) atau index jika tidak ada label
+    const categories = props.chart_data.map((d) => d.day);
+
+    return {
+        chart: {
+            type: "bar",
+            toolbar: { show: false }, // Hilangkan menu download/zoom
+            fontFamily: "inherit", // Ikuti font website
+            sparkline: { enabled: false }, // Set true jika ingin super minimalis tanpa sumbu X
+        },
+        plotOptions: {
+            bar: {
+                borderRadius: 4, // Sudut tumpul pada bar
+                columnWidth: "60%", // Lebar batang
+                distributed: false, // False agar warnanya seragam (Lime)
+            },
+        },
+        dataLabels: {
+            enabled: false, // Hilangkan angka statis di atas bar (biar bersih)
+        },
+        colors: ["#84cc16"], // Tailwind Lime-500
+        stroke: {
+            show: true,
+            width: 0,
+            colors: ["transparent"],
+        },
+        xaxis: {
+            categories: categories,
+            axisBorder: { show: false },
+            axisTicks: { show: false },
+            labels: {
+                style: {
+                    colors: "#9ca3af", // Gray-400
+                    fontSize: "10px",
+                },
+            },
+        },
+        yaxis: {
+            show: false, // Hilangkan angka di kiri (Sumbu Y) agar bersih
+        },
+        grid: {
+            show: false, // Hilangkan garis-garis latar belakang
+            padding: {
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0,
+            },
+        },
+        tooltip: {
+            theme: "dark", // Bisa 'light' atau 'dark'
+            y: {
+                formatter: function (val) {
+                    return val + " Pcs";
+                },
+            },
+        },
+        fill: {
+            opacity: 1,
+        },
+    };
+});
 </script>
 <template>
     <div
@@ -97,19 +170,13 @@ const formatRupiah = (val) =>
             <p class="mb-2 text-xs font-bold text-gray-400 uppercase">
                 Tren Mingguan
             </p>
-            <div class="flex items-end h-24 gap-1">
-                <div
-                    v-for="(d, i) in chart_data"
-                    :key="i"
-                    class="relative flex-1 transition bg-indigo-100 rounded-t hover:bg-indigo-300 group"
-                    :style="{ height: Math.max(10, d.qty * 10) + '%' }"
-                >
-                    <div
-                        class="opacity-0 group-hover:opacity-100 absolute -top-6 left-1/2 -translate-x-1/2 text-xs bg-gray-800 text-white px-1.5 rounded"
-                    >
-                        {{ d.qty }}
-                    </div>
-                </div>
+            <div class="relative -ml-2">
+                <VueApexCharts
+                    type="bar"
+                    height="100"
+                    :options="chartOptions"
+                    :series="series"
+                />
             </div>
         </div>
     </div>

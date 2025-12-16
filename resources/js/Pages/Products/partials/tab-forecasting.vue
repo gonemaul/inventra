@@ -36,22 +36,31 @@ const props = defineProps({
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
             <div class="space-y-4">
                 <div>
-                    <p class="text-xs font-bold text-gray-500 uppercase">
+                    <p
+                        class="text-xs font-bold text-gray-500 uppercase dark:text-gray-300"
+                    >
                         Kecepatan Jual
                     </p>
-                    <p class="text-2xl font-bold text-gray-800">
+                    <p
+                        class="text-2xl font-bold text-gray-800 dark:text-gray-200"
+                    >
                         {{ inventory.avg_daily }}
-                        <span class="text-sm font-normal text-gray-400"
+                        <span
+                            class="text-sm font-normal text-gray-400 dark:text-gray-400"
                             >/ hari</span
                         >
                     </p>
                 </div>
 
                 <div v-if="inventory.avg_daily > 0">
-                    <p class="text-xs font-bold text-gray-500 uppercase">
+                    <p
+                        class="text-xs font-bold text-gray-500 uppercase dark:text-gray-300"
+                    >
                         Estimasi Habis
                     </p>
-                    <p class="text-xl font-bold text-gray-800">
+                    <p
+                        class="text-xl font-bold text-gray-800 dark:text-gray-300"
+                    >
                         {{ inventory.days_left }} Hari Lagi
                     </p>
                     <p class="mt-1 text-xs font-medium text-red-500">
@@ -60,7 +69,7 @@ const props = defineProps({
                 </div>
                 <div
                     v-else
-                    class="p-3 text-sm text-gray-500 border border-gray-200 rounded-lg bg-gray-50"
+                    class="p-3 text-sm text-gray-500 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-800 dark:text-gray-300"
                 >
                     Belum cukup data penjualan untuk melakukan prediksi waktu
                     habis.
@@ -68,9 +77,11 @@ const props = defineProps({
             </div>
 
             <div
-                class="flex flex-col items-center justify-center p-4 text-center border border-blue-100 bg-blue-50/50 rounded-xl"
+                class="flex flex-col items-center justify-center p-4 text-center border border-blue-100 bg-blue-50/50 dark:bg-blue-900/30 rounded-xl"
             >
-                <p class="mb-2 text-xs font-bold text-blue-500 uppercase">
+                <p
+                    class="mb-2 text-xs font-bold text-blue-500 uppercase dark:text-blue-300"
+                >
                     Rekomendasi Sistem
                 </p>
 
@@ -94,10 +105,12 @@ const props = defineProps({
 
                 <div v-else>
                     <div class="mb-2 text-3xl">👍</div>
-                    <p class="text-sm font-bold text-gray-700">
+                    <p
+                        class="text-sm font-bold text-gray-700 dark:text-gray-400"
+                    >
                         Stok Mencukupi
                     </p>
-                    <p class="mt-1 text-xs text-gray-500">
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-300">
                         Tidak perlu belanja sekarang.
                     </p>
                 </div>

@@ -37,7 +37,7 @@ class MasterDataSeeder extends Seeder
 
         // --- Categories (Minimal 5) ---
         $catOil = Category::create([
-            'name' => 'Oli & Pelumas',
+            'name' => 'Oli',
             'code' => 'OIL',
             'description' => 'Oli Motor, Mobil, Diesel.',
             'slug' => Str::slug('Oli & Pelumas') // <-- TAMBAHAN WAJIB
@@ -49,23 +49,23 @@ class MasterDataSeeder extends Seeder
             'slug' => Str::slug('Sparepart Motor') // <-- TAMBAHAN WAJIB
         ]);
         $catBat = Category::create([
-            'name' => 'Aki & Ban',
-            'code' => 'BAT',
-            'description' => 'Aki, Ban Luar/Dalam.',
-            'slug' => Str::slug('Aki & Ban') // <-- TAMBAHAN WAJIB
+            'name' => 'Ban',
+            'code' => 'BAN',
+            'description' => 'Ban Luar/Dalam motor.',
+            'slug' => Str::slug('Ban') // <-- TAMBAHAN WAJIB
         ]);
-        $catElc = Category::create([
-            'name' => 'Elektronik Pasif',
-            'code' => 'ELC',
-            'description' => 'Lampu, Sakelar.',
-            'slug' => Str::slug('Elektronik Pasif') // <-- TAMBAHAN WAJIB
-        ]);
-        $catAcc = Category::create([
-            'name' => 'Aksesoris & Umum',
-            'code' => 'ACC',
-            'description' => 'Vanbel, Pembersih.',
-            'slug' => Str::slug('Aksesoris & Umum') // <-- TAMBAHAN WAJIB
-        ]);
+        // $catElc = Category::create([
+        //     'name' => 'Elektronik Pasif',
+        //     'code' => 'ELC',
+        //     'description' => 'Lampu, Sakelar.',
+        //     'slug' => Str::slug('Elektronik Pasif') // <-- TAMBAHAN WAJIB
+        // ]);
+        // $catAcc = Category::create([
+        //     'name' => 'Aksesoris & Umum',
+        //     'code' => 'ACC',
+        //     'description' => 'Vanbel, Pembersih.',
+        //     'slug' => Str::slug('Aksesoris & Umum') // <-- TAMBAHAN WAJIB
+        // ]);
 
         // --- Units (Minimal 5) ---
         $units = [
@@ -80,22 +80,26 @@ class MasterDataSeeder extends Seeder
         // --- Sizes (Minimal 5) ---
         $sizes = [
             ['name' => 'All Size', 'code' => 'ALL', 'description' => 'Tidak spesifik ukuran.'],
-            ['name' => '0.8 Liter', 'code' => '0.8L', 'description' => 'Kemasan motor matic.'],
+            ['name' => '800 ML', 'code' => '0.8L', 'description' => 'Kemasan motor bebel/matic.'],
+            ['name' => '700 ML', 'code' => '0.7L', 'description' => 'Kemasan oli 2T.'],
+            ['name' => '650 ML', 'code' => '0.65L', 'description' => 'Kemasan motor matic honda new.'],
             ['name' => '1 Liter', 'code' => '1L', 'description' => 'Kemasan motor manual/mobil.'],
             ['name' => '4 Liter', 'code' => '4L', 'description' => 'Kemasan galon mobil.'],
-            ['name' => 'S (Small)', 'code' => 'S', 'description' => 'Ukuran small untuk sparepart.'],
-            ['name' => 'M (Medium)', 'code' => 'M', 'description' => 'Ukuran medium untuk sparepart.'],
+            ['name' => '5 Liter', 'code' => '5L', 'description' => 'Kemasan galon mobil.'],
         ];
         Size::insert($sizes);
 
         // --- Brands (Minimal 5) ---
         $brands = [
+            ['name' => 'AHM', 'code' => 'AHM', 'description' => 'Minyak dan pelumas dari honda.'],
+            ['name' => 'Yamalube', 'code' => 'YMLB', 'description' => 'Minyak dan pelumas dari yamaha.'],
             ['name' => 'Shell', 'code' => 'SHELL', 'description' => 'Minyak dan pelumas utama.'],
             ['name' => 'Pertamina', 'code' => 'PRTMA', 'description' => 'Produk lokal/BUMN.'],
             ['name' => 'Motul', 'code' => 'MOTUL', 'description' => 'Pelumas premium.'],
             ['name' => 'Federal', 'code' => 'FDRL', 'description' => 'Ban dan pelumas populer.'],
             ['name' => 'GS Astra', 'code' => 'GSA', 'description' => 'Aki dan suku cadang.'],
             ['name' => 'IRC', 'code' => 'IRC', 'description' => 'Ban motor.'],
+            ['name' => 'FP', 'code' => 'FP', 'description' => 'Ban motor.'],
         ];
         Brand::insert($brands);
 
@@ -108,9 +112,7 @@ class MasterDataSeeder extends Seeder
 
         ProductType::create(['name' => 'Tubeless', 'code' => 'TBL', 'description' => 'Ban tanpa ban dalam', 'category_id' => $catBat->id]);
 
-        Supplier::create(['name' => 'Bintang Lima Motor', 'phone' => '081234567890', 'address' => 'Jakarta', 'status' => 'active', 'type' => Supplier::TYPE_OFFLINE, 'description' => 'Supplier utama fast-moving oil.']);
-        Supplier::create(['name' => 'Indo Sentosa Parts', 'phone' => '085612345678', 'address' => 'Bandung', 'status' => 'active', 'type' => Supplier::TYPE_ONLINE, 'description' => 'Sparepart & aksesoris.']);
-        Supplier::create(['name' => 'Grosir Aki Jaya', 'phone' => '02198765432', 'address' => 'Tangerang', 'status' => 'inactive', 'type' => Supplier::TYPE_OFFLINE, 'description' => 'Khusus aki dan ban.']);
+        Supplier::create(['name' => 'Sahabat Motor', 'phone' => '085952732791', 'address' => 'Kertosono', 'status' => 'active', 'type' => Supplier::TYPE_OFFLINE, 'description' => 'Supplier utama.']);
 
         // --- 3. --- AKTIFKAN FOREIGN KEY ---
         if ($driver === 'mysql') {

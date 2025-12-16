@@ -97,37 +97,6 @@ const maxChartValue = computed(() => {
                                 </p>
                             </div>
                         </div>
-
-                        <!-- <div
-                            class="flex items-end justify-between h-48 gap-2 px-2 mt-6"
-                        >
-                            <div
-                                v-for="(day, index) in chart_data"
-                                :key="index"
-                                class="flex flex-col items-center w-full group"
-                            >
-                                <div
-                                    class="px-2 py-1 mb-1 text-xs text-white transition bg-gray-800 rounded opacity-0 group-hover:opacity-100"
-                                >
-                                    {{ day.qty }} Unit
-                                </div>
-                                <div
-                                    class="relative w-full overflow-hidden transition-all duration-500 bg-blue-100 rounded-t dark:bg-gray-600 hover:bg-blue-200"
-                                    :style="{
-                                        height:
-                                            (day.qty / maxChartValue) * 100 +
-                                            '%',
-                                    }"
-                                >
-                                    <div
-                                        class="absolute bottom-0 w-full h-full bg-blue-500 opacity-80"
-                                    ></div>
-                                </div>
-                                <span class="text-[10px] text-gray-500 mt-2">{{
-                                    day.day
-                                }}</span>
-                            </div>
-                        </div> -->
                     </div>
                 </template>
 
@@ -135,6 +104,7 @@ const maxChartValue = computed(() => {
                     <TabAnalisis
                         :inventory="product.inventory"
                         :product="product"
+                        :chart_data="chart_data"
                     />
                 </template>
                 <template #forecast>
@@ -216,6 +186,7 @@ const maxChartValue = computed(() => {
                                             ).toLocaleDateString("id-ID", {
                                                 day: "numeric",
                                                 month: "short",
+                                                year: "numeric",
                                             })
                                         }}
                                     </p>

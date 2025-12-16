@@ -46,7 +46,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
             class="relative flex flex-col flex-shrink-0 w-32 mx-auto border-r border-gray-100 sm:w-36 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
         >
             <div
-                class="relative flex items-center justify-center flex-1 p-2 overflow-hidden cursor-pointer"
+                class="relative flex items-center justify-center flex-1 w-full p-2 overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer dark:bg-gray-800 group dark:border-gray-700 aspect-square"
                 @click="
                     emit('imageClick', {
                         path: data.image_url,
@@ -54,12 +54,38 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                     })
                 "
             >
+                <div
+                    class="absolute inset-0 z-0 flex flex-col items-center justify-center w-full h-full transition-colors duration-300"
+                >
+                    <svg
+                        class="w-10 h-10 mb-2 text-gray-400 dark:text-gray-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="1.5"
+                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        ></path>
+                    </svg>
+                    <span
+                        class="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-wider"
+                    >
+                        NO IMG
+                    </span>
+                </div>
+
                 <img
                     :src="data.image_url"
                     :alt="data.name"
-                    class="object-contain w-full h-full transition-transform duration-500 max-h-28 group-hover:scale-110"
+                    loading="lazy"
+                    decoding="async"
+                    onload="this.classList.remove('opacity-0')"
+                    onerror="this.style.display='none'"
+                    class="absolute inset-0 z-10 object-contain w-full h-full p-2 transition-all duration-500 bg-white opacity-0 md:p-4 group-hover:scale-110 dark:bg-gray-800"
                 />
-
                 <div
                     class="absolute z-10 flex flex-col items-start gap-1 top-1 left-1 right-1"
                 >
@@ -95,12 +121,24 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
             </div>
 
             <div
-                class="py-1 text-[10px] rounded-br rounded-bl font-bold text-center text-white uppercase tracking-wider"
+                class="group relative py-1 text-[10px] rounded-br rounded-bl font-bold text-center text-white uppercase tracking-wider transition-colors cursor-help group-hover:bg-cyan-500 overflow-hidden"
                 :class="
                     data.status === 'active' ? 'bg-lime-500' : 'bg-gray-400'
                 "
             >
-                {{ data.status === "active" ? "Aktif" : "Non-Aktif" }}
+                <div
+                    class="transition-all duration-300 ease-in-out transform group-hover:-translate-y-[150%] group-hover:opacity-0"
+                >
+                    {{ data.status === "active" ? "Aktif" : "Non-Aktif" }}
+                </div>
+
+                <div
+                    class="absolute inset-0 flex items-center justify-center px-1 transition-all duration-300 ease-in-out transform translate-y-[150%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
+                >
+                    <span class="w-full text-center truncate">
+                        {{ data.supplier?.name || "Tanpa Supplier" }}
+                    </span>
+                </div>
             </div>
         </div>
 
@@ -138,7 +176,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                     class="block mb-2 text-sm font-bold leading-snug text-gray-900 transition sm:text-base dark:text-white hover:text-lime-600 line-clamp-1"
                     :title="data.full_name"
                 >
-                    {{ data.full_name || data.name }}
+                    {{ data.name }}
                 </Link>
 
                 <div

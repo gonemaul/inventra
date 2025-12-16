@@ -50,18 +50,51 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
         class="flex flex-col h-full overflow-hidden transition-all duration-300 bg-white border border-gray-200 shadow-sm group dark:bg-gray-800 rounded-2xl dark:border-gray-700 hover:shadow-xl hover:-translate-y-1"
     >
         <div
-            class="relative w-full aspect-[4/3] bg-gray-50 dark:bg-gray-900 p-6 flex items-center justify-center overflow-hidden cursor-pointer border-b border-gray-100 dark:border-gray-700"
+            class="relative w-full aspect-[4/3] bg-gray-50 dark:bg-gray-900 flex items-center justify-center overflow-hidden cursor-pointer border-b border-gray-100 dark:border-gray-700"
             @click="
                 emit('imageClick', { path: data.image_url, name: data.name })
             "
         >
+            <div
+                class="absolute inset-0 z-0 flex flex-col items-center justify-center w-full h-full transition-colors duration-300 bg-gray-200 dark:bg-gray-900"
+            >
+                <svg
+                    class="w-10 h-10 mb-1 text-gray-400 dark:text-gray-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="1.5"
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                    ></path>
+                </svg>
+                <span
+                    class="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-wider"
+                >
+                    NO IMG
+                </span>
+            </div>
+
             <img
                 :src="data.image_url"
                 :alt="data.name"
-                class="object-contain w-full h-full transition-transform duration-500 group-hover:scale-110"
+                loading="lazy"
+                decoding="async"
+                onload="this.classList.remove('opacity-0')"
+                onerror="this.style.display='none'"
+                class="absolute inset-0 z-10 object-contain w-full h-full p-4 transition-transform duration-500 bg-white opacity-0 group-hover:scale-110 dark:bg-gray-900"
             />
 
             <div class="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+                <span
+                    v-if="isNewProduct"
+                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-lime-500 text-white rounded-md shadow-sm"
+                >
+                    ✨ New
+                </span>
                 <span
                     v-if="isTrending"
                     class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-purple-600 text-white rounded-md shadow-sm animate-pulse"
@@ -79,10 +112,27 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 >
                 <span
                     v-if="isStockLow"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500 text-white rounded-md shadow-sm"
+                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500 animate-pulse text-white rounded-md shadow-sm"
                     >🚨 Stok</span
                 >
+                <span
+                    v-if="hasDiscount"
+                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-blue-500 text-white rounded-md shadow-sm"
+                >
+                    % Promo
+                </span>
+
+                <span
+                    v-if="hasHighMargin"
+                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white rounded-md shadow-sm flex items-center gap-1"
+                >
+                    💰 Cuan
+                </span>
             </div>
+            <span
+                class="absolute bottom-1 left-1 px-2 py-1 text-[9px] font-bold uppercase tracking-wider bg-cyan-500 text-white rounded-md shadow-sm"
+                >{{ data.supplier.name }}</span
+            >
 
             <div class="absolute top-3 right-3">
                 <span
@@ -118,7 +168,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                     class="block mb-2 text-lg font-bold leading-tight text-gray-900 transition dark:text-white hover:text-lime-600 dark:hover:text-lime-600 line-clamp-2"
                     :title="data.full_name"
                 >
-                    {{ data.full_name || data.name }}
+                    {{ data.name }}
                 </Link>
 
                 <div

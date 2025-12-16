@@ -127,7 +127,7 @@ const resetFilter = () => {
     />
     <DeleteConfirm ref="showConfirmModal" @success="" />
     <Head title="Data Barang" /><AuthenticatedLayout headerTitle="Data Barang"
-        ><div class="w-full min-h-screen">
+        ><div class="w-full">
             <FilterModal
                 :show="showFilterModal"
                 @close="showFilterModal = false"
