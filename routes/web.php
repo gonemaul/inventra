@@ -14,6 +14,7 @@ use App\Http\Controllers\DataExportController;
 use App\Http\Controllers\DataImportController;
 use App\Http\Controllers\SalesRecapController;
 use App\Http\Controllers\ShopSettingController;
+use App\Services\Analysis\ProductDSSCalculator;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -25,10 +26,10 @@ Route::get('/', function () {
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/test-dss', function (InsightService $service) {
+    Route::get('/test-dss', function (InsightService $service, ProductDSSCalculator $calculator) {
 
         // Jalankan Analisa
-        $service->runAnalysis();
+        $service->runScheduledAnalysis();
 
         return "Analisa DSS Selesai! Cek tabel smart_insights di database.";
     })->name('test.dss');
@@ -58,7 +59,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('purchases/{purchase}/checking', 'checking')
             ->name('purchases.checking');
         Route::get('purchases/{id}/print', 'print')->name('purchases.print');
-
+        // Rute get rekomendasi
+        Route::get('purchases/recommendations/{supplierId}', 'getRecommendations')
+            ->name('purchases.recommendations');
+        Route::get('purchases/products/{supplierId}', 'getCatalog')->name('purchase.getCatalog');
         // RUTE INVOICE
         // POST Rute untuk Upload Invoice
         Route::post('purchases/{purchase}/store-invoice', [PurchaseController::class, 'storeInvoice'])
@@ -91,15 +95,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
             ->name('purchases.edit');
         Route::put('purchases/{purchase}', 'update')
             ->name('purchases.update');
-        // Rute get rekomendasi
-        Route::get('purchases/recommendations/{supplierId}', 'getRecommendations')
-            ->name('purchases.recommendations');
     });
 
     // Penjualan
     Route::controller(SalesRecapController::class)->group(function () {
-        Route::get('/sales/search-product', 'searchProduct')
-            ->name('sales.search-product');
+        // Route::get('/sales/search-product', 'searchProduct')
+        //     ->name('sales.search-product');
         Route::get('/sales/pos', 'posIndex')->name('sales.pos');
         Route::post('/sales/pos/store', 'store')->name('sales.pos.store');
         Route::get('/sales/{sale}/print',  'print')->name('sales.print');

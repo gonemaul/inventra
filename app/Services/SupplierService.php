@@ -16,7 +16,7 @@ class SupplierService
     public function getAll()
     {
         // Ambil ID dan Nama, urutkan berdasarkan Nama
-        return Supplier::orderBy('name')->get(['id', 'name']);
+        return Supplier::where('status', Supplier::STATUS_ACTIVE)->orderBy('name')->get(['id', 'name']);
     }
     /**
      * Mengambil data supplier untuk datatable (server-side).

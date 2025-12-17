@@ -27,10 +27,8 @@ const isMarginLow = computed(() =>
     props.data.insights?.some((i) => i.type === "margin_alert")
 );
 const isStockLow = computed(() => {
-    const hasInsight = props.data.insights?.some(
-        (i) => i.type === "restock" && i.severity === "critical"
-    );
-    return hasInsight || props.data.stock <= props.data.min_stock;
+    const hasInsight = props.data.insights?.some((i) => i.type === "restock");
+    return hasInsight;
 });
 
 // Logic Profit
@@ -74,7 +72,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 <span
                     class="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-wider"
                 >
-                    NO IMG
+                    No Image
                 </span>
             </div>
 

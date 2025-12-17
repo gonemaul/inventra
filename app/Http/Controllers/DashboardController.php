@@ -17,7 +17,7 @@ class DashboardController extends Controller
     public function index(InsightService $insightService)
     {
         // 1. Trigger Analisa DSS (Stok & Keuangan)
-        $insightService->runAnalysis();
+        // $insightService->runScheduledAnalysis();
         $health = $insightService->calculateShopHealth();
         $cashflow = $insightService->predictCashflow();
 

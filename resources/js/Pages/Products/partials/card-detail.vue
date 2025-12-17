@@ -234,26 +234,24 @@ const isStockLow = computed(() => {
                     </div>
 
                     <div
-                        v-if="data.financials.purchase_trend.direction === 'up'"
+                        v-if="data.financials.price_trend.direction === 'up'"
                         class="inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-white px-2 py-0.5 rounded shadow-sm border border-red-100"
                     >
                         <span
                             >📈 Naik
                             {{
                                 formatRupiah(
-                                    data.financials.purchase_trend.diff_rp
+                                    data.financials.price_trend.diff_rp
                                 )
                             }}</span
                         >
                         <span class="text-red-400"
-                            >({{
-                                data.financials.purchase_trend.percent
-                            }}%)</span
+                            >({{ data.financials.price_trend.percent }}%)</span
                         >
                     </div>
                     <div
                         v-else-if="
-                            data.financials.purchase_trend.direction === 'down'
+                            data.financials.price_trend.direction === 'down'
                         "
                         class="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-white px-2 py-0.5 rounded shadow-sm border border-green-100"
                     >
@@ -261,14 +259,12 @@ const isStockLow = computed(() => {
                             >📉 Turun
                             {{
                                 formatRupiah(
-                                    data.financials.purchase_trend.diff_rp
+                                    data.financials.price_trend.diff_rp
                                 )
                             }}</span
                         >
                         <span class="text-green-400"
-                            >({{
-                                data.financials.purchase_trend.percent
-                            }}%)</span
+                            >({{ data.financials.price_trend.percent }}%)</span
                         >
                     </div>
                     <div v-else class="text-[10px] text-gray-400 font-medium">
@@ -307,26 +303,24 @@ const isStockLow = computed(() => {
                     </div>
 
                     <div
-                        v-if="data.financials.selling_trend.direction === 'up'"
+                        v-if="data.financials.sales_trend.direction === 'up'"
                         class="inline-flex items-center gap-1 text-[10px] font-bold text-green-600 bg-white px-2 py-0.5 rounded shadow-sm border border-green-100"
                     >
                         <span
                             >🚀 Naik
                             {{
                                 formatRupiah(
-                                    data.financials.selling_trend.diff_rp
+                                    data.financials.sales_trend.diff_rp
                                 )
                             }}
                         </span>
                         <span class="text-green-600"
-                            >({{
-                                data.financials.selling_trend.percent
-                            }}%)</span
+                            >({{ data.financials.sales_trend.percent }}%)</span
                         >
                     </div>
                     <div
                         v-else-if="
-                            data.financials.selling_trend.direction === 'down'
+                            data.financials.sales_trend.direction === 'down'
                         "
                         class="inline-flex items-center gap-1 text-[10px] font-bold text-red-500 bg-white px-2 py-0.5 rounded shadow-sm border border-red-100"
                     >
@@ -334,14 +328,12 @@ const isStockLow = computed(() => {
                             >🔻 Turun
                             {{
                                 formatRupiah(
-                                    data.financials.selling_trend.diff_rp
+                                    data.financials.sales_trend.diff_rp
                                 )
                             }}</span
                         >
                         <span class="text-red-500"
-                            >({{
-                                data.financials.selling_trend.percent
-                            }}%)</span
+                            >({{ data.financials.sales_trend.percent }}%)</span
                         >
                     </div>
                     <div v-else class="text-[10px] text-blue-300 font-medium">

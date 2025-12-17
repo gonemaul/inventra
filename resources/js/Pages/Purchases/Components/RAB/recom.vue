@@ -82,7 +82,7 @@ const allChecked = computed({
 </script>
 
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="2xl">
+    <Modal :show="show" @close="$emit('close')" maxWidth="3xl">
         <div class="p-6 bg-white dark:bg-gray-800">
             <div class="flex items-start justify-between mb-4">
                 <div>
@@ -111,21 +111,9 @@ const allChecked = computed({
                 v-if="loading"
                 class="flex flex-col items-center justify-center py-12 text-gray-500 animate-pulse"
             >
-                <svg class="w-8 h-8 mb-2" fill="none" viewBox="0 0 24 24">
-                    <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                    ></circle>
-                    <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                </svg>
+                <div
+                    class="w-8 h-8 mx-auto mb-2 border-b-2 rounded-full animate-spin border-lime-500"
+                ></div>
                 <span>Menganalisa Kebutuhan Stok...</span>
             </div>
 
@@ -161,7 +149,7 @@ const allChecked = computed({
 
             <div
                 v-else
-                class="overflow-y-auto max-h-[60vh] border rounded-lg dark:border-gray-700"
+                class="overflow-auto max-h-[60vh] border rounded-lg dark:border-gray-700"
             >
                 <table
                     class="min-w-full text-sm text-left divide-y divide-gray-200 dark:divide-gray-700"
@@ -179,19 +167,23 @@ const allChecked = computed({
                                     class="border-gray-300 rounded cursor-pointer text-lime-600 focus:ring-lime-500"
                                 />
                             </th>
-                            <th class="px-4 py-3 bg-gray-50 dark:bg-gray-700">
+                            <th
+                                class="w-1/3 px-4 py-3 bg-gray-50 dark:bg-gray-700"
+                            >
                                 Produk
                             </th>
-                            <th class="px-4 py-3 bg-gray-50 dark:bg-gray-700">
+                            <th
+                                class="w-1/2 px-4 py-3 bg-gray-50 dark:bg-gray-700"
+                            >
                                 Analisa / Alasan
                             </th>
                             <th
-                                class="px-4 py-3 text-center bg-gray-50 dark:bg-gray-700"
+                                class="px-4 py-3 text-center w-28 bg-gray-50 dark:bg-gray-700"
                             >
                                 Stok
                             </th>
                             <th
-                                class="px-4 py-3 text-center bg-gray-50 dark:bg-gray-700"
+                                class="px-4 py-3 text-center w-28 bg-gray-50 dark:bg-gray-700"
                             >
                                 Saran Qty
                             </th>
@@ -233,29 +225,24 @@ const allChecked = computed({
                                 />
                             </td>
 
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3 min-w-80%">
                                 <div class="flex items-center gap-3">
-                                    <div
+                                    <!-- <div
                                         class="flex-shrink-0 w-10 h-10 overflow-hidden bg-gray-100 border rounded"
                                     >
                                         <img
-                                            :src="
-                                                item.image_path
-                                                    ? '/storage/' +
-                                                      item.image_path
-                                                    : '/no-image.png'
-                                            "
+                                            :src="item.image_url"
                                             class="object-contain w-full h-full"
                                         />
-                                    </div>
-                                    <div>
-                                        <p
-                                            class="font-bold text-gray-800 dark:text-gray-200 line-clamp-1"
-                                            :title="item.name"
-                                        >
-                                            {{ item.name }}
-                                        </p>
-                                        <div
+                                    </div> -->
+                                    <p
+                                        class="font-bold text-gray-800 dark:text-gray-200 line-clamp-1"
+                                        :title="item.name"
+                                    >
+                                        {{ item.name }}
+                                    </p>
+                                    <!-- <div> -->
+                                    <!-- <div
                                             class="flex items-center gap-1 text-xs text-gray-500"
                                         >
                                             <span
@@ -263,8 +250,8 @@ const allChecked = computed({
                                                 >{{ item.code }}</span
                                             >
                                             <span>• {{ item.brand }}</span>
-                                        </div>
-                                    </div>
+                                        </div> -->
+                                    <!-- </div> -->
                                 </div>
                             </td>
 

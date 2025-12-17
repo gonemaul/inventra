@@ -10,8 +10,8 @@ import OrderImageModal from "./Components/OrderImageModal.vue";
 import InvoiceForm from "./partials/InvoiceForm.vue";
 
 // Import Anak
-import DesktopDetail from "./partials/Detail/DesktopDetail.vue";
-import MobileDetail from "./partials/Detail/MobileDetail.vue";
+import DesktopDetail from "./Components/Detail/DesktopDetail.vue";
+import MobileDetail from "./Components/Detail/MobileDetail.vue";
 
 const props = defineProps({
     purchase: Object, // Data transaksi utama (purchase, items, supplier)
@@ -229,7 +229,11 @@ const actions = {
         @close="showInvoiceModal = false"
         @invoice-saved="handleInvoiceSaved"
     />
-    <AuthenticatedLayout :showSidebar="!isMobile" :showHeader="!isMobile">
+    <AuthenticatedLayout
+        :showSidebar="!isMobile"
+        :showHeader="!isMobile"
+        :headerTitle="`Detail - ${purchase.reference_no}`"
+    >
         <div v-if="isMobile">
             <MobileDetail
                 v-bind="props"

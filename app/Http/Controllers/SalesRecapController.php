@@ -141,12 +141,12 @@ class SalesRecapController extends Controller
                 return [
                     'id' => $product->id,
                     'code' => $product->code,
-                    'name' => $product->full_name, // Pakai Accessor Full Name Komposit
+                    'name' => $product->name, // Pakai Accessor Full Name Komposit
                     'stock' => (float) $product->stock, // Cast ke float biar gak string
                     'unit' => $product->unit->name ?? 'Pcs',
                     'price' => (float) $product->selling_price,
                     'brand' => $product->brand->name,
-                    'image' => $product->image_path ? asset('storage/' . $product->image_path) : null,
+                    'image' => $product->image_url ?? null,
                 ];
             });
 

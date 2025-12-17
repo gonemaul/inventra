@@ -58,17 +58,11 @@ class PurchaseController extends Controller
      */
     public function create()
     {
-        $productsForAutocomplete = Product::select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'product_type_id', 'supplier_id')
-            ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'productType:id,name'])
-            ->where('status', 'active')
-            ->get();
-
         return Inertia::render('Purchases/create', [
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
                 'statuses' => Purchase::STATUSES,
             ],
-            'products' => $productsForAutocomplete,
         ]);
     }
 
@@ -96,6 +90,26 @@ class PurchaseController extends Controller
             $res = $this->purchaseService->getRecomendations($supplierId);
             return response()->json($res);
         }
+    }
+
+    /**
+     *
+     */
+    public function getCatalog($supplierId, Request $request)
+    {
+        $search = $request->input('search');
+        $productsForAutocomplete = Product::query()
+            ->where('status', 'active')
+            ->where('supplier_id', $supplierId)
+            ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_url', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'product_type_id', 'supplier_id')
+            ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'productType:id,name', 'insights'])
+            ->when($search, function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            })
+            ->paginate(10);
+
+        return response()->json($productsForAutocomplete);
     }
 
     /**

@@ -9,7 +9,7 @@ import ImageModal from "@/Components/ImageModal.vue";
 import { useToast } from "vue-toastification";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import { throttle } from "lodash";
-import Search from "./partials/search.vue";
+import Search from "./Components/RAB/search.vue";
 
 // --- PROPS DARI BACKEND ---
 const props = defineProps({

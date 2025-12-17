@@ -1,25 +1,31 @@
 <script setup>
+// --- 1. IMPORTS ---
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, useForm } from "@inertiajs/vue3";
 import { ref, computed, watch, onMounted } from "vue";
-import { throttle } from "lodash";
-import { useActionLoading } from "@/Composable/useActionLoading";
-import PrimaryButton from "@/Components/PrimaryButton.vue";
-import SecondaryButton from "@/Components/SecondaryButton.vue";
-import TextInput from "@/Components/TextInput.vue";
-import InputError from "@/Components/InputError.vue";
-import tableCreate from "./partials/tableCreate.vue";
-import Recom from "./partials/recom.vue";
-import Search from "./partials/search.vue";
-import { usePurchaseCart } from "@/Composable/usePurchaseCart";
 import { useToast } from "vue-toastification";
 
-const { isActionLoading } = useActionLoading();
-const toast = useToast();
+// Composables
+import { useActionLoading } from "@/Composable/useActionLoading";
+import { usePurchaseCart } from "@/Composable/usePurchaseCart";
+
+// Components
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import SecondaryButton from "@/Components/SecondaryButton.vue";
+import CatalogView from "./Components/RAB/CatalogView.vue"; // Komponen Katalog Baru
+import PurchaseTable from "./Components/RAB/PurchaseTable.vue";
+import Recom from "./Components/RAB/recom.vue";
+
+// --- 2. SETUP & PROPS ---
 const props = defineProps({
-    dropdowns: Object, // Berisi { suppliers: [], statuses: [] }
-    products: Array, // Katalog produk LENGKAP untuk autocomplete
+    dropdowns: Object, // { suppliers: [], statuses: [] }
+    purchase: Object, // Data edit (jika ada)
 });
+
+const toast = useToast();
+const { isActionLoading } = useActionLoading();
+
+// Destructure Cart Logic
 const {
     cartItems,
     addToCart,
@@ -32,263 +38,183 @@ const {
     addMultipleItems,
 } = usePurchaseCart();
 
+// --- 3. STATE: FORM HEADER & VIEW ---
 const formHeader = useForm({
     supplier_id: props.purchase?.supplier_id || "",
     transaction_date:
         props.purchase?.transaction_date ||
         new Date().toISOString().split("T")[0],
-    status: props.purchase?.status || "draft", // Default 'draft' (Sesuai alur baru)
+    status: props.purchase?.status || "draft",
     notes: props.purchase?.notes || "",
     shipping_cost: props.purchase?.shipping_cost || 0,
     other_costs: props.purchase?.other_costs || 0,
 });
 
-// Ini menampung data yang sedang ditampilkan di form bagian atas
-const stagingItem = ref({
-    product_id: null, // Jika null = mode kosong, Jika ada ID = siap tambah/edit
+// State untuk mengatur tampilan (Tabel vs Katalog)
+const activeView = ref("table"); // options: 'table' | 'catalog'
+
+// --- 4. FEATURE: SUPPLIER MANAGEMENT & DSS ---
+const showRecom = ref(false);
+const SUPPLIER_KEY = "inventra_draft_supplier_id";
+
+// Watcher Supplier: Handle Storage, Modal DSS, dan Reset View
+watch(
+    () => formHeader.supplier_id,
+    (newId) => {
+        if (newId) {
+            localStorage.setItem(SUPPLIER_KEY, newId);
+            showRecom.value = true; // Buka rekomendasi saat supplier terpilih
+
+            // Opsional: Otomatis buka katalog saat pilih supplier baru
+            activeView.value = "catalog";
+        } else {
+            localStorage.removeItem(SUPPLIER_KEY);
+            showRecom.value = false;
+            activeView.value = "table";
+        }
+    }
+);
+
+onMounted(() => {
+    const savedSupplier = localStorage.getItem(SUPPLIER_KEY);
+    if (savedSupplier && !formHeader.supplier_id) {
+        formHeader.supplier_id = savedSupplier;
+    }
+});
+
+const handleBulkAdd = (items) => {
+    addMultipleItems(items);
+    toast.info(`${items.length} item rekomendasi ditambahkan ke keranjang.`);
+};
+
+// --- 5. FEATURE: STAGING AREA (INPUT/EDIT ITEM) ---
+const isEditingMode = ref(false);
+const defaultStagingState = {
+    product_id: null,
     name: "",
     code: "",
     unit: "",
     size: "",
     category: "",
-    image_path: null,
+    brand: "",
+    type: "",
+    image_url: null,
     current_stock: 0,
-
-    // Input user
     quantity: 1,
     purchase_price: 0,
-    // DSS data
     restock_recommendation: 0,
-});
-
-const isEditingMode = ref(false);
-
-const searchKeyword = ref(""); // Teks yang diketik user
-const searchResults = ref([]); // Hasil filter dari props.products
-const isSearching = ref(false); // Untuk menampilkan "mencari..."
-const showRecom = ref(false);
-const SUPPLIER_KEY = "inventra_draft_supplier_id";
-
-watch(
-    () => formHeader.supplier_id,
-    (newId) => {
-        if (newId) {
-            // Menyimpan nilai baru
-            localStorage.setItem(SUPPLIER_KEY, newId);
-        } else {
-            // Jika user memilih opsi 'Pilih Supplier' (null), hapus cache
-            localStorage.removeItem(SUPPLIER_KEY);
-        }
-    }
-);
-onMounted(() => {
-    const savedSupplier = localStorage.getItem(SUPPLIER_KEY);
-
-    // Cek jika formHeader.supplier_id belum terisi dan ada data yang tersimpan
-    if (savedSupplier && !formHeader.supplier_id) {
-        formHeader.supplier_id = savedSupplier;
-    }
-});
-// --- WATCHER OTOMATIS (Setelah Supplier Dipilih) ---
-// Watcher ini akan berjalan setiap kali formHeader.supplier_id berubah
-watch(
-    () => formHeader.supplier_id,
-    (newId) => {
-        // 1. Logic persistence supplier ID sudah ada di onMounted
-
-        // 2. Tampilkan Modal hanya jika ID valid (tidak null/kosong)
-        if (newId) {
-            showRecom.value = true;
-        }
-        // Catatan: Jika Anda ingin modal TIDAK muncul otomatis saat load,
-        // Anda bisa menambahkan guard !isMounted disini.
-    }
-);
-const handleBulkAdd = (items) => {
-    // Panggil fungsi bulk add dari engine
-    addMultipleItems(items);
-
-    // Beri notifikasi toast (opsional)
-    toast.info(`${items.length} item rekomendasi ditambahkan ke keranjang.`);
 };
-const handleSearch = throttle(() => {
-    if (searchKeyword.value.length < 2) {
-        searchResults.value = [];
-        return;
-    }
-    isSearching.value = true;
-    // Filter Client-side
-    searchResults.value = availableProducts.value
-        .filter(
-            (p) =>
-                p.name
-                    .toLowerCase()
-                    .includes(searchKeyword.value.toLowerCase()) ||
-                p.code.toLowerCase().includes(searchKeyword.value.toLowerCase())
-        )
-        .slice(0, 10);
-    isSearching.value = false;
-}, 300);
 
-watch(searchKeyword, (newVal) => handleSearch(newVal));
+const stagingItem = ref({ ...defaultStagingState });
 
-const availableProducts = computed(() => {
-    const selectedId = formHeader.supplier_id;
-    if (!selectedId) {
-        return [];
-    }
-
-    return props.products.filter((p) => p.supplier_id == selectedId);
+// Computed Harga Realtime
+const displayedPrice = computed({
+    get: () =>
+        stagingItem.value.purchase_price
+            ? formatRupiah(stagingItem.value.purchase_price)
+            : 0,
+    set: (val) => (stagingItem.value.purchase_price = parseRupiah(val)),
 });
 
-// Saat user memilih produk dari autocomplete
-const selectProductFromSearch = (product) => {
-    // Reset mode edit jika user mencari barang baru
+// Reset Form
+const resetStaging = () => {
+    stagingItem.value = { ...defaultStagingState };
     isEditingMode.value = false;
-
-    // Isi Staging Area dengan data produk
-    fillStagingArea(product);
-
-    // Reset Search UI
-    searchKeyword.value = "";
-    searchResults.value = [];
 };
-// [PERBAIKAN] Helper untuk mengisi form atas
+
+// [UTAMA] Handler saat Produk dipilih dari CATALOG VIEW
+const handleCatalogSelection = (product) => {
+    fillStagingArea(product);
+    activeView.value = "catalog";
+};
+
 const fillStagingArea = (product, qty = 1, price = null) => {
     stagingItem.value = {
         product_id: product.id,
         name: product.name,
         code: product.code,
-        category: product.category?.name || "-", // Kategori
-        unit: product.unit?.name || "-",
+        category: product.category?.name || "-", // Sesuaikan nama key dari API JSON
+        unit: product.unit?.name || "-", // Sesuaikan nama key dari API JSON
         size: product.size?.name || "-",
-
-        // [BARU] Tambahkan Merk dan Tipe Produk (sesuai Blueprint)
         brand: product.brand?.name || "-",
-        type: product.product_type?.name || "-",
-
-        image_path: product.image_path,
+        type: product.type_name || "-",
+        image_url: product.image_url,
         current_stock: product.stock,
-
-        quantity: qty,
-        purchase_price: price !== null ? price : product.purchase_price,
-        // [BARU] Tambahkan Rekomendasi Restock Sederhana (Logic sementara)
-        restock_recommendation: Math.max(0, product.min_stock - product.stock),
+        quantity:
+            product.insights?.find((i) => i.type === "restock")?.payload
+                ?.suggested_qty || qty,
+        // Gunakan purchase_price dari API, atau 0 jika null
+        purchase_price: price !== null ? price : product.purchase_price || 0,
+        restock_recommendation: product.insights?.find(
+            (i) => i.type === "restock"
+        )?.payload?.suggested_qty,
     };
 };
 
-const handleSaveStaging = () => {
-    // 1. Validasi Kuantitas dan Produk
-    if (!stagingItem.value.product_id) {
-        toast.error("Mohon pilih produk terlebih dahulu.");
-        return;
-    }
-    if (stagingItem.value.quantity <= 0) {
-        toast.error("Kuantitas minimal harus 1.");
-        return;
-    }
+// Handler: Edit item yang sudah ada di Cart
+const handleEditCartItem = (item) => {
+    fillStagingArea(item, item.quantity, item.purchase_price);
+    isEditingMode.value = true;
+    activeView.value = "table"; // Paksa view ke table
+    window.scrollTo({ top: 0, behavior: "smooth" });
+};
 
-    // 2. Tentukan FLOW: Update atau Tambah Baru/Merge
+// Handler: Simpan Staging ke Cart
+const handleSaveStaging = () => {
+    if (!stagingItem.value.product_id)
+        return toast.error("Mohon pilih produk dari katalog.");
+    if (stagingItem.value.quantity <= 0)
+        return toast.error("Kuantitas minimal harus 1.");
+
     if (isEditingMode.value) {
-        // --- FLOW A: UPDATE ITEM (Mode Edit) ---
         updateCartItem({
             product_id: stagingItem.value.product_id,
             quantity: stagingItem.value.quantity,
             purchase_price: stagingItem.value.purchase_price,
         });
-        toast.success("Item berhasil diperbarui.");
+        toast.success("Item diperbarui.");
     } else {
-        // --- FLOW B: TAMBAH BARU / MERGE QTY (Mode Tambah) ---
-        // Ambil objek produk lengkap untuk snapshot/merge di engine
-        const fullProduct = props.products.find(
-            (p) => p.id === stagingItem.value.product_id
-        );
+        // Karena kita tidak punya full object 'products' dari props,
+        // Kita construct object produk dari stagingItem untuk disimpan ke cart
+        const productSnapshot = {
+            id: stagingItem.value.product_id,
+            name: stagingItem.value.name,
+            code: stagingItem.value.code,
+            unit: { name: stagingItem.value.unit }, // Mock structure biar sama dgn format lama
+            // ... field lain yang dibutuhkan cart
+        };
 
         addToCart(
-            fullProduct,
+            productSnapshot,
             stagingItem.value.quantity,
             stagingItem.value.purchase_price
         );
-        toast.success("Item ditambahkan ke keranjang.");
+        toast.success("Item ditambahkan.");
     }
-
-    // 3. Reset Staging Area (Siap untuk input berikutnya)
     resetStaging();
 };
 
-const handleEditCartItem = (item) => {
-    // Cari data produk asli di master data untuk info gambar/stok terkini
-    const originalProduct = props.products.find(
-        (p) => p.id === item.product_id
-    );
-
-    if (originalProduct) {
-        // Isi form atas dengan data dari keranjang + data master
-        fillStagingArea(originalProduct, item.quantity, item.purchase_price);
-
-        // Aktifkan mode edit (agar tombol berubah jadi "Update")
-        isEditingMode.value = true;
-
-        // Scroll ke atas (opsional, UX bagus untuk mobile)
-        window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-};
-
-// [PERBAIKAN] Reset Staging
-const resetStaging = () => {
-    stagingItem.value = {
-        product_id: null,
-        name: "",
-        code: "",
-        unit: "",
-        size: "",
-        category: "",
-        brand: "", // <-- Tambah reset
-        type: "", // <-- Tambah reset
-        image_path: null,
-        current_stock: 0,
-        restock_recommendation: 0, // <-- Tambah reset
-        quantity: 1,
-        purchase_price: 0,
-    };
-    isEditingMode.value = false;
-};
-
+// --- 6. ACTIONS: SUBMIT TRANSACTION ---
 const submitTransaction = () => {
-    // 1. VALIDASI WAJIB: Form Header
-    if (!formHeader.supplier_id) {
-        toast.error("Mohon pilih Supplier terlebih dahulu!");
-        return;
-    }
+    if (!formHeader.supplier_id) return toast.error("Pilih Supplier dulu!");
+    if (cartItems.value.length === 0) return toast.error("Keranjang kosong!");
 
-    // 2. VALIDASI WAJIB: Keranjang Kosong
-    if (cartItems.value.length === 0) {
-        toast.error("Keranjang belanja masih kosong!");
-        return;
-    }
-
-    // Aktifkan loader sebelum kirim
     isActionLoading.value = true;
 
-    // 3. Gabungkan Header + Item dan kirim
     formHeader
         .transform((data) => ({
             ...data,
-            items: cartItems.value, // Mengirim data dari composable
+            items: cartItems.value,
         }))
         .post(route("purchases.store"), {
             onSuccess: () => {
-                // [KRITIS] Bersihkan LocalStorage setelah sukses simpan ke DB
                 clearCart();
-                // Inertia akan mengurus redirect dan toast success dari BE (flash message)
                 formHeader.reset();
+                toast.success("Transaksi sukses!");
             },
-            onError: (errors) => {
-                // Tampilkan error validasi dari Laravel jika ada
-                toast.error(
-                    "Gagal menyimpan transaksi. Harap periksa input Anda."
-                );
-                console.error(errors);
+            onError: (e) => {
+                toast.error("Gagal menyimpan.");
+                console.error(e);
             },
             onFinish: () => {
                 localStorage.removeItem(SUPPLIER_KEY);
@@ -297,7 +223,7 @@ const submitTransaction = () => {
         });
 };
 
-// Format Rupiah (Helper)
+// --- 7. UTILS ---
 function formatRupiah(number) {
     return new Intl.NumberFormat("id-ID", {
         style: "currency",
@@ -305,22 +231,9 @@ function formatRupiah(number) {
         minimumFractionDigits: 0,
     }).format(number);
 }
-const parseRupiah = (value) => {
-    // Menghapus semua karakter non-digit (termasuk titik/koma)
+function parseRupiah(value) {
     return parseInt(String(value).replace(/[^0-9]/g, "")) || 0;
-};
-// Computed property untuk memformat harga di input secara real-time
-const displayedPrice = computed({
-    get() {
-        // Getter: Mengubah angka mentah menjadi string Rupiah untuk ditampilkan
-        if (!stagingItem.value.purchase_price) return 0;
-        return formatRupiah(stagingItem.value.purchase_price);
-    },
-    set(value) {
-        // Setter: Mengubah string Rupiah kembali ke angka mentah (integer)
-        stagingItem.value.purchase_price = parseRupiah(value);
-    },
-});
+}
 </script>
 <template>
     <Head title="Rancangan Anggaran Belanja" />
@@ -335,325 +248,425 @@ const displayedPrice = computed({
             @close="showRecom = false"
             @add-items="handleBulkAdd"
         />
-        <form @submit.prevent="submitTransaction" class="">
-            <div class="w-full min-h-screen space-y-6">
-                <div class="space-y-6">
-                    <div class="flex flex-col w-full gap-4 md:flex-row">
+        <div class="w-full min-h-screen space-y-6">
+            <div class="space-y-6">
+                <div class="flex flex-col w-full gap-4 md:flex-row">
+                    <div
+                        class="flex flex-col gap-4 p-4 bg-gray-200 rounded-lg lg:w-1/2 dark:bg-customBg-tableDark"
+                    >
                         <div
-                            class="flex flex-col gap-4 p-4 bg-gray-200 rounded-lg lg:w-1/2 dark:bg-customBg-tableDark"
+                            class="flex flex-col-reverse items-start gap-4 md:flex-row"
                         >
-                            <div class="flex flex-row gap-4">
-                                <div class="flex flex-col w-full gap-3">
-                                    <div
-                                        class="flex flex-col justify-start gap-3 md:flex-row"
-                                    >
-                                        <div class="w-full lg:w-2/3">
-                                            <label
-                                                class="block mb-1 text-sm font-medium"
-                                                >Supplier</label
+                            <div class="flex flex-col w-full gap-4">
+                                <div
+                                    class="grid grid-cols-1 gap-4 md:grid-cols-3"
+                                >
+                                    <div class="md:col-span-2">
+                                        <label
+                                            class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                                            >Supplier</label
+                                        >
+                                        <select
+                                            v-model="formHeader.supplier_id"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                                        >
+                                            <option value="">
+                                                Pilih Supplier
+                                            </option>
+                                            <option
+                                                v-for="supplier in dropdowns.suppliers"
+                                                :key="supplier.id"
+                                                :value="supplier.id"
                                             >
-                                            <select
-                                                v-model="formHeader.supplier_id"
-                                                class="w-full px-2 focus:border-lime-500 focus:ring-lime-500 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 bg-white dark:bg-gray-600 dark:text-white"
-                                            >
-                                                <option value="">
-                                                    Pilih Supplier
-                                                </option>
-                                                <option
-                                                    v-for="supplier in dropdowns.suppliers"
-                                                    :key="supplier.id"
-                                                    :value="supplier.id"
-                                                >
-                                                    {{ supplier.name }}
-                                                </option>
-                                            </select>
-                                            <InputError
-                                                :message="
-                                                    formHeader.errors
-                                                        .supplier_id
-                                                "
-                                                class="mt-1"
-                                            />
-                                        </div>
-                                        <div class="lg:block">
-                                            <label
-                                                class="block mb-1 text-sm font-medium"
-                                                >Tanggal</label
-                                            >
-                                            <input
-                                                v-model="
-                                                    formHeader.transaction_date
-                                                "
-                                                type="date"
-                                                class="w-full px-2 focus:border-lime-500 focus:ring-lime-500 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white"
-                                            />
-                                            <!-- <TextInput
-                                                v-model="
-                                                    formHeader.transaction_date
-                                                "
-                                                type="date"
-                                                class="text-sm w-full py-1.5 px-2"
-                                            /> -->
-                                            <InputError
-                                                :message="
-                                                    formHeader.errors
-                                                        .transaction_date
-                                                "
-                                                class="mt-1"
-                                            />
-                                        </div>
-                                        <!-- <div class="hidden w-1/5 mt-2 lg:block">
-                                            <label
-                                                class="block text-sm font-medium"
-                                                >Last Update</label
-                                            >
-                                            <p
-                                                class="text-xs text-gray-600 dark:text-gray-400"
-                                            >
-                                                12 Agustus 2025 10:22:30 WIB
-                                            </p>
-                                        </div> -->
+                                                {{ supplier.name }}
+                                            </option>
+                                        </select>
+                                        <InputError
+                                            :message="
+                                                formHeader.errors.supplier_id
+                                            "
+                                            class="mt-1"
+                                        />
                                     </div>
 
-                                    <div
-                                        class="flex flex-col justify-between gap-3 md:flex-row"
-                                    >
-                                        <Search
-                                            v-model="searchKeyword"
-                                            :results="searchResults"
-                                            :isSearching="isSearching"
-                                            @select="selectProductFromSearch"
+                                    <div class="md:col-span-1">
+                                        <label
+                                            class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                                            >Tanggal</label
+                                        >
+                                        <input
+                                            v-model="
+                                                formHeader.transaction_date
+                                            "
+                                            type="date"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                                         />
-                                        <div class="flex justify-between gap-3">
-                                            <div class="lg:w-1/2">
-                                                <label
-                                                    class="block mb-1 text-sm font-medium"
-                                                    >Qty</label
-                                                >
-                                                <input
-                                                    v-model.number="
-                                                        stagingItem.quantity
-                                                    "
-                                                    type="number"
-                                                    placeholder="Qty"
-                                                    :disabled="
-                                                        !stagingItem.product_id
-                                                    "
-                                                    class="w-full px-2 focus:border-lime-500 focus:ring-lime-500 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white"
-                                                />
-                                            </div>
-                                            <div class="md:w-1/2">
-                                                <label
-                                                    class="block mb-1 text-sm font-medium"
-                                                    >Harga Beli</label
-                                                >
-                                                <input
-                                                    v-model="displayedPrice"
-                                                    type="text"
-                                                    placeholder="Rp"
-                                                    :disabled="
-                                                        !stagingItem.product_id
-                                                    "
-                                                    class="w-full px-2 py-1.5 border border-gray-400 rounded-md dark:border-gray-700 dark:bg-gray-600 dark:text-white focus:border-lime-500"
-                                                />
-                                            </div>
-                                        </div>
+                                        <InputError
+                                            :message="
+                                                formHeader.errors
+                                                    .transaction_date
+                                            "
+                                            class="mt-1"
+                                        />
                                     </div>
                                 </div>
 
                                 <div
-                                    class="flex-col items-center justify-center hidden w-1/5 rounded lg:flex"
+                                    class="grid grid-cols-1 gap-4 md:grid-cols-3"
                                 >
+                                    <div class="md:col-span-1">
+                                        <label
+                                            class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                                            >Qty</label
+                                        >
+                                        <input
+                                            v-model.number="
+                                                stagingItem.quantity
+                                            "
+                                            type="number"
+                                            min="1"
+                                            placeholder="0"
+                                            :disabled="!stagingItem.product_id"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 disabled:bg-gray-100 disabled:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                                        />
+                                    </div>
+
+                                    <div class="md:col-span-2">
+                                        <label
+                                            class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
+                                            >Harga Beli</label
+                                        >
+                                        <div
+                                            class="relative rounded-md shadow-sm"
+                                        >
+                                            <div
+                                                class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
+                                            >
+                                                <span
+                                                    class="text-gray-500 sm:text-sm"
+                                                    >Rp</span
+                                                >
+                                            </div>
+                                            <input
+                                                v-model="displayedPrice"
+                                                type="text"
+                                                placeholder="0"
+                                                :disabled="
+                                                    !stagingItem.product_id
+                                                "
+                                                class="w-full px-3 py-2 pl-10 font-mono text-right border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 disabled:bg-gray-100 disabled:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex-shrink-0 w-full md:w-32">
+                                <label
+                                    class="block mb-1 text-sm font-medium text-center text-gray-700 dark:text-gray-300 md:text-left"
+                                >
+                                    Preview
+                                </label>
+
+                                <div
+                                    class="relative w-full overflow-hidden bg-gray-100 border border-gray-300 rounded-lg aspect-square dark:bg-gray-700 dark:border-gray-600 group"
+                                >
+                                    <div
+                                        class="absolute inset-0 z-0 flex flex-col items-center justify-center w-full h-full transition-colors duration-300"
+                                    >
+                                        <svg
+                                            class="w-10 h-10 mb-1 text-gray-400 dark:text-gray-600"
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                        >
+                                            <path
+                                                stroke-linecap="round"
+                                                stroke-linejoin="round"
+                                                stroke-width="1.5"
+                                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                            ></path>
+                                        </svg>
+                                        <span
+                                            class="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-wider"
+                                        >
+                                            NO IMG
+                                        </span>
+                                    </div>
+
                                     <img
-                                        alt="Produk"
-                                        class="object-cover w-32 h-32 rounded-md aspect-square"
+                                        v-if="stagingItem.image_path"
                                         :src="
-                                            stagingItem.image_path
-                                                ? `/storage/${stagingItem.image_path}`
-                                                : '/no-image.png'
+                                            '/storage/' + stagingItem.image_path
                                         "
+                                        alt="Preview"
+                                        loading="lazy"
+                                        class="absolute inset-0 object-cover w-full h-full transition-opacity duration-300"
+                                        @error="
+                                            $event.target.style.display = 'none'
+                                        "
+                                        @load="$event.target.style.opacity = 1"
                                     />
                                 </div>
                             </div>
-
-                            <div
-                                class="flex flex-wrap justify-center gap-2 lg:justify-start"
-                            >
-                                <Link :href="route('purchases.index')">
-                                    <SecondaryButton type="button">
-                                        Kembali
-                                    </SecondaryButton>
-                                </Link>
-
-                                <PrimaryButton
-                                    type="button"
-                                    @click="handleSaveStaging"
-                                    :disabled="!stagingItem.product_id"
-                                >
-                                    {{
-                                        isEditingMode
-                                            ? "Update Item"
-                                            : "Tambah Item"
-                                    }}
-                                </PrimaryButton>
-
-                                <button
-                                    @click="resetStaging"
-                                    type="button"
-                                    class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-red-500 border border-transparent rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-                                >
-                                    Reset
-                                </button>
-
-                                <PrimaryButton
-                                    type="button"
-                                    @click="submitTransaction"
-                                    :disabled="
-                                        formHeader.processing ||
-                                        cartItems.length === 0
-                                    "
-                                >
-                                    {{
-                                        formHeader.processing
-                                            ? "Menyimpan..."
-                                            : "Simpan"
-                                    }}
-                                </PrimaryButton>
-
-                                <button
-                                    @click="showRecom = true"
-                                    type="button"
-                                    class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-yellow-500 border border-transparent rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
-                                >
-                                    Rekomendasi
-                                </button>
-                            </div>
                         </div>
-
                         <div
-                            class="flex flex-col justify-between p-4 text-sm bg-gray-200 rounded-lg dark:bg-customBg-tableDark"
+                            class="flex flex-wrap justify-center gap-2 lg:justify-start"
                         >
-                            <div
-                                class="text-base border-b-2 border-gray-400 text-semibold"
+                            <Link :href="route('purchases.index')">
+                                <SecondaryButton type="button">
+                                    Kembali
+                                </SecondaryButton>
+                            </Link>
+
+                            <PrimaryButton
+                                type="button"
+                                @click="handleSaveStaging"
+                                :disabled="!stagingItem.product_id"
                             >
                                 {{
-                                    stagingItem.name
-                                        ? stagingItem.name +
-                                          " ( " +
-                                          stagingItem.code +
-                                          " )"
-                                        : "Belum ada barang dipilih"
+                                    isEditingMode
+                                        ? "Update Item"
+                                        : "Tambah Item"
                                 }}
-                            </div>
-                            <div class="space-y-2">
-                                <div class="flex justify-between">
-                                    <strong>Kategori</strong>
-                                    <strong>Satuan</strong>
-                                    <strong>Ukuran</strong>
-                                </div>
-                                <div class="flex justify-between">
-                                    <span>{{
-                                        stagingItem.category || "-"
-                                    }}</span>
-                                    <span>{{ stagingItem.unit || "-" }}</span>
-                                    <span>{{ stagingItem.size || "-" }}</span>
-                                </div>
-                            </div>
+                            </PrimaryButton>
 
-                            <div
-                                class="grid grid-cols-3 gap-4 pt-2 border-t-2 border-gray-400"
+                            <button
+                                @click="resetStaging"
+                                type="button"
+                                class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-red-500 border border-transparent rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
                             >
-                                <div>
-                                    <p class="font-semibold">Sisa Stok</p>
-                                    <p>
-                                        {{ stagingItem.current_stock || "0" }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="font-semibold">Rekom Restok</p>
-                                    <p>
-                                        {{
-                                            stagingItem.restock_recommendation ||
-                                            "0"
-                                        }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="font-semibold">Stok Masuk</p>
-                                    <p>
-                                        {{ stagingItem.quantity || "0" }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="font-semibold">Total Stok</p>
-                                    <p>
-                                        {{
-                                            (stagingItem.current_stock || 0) +
-                                            (stagingItem.quantity || 0)
-                                        }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="font-semibold">Harga Beli</p>
-                                    <p>
-                                        {{
-                                            formatRupiah(
-                                                stagingItem.purchase_price || 0
-                                            )
-                                        }}
-                                    </p>
-                                </div>
-                                <div>
-                                    <p class="font-semibold">Total</p>
-                                    <p>
-                                        {{
-                                            formatRupiah(
-                                                (stagingItem.quantity || 0) *
-                                                    (stagingItem.purchase_price ||
-                                                        0)
-                                            )
-                                        }}
-                                    </p>
-                                </div>
+                                Reset
+                            </button>
+
+                            <PrimaryButton
+                                type="button"
+                                @click="submitTransaction"
+                                :disabled="
+                                    formHeader.processing ||
+                                    cartItems.length === 0
+                                "
+                            >
+                                {{
+                                    formHeader.processing
+                                        ? "Menyimpan..."
+                                        : "Simpan"
+                                }}
+                            </PrimaryButton>
+
+                            <button
+                                @click="showRecom = true"
+                                type="button"
+                                class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-yellow-500 border border-transparent rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2"
+                            >
+                                Rekomendasi
+                            </button>
+                        </div>
+                    </div>
+
+                    <div
+                        class="flex flex-col justify-between p-4 text-sm bg-gray-200 rounded-lg dark:bg-customBg-tableDark"
+                    >
+                        <div
+                            class="text-base border-b-2 border-gray-400 text-semibold"
+                        >
+                            {{
+                                stagingItem.name
+                                    ? stagingItem.name +
+                                      " ( " +
+                                      stagingItem.code +
+                                      " )"
+                                    : "Belum ada barang dipilih"
+                            }}
+                        </div>
+                        <div class="space-y-2">
+                            <div class="flex justify-between">
+                                <strong>Kategori</strong>
+                                <strong>Satuan</strong>
+                                <strong>Ukuran</strong>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>{{ stagingItem.category || "-" }}</span>
+                                <span>{{ stagingItem.unit || "-" }}</span>
+                                <span>{{ stagingItem.size || "-" }}</span>
                             </div>
                         </div>
 
                         <div
-                            class="flex flex-col justify-between flex-1 w-full p-4 bg-gray-200 rounded-lg dark:bg-customBg-tableDark"
+                            class="grid grid-cols-3 gap-4 pt-2 border-t-2 border-gray-400"
                         >
-                            <div class="flex justify-between">
-                                <p class="text-lg font-bold">
-                                    {{ totalUnit }} Unit
-                                </p>
-                                <p class="text-lg font-bold">
-                                    {{ totalMacam }} Macam
+                            <div>
+                                <p class="font-semibold">Sisa Stok</p>
+                                <p>
+                                    {{ stagingItem.current_stock || "0" }}
                                 </p>
                             </div>
-                            <div class="mt-8 text-left">
-                                <p
-                                    class="text-gray-500 uppercase dark:text-gray-400"
-                                >
-                                    Total Belanja
+                            <div>
+                                <p class="font-semibold">Rekom Restok</p>
+                                <p>
+                                    {{
+                                        stagingItem.restock_recommendation ||
+                                        "0"
+                                    }}
                                 </p>
-                                <p class="text-3xl font-extrabold">
-                                    {{ formatRupiah(totalBelanja) }}
+                            </div>
+                            <div>
+                                <p class="font-semibold">Stok Masuk</p>
+                                <p>
+                                    {{ stagingItem.quantity || "0" }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="font-semibold">Total Stok</p>
+                                <p>
+                                    {{
+                                        (stagingItem.current_stock || 0) +
+                                        (stagingItem.quantity || 0)
+                                    }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="font-semibold">Harga Beli</p>
+                                <p>
+                                    {{
+                                        formatRupiah(
+                                            stagingItem.purchase_price || 0
+                                        )
+                                    }}
+                                </p>
+                            </div>
+                            <div>
+                                <p class="font-semibold">Total</p>
+                                <p>
+                                    {{
+                                        formatRupiah(
+                                            (stagingItem.quantity || 0) *
+                                                (stagingItem.purchase_price ||
+                                                    0)
+                                        )
+                                    }}
                                 </p>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Table -->
-                <div
-                    class="p-4 space-y-6 bg-gray-100 border shadow-md rounded-xl dark:bg-customBg-tableDark"
-                >
-                    <tableCreate
-                        :items="cartItems"
-                        @remove="removeItem"
-                        @edit="handleEditCartItem"
-                    />
+                    <div
+                        class="flex flex-col justify-between flex-1 w-full p-4 bg-gray-200 rounded-lg dark:bg-customBg-tableDark"
+                    >
+                        <div class="flex justify-between">
+                            <p class="text-lg font-bold">
+                                {{ totalUnit }} Unit
+                            </p>
+                            <p class="text-lg font-bold">
+                                {{ totalMacam }} Macam
+                            </p>
+                        </div>
+                        <div class="mt-8 text-left">
+                            <p
+                                class="text-gray-500 uppercase dark:text-gray-400"
+                            >
+                                Total Belanja
+                            </p>
+                            <p class="text-3xl font-extrabold">
+                                {{ formatRupiah(totalBelanja) }}
+                            </p>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </form>
+
+            <!-- Table -->
+            <div
+                class="p-4 space-y-4 bg-white border border-gray-200 shadow-sm rounded-xl dark:bg-gray-800 dark:border-gray-700"
+            >
+                <div
+                    class="flex p-1 space-x-1 bg-gray-100 rounded-lg dark:bg-gray-700"
+                >
+                    <button
+                        type="button"
+                        @click="activeView = 'table'"
+                        class="flex items-center justify-center w-1/2 py-2.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none"
+                        :class="
+                            activeView === 'table'
+                                ? 'bg-white text-gray-900 shadow dark:bg-gray-600 dark:text-white'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
+                        "
+                    >
+                        <svg
+                            class="w-4 h-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                            ></path>
+                        </svg>
+                        Daftar Belanja
+
+                        <span
+                            v-if="cartItems.length > 0"
+                            class="ml-2 bg-lime-100 text-lime-700 py-0.5 px-2 rounded-full text-xs font-bold"
+                        >
+                            {{ cartItems.length }}
+                        </span>
+                    </button>
+
+                    <button
+                        type="button"
+                        @click="activeView = 'catalog'"
+                        :disabled="!formHeader.supplier_id"
+                        class="flex items-center justify-center w-1/2 py-2.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none"
+                        :class="[
+                            activeView === 'catalog'
+                                ? 'bg-white text-gray-900 shadow dark:bg-gray-600 dark:text-white'
+                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
+                            !formHeader.supplier_id
+                                ? 'opacity-50 cursor-not-allowed'
+                                : '',
+                        ]"
+                    >
+                        <svg
+                            class="w-4 h-4 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                            ></path>
+                        </svg>
+
+                        <span v-if="!formHeader.supplier_id"
+                            >Pilih Supplier Dulu</span
+                        >
+                        <span v-else>Katalog Produk</span>
+                    </button>
+                </div>
+
+                <div class="min-h-[400px]">
+                    <KeepAlive>
+                        <component
+                            :is="
+                                activeView === 'table'
+                                    ? PurchaseTable
+                                    : CatalogView
+                            "
+                            :supplier-id="formHeader.supplier_id"
+                            :items="cartItems"
+                            @remove="removeItem"
+                            @edit-item="handleEditCartItem"
+                            @select-product="handleCatalogSelection"
+                        />
+                    </KeepAlive>
+                </div>
+            </div>
+        </div>
     </AuthenticatedLayout>
 </template>

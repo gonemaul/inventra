@@ -100,9 +100,6 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        // 1. Jalankan Analisa DSS (Agar data fresh saat dibuka)
-        // $this->insightService->runAnalysis();
-
         // 2. Ambil Semua Data Detail dari Service
         $data = $this->productService->getProductDetails($product->id);
 

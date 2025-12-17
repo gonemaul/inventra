@@ -217,14 +217,14 @@ class PurchaseService
         // --- STRATEGI BARU: GUNAKAN DATA DSS ---
 
         // 1. Ambil ID Produk yang punya Insight 'Restock'
-        $insightProductIds = SmartInsight::where('type', 'restock')
+        $insightProductIds = SmartInsight::where('type', SmartInsight::TYPE_RESTOCK)
             // ->where('severity', 'critical') // Ambil yang kritis dulu
             ->pluck('product_id')
             ->toArray();
 
         // 2. Query Utama: Gabungkan Produk Kritis DSS + Produk di Bawah Min Stock
         $query = Product::query()
-            ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'supplier_id')
+            ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_url', 'unit_id', 'size_id', 'category_id', 'brand_id', 'supplier_id')
             ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'insights']) // Eager load insights
             ->where('status', 'active');
 
@@ -235,8 +235,7 @@ class PurchaseService
 
         // Logic Gabungan: (Ada di Insight Restock) ATAU (Stok <= Min Stock)
         $query->where(function ($q) use ($insightProductIds) {
-            $q->whereIn('id', $insightProductIds)
-                ->orWhereColumn('stock', '<=', 'min_stock');
+            $q->whereIn('id', $insightProductIds);
         });
 
         // 3. Eksekusi & Sorting
@@ -247,31 +246,7 @@ class PurchaseService
         $formattedRecommendations = $products->map(function ($item) {
 
             // Cek apakah produk ini punya insight restock?
-            $restockInsight = $item->insights->where('type', 'restock')->first();
-
-            // HITUNG JUMLAH SARAN BELI (SUGGESTED QTY)
-            $suggestedQty = 0;
-            $reason = '';
-
-            if ($restockInsight) {
-                // Skenario A: Dari Insight (Forecasting)
-                // Di InsightService kita sudah hitung "days_left".
-                // Kita bisa ambil payloadnya jika ada, atau hitung ulang target 14 hari.
-                $avgDaily = $restockInsight->payload['avg_daily'] ?? 0;
-
-                // Target stok aman untuk 14 hari
-                $targetStock = ceil($avgDaily * 14);
-                $suggestedQty = max(5, $targetStock - $item->stock); // Minimal beli 5 atau sesuai kebutuhan
-
-                $reason = "Prediksi habis dlm " . ($restockInsight->payload['days_left'] ?? '?') . " hari";
-            } else {
-                // Skenario B: Fallback Manual (Min Stock)
-                $needed = $item->min_stock - $item->stock;
-                $buffer = 5;
-                $suggestedQty = max(1, $needed + $buffer);
-
-                $reason = "Stok di bawah batas minimum";
-            }
+            $restockInsight = $item->insights->where('type', SmartInsight::TYPE_RESTOCK)->first();
 
             return [
                 'product_id' => $item->id,
@@ -282,8 +257,8 @@ class PurchaseService
                 'purchase_price' => $item->purchase_price,
 
                 // Hasil Hitungan Cerdas
-                'quantity' => (int) $suggestedQty,
-                'reason' => $reason, // Info tambahan untuk ditampilkan di modal (misal badge)
+                'quantity' => (int) $restockInsight->payload['suggested_qty'],
+                'reason' => $restockInsight->payload['restock_reason'], // Info tambahan untuk ditampilkan di modal (misal badge)
                 'is_critical' => (bool) $restockInsight, // Flag untuk highlight warna merah
 
                 // Snapshot Data

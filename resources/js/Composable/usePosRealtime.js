@@ -25,7 +25,7 @@ export function usePosRealtime(props) {
     // State Database Produk (Ribuan Data)
     const allProducts = ref([]);
     const isFetchingData = ref(false);
-    const displayLimit = ref(5); // Lazy render limit
+    const displayLimit = ref(8); // Lazy render limit
 
     // State Member
     const memberSearch = ref("");
@@ -141,7 +141,7 @@ export function usePosRealtime(props) {
             .start(
                 { facingMode: "environment" }, // Pakai kamera belakang
                 {
-                    fps: 10,
+                    fps: 30,
                     qrbox: { width: 250, height: 150 },
                     formatsToSupport: formatsToSupport,
                 },

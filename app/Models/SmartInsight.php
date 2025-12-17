@@ -27,8 +27,10 @@ class SmartInsight extends Model
     // --- KONSTANTA TYPE (JENIS ANALISA) ---
     public const TYPE_RESTOCK = 'restock';
     public const TYPE_DEAD_STOCK = 'dead_stock';
+    public const TYPE_HIGH_MARGIN = 'high_margin';
     public const TYPE_MARGIN = 'margin_alert';
     public const TYPE_TREND = 'trend';
+    public const TYPE_NEW = 'new';
 
     // --- KONSTANTA SEVERITY (TINGKAT BAHAYA) ---
     public const SEVERITY_CRITICAL = 'critical'; // Merah (Bahaya/Habis)

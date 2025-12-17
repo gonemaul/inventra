@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
+use App\Services\Analysis\ProductDSSCalculator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProductService
@@ -24,11 +25,13 @@ class ProductService
     protected $insightService;
     protected $stockService;
     protected $imageService;
-    public function __construct(InsightService $insightService, StockService $stockService, ImageService $imageService)
+    protected $calculator;
+    public function __construct(InsightService $insightService, StockService $stockService, ImageService $imageService, ProductDSSCalculator $calculator)
     {
         $this->insightService = $insightService;
         $this->stockService = $stockService;
         $this->imageService = $imageService;
+        $this->calculator = $calculator;
     }
     private function handleImageUpload($file, $existingPath = null)
     {
@@ -39,154 +42,7 @@ class ProductService
         );
         return $newPath;
     }
-    /**
-     * LOGIC PUSAT: MENGHITUNG METRIK KEUANGAN
-     * Mengembalikan array lengkap (Nominal & Persen)
-     */
-    private function calculateFinancials($product)
-    {
-        // 1. DATA SAAT INI
-        $buy = (float) $product->purchase_price;
-        $sell = (float) $product->selling_price;
 
-        // 2. DATA SNAPSHOT (Histori)
-        // Default ke harga sekarang jika snapshot kosong (artinya tidak ada perubahan)
-        $oldBuy = (float) ($product->snapshot['purchase_price'] ?? $buy);
-        $oldSell = (float) ($product->snapshot['selling_price'] ?? $sell);
-
-        // --- A. ANALISA MARGIN (KEUNTUNGAN) ---
-        $marginRp = $sell - $buy;
-        // Hindari division by zero
-        $marginPercent = $buy > 0 ? round(($marginRp / $buy) * 100, 1) : 0;
-
-        // --- B. ANALISA TREN HARGA MODAL (PURCHASE) ---
-        $diffBuy = $buy - $oldBuy;
-        $trendBuyPercent = $oldBuy > 0 ? round(($diffBuy / $oldBuy) * 100, 1) : 0;
-
-        $trendBuyDirection = 'flat';
-        if ($diffBuy > 0) $trendBuyDirection = 'up';     // Modal Naik (Buruk/Warning)
-        if ($diffBuy < 0) $trendBuyDirection = 'down';   // Modal Turun (Bagus)
-
-        // --- C. ANALISA TREN HARGA JUAL (SELLING) ---
-        $diffSell = $sell - $oldSell;
-        $trendSellPercent = $oldSell > 0 ? round(($diffSell / $oldSell) * 100, 1) : 0;
-
-        $trendSellDirection = 'flat';
-        if ($diffSell > 0) $trendSellDirection = 'up';   // Jual Naik (Bagus/Cuan)
-        if ($diffSell < 0) $trendSellDirection = 'down'; // Jual Turun (Diskon)
-
-        // RETURN PAKET LENGKAP
-        return [
-            'margin' => [
-                'rp' => $marginRp,
-                'percent' => $marginPercent
-            ],
-            'purchase_trend' => [
-                'direction' => $trendBuyDirection,
-                'diff_rp' => abs($diffBuy),      // Kita kirim angka positif untuk tampilan
-                'percent' => abs($trendBuyPercent),
-                'old_price' => $oldBuy
-            ],
-            'selling_trend' => [
-                'direction' => $trendSellDirection,
-                'diff_rp' => abs($diffSell),
-                'percent' => abs($trendSellPercent),
-                'old_price' => $oldSell
-            ]
-        ];
-    }
-
-    /**
-     * LOGIC PUSAT: ANALISA STOK & FORECASTING
-     */
-    private function calculateInventoryMetrics($product)
-    {
-        // 1. DATA DASAR
-        $stock = $product->stock;
-        $minStock = $product->min_stock ?? 0;
-
-        // 2. HITUNG VELOCITY (KECEPATAN JUAL)
-        // Ambil data penjualan 30 hari terakhir
-        $sales30Days = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
-            ->sum('quantity');
-
-        // Rata-rata jual per hari (Daily Burn Rate)
-        $avgDaily = $sales30Days > 0 ? round($sales30Days / 30, 1) : 0;
-
-        // 3. FORECASTING (PREDIKSI HABIS)
-        $daysLeft = 999; // Default aman
-        $stockoutDate = null;
-        $status = 'safe'; // safe, warning, critical, overstock
-
-        if ($avgDaily > 0) {
-            $daysLeft = floor($stock / $avgDaily);
-            $stockoutDate = now()->addDays($daysLeft)->isoFormat('D MMMM Y'); // Contoh: 25 November 2024
-
-            // Tentukan Status berdasarkan sisa hari
-            if ($daysLeft <= 3) $status = 'critical'; // Habis < 3 hari
-            elseif ($daysLeft <= 7) $status = 'warning'; // Habis seminggu lagi
-        } elseif ($stock <= $minStock) {
-            // Jika tidak ada data penjualan tapi stok dibawah min
-            $status = 'warning';
-        }
-
-        // 4. SARAN RESTOCK (SUGGESTION)
-        // Rumus sederhana: Targetkan stok aman untuk 14 hari kedepan (bisa disesuaikan)
-        $targetDays = 14;
-        $suggestedQty = 0;
-
-        if ($status !== 'safe' || $stock <= $minStock) {
-            $idealStock = $avgDaily * $targetDays;
-            $suggestedQty = ceil($idealStock - $stock);
-            // Pastikan saran minimal sebesar min_stock jika stok 0
-            if ($suggestedQty <= 0 && $stock < $minStock) {
-                $suggestedQty = $minStock - $stock;
-            }
-        }
-
-        // 5. ANALISA DEAD STOCK (LOGIC SIMPLE)
-        // Cek transaksi terakhir
-        $deadStockInsight = $product->insights->where('type', 'dead_stock')->first();
-        $lastSaleDate = null;
-        $isDeadStock = false;
-        $daysInactive = 0;
-
-        if ($deadStockInsight) {
-            // Jika ada insight, BERARTI DIA DEAD STOCK. Ikuti data insight.
-            $isDeadStock = true;
-            $daysInactive = $deadStockInsight->payload['days_inactive'] ?? 0;
-            // Override status visual jika perlu
-            $status = 'dead';
-        } else {
-            $lastItem = SaleItem::with('sale')
-                ->where('product_id', $product->id)
-                ->latest()
-                ->first();
-
-            if ($lastItem) {
-                $lastSaleDate = $lastItem->sale->transaction_date;
-                // Jika tidak laku > 60 hari dan stok masih ada
-                $daysInactive = round(Carbon::parse($lastSaleDate)->diffInDays(now()));
-                if ($stock > 0 && $daysInactive > 60) {
-                    $isDeadStock = true;
-                    $status = 'dead';
-                }
-            }
-        }
-
-        return [
-            'stock_status' => $status,      // critical, warning, safe, dead
-            'avg_daily'    => $avgDaily,    // Rata-rata laku per hari
-            'days_left'    => $daysLeft,    // Sisa hari
-            'stockout_date' => $stockoutDate, // Tanggal estimasi habis
-            'sales_30_days' => $sales30Days, // Total laku sebulan
-            'suggested_qty' => $suggestedQty, // Saran beli
-            'is_dead_stock' => $isDeadStock,
-            'days_inactive' => $daysInactive,
-            'last_sale'    => $lastSaleDate ? Carbon::parse($lastSaleDate)->diffForHumans() : 'Belum pernah terjual'
-        ];
-    }
     /**
      * Mengambil data produk untuk datatable (server-side).
      *
@@ -195,7 +51,6 @@ class ProductService
      */
     public function get(array $params)
     {
-        $this->insightService->runAnalysis();
         // Selalu ambil relasi (eager load) untuk efisiensi
         $query = Product::with(['category', 'unit', 'size', 'supplier', 'brand', 'productType', 'insights' => function ($q) {
             // Ambil insight yang masih aktif (belum dibaca/diselesaikan)
@@ -253,7 +108,7 @@ class ProductService
             ->withQueryString();
 
         $products->getCollection()->transform(function ($product) {
-            $product->financials = $this->calculateFinancials($product);
+            $product->financials = $this->calculator->calculateFinancialHealth($product);
             return $product;
         });
 
@@ -276,16 +131,14 @@ class ProductService
      */
     public function getProductDetails($id)
     {
-        // 1. Jalankan Analisa DSS (Agar data selalu fresh saat dibuka)
-        $this->insightService->runAnalysis();
         // 2. Ambil Data Produk & Relasi
         $product = Product::with(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType::id,name'])
-            ->select(['id', 'code', 'name', 'stock', 'min_stock', 'image_url', 'status', 'purchase_price', 'selling_price', 'supplier_id', 'brand_id', 'category_id', 'product_type_id', 'size_id', 'unit_id'])
+            // ->select(['id', 'code', 'name', 'stock', 'min_stock', 'image_url', 'status', 'purchase_price', 'selling_price', 'supplier_id', 'brand_id', 'category_id', 'product_type_id', 'size_id', 'unit_id'])
             ->withTrashed() // Handle jika produk soft deleted
             ->findOrFail($id);
 
-        $inventory = $this->calculateInventoryMetrics($product);
-        $financials = $this->calculateFinancials($product);
+        $inventory = $this->calculator->calculateInventoryHealth($product);
+        $financials = $this->calculator->calculateFinancialHealth($product);
         // 3. Ambil Insight DSS (Hasil Analisa)
         $insights = SmartInsight::where('product_id', $id)->get();
 
