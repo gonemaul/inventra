@@ -5,12 +5,12 @@ import { Head } from "@inertiajs/vue3";
 
 import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 import ConfirmModal from "@/Components/ConfirmModal.vue";
-import FinalizeModal from "./partials/FinalizeModal.vue";
+import FinalizeModal from "./Components/Detail/FinalizeModal.vue";
 import OrderImageModal from "./Components/OrderImageModal.vue";
-import InvoiceForm from "./partials/InvoiceForm.vue";
+import InvoiceForm from "./Components/Detail/InvoiceForm.vue";
 
 // Import Anak
-import DesktopDetail from "./Components/Detail/DesktopDetail.vue";
+import DesktopDetail from "./Components/Detail/Desktop/DesktopDetail.vue";
 import MobileDetail from "./Components/Detail/Mobile/MobileDetail.vue";
 
 const props = defineProps({

@@ -39,6 +39,7 @@ const {
 
 <script>
 import { defineComponent, h } from "vue";
+import BottomSheet from "../../../../../Components/BottomSheet.vue";
 
 const StatCard = defineComponent({
     props: ["label", "value", "isDanger", "isWarning", "isSuccess", "isSubtle"],
@@ -161,29 +162,6 @@ const StatCard = defineComponent({
                 </svg>
                 Ringkasan Keuangan
             </h4>
-            <!-- <div class="grid grid-cols-3 gap-2 text-center">
-                <div class="p-2 bg-white rounded shadow-sm dark:bg-gray-800">
-                    <span class="block text-[9px] text-gray-400">Jml Nota</span>
-                    <span class="block text-sm font-bold">{{
-                        purchase.invoices?.length || "-"
-                    }}</span>
-                </div>
-                <div class="p-2 bg-white rounded shadow-sm dark:bg-gray-800">
-                    <span class="block text-[9px] text-gray-400">Nilai PO</span>
-                    <span
-                        class="block text-sm font-bold text-gray-800 dark:text-gray-200"
-                        >{{ rp(purchase.total_item_price) }}</span
-                    >
-                </div>
-                <div class="p-2 bg-white rounded shadow-sm dark:bg-gray-800">
-                    <span class="block text-[9px] text-gray-400"
-                        >Fisik Diterima</span
-                    >
-                    <span class="block text-sm font-bold text-lime-600">{{
-                        rp(receivedAmount) || "-"
-                    }}</span>
-                </div>
-            </div> -->
             <div class="flex flex-col gap-2">
                 <div
                     class="flex items-center justify-between p-3 border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
@@ -276,120 +254,72 @@ const StatCard = defineComponent({
             </svg>
         </button>
     </div>
-    <div
-        v-if="showAnalysisModal"
-        class="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 backdrop-blur-sm"
-        @click.self="showAnalysisModal = false"
+    <BottomSheet
+        :show="showAnalysisModal"
+        @close="showAnalysisModal = false"
+        title="Analisis Detail (PO vs Fisik)"
     >
-        <div
-            class="w-full bg-white dark:bg-gray-900 rounded-t-2xl max-h-[85vh] overflow-y-auto animate-slide-up shadow-2xl"
-        >
-            <div
-                class="sticky top-0 z-10 flex justify-center pt-3 pb-2 bg-white dark:bg-gray-900"
-                @click="showAnalysisModal = false"
-            >
-                <div
-                    class="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full"
-                ></div>
-            </div>
+        <div class="">
+            <div class="grid grid-cols-3 gap-2">
+                <StatCard label="Barang Sesuai" :value="total_barang_sesuai" />
+                <StatCard label="Macam Dipesan" :value="total_macam_dipesan" />
+                <StatCard
+                    label="Macam Diterima"
+                    :value="total_macam_diterima"
+                    is-subtle
+                />
 
-            <div class="p-4 pt-0 pb-8">
+                <StatCard label="Qty Total Pesan" :value="total_qty_dipesan" />
+                <StatCard
+                    label="Qty Total Terima"
+                    :value="total_qty_diterima"
+                    is-subtle
+                />
+                <StatCard
+                    label="Qty Kekurangan"
+                    :value="produk_qty_kurang"
+                    :is-danger="produk_qty_kurang > 0"
+                />
+
+                <StatCard
+                    label="Qty Kelebihan"
+                    :value="produk_qty_lebih"
+                    :is-warning="produk_qty_lebih > 0"
+                />
+                <StatCard
+                    label="Item Kosong"
+                    :value="kosong"
+                    :is-danger="kosong > 0"
+                />
+                <StatCard
+                    label="Harga Naik"
+                    :value="macam_harga_naik"
+                    :is-warning="macam_harga_naik > 0"
+                />
+
+                <StatCard
+                    label="Harga Turun"
+                    :value="macam_harga_turun"
+                    :is-success="macam_harga_turun > 0"
+                />
+                <StatCard label="Barang Baru" :value="baru_pengganti" />
                 <div
-                    class="flex items-center justify-between pb-2 mb-4 border-b border-gray-100 dark:border-gray-800"
+                    class="flex flex-col justify-center col-span-1 p-2 border border-gray-100 rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
                 >
-                    <h3 class="font-bold text-gray-700 dark:text-gray-200">
-                        Analisis Detail (PO vs Fisik)
-                    </h3>
-                    <button
-                        @click="showAnalysisModal = false"
-                        class="p-1 text-gray-500 bg-gray-100 rounded-full dark:bg-gray-800"
+                    <span class="text-[9px] text-gray-400 leading-tight"
+                        >Catatan</span
                     >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="w-5 h-5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                    </button>
+                    <span class="text-xs font-medium truncate">{{
+                        purchase.notes || "-"
+                    }}</span>
                 </div>
-
-                <div class="grid grid-cols-3 gap-2">
-                    <StatCard
-                        label="Barang Sesuai"
-                        :value="total_barang_sesuai"
-                    />
-                    <StatCard
-                        label="Macam Dipesan"
-                        :value="total_macam_dipesan"
-                    />
-                    <StatCard
-                        label="Macam Diterima"
-                        :value="total_macam_diterima"
-                        is-subtle
-                    />
-
-                    <StatCard
-                        label="Qty Total Pesan"
-                        :value="total_qty_dipesan"
-                    />
-                    <StatCard
-                        label="Qty Total Terima"
-                        :value="total_qty_diterima"
-                        is-subtle
-                    />
-                    <StatCard
-                        label="Qty Kekurangan"
-                        :value="produk_qty_kurang"
-                        :is-danger="produk_qty_kurang > 0"
-                    />
-
-                    <StatCard
-                        label="Qty Kelebihan"
-                        :value="produk_qty_lebih"
-                        :is-warning="produk_qty_lebih > 0"
-                    />
-                    <StatCard
-                        label="Item Kosong"
-                        :value="kosong"
-                        :is-danger="kosong > 0"
-                    />
-                    <StatCard
-                        label="Harga Naik"
-                        :value="macam_harga_naik"
-                        :is-warning="macam_harga_naik > 0"
-                    />
-
-                    <StatCard
-                        label="Harga Turun"
-                        :value="macam_harga_turun"
-                        :is-success="macam_harga_turun > 0"
-                    />
-                    <StatCard label="Barang Baru" :value="baru_pengganti" />
-                    <div
-                        class="flex flex-col justify-center col-span-1 p-2 border border-gray-100 rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
-                    >
-                        <span class="text-[9px] text-gray-400 leading-tight"
-                            >Catatan</span
-                        >
-                        <span class="text-xs font-medium truncate">{{
-                            purchase.notes || "-"
-                        }}</span>
-                    </div>
-                </div>
-
-                <p class="text-center text-[10px] text-gray-400 mt-6">
-                    Data ini diperbarui otomatis berdasarkan input nota
-                    kedatangan.
-                </p>
             </div>
+
+            <p class="text-center text-[10px] text-gray-400 mt-6">
+                Data ini diperbarui otomatis berdasarkan input nota kedatangan.
+            </p>
         </div>
-    </div>
+    </BottomSheet>
 </template>
 <style scoped>
 /* Animasi Slide Up untuk Modal */

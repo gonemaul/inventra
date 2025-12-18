@@ -6,6 +6,8 @@ import InvoiceMobile from "./InvoiceMobile.vue";
 import { Link } from "@inertiajs/vue3";
 import ProdukMobile from "./ProdukMobile.vue";
 import StatusModalMobile from "./StatusModalMobile.vue";
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import BottomSheet from "../../../../../Components/BottomSheet.vue";
 
 // --- PROPS ---
 const props = defineProps({
@@ -23,33 +25,20 @@ const props = defineProps({
     isEditing: Boolean,
 });
 
-// --- EMITS (Hanya untuk navigasi/fitur yang tidak ada di props.actions) ---
-const emit = defineEmits([
-    "back",
-    "print-order",
-    "order-wa",
-    "view-invoice-detail",
-]);
-
 // --- STATE ---
 const activeTab = ref("invoices");
 const showActionSheet = ref(false); // Menu titik tiga
 const showStatusModal = ref(false); // Modal ubah status
+const targetStatus = ref("");
 
 const updateStatus = (purchase, newStatus) => {
-    (config = {
-        purchase: purchase,
-        newStatus: newStatus,
-    }),
-        showStatusModal.value.open(config);
+    const config = {
+        data: { status: newStatus },
+    };
+    targetStatus.value = newStatus;
+    showStatusModal.value.open(config);
 };
 // --- COMPUTED / HELPERS ---
-const rp = (n) =>
-    new Intl.NumberFormat("id-ID", {
-        style: "currency",
-        currency: "IDR",
-        minimumFractionDigits: 0,
-    }).format(n || 0);
 const formatDate = (date) =>
     date
         ? new Date(date).toLocaleDateString("id-ID", {
@@ -72,26 +61,13 @@ const getStatusColor = (status) => {
     return map[status] || "bg-gray-100";
 };
 
-// Mengambil Daftar Status yang BISA dipilih berdasarkan status saat ini
-// Menggunakan method helper dari parent: actions.getActions(currentStatus)
-const availableStatusOptions = computed(() => {
-    if (typeof props.actions.getActions === "function") {
-        return props.actions.getActions(props.purchase.status) || {};
-    }
-    return {};
-});
-
-const discrepancy = computed(() => {
-    const poVal = parseFloat(props.purchase.total_amount || 0);
-    const recvVal =
-        props.invoices?.reduce(
-            (acc, inv) => acc + parseFloat(inv.total_amount || 0),
-            0
-        ) || 0;
-    return {
-        val: recvVal - poVal,
-        isMatch: Math.abs(recvVal - poVal) < 1,
-    };
+const isOpsi = computed(() => {
+    return (
+        props.isEditing ||
+        props.isDeleted ||
+        props.purchase.status != "selesai" ||
+        props.purchase.status != "dibatalkan"
+    );
 });
 const invoiceCount = computed(() => {
     props.purchase?.invoices.length || 0;
@@ -106,10 +82,10 @@ const invoiceCount = computed(() => {
         @close="showImageModal = false"
     />
     <div
-        class="min-h-screen font-sans text-gray-800 bg-gray-50 dark:bg-gray-950 dark:text-gray-100 pb-28"
+        class="absolute top-0 left-0 min-h-screen font-sans text-gray-800 bg-gray-100 dark:bg-gray-950 dark:text-gray-100 pb-28"
     >
         <header
-            class="sticky top-0 z-30 flex items-center justify-between px-4 py-3 bg-white border-b border-gray-100 shadow-sm dark:bg-gray-900 dark:border-gray-800"
+            class="sticky top-0 z-30 flex items-center justify-between px-4 py-3 mb-3 bg-white border-b border-gray-100 shadow-sm dark:bg-gray-900 dark:border-gray-800"
         >
             <div class="flex items-center gap-3">
                 <Link
@@ -135,14 +111,15 @@ const invoiceCount = computed(() => {
                     <h1 class="text-sm font-bold leading-none">
                         {{ purchase.reference_no || "PO-####" }}
                     </h1>
-                    <span class="text-[10px] text-gray-500">{{
-                        formatDate(purchase.transaction_date)
-                    }}</span>
+                    <span
+                        class="text-[10px] text-gray-500 dark:text-gray-400"
+                        >{{ formatDate(purchase.transaction_date) }}</span
+                    >
                 </div>
             </div>
             <span
                 :class="[
-                    'px-3 py-1 rounded-full text-[10px] uppercase font-bold border',
+                    'px-3 py-1 rounded-full text-[10px] uppercase font-bold border dark:text-gray-900 text-gray-200',
                     getStatusColor(purchase.status),
                 ]"
             >
@@ -150,10 +127,10 @@ const invoiceCount = computed(() => {
             </span>
         </header>
 
-        <main class="space-y-4">
+        <main class="mx-3 space-y-4">
             <HeadMobile :purchase="purchase" :invoice-count="invoiceCount" />
 
-            <div class="flex p-1 bg-gray-200 rounded-lg dark:bg-gray-800">
+            <div class="flex bg-gray-200 rounded-lg dark:bg-gray-800">
                 <button
                     @click="activeTab = 'invoices'"
                     :class="[
@@ -196,6 +173,7 @@ const invoiceCount = computed(() => {
         >
             <div class="flex gap-3">
                 <button
+                    v-if="isOpsi"
                     @click="showActionSheet = true"
                     class="p-3.5 rounded-xl bg-gray-200 shadow-md dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 transition"
                 >
@@ -277,136 +255,124 @@ const invoiceCount = computed(() => {
             </div>
         </div>
 
-        <div
-            v-if="showActionSheet"
-            class="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm"
-            @click.self="showActionSheet = false"
+        <BottomSheet
+            :show="showActionSheet"
+            @close="showActionSheet = false"
+            title="Aksi Lainnya"
         >
-            <div
-                class="w-full p-4 pb-6 bg-white animate-slide-up dark:bg-gray-900 rounded-t-2xl"
-            >
-                <div class="flex justify-center mb-4">
-                    <div
-                        class="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full"
-                    ></div>
-                </div>
-                <h3
-                    class="mb-3 text-sm font-bold tracking-wider text-gray-500 uppercase"
+            <div class="space-y-2">
+                <button
+                    v-for="(action, index) in actions.getActions(purchase)"
+                    :key="index"
+                    @click="
+                        showActionSheet = false;
+                        // showStatusModal = true;
+                        updateStatus(purchase, action.newStatus);
+                        // actions.updateStatus(purchase, action.newStatus);
+                    "
+                    class="flex items-center w-full gap-3 p-3 text-left rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
                 >
-                    Aksi Lainnya
-                </h3>
-
-                <div class="space-y-2">
-                    <button
-                        v-for="(action, index) in actions.getActions(purchase)"
-                        :key="index"
-                        @click="
-                            showActionSheet = false;
-                            // showStatusModal = true;
-                            updateStatus(purchase, action.newStatus);
-                            // actions.updateStatus(purchase, action.newStatus);
-                        "
-                        class="flex items-center w-full gap-3 p-3 text-left rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
-                    >
-                        <div
-                            class="p-2 text-purple-600 bg-purple-100 rounded-lg"
+                    <div class="p-2 text-purple-600 bg-purple-100 rounded-lg">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-5 h-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
                         >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-5 h-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v3.276a1 1 0 01-2 0V13.116a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </div>
-                        <div class="">
-                            <span class="font-medium"
-                                >Ubah Status Purchase</span
-                            >
-                            <p class="text-xs text-red-800">
-                                {{ action.label }}
-                            </p>
-                        </div>
-                    </button>
+                            <path
+                                fill-rule="evenodd"
+                                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v3.276a1 1 0 01-2 0V13.116a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                    </div>
+                    <div class="">
+                        <span
+                            class="font-medium text-gray-800 dark:text-gray-200"
+                            >Ubah Status Purchase</span
+                        >
+                        <p class="text-xs text-red-800">
+                            {{ action.label }}
+                        </p>
+                    </div>
+                </button>
 
-                    <Link
-                        v-if="isEditing"
-                        :href="route('purchases.edit', purchase.id)"
-                        @click="showActionSheet = false"
-                        class="flex items-center w-full gap-3 p-3 text-left rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
-                    >
-                        <div class="p-2 text-blue-600 bg-blue-100 rounded-lg">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-5 h-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                                <path
-                                    d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
-                                />
-                            </svg>
-                        </div>
-                        <span class="font-medium">Edit Informasi PO</span>
-                    </Link>
+                <Link
+                    v-if="isEditing"
+                    :href="route('purchases.edit', purchase.id)"
+                    @click="showActionSheet = false"
+                    class="flex items-center w-full gap-3 p-3 text-left rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                    <div class="p-2 text-blue-600 bg-blue-100 rounded-lg">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-5 h-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"
+                            />
+                        </svg>
+                    </div>
+                    <span class="font-medium">Edit Informasi PO</span>
+                </Link>
 
-                    <!-- <button
-                        @click="
-                            showActionSheet = false;
-                            $emit('print-order');
-                        "
-                        class="flex items-center w-full gap-3 p-3 text-left rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
-                    >
-                        <div class="p-2 text-gray-600 bg-gray-100 rounded-lg">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-5 h-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </div>
-                        <span class="font-medium">Cetak / Download PDF</span>
-                    </button> -->
+                <!-- <button
+                    @click="
+                        showActionSheet = false;
+                        $emit('print-order');
+                    "
+                    class="flex items-center w-full gap-3 p-3 text-left rounded-xl hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                    <div class="p-2 text-gray-600 bg-gray-100 rounded-lg">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-5 h-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                    </div>
+                    <span class="font-medium">Cetak / Download PDF</span>
+                </button> -->
 
-                    <button
-                        v-if="isDeleted"
-                        @click="
-                            showActionSheet = false;
-                            actions.handleDelete();
-                        "
-                        class="flex items-center w-full gap-3 p-3 text-left text-red-600 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10"
-                    >
-                        <div class="p-2 text-red-600 bg-red-100 rounded-lg">
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-5 h-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </div>
-                        <span class="font-medium">Hapus Purchase</span>
-                    </button>
-                </div>
+                <button
+                    v-if="isDeleted"
+                    @click="
+                        showActionSheet = false;
+                        actions.handleDelete();
+                    "
+                    class="flex items-center w-full gap-3 p-3 text-left text-red-600 rounded-xl hover:bg-red-50 dark:hover:bg-red-900/10"
+                >
+                    <div class="p-2 text-red-600 bg-red-100 rounded-lg">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-5 h-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                        >
+                            <path
+                                fill-rule="evenodd"
+                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                clip-rule="evenodd"
+                            />
+                        </svg>
+                    </div>
+                    <span class="font-medium">Hapus Purchase</span>
+                </button>
             </div>
-        </div>
-        <StatusModalMobile ref="showStatusModal" />
+        </BottomSheet>
+        <StatusModalMobile
+            ref="showStatusModal"
+            :purchase="purchase"
+            v-bind:target-status="targetStatus"
+        />
     </div>
 </template>
 <style scoped>

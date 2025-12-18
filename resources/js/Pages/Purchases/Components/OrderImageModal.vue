@@ -3,6 +3,7 @@ import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import { ref, computed } from "vue";
 import html2canvas from "html2canvas";
+import BottomSheet from "@/Components/BottomSheet.vue";
 
 const props = defineProps({
     show: Boolean,
@@ -89,14 +90,12 @@ const processToWhatsapp = async () => {
 </script>
 
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="md">
+    <BottomSheet
+        :show="show"
+        @close="$emit('close')"
+        title="📸 Preview Nota Order"
+    >
         <div class="p-6 bg-white dark:bg-gray-800">
-            <h2
-                class="flex items-center gap-2 mb-4 text-lg font-bold text-gray-900 dark:text-white"
-            >
-                <span>📸</span> Preview Nota Order
-            </h2>
-
             <div
                 class="flex justify-center p-4 mb-6 overflow-hidden bg-gray-100 border border-gray-200 rounded-xl"
             >
@@ -228,5 +227,5 @@ const processToWhatsapp = async () => {
                 *Gambar otomatis tersalin. Tinggal Paste (Ctrl+V) di chat WA.
             </p>
         </div>
-    </Modal>
+    </BottomSheet>
 </template>

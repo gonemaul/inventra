@@ -1,6 +1,7 @@
 <script setup>
 import Modal from "@/Components/Modal.vue";
 import { computed, ref } from "vue"; // 1. Impor 'ref'
+import BottomSheet from "./BottomSheet.vue";
 
 const props = defineProps({
     show: {
@@ -76,9 +77,12 @@ async function downloadImage() {
 </script>
 
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="xl">
-        <div class="relative p-4 bg-white rounded-lg dark:bg-gray-800">
-            <div
+    <!-- <Modal :show="show" @close="$emit('close')" maxWidth="xl"> -->
+    <BottomSheet :show="show" @close="$emit('close')" :title="productName">
+        <div
+            class="relative pb-3 bg-white border-2 border-gray-300 rounded-lg md:border-0 dark:bg-gray-800"
+        >
+            <!-- <div
                 class="flex items-center justify-between pb-3 border-b dark:border-gray-700"
             >
                 <h3 class="text-lg font-medium text-gray-900 dark:text-white">
@@ -103,7 +107,7 @@ async function downloadImage() {
                         ></path>
                     </svg>
                 </button>
-            </div>
+            </div> -->
 
             <div class="mt-4">
                 <img
@@ -123,5 +127,5 @@ async function downloadImage() {
                 </button>
             </div>
         </div>
-    </Modal>
+    </BottomSheet>
 </template>

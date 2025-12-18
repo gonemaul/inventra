@@ -21,7 +21,7 @@ const openImageModal = (path, name) => {
 };
 const isDetail = computed(() => {
     return (
-        props.purchase.status !== "diterima" ||
+        props.purchase.status !== "diterima" &&
         props.purchase.status !== "checking"
     );
 });
@@ -39,6 +39,22 @@ const rp = (n) =>
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(n || 0);
+const getValidationColor = (status) => {
+    if (status === "validated") {
+        return "bg-teal-50 text-teal-700 border-teal-200"; // Teal: Terverifikasi
+    }
+    return "bg-blue-50 text-blue-700 border-blue-200"; // Biru: Baru Upload
+};
+const getPaymentColor = (status) => {
+    switch (status) {
+        case "paid":
+            return "bg-green-100 text-green-800"; // Hijau: Lunas
+        case "partial":
+            return "bg-yellow-100 text-yellow-800"; // Kuning: Cicil
+        default: // unpaid
+            return "bg-orange-100 text-orange-800"; // Orange: Hutang
+    }
+};
 </script>
 <template>
     <ImageModal
@@ -72,7 +88,7 @@ const rp = (n) =>
             :key="inv.id"
             class="relative p-4 bg-white border border-gray-100 shadow-sm dark:bg-gray-900 rounded-xl dark:border-gray-800"
         >
-            <div class="flex items-start justify-between mb-2">
+            <div class="flex items-start justify-between">
                 <div>
                     <span
                         class="px-2 py-1 text-xs font-bold text-gray-800 bg-gray-100 rounded dark:text-white dark:bg-gray-800"
@@ -81,25 +97,38 @@ const rp = (n) =>
                     <p class="text-[10px] text-gray-400 mt-1">
                         {{ formatDate(inv.invoice_date) }}
                     </p>
+                    <p class="text-[10px] text-red-400 mt-1 font-medium">
+                        {{ inv.due_date ? formatDate(inv.due_date) : "Tunai" }}
+                    </p>
                 </div>
-                <div class="text-right">
-                    <span
-                        :class="[
-                            'text-[10px] px-2 py-0.5 rounded font-bold uppercase',
-                            inv.payment_status === 'paid'
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-orange-100 text-orange-700',
-                        ]"
+                <div class="text-right items-end gap-1.5">
+                    <div class="flex gap-1">
+                        <span
+                            :class="[
+                                'text-[9px] px-2 py-0.5 rounded font-bold uppercase border tracking-wider',
+                                getValidationColor(inv.status),
+                            ]"
+                        >
+                            {{ inv.status }}
+                        </span>
+                        <span
+                            :class="[
+                                'text-[9px] px-2 py-0.5 rounded font-bold uppercase',
+                                getPaymentColor(inv.payment_status),
+                            ]"
+                        >
+                            {{ inv.payment_status }}
+                        </span>
+                    </div>
+                    <p
+                        class="text-sm font-bold text-gray-800 dark:text-gray-200 mt-0.5"
                     >
-                        {{ inv.payment_status }}
-                    </span>
-                    <p class="mt-1 text-sm font-bold text-lime-600">
                         {{ rp(inv.total_amount) }}
                     </p>
                 </div>
             </div>
 
-            <div class="h-px my-3 bg-gray-100 dark:bg-gray-800"></div>
+            <div class="h-px my-2 bg-gray-100 dark:bg-gray-800"></div>
 
             <div class="flex items-center justify-between">
                 <div class="flex gap-2">

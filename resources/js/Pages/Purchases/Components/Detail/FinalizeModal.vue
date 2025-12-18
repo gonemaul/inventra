@@ -8,6 +8,7 @@ import TextInput from "@/Components/TextInput.vue";
 import { useToast } from "vue-toastification";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import { ref, watch } from "vue";
+import BottomSheet from "@/Components/BottomSheet.vue";
 
 const { isActionLoading } = useActionLoading();
 const toast = useToast();
@@ -63,11 +64,15 @@ const submitFinalize = () => {
 </script>
 
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="md">
+    <BottomSheet
+        :show="show"
+        @close="$emit('close')"
+        title="Selesaikan & Masukkan Stok"
+    >
         <div class="p-6">
-            <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
+            <!-- <h2 class="text-lg font-medium text-gray-900 dark:text-gray-100">
                 Selesaikan & Masukkan Stok
-            </h2>
+            </h2> -->
 
             <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 Pastikan semua data valid. Aksi ini akan menambah stok dan tidak
@@ -134,5 +139,5 @@ const submitFinalize = () => {
                 </PrimaryButton>
             </div>
         </div>
-    </Modal>
+    </BottomSheet>
 </template>
