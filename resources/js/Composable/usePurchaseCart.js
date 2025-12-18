@@ -2,17 +2,35 @@ import { ref, computed, watch, onMounted } from "vue";
 
 const STORAGE_KEY = "inventra_purchase_cart_temp";
 
-export function usePurchaseCart() {
+export function usePurchaseCart(isEdit = false, purchase = {}) {
     // State Keranjang
     const cartItems = ref([]);
 
     // 1. Load dari Cache Browser
     function loadCart() {
+        // 1. LOGIKA EDIT MODE
+        // Jika sedang Edit, kita Wajib pakai data dari Database (props purchase)
+        // Abaikan LocalStorage agar draft lama tidak menimpa data edit yang valid
+        if (isEdit) {
+            if (purchase && purchase.items) {
+                // Pastikan cart bersih dulu sebelum diisi (menghindari duplikasi jika fungsi dipanggil 2x)
+                cartItems.value = [];
+
+                // Masukkan item dari database ke cart
+                // Pastikan addMultipleItems menangani mapping field (id, qty, price) dengan benar
+                addMultipleItems(purchase.items);
+            }
+            return; // PENTING: Berhenti di sini. Jangan jalankan kode di bawahnya.
+        }
+
+        // 2. LOGIKA CREATE MODE
+        // Jika bukan Edit, baru kita cek apakah ada draft tersimpan di LocalStorage
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
             try {
                 cartItems.value = JSON.parse(saved);
             } catch (e) {
+                // Jika JSON rusak, hapus storage biar bersih
                 localStorage.removeItem(STORAGE_KEY);
             }
         }
@@ -20,8 +38,8 @@ export function usePurchaseCart() {
 
     // 2. Tambah Item Baru (Mode: ADD)
     // Jika barang sudah ada, kita tambahkan jumlahnya (merge)
-    function addToCart(product, quantity, price) {
-        const targetId = product.id;
+    function addToCart(product, quantity, price, isDraft = false) {
+        const targetId = product.product_id;
         const qty = parseInt(quantity);
         const buyPrice = parseFloat(price);
 
@@ -29,7 +47,7 @@ export function usePurchaseCart() {
             (item) => item.product_id === targetId
         );
 
-        if (existingItem) {
+        if (existingItem && isDraft) {
             // Barang ada? Tambahkan quantity-nya
             existingItem.quantity += qty;
             existingItem.purchase_price = buyPrice; // Update harga ke input terakhir
@@ -38,14 +56,16 @@ export function usePurchaseCart() {
             // Barang baru? Push ke array
             // Kita simpan SNAPSHOT data produk di sini untuk tabel & backend
             cartItems.value.push({
-                product_id: targetId,
+                id: targetId ? product.id : "",
+                product_id: targetId ?? product.id,
                 // Snapshot Data Produk (Read-only di tabel)
                 name: product.name,
                 code: product.code,
-                category: product.category?.name || "-",
-                unit: product.unit?.name || "-",
-                size: product.size?.name || "-",
-                current_stock: product.stock,
+                category: product.category?.name || product.category || "-",
+                unit: product.unit?.name || product.unit || "-",
+                size: product.size?.name || product.size || "-",
+                current_stock: product.stock || product.current_stock,
+                image_url: product.image_url || "",
 
                 // Data Transaksi (Editable)
                 quantity: qty,
@@ -92,13 +112,15 @@ export function usePurchaseCart() {
         itemsArray.forEach((item) => {
             // Kita format ulang objek agar cocok dengan parameter 'addItem'
             const productData = {
-                id: item.product_id,
-                name: item.name,
-                code: item.code,
-                unit: item.unit,
-                size: item.size,
-                category: item.category,
-                stock: item.current_stock, // Master data stock
+                id: item.id ?? "",
+                product_id: item.product_id,
+                name: item.product_snapshot?.name ?? item.name,
+                code: item.product_snapshot?.code ?? item.code,
+                unit: item.product_snapshot?.unit ?? item.unit,
+                size: item.product_snapshot?.size ?? item.size,
+                category: item.product_snapshot?.category ?? item.category,
+                stock: item.product_snapshot?.stock ?? item.current_stock, // Master data stock
+                image_url: item.product_snapshot?.image_url ?? "",
                 // Master data fields lain bisa ditambahkan di sini
             };
             // Panggil fungsi addItem yang sudah ada untuk setiap item

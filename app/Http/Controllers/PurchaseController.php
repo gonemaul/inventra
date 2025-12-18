@@ -6,6 +6,7 @@ use App\Models\User;
 use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 use App\Models\PurchaseInvoice;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -14,6 +15,7 @@ use App\Services\InvoiceService;
 use App\Services\PurchaseService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
+use App\Http\Requests\UpdatePurchaseRequest;
 use Illuminate\Validation\ValidationException;
 use App\Services\ProductService;  // Untuk dropdown
 use App\Services\SupplierService; // Untuk dropdown
@@ -349,15 +351,53 @@ class PurchaseController extends Controller
      */
     public function edit(Purchase $purchase)
     {
-        //
+        $purchase->load(['items.product.unit', 'supplier']);
+        // --- GATE CHECK: Redirect jika status sudah 'paid' atau 'received' ---
+        // Karena status ini biasanya sudah final dan masuk akuntansi
+        if (in_array($purchase->status, [Purchase::STATUS_RECEIVED])) { // Sesuaikan dengan logika bisnis Anda
+            return redirect()->route('purchases.show', $purchase->id)
+                ->with('error', 'Transaksi sudah diterima, tidak bisa diedit.');
+        }
+
+        // PENTING: Frontend perlu tahu status untuk mengunci UI
+        // Draft = UI Terbuka Bebas
+        // Ordered = UI Terkunci (Kecuali tambah baru)
+        $isLocked = ($purchase->status === Purchase::STATUS_ORDERED);
+
+        return Inertia::render('Purchases/create', [
+            'isEdit' => true,
+            'purchase' => $purchase,
+            'dropdowns' => [
+                'suppliers' => $this->supplierService->getAll(),
+                'statuses' => Purchase::STATUSES,
+            ],
+            'uiState' => [
+                'isLocked' => $isLocked, // Kirim flag ini ke Vue
+                'status' => $purchase->status
+            ]
+        ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Purchase $purchase)
+    public function update(UpdatePurchaseRequest $request, Purchase $purchase)
     {
-        //
+        try {
+            // Panggil Service yang pintar tadi
+            // Service akan otomatis mendeteksi Draft vs Ordered
+            // dd($request);
+            $this->purchaseService->updatePurchase($purchase, $request->validated());
+
+            return redirect()->route('purchases.index')
+                ->with('success', 'Transaksi berhasil diperbarui.');
+        } catch (ValidationException $e) {
+            // Tangkap error validasi bisnis (misal: coba hapus item di status ordered)
+            return back()->withErrors($e->errors());
+        } catch (\Exception $e) {
+            // Error umum sistem
+            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+        }
     }
     public function show(Purchase $purchase)
     {

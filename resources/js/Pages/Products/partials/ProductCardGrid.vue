@@ -128,7 +128,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 </span>
             </div>
             <span
-                class="absolute bottom-1 left-1 px-2 py-1 text-[9px] font-bold uppercase tracking-wider bg-cyan-500 text-white rounded-md shadow-sm"
+                class="absolute z-20 bottom-1 left-1 px-2 py-1 text-[9px] font-bold uppercase tracking-wider bg-cyan-500 text-white rounded-md shadow-sm"
                 >{{ data.supplier.name }}</span
             >
 

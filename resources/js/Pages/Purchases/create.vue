@@ -18,12 +18,20 @@ import Recom from "./Components/RAB/recom.vue";
 
 // --- 2. SETUP & PROPS ---
 const props = defineProps({
-    dropdowns: Object, // { suppliers: [], statuses: [] }
+    isEdit: {
+        type: Boolean,
+        default: false,
+    },
     purchase: Object, // Data edit (jika ada)
+    dropdowns: Object, // { suppliers: [], statuses: [] }
 });
 
 const toast = useToast();
 const { isActionLoading } = useActionLoading();
+const activeView = ref("table"); // options: 'table' | 'catalog'
+// const isLocked = computed({
+//     return props?.purchase?.status === 'dipesan'
+// })
 
 // Destructure Cart Logic
 const {
@@ -36,7 +44,7 @@ const {
     totalBelanja,
     totalMacam,
     addMultipleItems,
-} = usePurchaseCart();
+} = usePurchaseCart(props.isEdit, props.purchase);
 
 // --- 3. STATE: FORM HEADER & VIEW ---
 const formHeader = useForm({
@@ -50,30 +58,27 @@ const formHeader = useForm({
     other_costs: props.purchase?.other_costs || 0,
 });
 
-// State untuk mengatur tampilan (Tabel vs Katalog)
-const activeView = ref("table"); // options: 'table' | 'catalog'
-
 // --- 4. FEATURE: SUPPLIER MANAGEMENT & DSS ---
 const showRecom = ref(false);
 const SUPPLIER_KEY = "inventra_draft_supplier_id";
 
 // Watcher Supplier: Handle Storage, Modal DSS, dan Reset View
-watch(
-    () => formHeader.supplier_id,
-    (newId) => {
-        if (newId) {
-            localStorage.setItem(SUPPLIER_KEY, newId);
-            showRecom.value = true; // Buka rekomendasi saat supplier terpilih
+watch(() => {
+    formHeader.supplier_id,
+        (newId) => {
+            if (newId) {
+                localStorage.setItem(SUPPLIER_KEY, newId);
+                showRecom.value = true; // Buka rekomendasi saat supplier terpilih
 
-            // Opsional: Otomatis buka katalog saat pilih supplier baru
-            activeView.value = "catalog";
-        } else {
-            localStorage.removeItem(SUPPLIER_KEY);
-            showRecom.value = false;
-            activeView.value = "table";
-        }
-    }
-);
+                // Opsional: Otomatis buka katalog saat pilih supplier baru
+                activeView.value = "catalog";
+            } else {
+                localStorage.removeItem(SUPPLIER_KEY);
+                showRecom.value = false;
+                activeView.value = "table";
+            }
+        };
+});
 
 onMounted(() => {
     const savedSupplier = localStorage.getItem(SUPPLIER_KEY);
@@ -130,16 +135,16 @@ const handleCatalogSelection = (product) => {
 
 const fillStagingArea = (product, qty = 1, price = null) => {
     stagingItem.value = {
-        product_id: product.id,
+        product_id: product.id || product.product_id,
         name: product.name,
         code: product.code,
-        category: product.category?.name || "-", // Sesuaikan nama key dari API JSON
-        unit: product.unit?.name || "-", // Sesuaikan nama key dari API JSON
-        size: product.size?.name || "-",
-        brand: product.brand?.name || "-",
-        type: product.type_name || "-",
+        category: product.category?.name || product.category || "-", // Sesuaikan nama key dari API JSON
+        unit: product.unit?.name || product.unit || "-", // Sesuaikan nama key dari API JSON
+        size: product.size?.name || product.size || "-",
+        brand: product.brand?.name || product.brand || "-",
+        type: product.type_name || product.type_name || "-",
         image_url: product.image_url,
-        current_stock: product.stock,
+        current_stock: product.stock || product.current_stock,
         quantity:
             product.insights?.find((i) => i.type === "restock")?.payload
                 ?.suggested_qty || qty,
@@ -166,7 +171,8 @@ const handleSaveStaging = () => {
     if (stagingItem.value.quantity <= 0)
         return toast.error("Kuantitas minimal harus 1.");
 
-    if (isEditingMode.value) {
+    console.log(props.purchase?.status);
+    if (isEditingMode.value && props.purchase?.status === "draft") {
         updateCartItem({
             product_id: stagingItem.value.product_id,
             quantity: stagingItem.value.quantity,
@@ -174,53 +180,73 @@ const handleSaveStaging = () => {
         });
         toast.success("Item diperbarui.");
     } else {
-        // Karena kita tidak punya full object 'products' dari props,
-        // Kita construct object produk dari stagingItem untuk disimpan ke cart
-        const productSnapshot = {
-            id: stagingItem.value.product_id,
-            name: stagingItem.value.name,
-            code: stagingItem.value.code,
-            unit: { name: stagingItem.value.unit }, // Mock structure biar sama dgn format lama
-            // ... field lain yang dibutuhkan cart
-        };
-
         addToCart(
-            productSnapshot,
+            stagingItem.value,
             stagingItem.value.quantity,
-            stagingItem.value.purchase_price
+            stagingItem.value.purchase_price,
+            props.purchase?.status == "draft"
         );
         toast.success("Item ditambahkan.");
     }
     resetStaging();
 };
 
-// --- 6. ACTIONS: SUBMIT TRANSACTION ---
 const submitTransaction = () => {
+    // 1. Validasi Umum
     if (!formHeader.supplier_id) return toast.error("Pilih Supplier dulu!");
     if (cartItems.value.length === 0) return toast.error("Keranjang kosong!");
 
     isActionLoading.value = true;
 
-    formHeader
-        .transform((data) => ({
-            ...data,
-            items: cartItems.value,
-        }))
-        .post(route("purchases.store"), {
-            onSuccess: () => {
+    // 2. Definisikan Transform Data (Sama untuk Store & Update)
+    // Menggabungkan data header form dengan data cart items
+    const transformData = (data) => ({
+        ...data,
+        items: cartItems.value, // Di mode Edit, ini sudah mengandung ID item
+    });
+
+    // 3. Opsi Handler (Callback)
+    const options = {
+        onSuccess: () => {
+            toast.success(
+                props.isEdit
+                    ? "Transaksi berhasil diperbarui!"
+                    : "Transaksi berhasil disimpan!"
+            );
+
+            // Jika mode CREATE, bersihkan form agar siap input lagi
+            if (!props.isEdit) {
                 clearCart();
                 formHeader.reset();
-                toast.success("Transaksi sukses!");
-            },
-            onError: (e) => {
-                toast.error("Gagal menyimpan.");
-                console.error(e);
-            },
-            onFinish: () => {
-                localStorage.removeItem(SUPPLIER_KEY);
-                isActionLoading.value = false;
-            },
-        });
+                localStorage.removeItem(SUPPLIER_KEY); // Hapus cache supplier jika ada
+            }
+            // Jika mode EDIT, biasanya backend akan redirect ke index/show,
+            // jadi kita tidak perlu clearCart manual di sini.
+        },
+        onError: (errors) => {
+            toast.error("Gagal menyimpan. Periksa inputan merah.");
+            console.error(errors);
+            toast.error("Error : " + errors[0]);
+        },
+        onFinish: () => {
+            isActionLoading.value = false;
+        },
+    };
+
+    // 4. Eksekusi Berdasarkan Mode
+    if (props.isEdit) {
+        // --- MODE UPDATE (PUT) ---
+        // Pastikan props.purchase.id tersedia dari parent
+        console.log(props.purchase);
+        formHeader
+            .transform(transformData)
+            .put(route("purchases.update", props.purchase.id), options);
+    } else {
+        // --- MODE STORE (POST) ---
+        formHeader
+            .transform(transformData)
+            .post(route("purchases.store"), options);
+    }
 };
 
 // --- 7. UTILS ---
@@ -267,6 +293,7 @@ function parseRupiah(value) {
                                             >Supplier</label
                                         >
                                         <select
+                                            :disabled="isEdit"
                                             v-model="formHeader.supplier_id"
                                             class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white sm:text-sm"
                                         >
@@ -395,17 +422,13 @@ function parseRupiah(value) {
                                     </div>
 
                                     <img
-                                        v-if="stagingItem.image_path"
-                                        :src="
-                                            '/storage/' + stagingItem.image_path
-                                        "
+                                        v-if="stagingItem.image_url"
+                                        :src="stagingItem.image_url"
                                         alt="Preview"
                                         loading="lazy"
-                                        class="absolute inset-0 object-cover w-full h-full transition-opacity duration-300"
-                                        @error="
-                                            $event.target.style.display = 'none'
-                                        "
-                                        @load="$event.target.style.opacity = 1"
+                                        class="absolute inset-0 z-10 object-cover w-full h-full transition-opacity duration-300 opacity-0"
+                                        onload="this.classList.remove('opacity-0')"
+                                        onerror="this.style.display='none'"
                                     />
                                 </div>
                             </div>
@@ -660,8 +683,9 @@ function parseRupiah(value) {
                             "
                             :supplier-id="formHeader.supplier_id"
                             :items="cartItems"
+                            :isDraft="purchase.status == 'draft'"
                             @remove="removeItem"
-                            @edit-item="handleEditCartItem"
+                            @edit="handleEditCartItem"
                             @select-product="handleCatalogSelection"
                         />
                     </KeepAlive>

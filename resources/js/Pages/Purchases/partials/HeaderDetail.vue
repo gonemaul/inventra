@@ -192,6 +192,8 @@ const props = defineProps({
         default: "detail",
     },
 });
+
+console.log(props.data);
 function formatTanggal(tanggal) {
     if (!tanggal) return "-";
     return new Date(tanggal).toLocaleDateString("id-ID", {
@@ -209,7 +211,9 @@ function formatRupiah(value) {
         minimumFractionDigits: 0,
     }).format(value);
 }
-const isReceived = computed(() => props.data.status === "received");
+const isReceived = computed(
+    () => props.data.status === "diterima" || props.data.status === "checking"
+);
 const totalAddedCost =
     (props.data.shipping_cost || 0) + (props.data.other_costs || 0);
 const total_nominal =

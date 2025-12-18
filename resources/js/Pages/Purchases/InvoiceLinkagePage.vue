@@ -342,12 +342,14 @@ const validateInvoice = () => {
             preserveScroll: true,
             onSuccess: () => {
                 toast.success(`Invoice berhasil divalidasi!`);
-                isProcessing.value = false;
-                isActionLoading.value = false;
                 router.visit(route("purchases.validate", props.purchase.id), {
                     preserveScroll: true,
                     preserveState: false, // Wajib agar semua prop di-refresh
                 });
+            },
+            onFinish: () => {
+                isProcessing.value = false;
+                isActionLoading.value = false;
             },
         }
     );
@@ -374,211 +376,6 @@ const validateInvoice = () => {
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
-                <!-- <div
-                    class="p-6 bg-white border-2 border-gray-100 rounded-lg shadow-lg dark:bg-gray-800"
-                >
-                    <h3
-                        class="pb-2 mb-4 text-xl font-bold border-b dark:text-gray-200"
-                    >
-                        Koreksi Qty Diterima & Harga Final
-                    </h3>
-                    <p
-                        v-if="linkedItems.length === 0"
-                        class="py-8 text-center text-gray-500"
-                    >
-                        Belum ada produk tertaut ke nota ini. Tautkan item dari
-                        daftar kanan.
-                    </p>
-
-                    <form @submit.prevent="saveCorrections">
-                        <div
-                            v-if="linkedItems.length > 0"
-                            class="overflow-x-auto max-h-[55vh] border rounded dark:border-gray-700 mb-4"
-                        >
-                            <table class="min-w-full text-sm">
-                                <thead
-                                    class="sticky top-0 border-b-2 border-gray-400 border-dashed bg-gray-50 dark:bg-gray-700"
-                                >
-                                    <tr>
-                                        <th class="px-4 py-2 text-left">
-                                            Produk
-                                        </th>
-                                        <th class="w-20 px-2 py-2 text-center">
-                                            Qty Datang
-                                        </th>
-                                        <th class="w-24 px-2 py-2 text-right">
-                                            Harga Final
-                                        </th>
-                                        <th
-                                            v-if="pageMode.value === 'edit'"
-                                            class="w-16 px-2 py-2 text-center"
-                                        >
-                                            Unlink
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr
-                                        v-for="item in editableLinkedItems"
-                                        :key="item.id"
-                                        class="hover:bg-gray-50 dark:hover:bg-gray-700"
-                                    >
-                                        <td class="px-4 py-2">
-                                            <div class="flex flex-col">
-                                                <span
-                                                    class="font-bold text-gray-800 dark:text-white"
-                                                >
-                                                    {{
-                                                        item.product_snapshot
-                                                            .brand +
-                                                        " " +
-                                                        item.product_snapshot
-                                                            .name +
-                                                        " " +
-                                                        item.product_snapshot
-                                                            .size
-                                                    }}
-                                                </span>
-                                                <span
-                                                    class="text-xs text-gray-500"
-                                                >
-                                                    {{
-                                                        item.product_snapshot
-                                                            .brand
-                                                    }}
-                                                    |
-                                                    {{
-                                                        item.product_snapshot
-                                                            .code
-                                                    }}
-                                                    |
-                                                    {{
-                                                        item.product_snapshot
-                                                            .category
-                                                    }}
-                                                    |
-                                                    {{
-                                                        item.product_snapshot
-                                                            .productType
-                                                    }}
-                                                </span>
-                                                <span
-                                                    class="text-xs text-gray-400"
-                                                >
-                                                    {{
-                                                        item.product_snapshot
-                                                            .size
-                                                    }}
-                                                    -
-                                                    {{
-                                                        item.product_snapshot
-                                                            .unit
-                                                    }}
-                                                </span>
-                                            </div>
-                                        </td>
-
-                                        <td
-                                            class="w-1/12 px-2 py-2 text-center"
-                                        >
-                                            <input
-                                                v-model.number="item.quantity"
-                                                type="number"
-                                                :disabled="pageMode !== 'edit'"
-                                                :class="{
-                                                    'opacity-50 cursor-not-allowed':
-                                                        pageMode !== 'edit',
-                                                }"
-                                                class="w-full px-2 py-1 text-sm text-center border rounded dark:text-gray-800"
-                                                min="0"
-                                            />
-                                        </td>
-
-                                        <td class="w-1/6 px-2 py-2 text-right">
-                                            <span class="flex gap-2">
-                                                Rp
-                                                <input
-                                                    v-model.number="
-                                                        item.purchase_price
-                                                    "
-                                                    type="number"
-                                                    :disabled="
-                                                        pageMode !== 'edit'
-                                                    "
-                                                    :class="{
-                                                        'opacity-50 cursor-not-allowed':
-                                                            pageMode !== 'edit',
-                                                    }"
-                                                    class="w-full px-1 py-1 text-sm text-right border rounded dark:text-gray-800"
-                                                    min="0"
-                                                />
-                                            </span>
-                                        </td>
-
-                                        <td
-                                            v-if="pageMode === 'edit'"
-                                            class="px-2 py-2 text-center"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                :value="item.id"
-                                                v-model="selectedUnlinkItemIds"
-                                                class="text-red-600 rounded"
-                                            />
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div
-                            v-if="pageMode === 'edit'"
-                            class="flex items-center justify-between pt-4"
-                        >
-                            <div class="flex gap-3">
-                                <PrimaryButton
-                                    class="dark:bg-lime-500 dark:hover:bg-lime-700"
-                                    type="submit"
-                                    :disabled="isProcessing"
-                                    title="Simpan perubahan Qty dan Harga"
-                                >
-                                    Perbarui Harga/Qty
-                                </PrimaryButton>
-                                <button
-                                    @click.prevent="validateInvoice"
-                                    :disabled="
-                                        editableLinkedItems.length === 0 ||
-                                        props.invoice.status === 'validated'
-                                    "
-                                    :class="{
-                                        'opacity-50 cursor-not-allowed':
-                                            editableLinkedItems.length === 0 ||
-                                            props.invoice.status ===
-                                                'validated',
-                                    }"
-                                    class="px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-teal-500 rounded-md hover:bg-teal-600"
-                                >
-                                    Validasi Invoice
-                                </button>
-                            </div>
-                            <button
-                                @click.prevent="submitUnlinkage"
-                                :disabled="
-                                    selectedUnlinkItemIds.length === 0 ||
-                                    isProcessing
-                                "
-                                :class="{
-                                    'opacity-50 cursor-not-allowed':
-                                        selectedUnlinkItemIds.length === 0 ||
-                                        isProcessing,
-                                }"
-                                class="px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-red-500 rounded-md hover:bg-red-600"
-                            >
-                                Lepaskan {{ selectedUnlinkItemIds.length }} Item
-                            </button>
-                        </div>
-                    </form>
-                </div> -->
                 <div
                     class="flex flex-col h-full bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-800 dark:border-gray-700"
                 >
@@ -1218,7 +1015,7 @@ const validateInvoice = () => {
                             "
                         >
                             <img
-                                :src="`/storage/${invoice.invoice_url}`"
+                                :src="invoice.invoice_url"
                                 alt="Bukti Nota"
                                 class="object-cover w-full h-24 transition duration-500 group-hover:scale-110 group-hover:opacity-75"
                             />

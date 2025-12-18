@@ -2,9 +2,9 @@
 import { Link } from "@inertiajs/vue3";
 import Tabs from "@/Components/Tabs.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
-import HeaderDetail from "../HeaderDetail.vue";
-import InvoiceTransactionTable from "../invoiceTable.vue";
-import ItemValidationTable from "../productTable.vue";
+import HeaderDetail from "@/Pages/Purchases/partials/HeaderDetail.vue";
+import InvoiceTransactionTable from "@/Pages/Purchases/partials/invoiceTable.vue";
+import ItemValidationTable from "@/Pages/Purchases/partials/productTable.vue";
 
 // Terima semua props dari Parent
 const props = defineProps({
@@ -17,6 +17,7 @@ const props = defineProps({
     allowFinalize: Boolean,
     canEditDeleteInvoice: Boolean,
     isEditing: Boolean,
+    isDeleted: Boolean,
 });
 
 // Setup Tabs (karena ini spesifik UI)
@@ -51,12 +52,12 @@ const tabs = [
         <span>/</span>
         <span>Detail Pembelian # {{ purchase.reference_no }}</span>
     </div>
-    <HeaderDetail :data="props.purchase" :mode="type" />
+    <HeaderDetail :data="purchase" :mode="type" />
     <div class="flex justify-end gap-2 mt-4">
         <button
             v-for="(action, index) in actions.getActions(purchase)"
             :key="index"
-            @click="updateStatus(purchase, action.newStatus)"
+            @click="actions.updateStatus(purchase, action.newStatus)"
             :class="{
                 'text-lime-600 font-semibold': action.isPrimary,
                 'border-b-2': action.newStatus === 'ordered', // Garis pemisah
@@ -69,13 +70,14 @@ const tabs = [
         <PrimaryButton
             v-if="purchase.status === 'checking'"
             :disable="!allowFinalize"
-            @click="openFinalizeModal"
+            @click="actions.openFinalizeModal"
             :class="{ 'opacity-50 cursor-not-allowed': !allowFinalize }"
         >
             Selesaikan Validasi
         </PrimaryButton>
         <Link
             v-if="isEditing"
+            :href="route('purchases.edit', purchase.id)"
             class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-yellow-500 rounded-lg shadow-sm hover:bg-yellow-600 active:scale-95"
             title="Edit Order"
             ><svg
@@ -91,8 +93,8 @@ const tabs = [
             Edit
         </Link>
         <button
-            v-if="isEditing"
-            @click="handleDelete"
+            v-if="isDeleted"
+            @click="actions.handleDelete"
             class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-red-500 rounded-lg shadow-sm hover:bg-red-600 active:scale-95"
         >
             <svg class="w-3 h-3 sm:w-5 sm:h-5" viewBox="0 0 24 24" fill="none">
@@ -127,7 +129,7 @@ const tabs = [
 
         <button
             v-if="purchase.status === 'draft'"
-            @click="showImageModal = true"
+            @click="actions.openImageModal"
             class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-green-500 rounded-lg shadow-sm hover:bg-green-600 active:scale-95"
             title="Kirim Pesanan via WhatsApp"
         >
@@ -148,7 +150,7 @@ const tabs = [
         <Tabs :tabs="tabs" defaultTab="invoices">
             <template #invoices>
                 <div v-if="canEditDeleteInvoice" class="flex justify-end mb-4">
-                    <PrimaryButton @click="openCreateInvoiceModal">
+                    <PrimaryButton @click="actions.openCreateInvoiceModal">
                         + Tambah Nota Baru
                     </PrimaryButton>
                 </div>
@@ -157,8 +159,8 @@ const tabs = [
                     :purchase="purchase"
                     :isCheckingMode="isCheckingMode"
                     :canEditDelete="canEditDeleteInvoice"
-                    @edit-invoice="handleEditInvoice"
-                    @delete-invoice="handleDeleteInvoice(invoice)"
+                    @edit-invoice="actions.handleEditInvoice"
+                    @delete-invoice="actions.handleDeleteInvoice(invoice)"
                 />
             </template>
             <template #products>

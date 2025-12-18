@@ -91,6 +91,7 @@ class InvoiceService
                     'purchases/invoices',
                     $invoice->invoice_image
                 );
+                $invoice->update(['invoice_image ' => $newPath]);
             }
 
             // 4. Update Record
@@ -100,7 +101,6 @@ class InvoiceService
                 'due_date' => $validatedData['due_date'],
                 'total_amount' => $validatedData['total_amount'],
                 'payment_status' => $validatedData['payment_status'],
-                'invoice_image' => $newPath,
                 'amount_paid' => ($validatedData['payment_status'] === PurchaseInvoice::PAYMENT_STATUS_PAID) ? $validatedData['total_amount'] : $invoice->amount_paid,
             ]);
 

@@ -73,7 +73,11 @@ const allowFinalize = computed(() => {
 const canEditDeleteInvoice = computed(() =>
     ["diterima", "checking"].includes(props.purchase.status)
 );
-const isEditing = computed(() => props.purchase.status === "draft");
+const isEditing = computed(
+    () =>
+        props.purchase.status === "draft" || props.purchase.status === "dipesan"
+);
+const isDeleted = computed(() => props.purchase.status === "draft");
 
 const openFinalizeModal = () => {
     if (!allowFinalize.value) return;
@@ -252,6 +256,7 @@ const actions = {
                 :allowFinalize="allowFinalize"
                 :canEditDeleteInvoice="canEditDeleteInvoice"
                 :isEditing="isEditing"
+                :isDeleted="isDeleted"
             />
         </div>
     </AuthenticatedLayout>

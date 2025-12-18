@@ -237,40 +237,36 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
 
                         <div
                             v-if="
-                                data.financials.purchase_trend.direction ===
-                                'up'
+                                data.financials.price_trend.direction === 'up'
                             "
                             class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100"
                             :title="
                                 `Modal Naik : ` +
                                 formatRupiah(
-                                    data.financials.purchase_trend.diff_rp
+                                    data.financials.price_trend.diff_rp
                                 )
                             "
                         >
                             <span
                                 >↗
-                                {{
-                                    data.financials.purchase_trend.percent
-                                }}%</span
+                                {{ data.financials.price_trend.percent }}%</span
                             >
                         </div>
                         <div
                             v-if="
-                                data.financials.purchase_trend.direction ===
-                                'down'
+                                data.financials.price_trend.direction === 'down'
                             "
                             class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600 border border-green-100"
                             :title="
                                 `Modal Turun : ` +
                                 formatRupiah(
-                                    data.financials.purchase_trend.diff_rp
+                                    data.financials.price_trend.diff_rp
                                 )
                             "
                         >
                             <span
                                 >↘ ({{
-                                    data.financials.purchase_trend.percent
+                                    data.financials.price_trend.percent
                                 }}%)</span
                             >
                         </div>
@@ -304,41 +300,41 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                             </div>
                             <div
                                 v-if="
-                                    data.financials.selling_trend.direction ===
+                                    data.financials.sales_trend.direction ===
                                     'up'
                                 "
                                 class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600 border border-green-100"
                                 :title="
                                     `Harga Jual Naik : ` +
                                     formatRupiah(
-                                        data.financials.selling_trend.diff_rp
+                                        data.financials.sales_trend.diff_rp
                                     )
                                 "
                             >
                                 <span
                                     >↗
                                     {{
-                                        data.financials.selling_trend.percent
+                                        data.financials.sales_trend.percent
                                     }}%</span
                                 >
                             </div>
                             <div
                                 v-if="
-                                    data.financials.selling_trend.direction ===
+                                    data.financials.sales_trend.direction ===
                                     'down'
                                 "
                                 class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100"
                                 :title="
                                     `Harga Jual Turun : ` +
                                     formatRupiah(
-                                        data.financials.selling_trend.diff_rp
+                                        data.financials.sales_trend.diff_rp
                                     )
                                 "
                             >
                                 <span
                                     >↘
                                     {{
-                                        data.financials.selling_trend.percent
+                                        data.financials.sales_trend.percent
                                     }}%</span
                                 >
                             </div>

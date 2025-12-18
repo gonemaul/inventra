@@ -17,9 +17,11 @@ use App\Models\PurchaseInvoice; // Diperlukan jika ada logika invoice di service
 class PurchaseService
 {
     protected $stockService;
-    public function __construct(StockService $stockService)
+    protected $telegramService;
+    public function __construct(StockService $stockService, TelegramService $telegramService)
     {
         $this->stockService = $stockService;
+        $this->telegramService = $telegramService;
     }
     /**
      * Mengambil data transaksi pembelian untuk halaman index (Index.vue).
@@ -103,7 +105,6 @@ class PurchaseService
 
         // 2. DB TRANSACTION (Menjamin Atomicity)
         return DB::transaction(function () use ($validatedData, $purchaseItemsData, &$grandTotal) {
-
             // 3. Buat Transaksi Induk (Purchase)
             $purchase = Purchase::create([
                 'supplier_id' => $validatedData['supplier_id'] ?? null,
@@ -115,48 +116,173 @@ class PurchaseService
             ]);
             // 4. Loop dan buat PurchaseItem
             foreach ($purchaseItemsData as $itemData) {
-                // Ambil data produk master untuk snapshot
-                $product = Product::with(['unit:id,name', 'size:id,name', 'brand:id,name', 'category:id,name', 'productType:id,name'])->find($itemData['product_id']);
-
-                // Cek jika product master data valid sebelum membuat snapshot
-                if (!$product) continue;
-
                 $subtotal = $itemData['quantity'] * $itemData['purchase_price'];
                 $grandTotal += $subtotal;
-
-                // Buat SNAPSHOT data produk (melindungi histori)
-                $snapshot = [
-                    'name' => $product->name,
-                    'code' => $product->code,
-                    'category' => $product->category->name ?? null,
-                    'productType' => $product->productType->name ?? null,
-                    'unit' => $product->unit->name ?? null,
-                    'size' => $product->size->name ?? null,
-                    'brand' => $product->brand->name ?? null,
-                    'purchase_price' => $product->purchase_price,
-                    'selling_price' => $product->selling_price,
-                    'stock' => $product->stock,
-                    'inventory_type' => $product->inventory_type,
-                    'quantity' => $itemData['quantity']
-                ];
-
-                // Simpan Item
-                $purchase->items()->create([
-                    'product_id' => $itemData['product_id'],
-                    'product_snapshot' => $snapshot,
-                    'quantity' => $itemData['quantity'],
-                    'purchase_price' => $itemData['purchase_price'],
-                    'subtotal' => $subtotal,
-                    'item_status' => PurchaseItem::STATUS_PENDING,
-                ]);
+                $this->createItems($purchase, $itemData, $subtotal);
             }
 
-            // 5. [OPSIONAL] Update grand_total di sini jika diperlukan,
-            //    tapi karena kita hapus kolomnya, kita lewati.
             $purchase->update(['total_item_price' => $grandTotal, 'grand_total' => $grandTotal]);
             return $purchase;
         });
     }
+
+    /**
+     * MAIN UPDATE FUNCTION
+     * Ini adalah gerbang utama yang menentukan logika mana yang dipakai.
+     */
+    public function updatePurchase(Purchase $purchase, array $data)
+    {
+        // CASE 1: Status DRAFT (Bebas Edit)
+        if ($purchase->status === Purchase::STATUS_DRAFT) {
+            return $this->handleFullUpdate($purchase, $data);
+        }
+
+        // CASE 2: Status ORDERED (Hanya Boleh Nambah)
+        if ($purchase->status === Purchase::STATUS_ORDERED) {
+            return $this->handleAddOnlyUpdate($purchase, $data);
+        }
+
+        // CASE 3: Status LAIN (Received/Paid) -> Tolak
+        throw ValidationException::withMessages([
+            'status' => 'Transaksi yang sudah Diterima/Lunas tidak dapat diedit.'
+        ]);
+    }
+
+    /**
+     * LOGIKA 1: FULL EDIT (Khusus Draft)
+     * Bisa tambah, ubah qty/harga, dan hapus item.
+     */
+    private function handleFullUpdate(Purchase $purchase, array $data)
+    {
+        return DB::transaction(function () use ($purchase, $data) {
+            if ($purchase->supplier_id != $data['supplier_id']) {
+                throw ValidationException::withMessages(['supplier_id' => 'Tidak bisa ganti supplier untuk pesanan yang sudah dikirim.']);
+            }
+            // 1. Update Header
+            $purchase->update([
+                'transaction_date' => $data['transaction_date'],
+                'notes' => $data['notes'] ?? null,
+            ]);
+
+            // 2. Persiapan Data
+            $inputItems = collect($data['items']);
+            $inputIds = $inputItems->pluck('id')->filter()->toArray();
+            $existingItems = $purchase->items;
+
+            // 3. Handle DELETE (Item yang ada di DB tapi tidak ada di Input)
+            foreach ($existingItems as $existingItem) {
+                if (!in_array($existingItem->id, $inputIds)) {
+                    $existingItem->delete();
+                }
+            }
+
+            // 4. Handle UPSERT (Update Existing & Insert New)
+            $grandTotal = 0;
+
+            foreach ($inputItems as $item) {
+                $subtotal = $item['quantity'] * $item['purchase_price'];
+                $grandTotal += $subtotal;
+
+                if (isset($item['id']) && $item['id']) {
+                    // Update Item Lama
+                    $existingItem = $existingItems->firstWhere('id', $item['id']);
+                    $existingItem->update([
+                        'quantity' => $item['quantity'],
+                        'purchase_price' => $item['purchase_price'],
+                        'subtotal' => $subtotal
+                    ]);
+                } else {
+                    $this->createItems($purchase, $item, $subtotal);
+                }
+            }
+            $purchase->update(['total_item_price' => $grandTotal, 'grand_total' => $grandTotal]);
+            return $purchase;
+        });
+    }
+
+    /**
+     * LOGIKA 2: ADD ONLY (Khusus Ordered)
+     * Validasi ketat: Tidak boleh hapus, tidak boleh ubah item lama.
+     */
+    private function handleAddOnlyUpdate(Purchase $purchase, array $data)
+    {
+        return DB::transaction(function () use ($purchase, $data) {
+            $existingItems = $purchase->items;
+            $inputItems = collect($data['items']);
+
+            // --- VALIDASI KEAMANAN (SECURITY CHECK) ---
+            // 1. Cek Header: Biasanya supplier tidak boleh berubah kalau sudah dipesan
+            if ($purchase->supplier_id != $data['supplier_id']) {
+                throw ValidationException::withMessages(['supplier_id' => 'Tidak bisa ganti supplier untuk pesanan yang sudah dikirim.']);
+            }
+
+            // 2. Cek Deleted Items: Pastikan semua item lama MASIH ADA di input
+            $inputIds = $inputItems->pluck('id')->filter()->toArray();
+            foreach ($existingItems as $existing) {
+                if (!in_array($existing->id, $inputIds)) {
+                    throw ValidationException::withMessages(['items' => "Item '{$existing->product->name}' tidak boleh dihapus karena sudah dipesan."]);
+                }
+            }
+
+            // 3. Cek Modified Items: Pastikan item lama NILAINYA TIDAK BERUBAH
+            foreach ($inputItems as $item) {
+                if (isset($item['id']) && $item['id']) {
+                    $existing = $existingItems->firstWhere('id', $item['id']);
+
+                    // Jika user mencoba mengutak-atik qty atau harga item lama
+                    if ($existing->quantity != $item['quantity'] || $existing->purchase_price != $item['purchase_price']) {
+                        throw ValidationException::withMessages(['items' => "Item lama tidak boleh diedit (Qty/Harga terkunci). Hanya boleh tambah item baru."]);
+                    }
+                }
+            }
+
+            // --- EKSEKUSI PENAMBAHAN ---
+            $additionalTotal = 0;
+            foreach ($inputItems as $item) {
+                // HANYA PROSES YANG ID-NYA NULL (ITEM BARU)
+                if (!isset($item['id']) || is_null($item['id'])) {
+                    $subtotal = $item['quantity'] * $item['purchase_price'];
+                    $additionalTotal += $subtotal;
+                    $this->createItems($purchase, $item, $subtotal);
+                }
+            }
+            // Update Total Invoice (Total Lama + Total Tambahan)
+            $grandTotal = $purchase->grand_total + $additionalTotal;
+            $purchase->update(['total_item_price' => $grandTotal, 'grand_total' => $grandTotal]);
+
+            return $purchase;
+        });
+    }
+
+    private function createItems($purchase, $item, $subtotal)
+    {
+        return DB::transaction(function () use ($purchase, $item, $subtotal) {
+            $product = Product::with(['unit:id,name', 'size:id,name', 'brand:id,name', 'category:id,name', 'productType:id,name'])->find($item['product_id']);
+            $snapshot = [
+                'name' => $product->name,
+                'code' => $product->code,
+                'category' => $product->category->name ?? null,
+                'productType' => $product->productType->name ?? null,
+                'unit' => $product->unit->name ?? null,
+                'size' => $product->size->name ?? null,
+                'brand' => $product->brand->name ?? null,
+                'purchase_price' => $product->purchase_price,
+                'selling_price' => $product->selling_price,
+                'stock' => $product->stock,
+                'quantity' => $item['quantity'],
+                'image_url' => $product->image_url
+            ];
+            $purchase->items()->create([
+                'product_id' => $item['product_id'],
+                'product_snapshot' => $snapshot,
+                'quantity' => $item['quantity'],
+                'purchase_price' => $item['purchase_price'],
+                'subtotal' => $subtotal,
+                'item_status' => PurchaseItem::STATUS_PENDING,
+            ]);
+        });
+    }
+
 
     /**
      * Update Status Transaksi Operasional (Digunakan di Index/Aksi Cepat).
@@ -324,7 +450,7 @@ class PurchaseService
      * @param Purchase $purchase
      * @param array $extraCosts ['shipping_cost' => 0, 'other_costs' => 0]
      */
-    public function finalizeTransaction(Purchase $purchase, array $extraCosts, TelegramService $telegram)
+    public function finalizeTransaction(Purchase $purchase, array $extraCosts)
     {
         // --- LAYER 1: VALIDASI DATA (CRITICAL) ---
 
@@ -369,7 +495,7 @@ class PurchaseService
 
         // --- LAYER 3: EKSEKUSI DATABASE (TRANSACTION) ---
 
-        return DB::transaction(function () use ($extraCosts, $purchase, $shippingCost, $otherCosts, $costPerUnitAllocation, $telegram) {
+        return DB::transaction(function () use ($extraCosts, $purchase, $shippingCost, $otherCosts, $costPerUnitAllocation) {
 
             // A. Update Header Transaksi
             $purchase->update([
@@ -428,7 +554,7 @@ class PurchaseService
                 $msg .= "Ada kenaikan harga modal di PO #{$purchase->reference_no}, segera update harga jual!\n\n";
                 $msg .= implode("\n\n", $marginAlerts);
 
-                $telegram->send($msg);
+                $this->telegramService->send($msg);
             }
 
             return true;

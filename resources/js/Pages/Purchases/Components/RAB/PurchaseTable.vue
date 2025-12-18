@@ -2,6 +2,7 @@
 import DataTable from "@/Components/DataTable.vue";
 const props = defineProps({
     items: Array, // Ini adalah form.items dari Induk
+    isDraft: Boolean,
 });
 const emit = defineEmits(["remove", "edit"]);
 const columns = [
@@ -56,6 +57,7 @@ const columns = [
         <template #actions="{ row }">
             <div class="flex gap-2">
                 <button
+                    v-if="!row.id || isDraft"
                     @click="$emit('edit', row)"
                     type="button"
                     class="px-2 py-1 text-xs text-white bg-yellow-500 rounded hover:bg-yellow-600"
@@ -64,6 +66,7 @@ const columns = [
                 </button>
 
                 <button
+                    v-if="!row.id || isDraft"
                     @click="$emit('remove', row.product_id)"
                     type="button"
                     class="px-2 py-1 text-xs text-white bg-red-500 rounded hover:bg-red-600"
