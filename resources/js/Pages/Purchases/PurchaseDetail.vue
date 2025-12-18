@@ -11,7 +11,7 @@ import InvoiceForm from "./partials/InvoiceForm.vue";
 
 // Import Anak
 import DesktopDetail from "./Components/Detail/DesktopDetail.vue";
-import MobileDetail from "./Components/Detail/MobileDetail.vue";
+import MobileDetail from "./Components/Detail/Mobile/MobileDetail.vue";
 
 const props = defineProps({
     purchase: Object, // Data transaksi utama (purchase, items, supplier)
@@ -104,7 +104,6 @@ const handleDeleteInvoice = (invoice) => {
             invoice: invoice.id, // ID Nota yang akan dihapus
         }),
     };
-
     deleteModalRef.value.open(config);
 };
 
@@ -192,12 +191,6 @@ const getActions = (row) => {
     return actions;
 };
 
-// // Tabs definition
-// const tabs = [
-//     { key: "invoices", label: "Invoice & Pembayaran" }, // Label disesuaikan
-//     { key: "products", label: "Validasi Item" },
-// ];
-
 const actions = {
     openCreateInvoiceModal,
     handleEditInvoice,
@@ -236,6 +229,7 @@ const actions = {
     <AuthenticatedLayout
         :showSidebar="!isMobile"
         :showHeader="!isMobile"
+        :showBottomBar="!isMobile"
         :headerTitle="`Detail - ${purchase.reference_no}`"
     >
         <div v-if="isMobile">

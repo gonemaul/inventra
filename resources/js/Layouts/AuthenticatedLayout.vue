@@ -61,6 +61,10 @@ defineProps({
         type: Boolean,
         default: true, // default aktif
     },
+    showBottomBar: {
+        type: Boolean,
+        default: true,
+    },
     headerTitle: { type: String, default: "Inventra" },
 });
 </script>
@@ -95,6 +99,7 @@ defineProps({
         </div>
     </div>
     <div
+        v-if="showBottomBar"
         class="fixed bottom-0 left-0 z-50 w-full h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 lg:hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
     >
         <div class="grid h-full max-w-lg grid-cols-3 mx-auto font-medium">

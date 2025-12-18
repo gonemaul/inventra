@@ -193,7 +193,6 @@ const props = defineProps({
     },
 });
 
-console.log(props.data);
 function formatTanggal(tanggal) {
     if (!tanggal) return "-";
     return new Date(tanggal).toLocaleDateString("id-ID", {
