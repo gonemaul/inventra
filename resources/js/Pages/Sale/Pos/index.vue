@@ -8,6 +8,7 @@ import ScannerBox from "./ScannerBox.vue";
 import { useToast } from "vue-toastification";
 import Cart from "./Cart.vue";
 import ScannerModeModal from "./ScannerModeModal.vue";
+import BarcodeScanner from "@/Components/BarcodeScanner.vue";
 
 const props = defineProps({
     categories: Array,
@@ -92,16 +93,22 @@ const confirmTransaction = (shouldPrint) => {
         @close="showConfirmModal = false"
         @confirmTransaction="confirmTransaction"
     />
-    <ScannerBox
+    <!-- <ScannerBox
         :showScanner="showScanner"
         :activeScannerType="activeScannerType"
         @close="showScanner = false"
         @stopScanner="stopScanner"
-    />
-    <ScannerModeModal
+    /> -->
+
+    <!-- <ScannerModeModal
         :show="showScannerModal"
         @close="showScannerModal = false"
         @mode-selected="startScanner"
+    /> -->
+    <BarcodeScanner
+        v-if="showScannerModal"
+        @result=""
+        @close="showScannerModal = false"
     />
     <div
         class="flex flex-col lg:flex-row h-[100dvh] w-full bg-gray-100 dark:bg-gray-900 overflow-hidden font-sans transition-colors duration-300"
