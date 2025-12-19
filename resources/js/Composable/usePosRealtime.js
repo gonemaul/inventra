@@ -122,61 +122,33 @@ export function usePosRealtime(props) {
     );
 
     // --- [BARU] LOGIC CAMERA SCANNER ---
-    const startScanner = async (type, metode = "single") => {
-        activeScannerType.value = type;
-        scannerType.value = metode;
-        showScanner.value = true;
+    const queryProduk = (code) => {
+        const product = props.products.find((p) => p.code == code);
+        if (product) {
+            // Cek Stok Dulu (Opsional: Cegah scan jika stok 0)
+            if (product.stock <= 0) {
+                toast.warning(`Stok produk "${product.name}" habis!`);
+                return;
+            }
 
-        await nextTick(); // Tunggu DOM render div id="reader"
-
-        const formatsToSupport = [
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.QR_CODE,
-        ];
-        const qrCode = new Html5Qrcode("reader");
-        html5QrCode.value = qrCode;
-
-        qrCode
-            .start(
-                { facingMode: "environment" }, // Pakai kamera belakang
-                {
-                    fps: 30,
-                    qrbox: { width: 250, height: 150 },
-                    formatsToSupport: formatsToSupport,
-                },
-                (decodedText) => {
-                    // SAAT SCAN BERHASIL
-                    handleScanSuccess(decodedText);
-                },
-                (errorMessage) => {
-                    // ignore errors while scanning
-                }
-            )
-            .catch((err) => {
-                console.log(err);
-                activeScannerType.value = null;
-                showScanner.value = false;
-                alert("Gagal membuka kamera. Pastikan izin diberikan.");
-            });
-    };
-
-    const stopScanner = () => {
-        if (html5QrCode.value) {
-            html5QrCode.value
-                .stop()
-                .then(() => {
-                    html5QrCode.value.clear();
-                    activeScannerType.value = null;
-                    showScanner.value = false;
-                })
-                .catch((err) => console.log(err));
+            // Siapkan Data ke currentItem
+            return product;
         } else {
-            activeScannerType.value = null;
-            showScanner.value = false;
+            // Suara Beep Error (Opsional)
+            // playErrorSound();
+            toast.warning(`Produk tidak ditemukan (Kode: ${code})`);
         }
     };
-
+    const queryMember = (res) => {
+        const member = props.customers.find(
+            (c) => c.member_code == code || c.phone == code
+        );
+        if (member) {
+            selectMember(member);
+        } else {
+            alert("member tidak ada");
+        }
+    };
     const handleScanSuccess = (code) => {
         // 1. JIKA SCAN PRODUK
         if (activeScannerType.value === "product") {
@@ -491,11 +463,12 @@ export function usePosRealtime(props) {
         isFetchingData,
 
         // Scanner
-        startScanner,
-        stopScanner,
-        activeScannerType,
-        scannerType,
-        showScanner,
+
+        // activeScannerType,
+        // scannerType,
+        // showScanner,
+        queryProduk,
+        queryMember,
 
         // Search & Filters
         searchQuery,

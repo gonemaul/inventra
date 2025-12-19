@@ -5,6 +5,7 @@ import { usePosRealtime } from "@/Composable/usePosRealtime";
 
 import ConfirmSubmit from "./ConfirmSubmit.vue";
 import ScannerBox from "./ScannerBox.vue";
+import BottomSheet from "@/Components/BottomSheet.vue";
 import { useToast } from "vue-toastification";
 import Cart from "./Cart.vue";
 import ScannerModeModal from "./ScannerModeModal.vue";
@@ -27,11 +28,8 @@ const {
     selectedCategory, // v-model ke dropdown kategori
     loadMoreProducts, // Fungsi untuk infinite scroll
     // Scanner
-    startScanner,
-    stopScanner,
-    activeScannerType,
-    showScanner,
-    scannerType,
+    queryMember,
+    queryProduk,
     // 4. CART ACTIONS
     addItem,
     grandTotal,
@@ -46,9 +44,48 @@ const {
 // --- STATE LOKAL UI (Client Side Search) ---
 const toast = useToast();
 const showMobileCart = ref(false);
-const showScannerModal = ref(false);
+const showScanner = ref(false);
 const showConfirmModal = ref(false);
+const showQtyModal = ref(false);
+const scanType = ref("product"); //product atau member
 
+// State untuk Item yang sedang diproses di Modal
+const currentItem = ref({
+    id: null, // ID Produk (Database)
+    name: "", // Nama Produk
+    code: "", // SKU / Barcode
+    price: 0, // Harga Jual (Sell Price)
+    quantity: 1, // Jumlah yang mau dibeli (Default 1)
+    stock: 0, // Sisa Stok (Untuk validasi batas maks)
+    unit: "Pcs", // Satuan (Opsional, default Pcs)
+    image: null, // (Opsional) Jika ada gambar produk
+});
+// Fungsi ini dipanggil saat Scan berhasil & Produk ditemukan
+const prepareModalData = (productMaster) => {
+    console.log(productMaster);
+    currentItem.value = {
+        id: productMaster.id,
+        name: productMaster.name,
+        code: productMaster.code,
+        image_url: productMaster.image_url,
+        // PENTING: Pastikan ambil Harga Jual, bukan Harga Beli
+        price: parseFloat(
+            productMaster.selling_price || productMaster.price || 0
+        ),
+
+        // Reset Qty ke 1 setiap kali scan baru
+        quantity: 1,
+
+        // Ambil stok untuk validasi (agar tidak minus)
+        stock: parseInt(productMaster.stock || 0),
+
+        // Ambil nama satuan jika ada relasi unit, kalau tidak default 'Pcs'
+        unit: productMaster.unit?.name || "Pcs",
+    };
+
+    // Buka Modal
+    showQtyModal.value = true;
+};
 // Berfungsi mendeteksi jika user scroll mentok bawah -> load data lagi
 const handleScroll = (e) => {
     const { scrollTop, clientHeight, scrollHeight } = e.target;
@@ -59,7 +96,30 @@ const handleScroll = (e) => {
 };
 
 const openScanProduk = () => {
-    showScannerModal.value = true;
+    scanType.value = "product";
+    showScanner.value = true;
+};
+
+const openScanMember = () => {
+    scanType.value = "member";
+    showScanner.value = true;
+};
+
+const handleResScan = (res) => {
+    showScanner.value = false;
+    if (scanType.value == "product") {
+        res = queryProduk(res);
+        prepareModalData(res);
+    } else if (scanType.value == "member") {
+        res = queryMember(res);
+    }
+};
+
+const addToCart = (retry = false) => {
+    addItem(currentItem);
+    if (retry) {
+        openScanProduk();
+    }
 };
 
 const confirmTransaction = (shouldPrint) => {
@@ -106,9 +166,9 @@ const confirmTransaction = (shouldPrint) => {
         @mode-selected="startScanner"
     /> -->
     <BarcodeScanner
-        v-if="showScannerModal"
-        @result=""
-        @close="showScannerModal = false"
+        v-if="showScanner"
+        @result="handleResScan"
+        @close="showScanner = false"
     />
     <div
         class="flex flex-col lg:flex-row h-[100dvh] w-full bg-gray-100 dark:bg-gray-900 overflow-hidden font-sans transition-colors duration-300"
@@ -511,10 +571,176 @@ const confirmTransaction = (shouldPrint) => {
         <Cart
             :showMobileCart="showMobileCart"
             :reprops="pos"
+            @openScanMember="openScanMember"
             @showBayar="showConfirmModal = true"
             @showDesktop="showMobileCart = false"
         />
     </div>
+    <BottomSheet
+        :show="showQtyModal"
+        @close="showQtyModal = false"
+        title="Tambah Pesanan"
+    >
+        <div class="space-y-6">
+            <div
+                class="flex items-center gap-4 pb-4 border-b border-gray-100 dark:border-gray-800"
+            >
+                <div
+                    class="flex items-center justify-center text-lg font-bold text-gray-400 bg-gray-100 border border-gray-200 w-14 h-14 dark:bg-gray-800 rounded-xl dark:border-gray-700 shrink-0"
+                >
+                    {{ currentItem.name?.substring(0, 2).toUpperCase() }}
+                </div>
+
+                <div class="flex-1 min-w-0">
+                    <h3
+                        class="text-lg font-bold leading-tight text-gray-800 truncate dark:text-white"
+                    >
+                        {{ currentItem.name }}
+                    </h3>
+                    <div class="flex items-center justify-between mt-1">
+                        <p
+                            class="text-xs text-gray-500 font-mono bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded"
+                        >
+                            {{ currentItem.code }}
+                        </p>
+                        <p
+                            class="text-xs font-medium"
+                            :class="
+                                3 > currentItem.stock
+                                    ? 'text-red-500'
+                                    : 'text-gray-400'
+                            "
+                        >
+                            Stok: {{ currentItem.stock }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="bg-gray-50 dark:bg-gray-800/50 p-1.5 rounded-2xl border border-gray-200 dark:border-gray-700"
+            >
+                <div class="flex items-center justify-between">
+                    <button
+                        @click="
+                            currentItem.quantity > 1
+                                ? currentItem.quantity--
+                                : null
+                        "
+                        class="flex items-center justify-center text-gray-500 transition bg-white border border-gray-200 shadow-sm w-14 h-14 dark:bg-gray-800 rounded-xl dark:border-gray-600 active:scale-95 hover:text-red-500 disabled:opacity-50"
+                        :disabled="currentItem.quantity <= 1"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-6 h-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M20 12H4"
+                            />
+                        </svg>
+                    </button>
+
+                    <div class="flex-1 px-2 text-center">
+                        <label
+                            class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5"
+                            >Jumlah Beli</label
+                        >
+                        <input
+                            v-model.number="currentItem.quantity"
+                            type="number"
+                            class="w-full p-0 text-3xl font-black text-center text-gray-800 bg-transparent border-none dark:text-white focus:ring-0"
+                        />
+                    </div>
+
+                    <button
+                        @click="currentItem.quantity++"
+                        class="flex items-center justify-center text-white transition shadow-lg w-14 h-14 bg-lime-500 rounded-xl shadow-lime-500/30 active:scale-95"
+                    >
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-6 h-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div
+                class="flex items-center justify-between p-4 bg-white border border-gray-100 shadow-sm dark:bg-gray-900 dark:border-gray-800 rounded-xl"
+            >
+                <div>
+                    <p class="text-xs text-gray-400">Harga Satuan</p>
+                    <p class="font-bold text-gray-600 dark:text-gray-300">
+                        {{ rp(currentItem.price) }}
+                    </p>
+                </div>
+                <div class="text-right">
+                    <p class="text-xs font-bold text-gray-400 uppercase">
+                        Subtotal
+                    </p>
+                    <p
+                        class="text-2xl font-black text-gray-900 dark:text-white"
+                    >
+                        {{ rp(currentItem.price * currentItem.quantity) }}
+                    </p>
+                </div>
+            </div>
+
+            <div
+                v-if="currentItem.quantity > currentItem.stock"
+                class="px-3 py-2 text-xs font-bold text-center text-red-600 border border-red-100 rounded-lg bg-red-50"
+            >
+                ⚠️ Jumlah melebihi sisa stok ({{ currentItem.stock }})
+            </div>
+        </div>
+
+        <template #footer>
+            <div class="flex gap-3 h-14">
+                <button
+                    @click="addToCart(false)"
+                    class="flex-1 font-bold transition border text-lime-700 bg-lime-100 border-lime-200 rounded-xl active:bg-lime-200 dark:bg-lime-800 dark:text-lime-300 dark:border-lime-700"
+                >
+                    Masuk Keranjang
+                </button>
+
+                <button
+                    @click="addToCart(true)"
+                    class="flex-[1.3] bg-gray-900 text-white font-bold rounded-xl shadow-xl flex items-center justify-center gap-2 active:scale-[0.98] transition hover:bg-gray-800 dark:bg-white dark:text-gray-900"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                        />
+                    </svg>
+                    <span>Scan Lagi</span>
+                </button>
+            </div>
+        </template>
+    </BottomSheet>
 </template>
 
 <style>

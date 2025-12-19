@@ -12,7 +12,7 @@ const props = defineProps({
     },
 });
 const showPaymentOptions = ref(false);
-const emit = defineEmits(["showDesktop", "showBayar"]);
+const emit = defineEmits(["showDesktop", "showBayar", "openScanMember"]);
 const {
     form,
     // 3. MEMBER / PELANGGAN
@@ -37,7 +37,6 @@ const {
     handleMoneyClick,
     resetPayment,
 
-    startScanner,
     removeItem,
     updateQty,
     rp,
@@ -100,7 +99,7 @@ const {
                 />
 
                 <button
-                    @click="startScanner(member)"
+                    @click="$emit('openScanMember')"
                     class="absolute right-1.5 top-1.5 p-1 bg-white dark:bg-gray-700 rounded-lg shadow-sm text-gray-500 dark:text-gray-300 hover:text-lime-600 border border-gray-200 dark:border-gray-600"
                     title="Scan Kartu Member"
                 >

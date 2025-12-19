@@ -102,9 +102,9 @@ const onSelectLinked = (item) => {
         type: "edit",
         id: item.id,
         product_id: item.product_id,
-        name: item.product?.name,
-        code: item.product?.code,
-        unit: item.unit?.name,
+        name: item.product_snapshot?.name,
+        code: item.product_snapshot?.code,
+        unit: item.product_snapshot?.unit,
         is_po_match: item.product_snapshot.quantity > 0,
         po_qty: item.product_snapshot.quantity,
         po_price: item.product_snapshot.purchase_price,
@@ -363,7 +363,7 @@ const adjustQty = (amount) => {
             @close="showScanModal = false"
             title="Verifikasi Barang"
         >
-            <div class="space-y-5">
+            <!-- <div class="space-y-5">
                 <div class="flex gap-4">
                     <div
                         class="flex items-center justify-center font-bold text-gray-400 bg-gray-100 border border-gray-200 rounded-lg w-14 h-14 dark:bg-gray-800 dark:border-gray-700 shrink-0"
@@ -582,6 +582,252 @@ const adjustQty = (amount) => {
                 >
                     * Perubahan Qty/Harga untuk link baru akan disimpan. Anda
                     bisa mengeditnya kembali di tab 'Sudah Masuk'.
+                </p>
+            </div> -->
+            <div class="space-y-6">
+                <div
+                    class="flex items-center gap-4 pb-4 border-b border-gray-100 dark:border-gray-800"
+                >
+                    <div
+                        class="flex items-center justify-center w-12 h-12 font-bold text-gray-400 border border-gray-200 rounded-xl bg-gray-50 dark:bg-gray-800 dark:border-gray-700 shrink-0"
+                    >
+                        {{ currentItem.name?.substring(0, 2).toUpperCase() }}
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <span
+                            :class="[
+                                'text-[10px] px-2 py-0.5 rounded border font-bold uppercase inline-block mb-1 tracking-wide',
+                                currentItem.is_po_match
+                                    ? 'bg-lime-50 text-lime-700 border-lime-200 dark:bg-lime-900/20 dark:text-lime-400'
+                                    : 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400',
+                            ]"
+                        >
+                            {{
+                                currentItem.is_po_match
+                                    ? "Sesuai Purchase Order"
+                                    : "Produk Tambahan / Baru"
+                            }}
+                        </span>
+
+                        <h3
+                            class="text-lg font-bold leading-tight text-gray-900 truncate dark:text-white"
+                        >
+                            {{ currentItem.name }}
+                        </h3>
+                        <p
+                            class="text-xs font-medium text-gray-500 truncate dark:text-gray-400"
+                        >
+                            {{ currentItem.code || "-" }}
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                    class="p-1 border border-gray-200 rounded-xl bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700"
+                >
+                    <div
+                        class="grid grid-cols-2 pb-2 mb-3 text-center border-b border-gray-200 dark:border-gray-700"
+                    >
+                        <div
+                            class="py-1 text-[10px] font-bold tracking-wider text-gray-400 uppercase"
+                        >
+                            Data PO
+                        </div>
+                        <div
+                            class="py-1 text-[10px] font-bold tracking-wider uppercase text-lime-600 dark:text-lime-400"
+                        >
+                            Input Fisik
+                        </div>
+                    </div>
+
+                    <div class="grid items-center grid-cols-2 px-2 mb-6">
+                        <div
+                            class="pr-2 text-center border-r border-gray-200 dark:border-gray-700"
+                        >
+                            <span
+                                v-if="currentItem.is_po_match"
+                                class="block text-2xl font-bold text-gray-400 dark:text-gray-500"
+                            >
+                                {{ currentItem.po_qty }}
+                            </span>
+                            <span
+                                v-else
+                                class="block text-2xl font-bold text-gray-300 dark:text-gray-600"
+                            >
+                                -
+                            </span>
+                            <span
+                                class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider"
+                            >
+                                {{ currentItem.unit }}
+                            </span>
+                        </div>
+
+                        <div class="pl-2">
+                            <div class="flex items-center shadow-sm rounded-xl">
+                                <button
+                                    @click="adjustQty(-1)"
+                                    class="flex items-center justify-center w-10 h-12 text-gray-500 transition bg-white border border-gray-200 rounded-l-xl hover:bg-gray-50 active:bg-gray-100 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="w-4 h-4"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                    >
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                                            clip-rule="evenodd"
+                                        />
+                                    </svg>
+                                </button>
+
+                                <input
+                                    v-model.number="currentItem.quantity"
+                                    type="number"
+                                    :class="[
+                                        'w-full h-12 text-center font-bold text-xl border-y border-x-0 focus:ring-0 z-10',
+                                        qtyStatusColor,
+                                    ]"
+                                />
+
+                                <button
+                                    @click="adjustQty(1)"
+                                    class="flex items-center justify-center w-10 h-12 text-gray-500 transition bg-white border border-gray-200 rounded-r-xl hover:bg-gray-50 active:bg-lime-50 active:text-lime-600 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400 dark:hover:bg-gray-700"
+                                >
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        class="w-4 h-4"
+                                        viewBox="0 0 20 20"
+                                        fill="currentColor"
+                                    >
+                                        <path
+                                            fill-rule="evenodd"
+                                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                                            clip-rule="evenodd"
+                                        />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            <p
+                                v-if="
+                                    currentItem.is_po_match &&
+                                    currentItem.quantity -
+                                        currentItem.po_qty !==
+                                        0
+                                "
+                                :class="[
+                                    'text-[10px] text-center font-bold mt-1.5 px-2 py-0.5 rounded-md inline-block w-full',
+                                    currentItem.quantity - currentItem.po_qty <
+                                    0
+                                        ? 'bg-red-50 text-red-600'
+                                        : 'bg-yellow-50 text-yellow-600',
+                                ]"
+                            >
+                                {{
+                                    currentItem.quantity - currentItem.po_qty >
+                                    0
+                                        ? "Lebih"
+                                        : "Kurang"
+                                }}
+                                {{
+                                    Math.abs(
+                                        currentItem.quantity -
+                                            currentItem.po_qty
+                                    )
+                                }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="grid items-center grid-cols-2 px-2 pb-2 mb-2">
+                        <div
+                            class="pr-2 text-center border-r border-gray-200 dark:border-gray-700"
+                        >
+                            <span
+                                v-if="currentItem.is_po_match"
+                                class="block text-sm font-bold text-gray-500 dark:text-gray-400"
+                            >
+                                {{ actions.formatRupiah(currentItem.po_price) }}
+                            </span>
+                            <span
+                                v-else
+                                class="block text-sm font-bold text-gray-300"
+                            >
+                                -
+                            </span>
+                            <span
+                                class="block text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5"
+                            >
+                                Harga Satuan
+                            </span>
+                        </div>
+
+                        <div class="pl-2 space-y-1">
+                            <div class="relative">
+                                <span
+                                    class="absolute text-xs font-bold text-gray-400 -translate-y-1/2 pointer-events-none left-3 top-1/2"
+                                >
+                                    Rp
+                                </span>
+                                <input
+                                    v-model.number="currentItem.price"
+                                    type="number"
+                                    class="w-full h-10 pl-8 pr-3 text-base font-bold text-right transition-all bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                                    placeholder="0"
+                                />
+                            </div>
+                            <p
+                                class="text-[10px] text-right text-gray-400 font-medium"
+                            >
+                                {{ actions.formatRupiah(currentItem.price) }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="flex items-center justify-between p-4 border border-gray-100 shadow-sm bg-gray-50 rounded-xl dark:bg-gray-800 dark:border-gray-700"
+                >
+                    <div>
+                        <p
+                            class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"
+                        >
+                            Subtotal (Auto Hitung)
+                        </p>
+                        <p class="text-xs font-medium text-gray-500 mt-0.5">
+                            {{ currentItem.quantity }} x
+                            {{ actions.formatRupiah(currentItem.price) }}
+                        </p>
+                    </div>
+
+                    <div class="flex-1 max-w-[160px]">
+                        <div class="relative">
+                            <span
+                                class="absolute text-xs font-bold text-gray-400 -translate-y-1/2 pointer-events-none left-3 top-1/2"
+                            >
+                                Rp
+                            </span>
+                            <input
+                                :value="calculatedTotal"
+                                @change="handleTotalChange"
+                                type="number"
+                                class="w-full py-2.5 pr-3 pl-9 text-lg font-black text-right text-gray-800 bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:text-white dark:bg-gray-900 dark:border-gray-600 transition-all"
+                                placeholder="0"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <p
+                    v-if="currentItem.type !== 'edit'"
+                    class="text-[10px] text-center text-gray-400 italic px-4"
+                >
+                    * Perubahan akan disimpan. Anda dapat mengeditnya kembali
+                    nanti.
                 </p>
             </div>
 
