@@ -1,0 +1,1 @@
+#global-reader video{-o-object-fit:cover!important;object-fit:cover!important;width:100%!important;height:100%!important;border-radius:0!important}@keyframes scan{0%{transform:translateY(-100px);opacity:0}10%{opacity:1}90%{opacity:1}to{transform:translateY(100px);opacity:0}}.animate-scan{animation:scan 2s linear infinite}

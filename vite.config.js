@@ -17,6 +17,32 @@ export default defineConfig({
             },
         }),
     ],
+    build: {
+        // OPSI 1: Konfigurasi Manual Chunks
+        rollupOptions: {
+            output: {
+                manualChunks(id) {
+                    if (id.includes("node_modules")) {
+                        // Memisahkan library besar ke chunk tersendiri
+                        // Contoh: memisahkan vue, inertia, dan library UI
+                        if (id.includes("vue") || id.includes("@vue")) {
+                            return "vue-vendor";
+                        }
+                        if (id.includes("@inertiajs")) {
+                            return "inertia-vendor";
+                        }
+                        // html5-qrcode atau library scan yang besar
+                        if (id.includes("html5-qrcode")) {
+                            return "scanner-vendor";
+                        }
+
+                        // Sisanya masuk ke vendor umum
+                        return "vendor";
+                    }
+                },
+            },
+        },
+    },
     server: {
         host: "0.0.0.0", // biar bisa diakses dari luar (hp)
         port: 5173,

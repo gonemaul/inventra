@@ -6,7 +6,6 @@ import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 import { ref, watch } from "vue";
 import { router } from "@inertiajs/vue3";
 import { useActionLoading } from "@/Composable/useActionLoading";
-import { data } from "autoprefixer";
 
 const { isActionLoading } = useActionLoading();
 const showModal = ref(false);
@@ -14,7 +13,6 @@ const modalMode = ref("create");
 const editingData = ref(null);
 const showConfirmModal = ref(null);
 const showTrashed = ref(false);
-const datatable = ref(null);
 
 const props = defineProps({
     categories: Object,
@@ -49,9 +47,6 @@ const columns = [
 
 const refreshTable = () => {
     params.value.refresh_key = Date.now();
-    if (datatable.value) {
-        datatable.value.refresh();
-    }
 };
 const openCreateModal = () => {
     modalMode.value = "create";
@@ -157,7 +152,6 @@ const restoreType = (row) => {
             </PrimaryButton>
         </div>
         <DataTable
-            ref="datatable"
             :serverSide="true"
             :endpoint="route('api.settings.getType')"
             :columns="columns"
