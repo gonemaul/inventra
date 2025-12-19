@@ -417,8 +417,13 @@ const searchResults = ref([]);
 const isSearching = ref(false);
 
 // --- FORMS ---
-const linkForm = useForm({ ids: [], type: "link" });
-const singleLinkForm = useForm({ product_id: [], type: "create" });
+const linkForm = useForm({ ids: [], type: "link", newQty: 0, newPrice: 0 });
+const singleLinkForm = useForm({
+    product_id: [],
+    type: "create",
+    newQty: 0,
+    newPrice: 0,
+});
 const unlinkForm = useForm({ item_ids: [] });
 const correctionForm = useForm({ items: [] });
 
@@ -450,12 +455,14 @@ const computedTotalNominal = computed(() => {
 // --- FUNGSI UTAMA (REFACTORED UNTUK MENERIMA ARGUMEN) ---
 
 // 1. Submit Linkage (Bisa Bulk dari State, atau Single ID dari Argumen)
-const submitLinkage = (specificIds = null) => {
+const submitLinkage = (specificIds = null, newQty = 0, newPrice = 0) => {
     let idsToProcess = [];
 
     if (specificIds) {
         // Jika ada argumen (dari Mobile/Single action), gunakan itu
         idsToProcess = Array.isArray(specificIds) ? specificIds : [specificIds];
+        linkForm.newQty = newQty;
+        linkForm.newPrice = newPrice;
     } else {
         // Jika tidak ada argumen, ambil dari checkbox state (Desktop)
         idsToProcess = selectedLinkItemIds.value;
@@ -548,7 +555,7 @@ const submitUnlinkage = (specificIds = null) => {
 // 3. Add New / Substitute Item (Link barang baru via search)
 const addNewSubstituteItem = (product) => {
     // Validasi lokal sederhana
-    const exists = editableLinkedItems.value.some(
+    const exists = linkedItems.value.some(
         (item) => item.product_id === product.id
     );
     if (exists) {
@@ -559,6 +566,8 @@ const addNewSubstituteItem = (product) => {
     }
 
     singleLinkForm.product_id = [product.id];
+    singleLinkForm.newQty = [product.qty];
+    singleLinkForm.newPrice = [product.price];
     isActionLoading.value = true;
     isProcessing.value = true;
 
@@ -718,16 +727,16 @@ const actions = {
         @close="showImageModal = false"
     />
     <Head :title="`Invoice #${invoice.invoice_number}`" />
-    <div v-if="isMobile">
-        <MobileChecking
-            :invoice="invoice"
-            :unlinkedItems="unlinkedItems"
-            :linkedItems="linkedItems"
-            :products="products"
-            :actions="actions"
-        />
-    </div>
-    <div v-else>
+    <!-- <div v-if="isMobile"> -->
+    <MobileChecking
+        :invoice="invoice"
+        :unlinkedItems="unlinkedItems"
+        :linkedItems="linkedItems"
+        :products="products"
+        :actions="actions"
+    />
+    <!-- </div> -->
+    <!-- <div v-else>
         <DesktopChecking
             :invoice="invoice"
             :unlinked-items="unlinkedItems"
@@ -745,5 +754,5 @@ const actions = {
                 }
             "
         />
-    </div>
+    </div> -->
 </template>

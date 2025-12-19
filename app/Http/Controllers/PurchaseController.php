@@ -237,6 +237,8 @@ class PurchaseController extends Controller
         // 1. Validasi Input Item Ids
         $request->validate([
             'type' => 'required|in:link,create',
+            'newQty' => 'nullable|min:0|numeric',
+            'newPrice' => 'nullable|min:0|numeric',
             // Rule 1: ids wajib array & required HANYA JIKA type == link
             'ids' => 'required_if:type,link|array',
             'ids.*' => 'exists:purchase_items,id',

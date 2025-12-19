@@ -216,9 +216,26 @@ class InvoiceService
                     if ($item->purchase_invoice_id && $item->purchase_invoice_id !== $invoice->id) {
                         throw new \Exception("Item '{$item->product_snapshot['name']}' sudah tertaut di nota lain. Unlink dulu jika ingin memindahkan.");
                     }
-                    $item->purchase_invoice_id = $invoice->id;
-                    $item->item_status = PurchaseItem::STATUS_SESUAI; // Set status ke Pending saat ditautkan
-                    $item->save();
+                    $status = PurchaseItem::STATUS_SESUAI;
+                    $subtotal = $item->subtotal;
+                    $newQty = $item->quantity;
+                    $newPrice = $item->purchase_price;
+                    if (is_numeric($payload['newQty']) && $payload['newQty'] > 0) {
+                        $newQty = $payload['newQty'];
+                        $status = PurchaseItem::STATUS_PENDING; // Set status ke Pending saat ditautkan
+                    }
+                    if (is_numeric($payload['newPrice']) && $payload['newPrice'] > 0) {
+                        $newPrice = $payload['newPrice'];
+                        $subtotal = $newQty * $newPrice;
+                        $status = PurchaseItem::STATUS_PENDING; // Set status ke Pending saat ditautkan
+                    }
+                    $item->update([
+                        'quantity' => $newQty,
+                        'purchase_price' => $newPrice,
+                        'item_status' => $status,
+                        'purchase_invoice_id' => $invoice->id,
+                        'subtotal' => $subtotal
+                    ]);
                     $linkedItemsCount++;
                 }
             } else if ($type === 'create') {
