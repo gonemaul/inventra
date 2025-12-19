@@ -24,20 +24,31 @@ export default defineConfig({
                 manualChunks(id) {
                     if (id.includes("node_modules")) {
                         // Memisahkan library besar ke chunk tersendiri
-                        // Contoh: memisahkan vue, inertia, dan library UI
-                        if (id.includes("vue") || id.includes("@vue")) {
-                            return "vue-vendor";
+                        // 3. Pisahkan CORE (Vue, Inertia, Axios) agar ter-cache browser
+                        if (
+                            id.includes("vue") ||
+                            id.includes("inertia") ||
+                            id.includes("axios")
+                        ) {
+                            return "vendor-core";
+                        }
+                        // 1. Pisahkan APEXCHARTS
+                        if (
+                            id.includes("apexcharts") ||
+                            id.includes("vue3-apexcharts")
+                        ) {
+                            return "vendor-charts";
                         }
                         if (id.includes("@inertiajs")) {
-                            return "inertia-vendor";
+                            return "vendor-inertia";
                         }
                         // html5-qrcode atau library scan yang besar
                         if (id.includes("html5-qrcode")) {
-                            return "scanner-vendor";
+                            return "vendor-scanner";
                         }
 
                         // Sisanya masuk ke vendor umum
-                        return "vendor";
+                        return "vendor-common";
                     }
                 },
             },

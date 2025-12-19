@@ -1,7 +1,10 @@
 <script setup>
+import { defineAsyncComponent } from "vue";
 import { ref, computed } from "vue";
 import BottomSheet from "@/Components/BottomSheet.vue"; // Sesuaikan path komponen Anda
-import BarcodeScanner from "@/Components/BarcodeScanner.vue"; // Sesuaikan path komponen Anda
+const BarcodeScanner = defineAsyncComponent(() =>
+    import("@/Components/BarcodeScanner.vue")
+);
 import UnlinkMobile from "./UnlinkMobile.vue";
 import LinkedMobile from "./LinkedMobile.vue";
 import SearchMobile from "./SearchMobile.vue";

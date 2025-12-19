@@ -1,11 +1,14 @@
 <script setup>
+import { defineAsyncComponent } from "vue";
 import TextInput from "@/Components/TextInput.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import { Link, useForm } from "@inertiajs/vue3";
 import { ref, computed, onMounted } from "vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
-import BarcodeScanner from "@/Components/BarcodeScanner.vue";
+const BarcodeScanner = defineAsyncComponent(() =>
+    import("@/Components/BarcodeScanner.vue")
+);
 
 const props = defineProps({
     dropdowns: Object, // Berisi { categories: [], units: [], sizes: [], suppliers: [], productStatuses: [] }
