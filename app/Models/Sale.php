@@ -19,6 +19,9 @@ class Sale extends Model
         'customer_id',
         'notes',
         'payment_method',
+        'discount_type',
+        'discount_value',
+        'discount_total',
         'financial_summary'
     ];
 

@@ -72,7 +72,7 @@ class SalesRecapService
                 : now();
             // 1. Buat Header Sales
             $sale = Sale::create([
-                'reference_no' => $this->generateReferenceNo($data['report_date']),
+                'reference_no' => $this->generateReferenceNo($data['report_date'], $data['input_type']),
                 'transaction_date' => $data['report_date'],
                 'user_id' => Auth::id(),
                 'customer_id' => $data['customer_id'] ?? null, // Simpan ID Member
@@ -333,10 +333,16 @@ class SalesRecapService
     }
 
     // Generator No: POS/YYMMDD/001
-    private function generateReferenceNo($date)
+    private function generateReferenceNo($date, $type)
     {
         $dateCode = date('ymd', strtotime($date));
-        $prefix = 'POS/' . $dateCode . '/';
+        if ($type === Sale::TYPE_REALTIME) {
+            $prefix = 'POS/' . $dateCode . '/';
+        } else if ($type === Sale::TYPE_REKAP) {
+            $prefix = 'REKAP/' . $dateCode . '/';
+        } else {
+            $prefix = 'unknown';
+        }
 
         // Cari nomor terakhir hari itu
         $lastSale = Sale::where('reference_no', 'like', $prefix . '%')

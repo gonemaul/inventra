@@ -9,6 +9,7 @@ import { router } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { throttle } from "lodash";
 import ModalInvoice from "./Components/ModalInvoice.vue";
+import BottomSheet from "@/Components/BottomSheet.vue";
 
 const props = defineProps({
     filters: Object,
@@ -18,6 +19,12 @@ const props = defineProps({
 const search = ref(props.filters.search || "");
 const showFilterModal = ref(false);
 const { isActionLoading } = useActionLoading();
+const showInvoice = ref(false);
+const isLoading = ref(false);
+const invoiceHtml = ref("");
+const selectedId = ref(null);
+const selectReference_no = ref("-");
+
 const columns = [
     {
         key: "transaction_date",
@@ -101,6 +108,53 @@ const activeFilterCount = computed(() => {
     const ignoredKeys = ["search", "page", "per_page"];
     return filterKeys.filter((key) => !ignoredKeys.includes(key)).length;
 });
+const openInvoice = async (row) => {
+    selectedId.value = row.id;
+    selectReference_no.value = row.reference_no;
+    showInvoice.value = true;
+    isLoading.value = true;
+    invoiceHtml.value = ""; // Reset dulu
+
+    try {
+        const response = await axios.get(`/sales/${row.id}/print`, {
+            responseType: "text",
+        });
+
+        invoiceHtml.value = response.data; // Isi HTML
+    } catch (error) {
+        console.error("Gagal load invoice:", error);
+        invoiceHtml.value =
+            '<p class="mt-10 text-center text-red-500">Gagal memuat data invoice.</p>';
+    } finally {
+        isLoading.value = false; // Matikan loading
+    }
+};
+const handlePrint = () => {
+    if (!invoiceHtml.value) return;
+
+    // Trik: Buka window popup kosong, tulis HTML blade di sana, lalu print
+    const printWindow = window.open("", "", "height=600,width=400");
+
+    printWindow.document.write("<html><head><title>Print</title>");
+    // Opsional: Tambahkan CSS reset agar print rapi
+    printWindow.document.write(
+        "<style>body { margin: 0; padding: 0; }</style>"
+    );
+    printWindow.document.write("</head><body>");
+
+    // Tulis HTML dari Blade ke window baru
+    printWindow.document.write(invoiceHtml.value);
+
+    printWindow.document.write("</body></html>");
+    printWindow.document.close();
+    printWindow.focus();
+
+    // Beri jeda dikit biar gambar/font ke-load, lalu print
+    setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+    }, 500);
+};
 </script>
 
 <template>
@@ -150,6 +204,7 @@ const activeFilterCount = computed(() => {
                 >
                     <template #reference="{ row }">
                         <div
+                            @click="openInvoice(row)"
                             class="font-mono text-sm font-bold text-indigo-600 dark:text-indigo-400"
                         >
                             {{ row.reference_no }}
@@ -196,4 +251,89 @@ const activeFilterCount = computed(() => {
             </div>
         </div>
     </AuthenticatedLayout>
+    <BottomSheet
+        :show="showInvoice"
+        @close="showInvoice = false"
+        :title="`Preview Invoice #` + selectReference_no"
+    >
+        <div class="flex flex-col h-full px-4">
+            <!-- <h3 class="pb-2 mb-4 text-lg font-bold text-center border-b">
+                Preview Invoice
+            </h3> -->
+
+            <div
+                v-if="isLoading"
+                class="flex-1 flex flex-col items-center justify-center min-h-[300px]"
+            >
+                <svg
+                    class="w-10 h-10 mb-3 text-blue-500 animate-spin"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                >
+                    <circle
+                        class="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        stroke-width="4"
+                    ></circle>
+                    <path
+                        class="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8v8H4z"
+                    ></path>
+                </svg>
+                <p class="text-lime-500">Memuat Invoice...</p>
+            </div>
+
+            <div v-else class="flex flex-col flex-1 overflow-hidden">
+                <div
+                    class="flex-1 p-2 mb-4 overflow-y-auto bg-gray-100 border rounded"
+                >
+                    <div
+                        class="bg-white shadow-sm p-2 min-h-[200px] receipt-preview-wrapper"
+                    >
+                        <div v-html="invoiceHtml"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 pt-2 mt-auto border-t">
+                    <a
+                        :href="`/sales/${selectedId}/print`"
+                        target="_blank"
+                        class="flex items-center justify-center gap-2 py-3 font-bold text-white transition bg-red-500 rounded-lg hover:bg-red-600"
+                    >
+                        📥 Download PDF
+                    </a>
+
+                    <button
+                        @click="handlePrint"
+                        class="flex items-center justify-center gap-2 py-3 font-bold text-white transition bg-blue-600 rounded-lg hover:bg-blue-700"
+                    >
+                        🖨 Print Struk
+                    </button>
+                </div>
+            </div>
+        </div>
+    </BottomSheet>
 </template>
+<style scoped>
+.receipt-preview-wrapper {
+    /* Agar konten preview tidak terlalu lebar */
+    max-width: 80mm;
+    margin: 0 auto;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12px; /* Sesuaikan ukuran font preview */
+}
+
+/* Kustomisasi scrollbar bottom sheet biar cantik */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 4px;
+}
+</style>

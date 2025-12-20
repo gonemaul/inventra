@@ -223,7 +223,17 @@ class SalesRecapController extends Controller
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
         $settings['shop_logo'] = isset($settings['shop_logo']) ? Storage::disk('s3')->url($settings['shop_logo']) : null;
         // Return view blade khusus struk
-        return view('print.receipt', ['sale', 'settings']);
+        // dd($sale->reference_no);
+        $dataSettings = [
+            'shop_name'    => $settings['shop_name'] ?? 'Toko Saya',
+            'shop_address' => $settings['shop_address'] ?? 'Alamat Belum Diisi',
+            'shop_phone'   => $settings['shop_phone'] ?? '-',
+            'receipt_footer' => $settings['receipt_footer'] ?? 'Terima Kasih',
+        ];
+        return view('print.receipt', [
+            'sale' => $sale,
+            'settings' => $dataSettings
+        ])->render();
     }
 
     public function getAllProductsLite()
