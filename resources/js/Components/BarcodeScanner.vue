@@ -1,22 +1,19 @@
 <script setup>
 import { onMounted, onUnmounted, ref } from "vue";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 
 // --- EMITS ---
-// 'result': Mengirim hasil scan ke parent
-// 'close': Memberitahu parent untuk menutup scanner
 const emit = defineEmits(["result", "close"]);
 
 // --- STATE ---
-let html5QrCode = null;
-const isCameraReady = ref(false); // Untuk indikator loading kamera
+let html5QrCode = null; // Variable instance non-reactive
+const isCameraReady = ref(false);
 const isFlashOn = ref(false);
-const isSuccess = ref(false);
-const isLoading = ref(true);
+const isLoading = ref(true); // Default true
 
 // --- METHODS ---
 const startScanner = async () => {
-    // Pastikan DOM sudah render
+    // Pastikan ID ini ada di <template> Anda: <div id="global-reader"></div>
     const elementId = "global-reader";
 
     try {
@@ -28,15 +25,16 @@ const startScanner = async () => {
             aspectRatio: 1.0,
             disableFlip: false,
         };
+
         // Config Resolusi (Pro Mode)
         const videoConstraints = {
             facingMode: "environment",
-            focusMode: "continuous", // Mencoba memaksa auto-focus terus menerus
-            width: { min: 640, ideal: 1920 }, // Minta HD
-            height: { min: 480, ideal: 1080 },
+            focusMode: "continuous",
+            width: { min: 640, ideal: 1280 }, // 1920 kadang terlalu berat di HP mid-range
+            height: { min: 480, ideal: 720 },
         };
 
-        // Mulai Kamera Belakang
+        // Mulai Kamera
         await html5QrCode.start(
             { facingMode: "environment" },
             { ...config, videoConstraints },
@@ -44,37 +42,46 @@ const startScanner = async () => {
             onScanFailure
         );
 
+        // SUKSES LOAD
         isCameraReady.value = true;
+        isLoading.value = false; // PERBAIKAN: Matikan loading
     } catch (err) {
         console.error("Error starting scanner:", err);
         alert("Gagal mengakses kamera. Pastikan izin diberikan.");
-        emit("close"); // Tutup jika gagal
+        isLoading.value = false;
+        emit("close");
     }
 };
 
 const onScanSuccess = (decodedText, decodedResult) => {
-    // Matikan scanner dulu sebelum emit result agar tidak double scan
-    if (html5Qrcode) {
-        html5Qrcode.pause();
+    if (html5QrCode) {
+        html5QrCode.pause();
     }
+
     if (navigator.vibrate) {
-        // Getar pendek 200ms (mirip notifikasi WA)
-        navigator.vibrate(300);
+        navigator.vibrate(200);
     }
+
     emit("result", decodedText);
+
+    // Stop scanner dilakukan setelah emit selesai atau parent handle logic
     stopScanner();
     emit("close");
 };
 
 const onScanFailure = (error) => {
-    // Biarkan kosong agar console tidak penuh log error saat mencari fokus
     // console.warn(`Code scan error = ${error}`);
 };
 
 const stopScanner = async () => {
     if (html5QrCode) {
         try {
-            if (html5Qrcode.isScanning) {
+            // Cek state apakah sedang scanning atau paused sebelum stop
+            const state = html5QrCode.getState();
+            if (
+                state === Html5QrcodeScannerState.SCANNING ||
+                state === Html5QrcodeScannerState.PAUSED
+            ) {
                 await html5QrCode.stop();
             }
             html5QrCode.clear();
@@ -84,12 +91,13 @@ const stopScanner = async () => {
     }
     html5QrCode = null;
     isCameraReady.value = false;
+    isFlashOn.value = false;
 };
+
 // 2. Logika FLASH / SENTER
 const toggleFlash = () => {
-    // if (!scanner.value) return;
+    if (!html5QrCode) return; // Guard clause
 
-    // Cek state saat ini dan balik kondisinya
     const targetState = !isFlashOn.value;
 
     html5QrCode
@@ -100,14 +108,17 @@ const toggleFlash = () => {
             isFlashOn.value = targetState;
         })
         .catch((err) => {
-            console.error("Fitur Flash tidak didukung di device ini", err);
-            alert("Flash tidak didukung di perangkat/browser ini.");
+            console.error("Fitur Flash error", err);
+            alert("Flash tidak didukung atau kamera sedang sibuk.");
         });
 };
 
 // --- LIFECYCLE ---
 onMounted(() => {
-    startScanner();
+    // Beri sedikit jeda agar elemen HTML render sempurna di Vue
+    setTimeout(() => {
+        startScanner();
+    }, 100);
 });
 
 onUnmounted(() => {
@@ -149,6 +160,7 @@ onUnmounted(() => {
         </div>
         <div class="absolute z-10 bottom-4 right-4">
             <button
+                v-if="isCameraReady"
                 @click="toggleFlash"
                 class="p-3 transition-colors rounded-full shadow-lg"
                 :class="
