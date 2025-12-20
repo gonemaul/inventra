@@ -109,6 +109,7 @@ const openScanMember = () => {
 
 const handleResScan = (res) => {
     showScanner.value = false;
+    alert("scan berhasil :" + res);
     if (scanType.value == "product") {
         res = queryProduk(res);
         prepareModalData(res);

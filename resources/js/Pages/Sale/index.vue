@@ -8,6 +8,7 @@ import { useActionLoading } from "@/Composable/useActionLoading";
 import { router } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { throttle } from "lodash";
+import ModalInvoice from "./Components/ModalInvoice.vue";
 
 const props = defineProps({
     filters: Object,

@@ -11,6 +11,8 @@ const emit = defineEmits(["result", "close"]);
 let html5QrCode = null;
 const isCameraReady = ref(false); // Untuk indikator loading kamera
 const isFlashOn = ref(false);
+const isSuccess = ref(false);
+const isLoading = ref(true);
 
 // --- METHODS ---
 const startScanner = async () => {
@@ -52,9 +54,16 @@ const startScanner = async () => {
 
 const onScanSuccess = (decodedText, decodedResult) => {
     // Matikan scanner dulu sebelum emit result agar tidak double scan
-    stopScanner().then(() => {
-        emit("result", decodedText);
-    });
+    if (html5Qrcode) {
+        html5Qrcode.pause();
+    }
+    if (navigator.vibrate) {
+        // Getar pendek 200ms (mirip notifikasi WA)
+        navigator.vibrate(300);
+    }
+    emit("result", decodedText);
+    stopScanner();
+    emit("close");
 };
 
 const onScanFailure = (error) => {
@@ -65,8 +74,7 @@ const onScanFailure = (error) => {
 const stopScanner = async () => {
     if (html5QrCode) {
         try {
-            // Cek apakah scanner sedang running sebelum stop
-            if (html5QrCode.isScanning) {
+            if (html5Qrcode.isScanning) {
                 await html5QrCode.stop();
             }
             html5QrCode.clear();
@@ -103,7 +111,6 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
-    // Pastikan kamera mati saat komponen di-destroy/v-if false
     stopScanner();
 });
 </script>

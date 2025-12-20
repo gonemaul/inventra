@@ -135,12 +135,23 @@ const submitForm = () => {
         });
     }
 };
+
+const onScanResult = (decodedText) => {
+    // Matikan scanner
+    showScanner.value = false;
+
+    // Masukkan hasil scan ke form
+    form.code = decodedText;
+
+    // (Opsional) Beri feedback suara/vibrate
+    // navigator.vibrate(200);
+};
 </script>
 
 <template>
     <BarcodeScanner
         v-if="showScanCode"
-        @result="form.code"
+        @result="onScanResult"
         @close="showScanCode = false"
     />
     <form
