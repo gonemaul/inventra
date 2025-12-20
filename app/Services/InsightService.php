@@ -131,64 +131,118 @@ class InsightService
      * tombol "Refresh Restock" di dashboard.
      */
 
-    public function analyzeSmartRestock()
+    public function analyzeSmartRestock($saveToDb = false)
     {
-        Product::chunk(100, function ($products) {
+        $results = [];
+        Product::chunk(100, function ($products) use ($saveToDb, &$results) {
             foreach ($products as $product) {
                 $metrics = $this->calculator->calculateInventoryHealth($product);
-                $this->processRestockInsight($product, $metrics);
+                if ($metrics['status'] === SmartInsight::SEVERITY_CRITICAL || $metrics['status'] === SmartInsight::SEVERITY_WARNING) {
+                    $data = [
+                        'product_id'    => $product->id,
+                        'name'          => $product->name,
+                        'current_stock' => $metrics['current_stock'],
+                        'suggested_qty' => $metrics['suggested_qty'],
+                        'buy_price'     => $product->purchase_price,
+                        'estimasi_biaya' => $metrics['suggested_qty'] * $product->purchase_price,
+                        'days_left'     => $metrics['days_left'],
+                        'status'        => $metrics['status']
+                    ];
+                    $results[] = $data;
+                }
+                if ($saveToDb) {
+                    $this->processRestockInsight($product, $metrics);
+                }
             }
         });
+        return $results;
     }
 
-    public function analyzeDeadStock()
+    public function analyzeDeadStock($saveToDb = false)
     {
-        Product::where('stock', '>', 0)->chunk(100, function ($products) {
+        $results = [];
+        Product::where('stock', '>', 0)->chunk(100, function ($products) use ($saveToDb, &$results) {
             foreach ($products as $product) {
                 $metrics = $this->calculator->calculateInventoryHealth($product);
-                $this->processDeadStockInsight($product, $metrics);
+                if ($metrics['is_dead_stock']) {
+                    $results[] = $metrics;
+                }
+                if ($saveToDb) {
+                    $this->processDeadStockInsight($product, $metrics);
+                }
             }
         });
+        return $results;
     }
 
-    public function analyzeMargins()
+    public function analyzeMargins($saveToDb = false)
     {
-        Product::where('purchase_price', '>', 0)->chunk(100, function ($products) {
+        $results = [];
+        Product::where('purchase_price', '>', 0)->chunk(100, function ($products) use ($saveToDb, &$results) {
             foreach ($products as $product) {
                 $metrics = $this->calculator->calculateFinancialHealth($product);
-                $this->processMarginInsight($product, $metrics);
+                if ($metrics['margin']['is_critical']) {
+                    $results[] = $metrics;
+                }
+                if ($saveToDb) {
+                    $this->processMarginInsight($product, $metrics);
+                }
             }
         });
+        return $results;
     }
 
-    public function analyzeTrend()
+    public function analyzeTrend($saveToDb = false)
     {
-        Product::chunk(100, function ($products) {
+        $results = [];
+        Product::chunk(100, function ($products) use ($saveToDb, &$results) {
             foreach ($products as $product) {
                 $metrics = $this->calculator->calculateFinancialHealth($product);
-                $this->processTrendInsight($product, $metrics);
+                if ($metrics['sales_trend']) {
+                    $results[] = $metrics;
+                }
+                if ($saveToDb) {
+                    $this->processTrendInsight($product, $metrics);
+                }
             }
         });
+        return $results;
     }
 
-    public function analyzeNewProducts()
+
+    public function analyzeNewProducts($saveToDb = false)
     {
-        Product::chunk(100, function ($products) {
+        $results = [];
+        Product::chunk(100, function ($products) use ($saveToDb, &$results) {
             foreach ($products as $product) {
                 $metrics = $this->calculator->calculateFinancialHealth($product);
-                $this->processNewProductInsight($product, $metrics);
+                if ($metrics['lifecycle']['is_new_product']) {
+                    $results[] = $metrics;
+                }
+                if ($saveToDb) {
+                    $this->processNewProductInsight($product, $metrics);
+                }
             }
         });
+        return $results;
     }
 
-    public function analyzeHighMargins()
+    public function analyzeHighMargins($saveToDb = false)
     {
-        Product::chunk(100, function ($products) {
+        $results = [];
+        Product::chunk(100, function ($products) use ($saveToDb, &$results) {
             foreach ($products as $product) {
                 $metrics = $this->calculator->calculateFinancialHealth($product);
-                $this->processHighMarginInsight($product, $metrics);
+                if ($metrics['margin']['is_high_margin']) {
+                    $metrics['product_snapshot'] = $product;
+                    $results[] = $metrics;
+                }
+                if ($saveToDb) {
+                    $this->processHighMarginInsight($product, $metrics);
+                }
             }
         });
+        return $results;
     }
     /**
      * =========================================================================

@@ -4,18 +4,24 @@ namespace App\Services;
 
 use Exception;
 use App\Models\Product;
+use App\Models\SmartInsight;
 use App\Models\StockMovement;
+use App\Services\TelegramService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use App\Services\Analysis\Product\InventoryAnalyzer;
 use App\Models\Sale;       // Revisi: Kita pakai nama model 'Sale' sesuai migrasi terakhir
 use App\Models\SalesRecap; // Pastikan Model bernama Sale (sesuai migrasi terakhir 'sales')
 
 class SalesRecapService
 {
     protected $stockService;
-    public function __construct(StockService $stockService)
+    protected $inventoryAnalyzer;
+    public function __construct(StockService $stockService, InventoryAnalyzer $inventoryAnalyzer)
     {
         $this->stockService = $stockService;
+        $this->inventoryAnalyzer = $inventoryAnalyzer;
     }
     /**
      * Mengambil data transaksi pembelian untuk halaman index (Index.vue).
@@ -154,6 +160,12 @@ class SalesRecapService
                 $totalProfit += $rowProfit;
                 $itemsCount++;
                 $totalQty += $inputQty;
+
+                $analysis = $this->inventoryAnalyzer->calculateInventoryHealth($product);
+
+                if (in_array($analysis['status'], [SmartInsight::SEVERITY_CRITICAL, SmartInsight::SEVERITY_WARNING])) {
+                    $this->sendLowStock($product, $analysis);
+                }
             }
 
             $discountTotal = 0;
@@ -338,5 +350,36 @@ class SalesRecapService
         }
 
         return $prefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
+    }
+
+    private function sendLowStock($product, $analysis)
+    {
+        if (!Cache::has('notif_critical_' . $product->id)) {
+
+            // A. Buat Pesan Singkat & Padat (Actionable)
+            $msg  = "⚠️ <b>STOK KRITIS ALERT!</b>\n\n";
+            $msg .= "📦 <b>{$product->name}</b>\n";
+            $msg .= "Sisa Stok: <b>{$analysis['current_stock']} {$product->unit->name}</b>\n";
+            $msg .= "Habis dalam: <b>{$analysis['days_left']} hari</b>\nPada Tgl: {$analysis['stockout_date']}\n";
+            $msg .= "<i>Saran: Segera order {$analysis['suggested_qty']} pcs</i>";
+
+            // B. Kirim Telegram Langsung
+            TelegramService::send($msg);
+
+            // C. Simpan ke Tabel Insight (Sebagai Log History)
+            // Kita set is_notified = 1 karena sudah dikirim barusan.
+            // Jadi besok pagi tidak perlu dikirim ulang di laporan rangkuman, cukup jadi arsip.
+            SmartInsight::create([
+                'product_id'  => $product->id,
+                'type'        => SmartInsight::TYPE_RESTOCK,
+                'severity'    => SmartInsight::SEVERITY_CRITICAL,
+                'title'       => 'Stok Kritis (Realtime)',
+                'message'     => $analysis['message'],
+                'payload'     => $analysis, // Simpan semua data analisa lengkap di sini
+                'is_read'     => false,
+                'is_notified' => true, // <--- PENTING: Agar tidak dobel notif besok pagi
+            ]);
+            Cache::put('notif_critical_' . $product->id, true, now()->addHours(6));
+        }
     }
 }

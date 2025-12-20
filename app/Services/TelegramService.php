@@ -7,28 +7,28 @@ use Illuminate\Support\Facades\Log;
 
 class TelegramService
 {
-    protected $token;
-    protected $chatId;
-
-    public function __construct()
+    public static function send($message)
     {
-        $this->token = env('TELEGRAM_BOT_TOKEN');
-        $this->chatId = env('TELEGRAM_CHAT_ID');
-    }
-
-    public function send($message)
-    {
-        if (!$this->token || !$this->chatId) return;
+        $token = env('TELEGRAM_BOT_TOKEN');
+        $chatId = env('TELEGRAM_CHAT_ID');
+        if (!$token || !$chatId) return;
 
         try {
             // Kirim via API Telegram
-            $url = "https://api.telegram.org/bot{$this->token}/sendMessage";
+            $url = "https://api.telegram.org/bot{$token}/sendMessage";
 
-            Http::post($url, [
-                'chat_id' => $this->chatId,
+            $response = Http::post($url, [
+                'chat_id' => $chatId,
                 'text' => $message,
                 'parse_mode' => 'HTML' // Agar bisa bold/italic
             ]);
+            if ($response->successful()) {
+                return true;
+            } else {
+                // Log error jika ditolak Telegram (misal token salah)
+                Log::error('Telegram Error: ' . $response->body());
+                return false;
+            }
         } catch (\Exception $e) {
             // Jangan sampai error telegram bikin aplikasi crash
             Log::error("Gagal kirim telegram: " . $e->getMessage());

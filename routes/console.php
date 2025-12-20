@@ -19,8 +19,8 @@ try {
 if ($autoBackupEnabled) {
     // 1. LIGHT BACKUP (Setiap Jam - Kecuali jam 23:00)
     // Hanya simpan di Local, Hanya DB. Cepat (< 5 detik).
-    Schedule::command('backup:run --only-db --only-to-disk=public --disable-notifications')
-        ->hourly()
+    Schedule::command('backup:run --only-db --disable-notifications')
+        ->everyThreeHours()
         ->skip(function () {
             return date('H') == '22'; // Jangan jalan jam 23:00 (karena ada heavy backup)
         })
@@ -34,11 +34,29 @@ if ($autoBackupEnabled) {
 
     // 3. CLEANUP (Bersihkan file lama setelah Heavy Backup)
     Schedule::command('backup:clean')
-        ->dailyAt('22:30')
+        ->dailyAt('22:15')
         ->timezone('Asia/Jakarta');
 }
-// php artisan schedule:run
-// Jika jam komputer Anda sekarang pas dengan jadwal (misal XX:00), perintah backup akan jalan. Jika tidak, dia akan bilang "No commands are ready to run".
 
-// php artisan schedule:work
-// Perintah ini akan mengecek setiap menit: "Apakah ada tugas yang harus dikerjakan sekarang?"
+// === 1. LAPORAN RUTIN (Reporter) ===
+
+// Pagi (06:30): Laporan Rencana & Restock
+// (Mengambil data hasil analisa tadi malam)
+Schedule::command('report:morning')->dailyAt('06:30');
+
+// Siang (13:00): Cek Ombak
+// (Hitung langsung omzet sesi 1)
+Schedule::command('report:afternoon')->dailyAt('13:30');
+
+// Malam (21:00): Tutup Toko
+// (Hitung final omzet hari ini)
+Schedule::command('report:closing')->dailyAt('21:00');
+
+
+// === 2. ANALISA & PERSIAPAN (Generator) ===
+
+// Malam (21:30): Analisa Berat
+// - Menjalankan InventoryService ke semua produk
+// - Menjalankan DSS (Dead Stock) jika hari Minggu
+// - Menyimpan hasil ke tabel Insight untuk dibaca report:morning besok
+Schedule::command('insight:generate')->dailyAt('21:30');
