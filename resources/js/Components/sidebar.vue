@@ -83,7 +83,12 @@ const navigation = [
                 class="flex items-center justify-between gap-5"
             >
                 <div class="p-2 bg-white rounded-full">
-                    <img src="/images/logo.webp" alt="Logo" class="w-8 h-8" />
+                    <img
+                        loading="lazy"
+                        src="/images/logo.webp"
+                        alt="Logo"
+                        class="w-8 h-8"
+                    />
                 </div>
                 <span class="text-xl font-bold">Inventra</span>
             </div>

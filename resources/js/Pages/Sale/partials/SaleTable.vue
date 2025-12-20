@@ -105,6 +105,7 @@ const getInitials = (name) =>
                                     class="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden border border-gray-200 rounded bg-gray-50"
                                 >
                                     <img
+                                        loading="lazy"
                                         v-if="item.image"
                                         :src="item.image"
                                         class="object-cover w-full h-full"

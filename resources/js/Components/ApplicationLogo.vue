@@ -2,6 +2,7 @@
     <picture>
         <source srcset="/images/logo.webp" type="image/webp" />
         <img
+            loading="lazy"
             src="/images/logo.png"
             alt="Application Logo"
             class="w-auto h-16"

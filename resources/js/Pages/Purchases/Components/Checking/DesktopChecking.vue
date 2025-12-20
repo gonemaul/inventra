@@ -675,6 +675,7 @@ const props = defineProps({
                             "
                         >
                             <img
+                                loading="lazy"
                                 :src="invoice.invoice_url"
                                 alt="Bukti Nota"
                                 class="object-cover w-full h-24 transition duration-500 group-hover:scale-110 group-hover:opacity-75"

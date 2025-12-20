@@ -155,6 +155,7 @@ onMounted(() => {
                             class="flex items-center justify-center flex-shrink-0 w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-md shadow-sm group-hover:border-indigo-200"
                         >
                             <img
+                                loading="lazy"
                                 v-if="product.image"
                                 :src="product.image"
                                 class="object-cover w-full h-full"

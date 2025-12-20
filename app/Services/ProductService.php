@@ -104,6 +104,19 @@ class ProductService
         }
 
         $perPage = $params['per_page'] ?? 10;
+        // Helper finansial Analis Pertumbuhan
+        $startThisMonth = now()->subDays(30);
+        $startLastMonth = now()->subDays(60);
+        $endLastMonth   = now()->subDays(30);
+        $query->withSum(['saleItems as qty_this_month' => function ($query) use ($startThisMonth) {
+            $query->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', $startThisMonth));
+        }], 'quantity')
+
+            // Query Total Bulan Lalu
+            ->withSum(['saleItems as qty_last_month' => function ($query) use ($startLastMonth, $endLastMonth) {
+                $query->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startLastMonth, $endLastMonth]));
+            }], 'quantity');
+
         $products = $query->paginate($perPage)
             ->withQueryString();
 

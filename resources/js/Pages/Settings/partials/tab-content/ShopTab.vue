@@ -60,6 +60,7 @@ const submit = () => {
                         class="flex items-center justify-center flex-shrink-0 w-24 h-24 overflow-hidden bg-gray-100 border border-gray-200 rounded-xl"
                     >
                         <img
+                            loading="lazy"
                             v-if="previewImage"
                             :src="previewImage"
                             class="object-contain w-full h-full"
@@ -182,6 +183,7 @@ const submit = () => {
                         class="w-12 h-12 mx-auto mb-2 grayscale opacity-90"
                     >
                         <img
+                            loading="lazy"
                             :src="previewImage"
                             class="object-contain w-full h-full"
                         />

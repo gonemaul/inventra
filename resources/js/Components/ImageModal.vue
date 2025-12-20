@@ -111,6 +111,7 @@ async function downloadImage() {
 
             <div class="mt-4">
                 <img
+                    loading="lazy"
                     :src="fullImageUrl == null ? '/no-image.png' : fullImageUrl"
                     alt="Product Image Large"
                     class="object-contain w-full rounded-lg aspect-square"

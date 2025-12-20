@@ -140,18 +140,20 @@ class FinancialAnalyzer
     private function analyzeSalesGrowth(Product $product): array
     {
         // Periode A: 30 Hari Terakhir
-        $startThisMonth = now()->subDays(30);
-        $qtyThisMonth = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', $startThisMonth))
-            ->sum('quantity');
+        // $startThisMonth = now()->subDays(30);
+        // $qtyThisMonth = SaleItem::where('product_id', $product->id)
+        //     ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', $startThisMonth))
+        //     ->sum('quantity'); //evaluasi
 
-        // Periode B: 30 Hari Sebelumnya (Bulan Lalu)
-        $startLastMonth = now()->subDays(60);
-        $endLastMonth   = now()->subDays(30);
-        $qtyLastMonth = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startLastMonth, $endLastMonth]))
-            ->sum('quantity');
+        // // Periode B: 30 Hari Sebelumnya (Bulan Lalu)
+        // $startLastMonth = now()->subDays(60);
+        // $endLastMonth   = now()->subDays(30);
+        // $qtyLastMonth = SaleItem::where('product_id', $product->id)
+        //     ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startLastMonth, $endLastMonth]))
+        //     ->sum('quantity'); //perlu evaluasi
 
+        $qtyThisMonth = $product->qty_this_month ?? 0;
+        $qtyLastMonth = $product->qty_last_month ?? 0;
         // Hitung Persentase Pertumbuhan
         $growthPercent = 0;
         if ($qtyLastMonth > 0) {

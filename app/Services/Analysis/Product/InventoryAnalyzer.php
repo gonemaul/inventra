@@ -25,9 +25,10 @@ class InventoryAnalyzer
 
         // 2. HITUNG VELOCITY (KECEPATAN JUAL SAAT INI)
         // Mengambil data 30 hari terakhir sebagai patokan dasar (Short-term trend)
-        $sales30Days = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
-            ->sum('quantity');
+        // $sales30Days = SaleItem::where('product_id', $product->id)
+        //     ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
+        //     ->sum('quantity');
+        $sales30Days = $product->qty_this_month ?? 0;
 
         $avgDailyRaw = $sales30Days > 0 ? ($sales30Days / 30) : 0;
 

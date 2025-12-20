@@ -178,6 +178,7 @@ const onScanResult = (decodedText) => {
                         onload="this.classList.remove('opacity-0')"
                         onerror="this.style.display='none'"
                         alt="Preview"
+                        loading="lazy"
                         class="object-cover w-full h-full rounded-lg opacity-0"
                     />
                     <div
