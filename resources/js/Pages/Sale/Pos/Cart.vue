@@ -499,35 +499,35 @@ const {
                             >
                         </div>
                     </div>
-
-                    <div>
-                        <div
-                            class="flex gap-2 pb-1 overflow-x-auto scrollbar-hide"
+                </div>
+                <div>
+                    <div
+                        v-if="moneySuggestions.length > 0"
+                        class="flex gap-2 py-3 overflow-x-auto scrollbar-hide"
+                    >
+                        <button
+                            @click="resetPayment"
+                            class="px-3 py-1.5 bg-red-50 text-red-500 border border-red-100 rounded-lg text-xs font-bold whitespace-nowrap active:scale-95"
                         >
-                            <button
-                                @click="resetPayment"
-                                class="px-3 py-1.5 bg-red-50 text-red-500 border border-red-100 rounded-lg text-xs font-bold whitespace-nowrap active:scale-95"
-                            >
-                                Reset
-                            </button>
-                            <button
-                                v-for="suggestion in moneySuggestions"
-                                :key="suggestion.label"
-                                @click="handleMoneyClick(suggestion)"
-                                class="px-3 py-1.5 bg-white border dark:bg-gray-700 dark:text-gray-300 border-gray-200 text-gray-600 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm hover:border-lime-500 hover:text-lime-600 active:scale-95 transition"
-                            >
-                                {{ suggestion.label }}
-                            </button>
-                        </div>
+                            Reset
+                        </button>
+                        <button
+                            v-for="suggestion in moneySuggestions"
+                            :key="suggestion.label"
+                            @click="handleMoneyClick(suggestion)"
+                            class="px-3 py-1.5 bg-white border dark:bg-gray-700 dark:text-gray-300 border-gray-200 text-gray-600 rounded-lg text-xs font-bold whitespace-nowrap shadow-sm hover:border-lime-500 hover:text-lime-600 active:scale-95 transition"
+                        >
+                            {{ suggestion.label }}
+                        </button>
                     </div>
                 </div>
                 <div class="flex flex-col gap-3">
                     <div
-                        class="flex items-end justify-between p-3 border border-gray-100 md:p-4 bg-gray-50 dark:bg-gray-900/50 rounded-2xl dark:border-gray-700"
+                        class="flex items-end justify-between p-3 border border-lime-500 md:p-4 bg-lime-50 dark:bg-gray-900/50 rounded-2xl dark:border-gray-700"
                     >
                         <div class="flex flex-col flex-1 min-w-0 pr-2">
                             <span
-                                class="text-[9px] md:text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5 md:mb-1"
+                                class="text-[9px] md:text-[10px] font-bold text-lime-800 uppercase tracking-widest mb-0.5 md:mb-1"
                             >
                                 Total Tagihan
                             </span>
@@ -562,7 +562,7 @@ const {
 
                         <div class="w-32 sm:w-40 shrink-0">
                             <label
-                                class="text-[9px] md:text-[10px] font-bold text-right text-gray-400 uppercase block mb-1 truncate"
+                                class="text-[9px] md:text-[10px] font-bold text-right text-lime-800 uppercase block mb-1 truncate"
                             >
                                 Bayar ({{ form.payment_method }})
                             </label>

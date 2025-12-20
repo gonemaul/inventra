@@ -1,7 +1,7 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
 import { ref } from "vue";
-import { defineAsyncComponent } from "vue";
+// import { defineAsyncComponent } from "vue";
 import { usePosRealtime } from "@/Composable/usePosRealtime";
 
 import ConfirmSubmit from "./ConfirmSubmit.vue";
@@ -9,9 +9,10 @@ import ScannerBox from "./ScannerBox.vue";
 import BottomSheet from "@/Components/BottomSheet.vue";
 import { useToast } from "vue-toastification";
 import Cart from "./Cart.vue";
-const BarcodeScanner = defineAsyncComponent(() =>
-    import("@/Components/BarcodeScanner.vue")
-);
+// const BarcodeScanner = defineAsyncComponent(() =>
+//     import("@/Components/BarcodeScanner.vue")
+// );
+import BarcodeScanner from "@/Components/BarcodeScanner.vue";
 
 const props = defineProps({
     categories: Array,
@@ -145,6 +146,11 @@ const confirmTransaction = (shouldPrint) => {
             }
         },
     });
+};
+// Fungsi untuk cek Qty item di cart berdasarkan ID
+const getCartQty = (productId) => {
+    const item = form.items.find((i) => i.product_id === productId);
+    return item ? item.quantity : 0;
 };
 </script>
 
@@ -292,7 +298,18 @@ const confirmTransaction = (shouldPrint) => {
                         :key="product.id"
                         @click="addItem(product)"
                         class="relative overflow-hidden transition-all bg-white border border-gray-200 shadow-sm cursor-pointer group dark:bg-gray-800 rounded-xl dark:border-gray-700 hover:shadow-md hover:border-lime-500 active:scale-95"
+                        :class="
+                            getCartQty(product.id) > 0
+                                ? 'border-lime-500 shadow-md bg-lime-50 ring-1 ring-lime-500'
+                                : 'border-gray-200 shadow-sm bg-white hover:border-lime-300'
+                        "
                     >
+                        <div
+                            v-if="getCartQty(product.id) > 0"
+                            class="absolute z-10 flex items-center justify-center w-8 h-8 text-xs font-bold text-white border-2 border-white rounded-full shadow-lg bottom-1 right-1 bg-lime-600 animate-bounce-short"
+                        >
+                            {{ getCartQty(product.id) }}x
+                        </div>
                         <div
                             class="relative w-full overflow-hidden bg-gray-100 aspect-square dark:bg-gray-700"
                         >
@@ -808,6 +825,18 @@ input[type="number"]::-webkit-outer-spin-button {
     }
     to {
         opacity: 1;
+    }
+}
+.animate-bounce-short {
+    animation: bounceShort 0.3s ease-in-out;
+}
+@keyframes bounceShort {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
     }
 }
 </style>
