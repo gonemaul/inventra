@@ -59,7 +59,7 @@ const onScanSuccess = (decodedText, decodedResult) => {
     }
 
     if (navigator.vibrate) {
-        navigator.vibrate(200);
+        navigator.vibrate(300);
     }
 
     emit("result", decodedText);

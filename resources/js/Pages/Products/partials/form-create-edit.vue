@@ -6,9 +6,10 @@ import SecondaryButton from "@/Components/SecondaryButton.vue";
 import { Link, useForm } from "@inertiajs/vue3";
 import { ref, computed, onMounted } from "vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
-const BarcodeScanner = defineAsyncComponent(() =>
-    import("@/Components/BarcodeScanner.vue")
-);
+import BarcodeScanner from "@/Components/BarcodeScanner.vue";
+// const BarcodeScanner = defineAsyncComponent(() =>
+//     import("@/Components/BarcodeScanner.vue")
+// );
 
 const props = defineProps({
     dropdowns: Object, // Berisi { categories: [], units: [], sizes: [], suppliers: [], productStatuses: [] }
@@ -138,13 +139,9 @@ const submitForm = () => {
 
 const onScanResult = (decodedText) => {
     // Matikan scanner
-    showScanner.value = false;
-
-    // Masukkan hasil scan ke form
+    alert(decodedText);
     form.code = decodedText;
-
-    // (Opsional) Beri feedback suara/vibrate
-    // navigator.vibrate(200);
+    showScanner.value = false;
 };
 </script>
 

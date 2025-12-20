@@ -123,20 +123,21 @@ export function usePosRealtime(props) {
 
     // --- [BARU] LOGIC CAMERA SCANNER ---
     const queryProduk = (code) => {
-        const product = props.products.find((p) => p.code == code);
-        if (product) {
-            // Cek Stok Dulu (Opsional: Cegah scan jika stok 0)
-            if (product.stock <= 0) {
-                toast.warning(`Stok produk "${product.name}" habis!`);
-                return;
-            }
+        try {
+            const product = props.products.find((p) => p.code == code);
+            if (product) {
+                // Cek Stok Dulu (Opsional: Cegah scan jika stok 0)
+                if (product.stock <= 0) {
+                    toast.warning(`Stok produk "${product.name}" habis!`);
+                    return;
+                }
 
-            // Siapkan Data ke currentItem
-            return product;
-        } else {
-            // Suara Beep Error (Opsional)
-            // playErrorSound();
-            toast.warning(`Produk tidak ditemukan (Kode: ${code})`);
+                // Siapkan Data ke currentItem
+                return product;
+            }
+        } catch (error) {
+            // Jika 404 (Not Found) return null
+            return null;
         }
     };
     const queryMember = (res) => {

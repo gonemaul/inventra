@@ -108,12 +108,25 @@ const openScanMember = () => {
     showScanner.value = true;
 };
 
-const handleResScan = (res) => {
+const handleResScan = async (res) => {
     showScanner.value = false;
-    alert("scan berhasil :" + res);
+    alert("scan berhasil " + scanType.value + "|" + res);
     if (scanType.value == "product") {
-        res = queryProduk(res);
-        prepareModalData(res);
+        try {
+            const productData = await queryProduk(res);
+            if (productData) {
+                // Update res dengan data object produk yang baru didapat
+                res = productData;
+
+                // Baru jalankan prepare modal
+                prepareModalData(res);
+            } else {
+                alert("Produk tidak ditemukan di database.");
+            }
+        } catch (error) {
+            console.error("Terjadi kesalahan saat query produk:", error);
+            alert("Gagal mengambil data produk.");
+        }
     } else if (scanType.value == "member") {
         res = queryMember(res);
     }
