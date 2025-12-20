@@ -44,10 +44,8 @@ if ($autoBackupEnabled) {
 // (Mengambil data hasil analisa tadi malam)
 Schedule::command('report:morning')->dailyAt('06:30');
 
-// Siang (13:00): Cek Ombak
-// (Hitung langsung omzet sesi 1)
-Schedule::command('report:afternoon')->dailyAt('13:30');
-
+// SIANG: Laporan Finansial (Jam 12:30)
+Schedule::command('report:financial')->dailyAt('12:30');
 // Malam (21:00): Tutup Toko
 // (Hitung final omzet hari ini)
 Schedule::command('report:closing')->dailyAt('21:00');
