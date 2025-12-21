@@ -124,7 +124,7 @@ export function usePosRealtime(props) {
     // --- [BARU] LOGIC CAMERA SCANNER ---
     const queryProduk = (code) => {
         try {
-            const product = props.products.find((p) => p.code == code);
+            const product = allProducts.value.find((p) => p.code == code);
             if (product) {
                 // Cek Stok Dulu (Opsional: Cegah scan jika stok 0)
                 if (product.stock <= 0) {
@@ -150,41 +150,6 @@ export function usePosRealtime(props) {
             alert("member tidak ada");
         }
     };
-    const handleScanSuccess = (code) => {
-        // 1. JIKA SCAN PRODUK
-        if (activeScannerType.value === "product") {
-            const product = props.products.find((p) => p.code == code);
-            if (product) {
-                addItem(product);
-                if (scannerType.value === "single") {
-                    stopScanner();
-                }
-            } else {
-                alert(`Produk ${code} tidak ditemukan!`);
-            }
-        }
-        // 2. JIKA SCAN MEMBER
-        else if (activeScannerType.value === "member") {
-            // Cari member berdasarkan Member Code ATAU No HP
-            const member = props.customers.find(
-                (c) => c.member_code == code || c.phone == code
-            );
-
-            if (member) {
-                selectMember(member); // Pilih member
-                stopScanner(); // Langsung tutup kamera kalau member ketemu
-                alert(`Member: ${member.name}`);
-            } else {
-                alert(`Member ${code} tidak terdaftar!`);
-            }
-        }
-    };
-
-    onBeforeUnmount(() => {
-        if (html5QrCode.value && html5QrCode.value.isScanning) {
-            html5QrCode.value.stop();
-        }
-    });
 
     // --- 4. FILTERING LOGIC (OPTIMIZED) ---
 

@@ -153,7 +153,7 @@ const selectItem = (item) => {
             </div>
         </div>
 
-        <div class="flex-1 p-3 overflow-y-auto custom-scrollbar">
+        <div class="flex-1 py-3 overflow-y-auto md:p-3 custom-scrollbar">
             <div
                 v-if="isLoading"
                 class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4"
@@ -229,7 +229,7 @@ const selectItem = (item) => {
                             class="text-[10px] text-gray-500 mb-1 flex justify-between"
                         >
                             <span
-                                class="px-1 bg-gray-100 rounded dark:bg-gray-700"
+                                class="hidden px-1 bg-gray-100 rounded md:block dark:bg-gray-700"
                                 >{{ item.code }}</span
                             >
                             <span>{{ item.unit?.name || "Pcs" }}</span>

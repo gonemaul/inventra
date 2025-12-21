@@ -64,6 +64,7 @@ class PurchaseController extends Controller
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
                 'statuses' => Purchase::STATUSES,
+                'purchase' => collect([])
             ],
         ]);
     }
@@ -373,10 +374,6 @@ class PurchaseController extends Controller
                 'suppliers' => $this->supplierService->getAll(),
                 'statuses' => Purchase::STATUSES,
             ],
-            'uiState' => [
-                'isLocked' => $isLocked, // Kirim flag ini ke Vue
-                'status' => $purchase->status
-            ]
         ]);
     }
 

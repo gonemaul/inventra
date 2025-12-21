@@ -160,7 +160,7 @@ const tabs = [
                     :isCheckingMode="isCheckingMode"
                     :canEditDelete="canEditDeleteInvoice"
                     @edit-invoice="actions.handleEditInvoice"
-                    @delete-invoice="actions.handleDeleteInvoice(invoice)"
+                    @delete-invoice="actions.handleDeleteInvoice"
                 />
             </template>
             <template #products>

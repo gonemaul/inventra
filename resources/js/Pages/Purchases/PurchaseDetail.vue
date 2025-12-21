@@ -240,6 +240,7 @@ const actions = {
                 :allowFinalize="allowFinalize"
                 :canEditDeleteInvoice="canEditDeleteInvoice"
                 :isEditing="isEditing"
+                :isDeleted="isDeleted"
             />
         </div>
         <div v-else>

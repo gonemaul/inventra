@@ -157,7 +157,7 @@ const columns = [
                         Hapus
                     </button>
                     <Link
-                        :href="route('finance.detail', row.id)"
+                        :href="route('finance.show', row.id)"
                         v-if="
                             row.payment_status !== 'paid' &&
                             purchase.status === 'selesai'

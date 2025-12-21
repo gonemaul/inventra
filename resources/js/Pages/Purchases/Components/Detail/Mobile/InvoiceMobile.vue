@@ -55,6 +55,12 @@ const getPaymentColor = (status) => {
             return "bg-orange-100 text-orange-800"; // Orange: Hutang
     }
 };
+const isNew = computed(() => {
+    return (
+        props.purchase.status == "diterima" ||
+        props.purchase.status == "checking"
+    );
+});
 </script>
 <template>
     <ImageModal
@@ -65,6 +71,7 @@ const getPaymentColor = (status) => {
     />
     <div class="space-y-4">
         <button
+            v-if="isNew"
             @click="actions.openCreateInvoiceModal()"
             class="flex items-center justify-center w-full gap-2 py-3 font-bold transition border-2 border-dashed border-lime-300 dark:border-lime-800 bg-lime-50 dark:bg-lime-900/10 text-lime-700 dark:text-lime-400 rounded-xl hover:bg-lime-100"
         >
@@ -205,7 +212,11 @@ const getPaymentColor = (status) => {
                     "
                     class="flex items-center gap-1 px-4 py-2 text-xs font-bold text-white rounded-lg shadow-sm bg-lime-500 hover:bg-lime-600"
                 >
-                    <span>{{ isDetail ? "Detail" : "Checking" }}</span>
+                    <span>{{
+                        isDetail || inv.status == "validated"
+                            ? "Detail"
+                            : "Checking"
+                    }}</span>
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
                         class="w-3 h-3"

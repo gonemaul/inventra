@@ -1,18 +1,75 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
+import { computed } from "vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
-import InputError from "@/Components/InputError.vue";
-import Search from "../RAB/search.vue";
+import Search from "@/Pages/Purchases/Components/RAB/search.vue";
 
 const props = defineProps({
     purchase: Object,
     invoice: Object,
     unlinkedItems: Object, // Produk PO yang belum punya invoice ID
-    linkedItems: Object,
+    editableLinkedItems: Object,
     products: { type: Array, default: () => [] },
     actions: Object,
+    selectedLinkItemIds: {
+        type: Array,
+        default: () => [],
+    },
+    selectedUnlinkItemIds: {
+        type: Array,
+        default: () => [],
+    },
+    searchResults: Object,
+    isSearching: Boolean,
+    searchKeyword: String,
+    isProcessing: { type: Boolean, default: false },
+});
+
+const emit = defineEmits([
+    "update:selectedLinkItemIds",
+    "update:selectedUnlinkItemIds",
+    "update:searchKeyword",
+    "back", // Event kembali
+    "save", // Event simpan perubahan item
+    "unlink", // Event lepas tautan
+    "link", // Event tautkan item
+    "validate", // Event validasi invoice
+    "add-item", // Event tambah item pengganti
+    "view-image", // Event lihat gambar
+]);
+const pageMode = computed(() =>
+    props.purchase.status === "checking" ? "edit" : "detail"
+);
+const computedTotalQty = computed(() => {
+    // Menghitung total kuantitas dari semua item
+    return props.editableLinkedItems.reduce((sum, item) => {
+        return sum + (item.quantity || 0);
+    }, 0);
+});
+const computedTotalNominal = computed(() => {
+    // Menghitung total subtotal dari semua item yang dapat diedit
+    return props.editableLinkedItems.reduce((sum, item) => {
+        // [PENTING]: Hitung subtotal (Qty * Price) untuk setiap baris, lalu jumlahkan
+        const subtotal = (item.quantity || 0) * (item.purchase_price || 0);
+        return sum + subtotal;
+    }, 0);
+});
+// 3. Computed Helper untuk v-model Props (Two-way binding manual)
+const localSelectedLinkIds = computed({
+    get: () => props.selectedLinkItemIds,
+    set: (val) => emit("update:selectedLinkItemIds", val),
+});
+
+const localSelectedUnlinkIds = computed({
+    get: () => props.selectedUnlinkItemIds,
+    set: (val) => emit("update:selectedUnlinkItemIds", val),
+});
+
+const localSearchKeyword = computed({
+    get: () => props.searchKeyword,
+    set: (val) => emit("update:searchKeyword", val),
 });
 </script>
 <template>
@@ -21,9 +78,12 @@ const props = defineProps({
         :showSidebar="false"
     >
         <div class="flex items-center justify-between mb-4">
-            <SecondaryButton @click="goBackToChecking">
+            <Link
+                :href="route('purchases.checking', purchase.id)"
+                class="text-gray-700 hover:text-gray-900"
+            >
                 ← Kembali ke Validasi Utama
-            </SecondaryButton>
+            </Link>
         </div>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -46,7 +106,7 @@ const props = defineProps({
                         </div>
 
                         <span
-                            v-if="linkedItems.length === 0"
+                            v-if="editableLinkedItems.length === 0"
                             class="px-2 py-1 text-[10px] font-bold bg-gray-100 text-gray-500 rounded border"
                         >
                             KOSONG
@@ -54,7 +114,7 @@ const props = defineProps({
                     </div>
 
                     <div
-                        v-if="linkedItems.length === 0"
+                        v-if="editableLinkedItems.length === 0"
                         class="flex flex-col items-center justify-center flex-1 py-12 text-center"
                     >
                         <div
@@ -86,7 +146,7 @@ const props = defineProps({
 
                     <form
                         v-else
-                        @submit.prevent="saveCorrections"
+                        @submit.prevent="actions.saveCorrections"
                         class="flex flex-col flex-1 min-h-0"
                     >
                         <div class="flex-1 overflow-auto custom-scrollbar">
@@ -339,7 +399,7 @@ const props = defineProps({
                                             <input
                                                 type="checkbox"
                                                 :value="item.id"
-                                                v-model="selectedUnlinkItemIds"
+                                                v-model="localSelectedUnlinkIds"
                                                 class="w-4 h-4 text-red-600 transition border-gray-300 rounded cursor-pointer focus:ring-red-500 hover:scale-110"
                                             />
                                         </td>
@@ -353,9 +413,9 @@ const props = defineProps({
                             class="flex items-center justify-between gap-3 p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800"
                         >
                             <button
-                                @click.prevent="submitUnlinkage"
+                                @click.prevent="actions.submitUnlinkage"
                                 :disabled="
-                                    selectedUnlinkItemIds.length === 0 ||
+                                    localSelectedUnlinkIds.length === 0 ||
                                     isProcessing
                                 "
                                 class="flex items-center gap-2 px-3 py-2 text-xs font-bold text-red-600 transition border border-red-200 rounded-lg bg-red-50 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -375,14 +435,14 @@ const props = defineProps({
                                 </svg>
                                 <span
                                     >Lepas ({{
-                                        selectedUnlinkItemIds.length
+                                        localSelectedUnlinkIds.length
                                     }})</span
                                 >
                             </button>
 
                             <div class="flex gap-2">
                                 <button
-                                    @click.prevent="validateInvoice"
+                                    @click.prevent="actions.validateInvoice"
                                     :disabled="
                                         editableLinkedItems.length === 0 ||
                                         props.invoice.status === 'validated'
@@ -668,7 +728,7 @@ const props = defineProps({
                         <div
                             class="relative overflow-hidden border border-gray-200 cursor-pointer group rounded-xl dark:border-gray-600"
                             @click="
-                                openImageModal(
+                                actions.openImageModal(
                                     invoice.invoice_url,
                                     invoice.invoice_number
                                 )
@@ -711,13 +771,14 @@ const props = defineProps({
                     >
                         Tambah Item Baru / Pengganti
                     </h4>
-                    <Search
+                    <!-- <Search
                         :isSearching="isSearching"
-                        v-model="searchKeyword"
+                        v-model:model-value="localSearchKeyword"
+                        :modelValue="searchKeyword"
                         :results="searchResults"
-                        @select="addNewSubstituteItem"
+                        @select="actions.addNewSubstituteItem"
                         placeholder="Cari produk ..."
-                    />
+                    /> -->
                 </div>
 
                 <div
@@ -727,7 +788,7 @@ const props = defineProps({
                     <h4 class="mb-3 font-bold dark:text-gray-200">
                         Produk Belum Tertaut
                     </h4>
-                    <form @submit.prevent="submitLinkage">
+                    <form @submit.prevent="actions.submitLinkage">
                         <p
                             v-if="
                                 pageMode === 'edit' && unlinkedItems.length == 0
@@ -754,7 +815,7 @@ const props = defineProps({
                                             :id="'link_item_' + item.id"
                                             type="checkbox"
                                             :value="item.id"
-                                            v-model="selectedLinkItemIds"
+                                            v-model="localSelectedLinkIds"
                                             class="rounded text-lime-600 mt-1.5"
                                         />
 
@@ -804,11 +865,11 @@ const props = defineProps({
                             <PrimaryButton
                                 type="submit"
                                 :disabled="
-                                    selectedLinkItemIds.length === 0 ||
+                                    localSelectedLinkIds.length === 0 ||
                                     isProcessing
                                 "
                             >
-                                Tautkan {{ selectedLinkItemIds.length }} Item
+                                Tautkan {{ localSelectedLinkIds.length }} Item
                             </PrimaryButton>
                         </div>
                     </form>

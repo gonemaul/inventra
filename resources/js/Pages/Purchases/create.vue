@@ -25,7 +25,7 @@ const props = defineProps({
     purchase: Object, // Data edit (jika ada)
     dropdowns: Object, // { suppliers: [], statuses: [] }
 });
-
+console.log(props.purchase);
 const toast = useToast();
 const { isActionLoading } = useActionLoading();
 const activeView = ref("table"); // options: 'table' | 'catalog'
@@ -683,7 +683,7 @@ function parseRupiah(value) {
                             "
                             :supplier-id="formHeader.supplier_id"
                             :items="cartItems"
-                            :isDraft="purchase.status == 'draft'"
+                            :isDraft="purchase?.status == 'draft'"
                             @remove="removeItem"
                             @edit="handleEditCartItem"
                             @select-product="handleCatalogSelection"

@@ -381,8 +381,8 @@ import { useActionLoading } from "@/Composable/useActionLoading";
 import { throttle } from "lodash";
 
 // Import Child Components
-import MobileChecking from "./Components/Checking/MobileChecking.vue";
-import DesktopChecking from "./Components/Checking/DesktopChecking.vue";
+import MobileChecking from "./Components/Checking/Mobile/MobileChecking.vue";
+import DesktopChecking from "./Components/Checking/Desktop/DesktopChecking.vue";
 
 // --- PROPS ---
 const props = defineProps({
@@ -392,7 +392,6 @@ const props = defineProps({
     linkedItems: Array, // Produk PO yang tertaut ke invoice ini
     products: { type: Array, default: () => [] }, // Katalog Produk untuk Search
 });
-
 // --- STATE ---
 const { isActionLoading } = useActionLoading();
 const toast = useToast();
@@ -727,25 +726,27 @@ const actions = {
         @close="showImageModal = false"
     />
     <Head :title="`Invoice #${invoice.invoice_number}`" />
-    <!-- <div v-if="isMobile"> -->
-    <MobileChecking
-        :invoice="invoice"
-        :unlinkedItems="unlinkedItems"
-        :linkedItems="linkedItems"
-        :products="products"
-        :actions="actions"
-    />
-    <!-- </div> -->
-    <!-- <div v-else>
-        <DesktopChecking
+    <div v-if="isMobile">
+        <MobileChecking
+            :purchase="purchase"
             :invoice="invoice"
-            :unlinked-items="unlinkedItems"
-            :linked-items="editableLinkedItems"
+            :unlinkedItems="unlinkedItems"
+            :linkedItems="linkedItems"
             :products="products"
             :actions="actions"
-            v-model:selected-link-ids="selectedLinkItemIds"
-            v-model:selected-unlink-ids="selectedUnlinkItemIds"
-            :search-results="searchResults"
+        />
+    </div>
+    <div v-else>
+        <DesktopChecking
+            :purchase="purchase"
+            :invoice="invoice"
+            :unlinkedItems="unlinkedItems"
+            :editableLinkedItems="editableLinkedItems"
+            :products="products"
+            :actions="actions"
+            v-model:selectedLinkItemIds="selectedLinkItemIds"
+            v-model:selectedUnlinkItemIds="selectedUnlinkItemIds"
+            :searchResults="searchResults"
             :is-searching="isSearching"
             @update:search-keyword="
                 (val) => {
@@ -754,5 +755,5 @@ const actions = {
                 }
             "
         />
-    </div> -->
+    </div>
 </template>

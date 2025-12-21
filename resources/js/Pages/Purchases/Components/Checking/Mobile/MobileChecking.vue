@@ -2,9 +2,10 @@
 import { defineAsyncComponent } from "vue";
 import { ref, computed } from "vue";
 import BottomSheet from "@/Components/BottomSheet.vue"; // Sesuaikan path komponen Anda
-const BarcodeScanner = defineAsyncComponent(() =>
-    import("@/Components/BarcodeScanner.vue")
-);
+import BarcodeScanner from "@/Components/BarcodeScanner.vue";
+// const BarcodeScanner = defineAsyncComponent(() =>
+//     import("@/Components/BarcodeScanner.vue")
+// );
 import UnlinkMobile from "./UnlinkMobile.vue";
 import LinkedMobile from "./LinkedMobile.vue";
 import SearchMobile from "./SearchMobile.vue";
@@ -12,6 +13,7 @@ import HeaderMobile from "./HeaderMobile.vue";
 
 // --- PROPS DARI PARENT ---
 const props = defineProps({
+    purchase: Object,
     invoice: Object, // Data Invoice
     unlinkedItems: Array, // Sisa PO (Purchase Items yang belum link)
     linkedItems: Array, // Barang yang sudah masuk (Pivot Items)
@@ -265,6 +267,7 @@ const adjustQty = (amount) => {
         class="relative min-h-screen font-sans bg-gray-50 dark:bg-gray-950 pb-28"
     >
         <HeaderMobile
+            :purchase="purchase"
             :invoice="invoice"
             :linked-items="linkedItems"
             :validateInvoice="actions.validateInvoice"
@@ -799,7 +802,7 @@ const adjustQty = (amount) => {
                         <p
                             class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"
                         >
-                            Subtotal (Auto Hitung)
+                            Subtotal
                         </p>
                         <p class="text-xs font-medium text-gray-500 mt-0.5">
                             {{ currentItem.quantity }} x

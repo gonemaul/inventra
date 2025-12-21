@@ -2,11 +2,12 @@
 import { Link } from "@inertiajs/vue3";
 import { computed } from "vue";
 const props = defineProps({
+    purchase: Object,
     invoice: Object,
     linkedItems: Object,
     validateInvoice: Object,
 });
-
+console.log(props.invoice);
 // Hitung Realisasi (Total item yang sudah discan/link)
 const totalScanned = computed(() => {
     return props.linkedItems.reduce((acc, item) => {
@@ -60,7 +61,7 @@ const formatTanggal = (date) =>
                 <div>
                     <div class="flex items-start">
                         <Link
-                            :href="route('purchases.checking', 1)"
+                            :href="route('purchases.checking', purchase.id)"
                             class="p-2 mr-3 -ml-2 text-gray-400 transition-colors rounded-full hover:text-gray-800 hover:bg-gray-100 dark:text-gray-500 dark:hover:text-white dark:hover:bg-gray-800"
                         >
                             <svg
@@ -95,24 +96,38 @@ const formatTanggal = (date) =>
                             </h1>
                         </div>
                     </div>
-                    <div
-                        class="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 pl-3.5"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="h-3.5 w-3.5"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="flex items-center justify-center w-8 h-8 text-gray-500 bg-gray-100 rounded-lg dark:bg-gray-700 dark:text-gray-100"
                         >
-                            <path
-                                fill-rule="evenodd"
-                                d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-2 2H6a1 1 0 01-2-2V4zm2 0h8v12H6V4z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                        <p class="text-xs font-medium truncate max-w-[150px]">
-                            {{ invoice.supplier?.name || "Supplier Umum" }}
-                        </p>
+                            <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                                ></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p
+                                class="text-xs font-bold text-gray-800 dark:text-white"
+                            >
+                                {{ purchase.supplier?.name || "Umum/Cash" }}
+                            </p>
+                            <p
+                                class="w-40 text-[10px] text-gray-500 truncate dark:text-gray-400"
+                            >
+                                {{ purchase.supplier?.address || "-" }}
+                                |
+                                {{ purchase.supplier?.phone || "-" }}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -137,7 +152,7 @@ const formatTanggal = (date) =>
             </div>
 
             <div
-                class="relative h-2 mb-4 overflow-hidden bg-gray-100 rounded-full dark:bg-gray-800"
+                class="relative h-3 mb-4 overflow-hidden bg-gray-200 rounded-full dark:bg-gray-700"
             >
                 <div
                     class="absolute top-0 left-0 h-full transition-all duration-500 ease-out rounded-full"
@@ -148,11 +163,22 @@ const formatTanggal = (date) =>
                     "
                     :style="{ width: `${progressPercentage}%` }"
                 ></div>
+
+                <span
+                    class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-gray-700 z-10"
+                    :class="
+                        progressPercentage > 50
+                            ? 'text-white drop-shadow-md'
+                            : 'text-gray-600'
+                    "
+                >
+                    {{ Math.round(progressPercentage) }}%
+                </span>
             </div>
 
             <div class="grid grid-cols-2 gap-3 h-[72px]">
                 <div
-                    class="flex flex-col justify-center p-3 border border-gray-100 bg-gray-50 dark:bg-gray-800 rounded-2xl dark:border-gray-700"
+                    class="flex flex-col justify-center p-3 border border-gray-300 bg-gray-50 dark:bg-gray-800 rounded-2xl dark:border-gray-700"
                 >
                     <p
                         class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-0.5"

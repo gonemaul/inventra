@@ -115,7 +115,7 @@ const StatCard = defineComponent({
             </div>
 
             <div
-                class="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-800 p-2.5 rounded-lg border border-gray-100 dark:border-gray-700"
+                class="grid grid-cols-2 gap-3 bg-gray-50 dark:bg-gray-800 p-2.5 rounded-lg border border-gray-300 dark:border-gray-700"
             >
                 <div>
                     <p class="text-[10px] text-gray-400 mb-0.5">
@@ -127,7 +127,7 @@ const StatCard = defineComponent({
                         {{ formatDate(purchase.transaction_date) }}
                     </p>
                 </div>
-                <div class="pl-3 border-l border-gray-200 dark:border-gray-700">
+                <div class="pl-3 border-l border-gray-400 dark:border-gray-700">
                     <p class="text-[10px] text-gray-400 mb-0.5">
                         Tanggal Datang
                     </p>
@@ -187,21 +187,37 @@ const StatCard = defineComponent({
                     <span
                         class="text-sm font-bold text-gray-800 dark:text-gray-100"
                     >
-                        {{ rp(purchase.total_item_price) }}
+                        {{ rp(total_rupiah_dipesan) }}
                     </span>
                 </div>
 
                 <div
-                    class="flex items-center justify-between p-3 bg-white border border-l-4 rounded-lg dark:bg-lime-900/10 border-lime-100 dark:border-lime-900/30 border-l-lime-500"
+                    :class="[
+                        'flex items-center justify-between p-3  border border-l-4 rounded-lg ',
+                        total_rupiah_dipesan > total_rupiah_diterima
+                            ? 'border-l-lime-500 bg-lime-500/15 dark:bg-lime-900/10 border-lime-100 dark:border-lime-900/30 '
+                            : 'border-l-red-500 bg-red-500/15 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 ',
+                    ]"
+                    class=""
                 >
                     <span
-                        class="text-xs font-semibold tracking-wide uppercase text-lime-700 dark:text-lime-400"
+                        :class="[
+                            'text-xs font-semibold tracking-wide uppercase',
+                            total_rupiah_dipesan > total_rupiah_diterima
+                                ? 'text-lime-700 dark:text-lime-400'
+                                : 'text-red-700 dark:text-red-400',
+                        ]"
                         >Fisik Diterima</span
                     >
                     <span
-                        class="text-sm font-bold text-lime-700 dark:text-lime-400"
+                        :class="[
+                            'text-sm font-bold',
+                            total_rupiah_dipesan > total_rupiah_diterima
+                                ? 'text-lime-700 dark:text-lime-400'
+                                : 'text-red-700 dark:text-red-400',
+                        ]"
                     >
-                        {{ rp(receivedAmount) || "-" }}
+                        {{ rp(total_rupiah_diterima) || "-" }}
                     </span>
                 </div>
             </div>

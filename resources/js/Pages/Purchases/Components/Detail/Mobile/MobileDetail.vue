@@ -23,6 +23,7 @@ const props = defineProps({
     allowFinalize: Boolean, // State apakah tombol 'Selesaikan Validasi' aktif
     canEditDeleteInvoice: Boolean,
     isEditing: Boolean,
+    isDeleted: Boolean,
 });
 
 // --- STATE ---
@@ -65,8 +66,9 @@ const isOpsi = computed(() => {
     return (
         props.isEditing ||
         props.isDeleted ||
-        props.purchase.status != "selesai" ||
-        props.purchase.status != "dibatalkan"
+        (props.purchase.status != "selesai" &&
+            props.purchase.status != "dibatalkan" &&
+            props.purchase.status != "checking")
     );
 });
 const invoiceCount = computed(() => {
@@ -75,12 +77,12 @@ const invoiceCount = computed(() => {
 </script>
 
 <template>
-    <ImageModal
+    <!-- <ImageModal
         :show="showImageModal"
         :imageUrl="selectedImageUrl"
         :productName="selectedInvoiceCode"
         @close="showImageModal = false"
-    />
+    /> -->
     <div
         class="absolute top-0 left-0 min-h-screen font-sans text-gray-800 bg-gray-100 dark:bg-gray-950 dark:text-gray-100 pb-28"
     >

@@ -4,6 +4,7 @@ import axios from "axios";
 import Modal from "@/Components/Modal.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
+import BottomSheet from "@/Components/BottomSheet.vue";
 
 const props = defineProps({
     show: Boolean,
@@ -82,24 +83,28 @@ const allChecked = computed({
 </script>
 
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="3xl">
-        <div class="p-6 bg-white dark:bg-gray-800">
-            <div class="flex items-start justify-between mb-4">
-                <div>
+    <!-- <Modal :show="show" @close="$emit('close')" maxWidth="3xl"> -->
+    <BottomSheet
+        :show="show"
+        @close="$emit('close')"
+        title="💡 Rekomendasi Restok Cerdas"
+    >
+        <div class="px-6 py-3 bg-white dark:bg-gray-800">
+            <div class="items-start mb-4">
+                <!-- <div>
                     <h2
                         class="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-gray-100"
                     >
                         💡 Rekomendasi Restock Cerdas
                     </h2>
-                    <p class="mt-1 text-sm text-gray-500">
-                        Daftar barang dari Supplier ini yang perlu dibeli
-                        berdasarkan
-                        <span class="font-bold text-blue-500">Forecasting</span>
-                        dan
-                        <span class="font-bold text-red-500">Stok Minimum</span
-                        >.
-                    </p>
-                </div>
+                </div> -->
+                <p class="mt-1 text-sm text-gray-500">
+                    Daftar barang dari Supplier ini yang perlu dibeli
+                    berdasarkan
+                    <span class="font-bold text-blue-500">Forecasting</span>
+                    dan
+                    <span class="font-bold text-red-500">Stok Minimum</span>.
+                </p>
                 <div
                     class="px-3 py-1 text-xs font-bold text-blue-600 border border-blue-100 rounded-lg bg-blue-50"
                 >
@@ -342,5 +347,6 @@ const allChecked = computed({
                 </PrimaryButton>
             </div>
         </div>
-    </Modal>
+    </BottomSheet>
+    <!-- </Modal> -->
 </template>
