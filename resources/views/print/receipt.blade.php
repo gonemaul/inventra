@@ -19,7 +19,11 @@
             color: #000;
             display: flex;
             justify-content: center;
-            min-height: 100vh;
+            /* min-height: 100vh; */
+            width: fit-content;
+            /* max-width: 2; */
+            margin-left: auto;
+            margin-right: auto;
         }
 
         /* --- KERTAS STRUK (PREVIEW MODE) --- */
@@ -163,9 +167,9 @@
         <div class="border-dashed"></div>
 
         <div>
-            No: {{ $sale->reference_no }}<br>
-            Tgl: {{ date('d/M/y H:i', strtotime($sale->created_at)) }} WIB<br>
-            Kasir: {{ $sale->user->name ?? 'Admin' }}<br>
+            No : {{ $sale->reference_no }}<br>
+            Tgl : {{ date('d/M/y H:i', strtotime($sale->created_at)) }} WIB<br>
+            Kasir : {{ $sale->user->name ?? 'Admin' }}<br>
             @if (isset($sale->customer) && $sale->customer->name != 'Umum')
                 Member: {{ $sale->customer->name }}
             @endif

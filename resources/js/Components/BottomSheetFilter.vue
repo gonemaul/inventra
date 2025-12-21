@@ -50,19 +50,19 @@ const handleBackdropClick = () => {
                 ></div>
 
                 <div
-                    class="relative w-full overflow-hidden max-w-md mx-auto bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl transform transition-transform duration-300 ease-out max-h-[90vh] flex flex-col"
+                    class="relative overflow-hidden w-full max-w-md mx-auto bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl transform transition-transform duration-300 ease-out max-h-[90vh] flex flex-col"
                     @click.stop
                 >
-                    <div
+                    <!-- <div
                         class="flex justify-center pt-3 pb-1 cursor-pointer"
                         @click="close"
                     >
                         <div
                             class="w-12 h-1.5 bg-gray-300 dark:bg-gray-700 rounded-full"
                         ></div>
-                    </div>
+                    </div> -->
 
-                    <div
+                    <!-- <div
                         v-if="title"
                         class="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-800 shrink-0"
                     >
@@ -85,6 +85,53 @@ const handleBackdropClick = () => {
                                     fill-rule="evenodd"
                                     d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
                                     clip-rule="evenodd"
+                                />
+                            </svg>
+                        </button>
+                    </div> -->
+                    <div
+                        class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800"
+                    >
+                        <div>
+                            <h2
+                                class="flex items-center gap-2 text-lg font-bold text-gray-800 dark:text-white"
+                            >
+                                <svg
+                                    class="w-5 h-5 text-lime-600"
+                                    fill="none"
+                                    viewBox="0 0 24 24"
+                                    stroke="currentColor"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                                    />
+                                </svg>
+                                Filter Lanjutan
+                            </h2>
+                            <p
+                                class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"
+                            >
+                                Saring data {{ title }} secara mendetail.
+                            </p>
+                        </div>
+                        <button
+                            @click="$emit('close')"
+                            class="text-gray-400 hover:text-red-500 transition p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                        >
+                            <svg
+                                class="w-6 h-6"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"
                                 />
                             </svg>
                         </button>
@@ -139,5 +186,8 @@ const handleBackdropClick = () => {
 .custom-scrollbar::-webkit-scrollbar-thumb {
     background-color: #cbd5e1;
     border-radius: 20px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #4b5563;
 }
 </style>

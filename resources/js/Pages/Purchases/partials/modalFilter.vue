@@ -2,6 +2,7 @@
 import Modal from "@/Components/Modal.vue";
 import { useForm, router } from "@inertiajs/vue3";
 import { useActionLoading } from "@/Composable/useActionLoading";
+import BottomSheetFilter from "@/Components/BottomSheetFilter.vue";
 
 const props = defineProps({
     show: {
@@ -100,9 +101,9 @@ const formatRupiah = (value) => {
 </script>
 
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="lg">
+    <BottomSheetFilter :show="show" @close="$emit('close')" title="pembelian">
         <div class="w-full p-6 bg-white shadow-xl rounded-2xl dark:bg-gray-800">
-            <div
+            <!-- <div
                 class="flex items-center justify-between pb-4 mb-6 border-b border-gray-100 dark:border-gray-700"
             >
                 <h2 class="text-xl font-bold text-gray-800 dark:text-white">
@@ -126,7 +127,7 @@ const formatRupiah = (value) => {
                         ></path>
                     </svg>
                 </button>
-            </div>
+            </div> -->
 
             <div class="space-y-4">
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
@@ -271,7 +272,7 @@ const formatRupiah = (value) => {
                 <button
                     type="button"
                     @click="resetFilter"
-                    class="text-sm font-medium text-gray-500 transition hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                    class="text-xs font-bold text-gray-500 transition border-b border-gray-400 border-dashed dark:text-gray-400 hover:text-red-500 hover:border-red-500"
                 >
                     Reset Filter
                 </button>
@@ -293,5 +294,7 @@ const formatRupiah = (value) => {
                 </div>
             </div>
         </div>
-    </Modal>
+    </BottomSheetFilter>
+    <!-- <Modal :show="show" @close="$emit('close')" maxWidth="lg">
+    </Modal> -->
 </template>

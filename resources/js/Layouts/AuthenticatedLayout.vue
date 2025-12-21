@@ -71,7 +71,7 @@ defineProps({
 
 <template>
     <ActionLoader />
-    <div class="flex min-h-screen pb-16 lg:pb-0">
+    <div class="flex min-h-screen pb-12 lg:pb-0">
         <!-- Sidebar -->
         <Sidebar v-if="showSidebar" />
         <!-- </aside> -->

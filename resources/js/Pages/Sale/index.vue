@@ -256,73 +256,87 @@ const handlePrint = () => {
         @close="showInvoice = false"
         :title="`Preview Invoice #` + selectReference_no"
     >
-        <div class="flex flex-col h-full px-4">
-            <!-- <h3 class="pb-2 mb-4 text-lg font-bold text-center border-b">
+        <!-- <div class="flex flex-col px-4 max-w-36 "> -->
+        <!-- <h3 class="pb-2 mb-4 text-lg font-bold text-center border-b">
                 Preview Invoice
             </h3> -->
 
-            <div
-                v-if="isLoading"
-                class="flex-1 flex flex-col items-center justify-center min-h-[300px]"
+        <div
+            v-if="isLoading"
+            class="flex-1 flex flex-col items-center justify-center min-h-[300px]"
+        >
+            <svg
+                class="w-10 h-10 mb-3 text-blue-500 animate-spin"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
             >
-                <svg
-                    class="w-10 h-10 mb-3 text-blue-500 animate-spin"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                >
-                    <circle
-                        class="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        stroke-width="4"
-                    ></circle>
-                    <path
-                        class="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8v8H4z"
-                    ></path>
-                </svg>
-                <p class="text-lime-500">Memuat Invoice...</p>
+                <circle
+                    class="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    stroke-width="4"
+                ></circle>
+                <path
+                    class="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                ></path>
+            </svg>
+            <p class="text-lime-500">Memuat Invoice...</p>
+        </div>
+
+        <div v-else class="overflow-hidden">
+            <div
+                class="flex-1 mb-4 border rounded overflow-hidden bg-gray-100 h-[300px]"
+            >
+                <iframe
+                    :srcdoc="invoiceHtml"
+                    class="w-full h-full bg-white border-0"
+                    style="display: block"
+                ></iframe>
             </div>
 
-            <div v-else class="flex flex-col flex-1 overflow-hidden">
-                <div
-                    class="flex-1 p-2 mb-4 overflow-y-auto bg-gray-100 border rounded"
+            <div class="grid grid-cols-2 gap-3 pt-2 mt-auto border-t">
+                <a
+                    :href="`/sales/${selectedId}/print`"
+                    target="_blank"
+                    class="flex items-center justify-center gap-2 py-3 font-bold text-white transition bg-red-500 rounded-lg hover:bg-red-600"
                 >
-                    <div
-                        class="bg-white shadow-sm p-2 min-h-[200px] receipt-preview-wrapper"
-                    >
-                        <div v-html="invoiceHtml"></div>
-                    </div>
-                </div>
+                    📥 Download PDF
+                </a>
 
-                <div class="grid grid-cols-2 gap-3 pt-2 mt-auto border-t">
-                    <a
-                        :href="`/sales/${selectedId}/print`"
-                        target="_blank"
-                        class="flex items-center justify-center gap-2 py-3 font-bold text-white transition bg-red-500 rounded-lg hover:bg-red-600"
-                    >
-                        📥 Download PDF
-                    </a>
-
-                    <button
-                        @click="handlePrint"
-                        class="flex items-center justify-center gap-2 py-3 font-bold text-white transition bg-blue-600 rounded-lg hover:bg-blue-700"
-                    >
-                        🖨 Print Struk
-                    </button>
-                </div>
+                <button
+                    @click="handlePrint"
+                    class="flex items-center justify-center gap-2 py-3 font-bold text-white transition bg-blue-600 rounded-lg hover:bg-blue-700"
+                >
+                    🖨 Print Struk
+                </button>
             </div>
         </div>
+        <!-- </div> -->
     </BottomSheet>
 </template>
 <style scoped>
+.receipt-preview-wrapper :deep(table) {
+    width: 100% !important;
+    max-width: 100% !important;
+}
+.receipt-preview-wrapper :deep(img) {
+    max-width: 100% !important;
+    height: auto !important;
+}
+.receipt-preview-wrapper :deep(div),
+.receipt-preview-wrapper :deep(p) {
+    word-wrap: break-word; /* Memastikan teks panjang turun ke bawah */
+    white-space: normal !important;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12px; /* Sesuaikan ukuran font preview */
+}
 .receipt-preview-wrapper {
     /* Agar konten preview tidak terlalu lebar */
-    max-width: 80mm;
     margin: 0 auto;
     font-family: "Courier New", Courier, monospace;
     font-size: 12px; /* Sesuaikan ukuran font preview */

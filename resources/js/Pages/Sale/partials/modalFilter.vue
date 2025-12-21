@@ -2,6 +2,7 @@
 import Modal from "@/Components/Modal.vue";
 import { useForm, router } from "@inertiajs/vue3";
 import { useActionLoading } from "@/Composable/useActionLoading";
+import BottomSheetFilter from "@/Components/BottomSheetFilter.vue";
 
 const props = defineProps({
     show: {
@@ -79,13 +80,14 @@ const formatRupiah = (value) => {
 };
 </script>
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="lg"
-        ><div class="w-full p-4 bg-white shadow rounded-xl dark:bg-gray-800">
-            <h2
+    <!-- <Modal :show="show" @close="$emit('close')" maxWidth="lg"> -->
+    <BottomSheetFilter :show="show" @close="$emit('close')" title="penjualan">
+        <div class="w-full p-4 bg-white shadow rounded-xl dark:bg-gray-800">
+            <!-- <h2
                 class="mb-4 text-lg font-semibold text-gray-800 dark:text-white"
             >
                 Filter Penjualan
-            </h2>
+            </h2> -->
             <div class="mb-4">
                 <label
                     class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -137,8 +139,52 @@ const formatRupiah = (value) => {
                     </div>
                 </div>
             </div>
-            <div class="flex justify-end gap-2">
+            <div
+                class="flex flex-col-reverse items-center justify-between gap-4 px-3 py-3 mt-3 border-t border-gray-100 sm:flex-row dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 sm:gap-0"
+            >
                 <button
+                    @click="resetFilter"
+                    class="text-xs font-bold text-gray-500 transition border-b border-gray-400 border-dashed dark:text-gray-400 hover:text-red-500 hover:border-red-500"
+                >
+                    Reset ke Default
+                </button>
+                <div class="flex w-full gap-3 sm:w-auto">
+                    <button
+                        @click="$emit('close')"
+                        class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                    >
+                        Batal
+                    </button>
+                    <button
+                        @click="applyFilter"
+                        class="flex-1 sm:flex-none px-8 py-2.5 rounded-xl bg-lime-500 hover:bg-lime-600 text-white font-bold text-sm shadow-md shadow-lime-200 dark:shadow-none transition flex items-center justify-center gap-2"
+                        :disabled="isActionLoading"
+                    >
+                        <svg
+                            v-if="isActionLoading"
+                            class="w-4 h-4 text-white animate-spin"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            ></circle>
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                        </svg>
+                        <span>Terapkan Filter</span>
+                    </button>
+                </div>
+                <!-- <button
                     class="px-4 py-2 text-sm font-medium text-white rounded-lg bg-lime-500 hover:bg-lime-600 disabled:opacity-50"
                     @click="applyFilter"
                     :disabled="form.processing"
@@ -150,10 +196,11 @@ const formatRupiah = (value) => {
                     type="button"
                 >
                     Reset
-                </button>
+                </button> -->
             </div>
-        </div></Modal
-    >
+        </div>
+    </BottomSheetFilter>
+    <!-- </Modal -->
 </template>
 <style scoped>
 .form-input {

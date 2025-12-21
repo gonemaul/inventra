@@ -2,6 +2,7 @@
 import Modal from "@/Components/Modal.vue";
 import { useForm, router } from "@inertiajs/vue3";
 import { useActionLoading } from "@/Composable/useActionLoading";
+import BottomSheetFilter from "@/Components/BottomSheetFilter.vue";
 
 const props = defineProps({
     show: { type: Boolean, default: false },
@@ -135,11 +136,11 @@ const formatRupiah = (value) => {
 </script>
 
 <template>
-    <Modal :show="show" @close="$emit('close')" maxWidth="2xl">
-        <div
-            class="flex flex-col max-h-[85vh] bg-white dark:bg-gray-800 rounded-xl shadow-xl overflow-hidden"
-        >
-            <div
+    <BottomSheetFilter :show="show" title="produk" @close="$emit('close')">
+        <!-- <div
+            class="flex flex-col overflow-hidden shadow-xl dark:bg-gray-800 rounded-xl"
+        > -->
+        <!-- <div
                 class="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800"
             >
                 <div>
@@ -183,386 +184,374 @@ const formatRupiah = (value) => {
                         />
                     </svg>
                 </button>
-            </div>
+            </div> -->
 
-            <div class="flex-1 p-6 space-y-8 overflow-y-auto custom-scrollbar">
-                <section>
-                    <h3
-                        class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
-                    >
-                        Klasifikasi Produk
-                    </h3>
-                    <div
-                        class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-x-6 gap-y-4"
-                    >
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Kategori</label
+        <div class="flex-1 space-y-8 o custom-scrollbar">
+            <section>
+                <h3
+                    class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
+                >
+                    Klasifikasi Produk
+                </h3>
+                <div
+                    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-x-6 gap-y-4"
+                >
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Kategori</label
+                        >
+                        <select v-model="form.category_id" class="form-select">
+                            <option value="">Semua Kategori</option>
+                            <option
+                                v-for="opt in dropdowns.categories"
+                                :key="opt.id"
+                                :value="opt.id"
                             >
-                            <select
-                                v-model="form.category_id"
-                                class="form-select"
-                            >
-                                <option value="">Semua Kategori</option>
-                                <option
-                                    v-for="opt in dropdowns.categories"
-                                    :key="opt.id"
-                                    :value="opt.id"
-                                >
-                                    {{ opt.name }}
-                                </option>
-                            </select>
-                        </div>
+                                {{ opt.name }}
+                            </option>
+                        </select>
+                    </div>
 
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Tipe Produk</label
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Tipe Produk</label
+                        >
+                        <select
+                            v-model="form.product_type_id"
+                            class="form-select"
+                        >
+                            <option value="">Semua Tipe</option>
+                            <option
+                                v-for="opt in dropdowns.types"
+                                :key="opt.id"
+                                :value="opt.id"
                             >
-                            <select
-                                v-model="form.product_type_id"
-                                class="form-select"
-                            >
-                                <option value="">Semua Tipe</option>
-                                <option
-                                    v-for="opt in dropdowns.types"
-                                    :key="opt.id"
-                                    :value="opt.id"
-                                >
-                                    {{ opt.name }}
-                                </option>
-                            </select>
-                        </div>
+                                {{ opt.name }}
+                            </option>
+                        </select>
+                    </div>
 
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Merk / Brand</label
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Merk / Brand</label
+                        >
+                        <select v-model="form.brand_id" class="form-select">
+                            <option value="">Semua Merk</option>
+                            <option
+                                v-for="opt in dropdowns.brands"
+                                :key="opt.id"
+                                :value="opt.id"
                             >
-                            <select v-model="form.brand_id" class="form-select">
-                                <option value="">Semua Merk</option>
-                                <option
-                                    v-for="opt in dropdowns.brands"
-                                    :key="opt.id"
-                                    :value="opt.id"
-                                >
-                                    {{ opt.name }}
-                                </option>
-                            </select>
-                        </div>
+                                {{ opt.name }}
+                            </option>
+                        </select>
+                    </div>
 
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Supplier</label
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Supplier</label
+                        >
+                        <select v-model="form.supplier_id" class="form-select">
+                            <option value="">Semua Supplier</option>
+                            <option
+                                v-for="opt in dropdowns.suppliers"
+                                :key="opt.id"
+                                :value="opt.id"
                             >
-                            <select
-                                v-model="form.supplier_id"
-                                class="form-select"
+                                {{ opt.name }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h3
+                    class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
+                >
+                    Spesifikasi Fisik
+                </h3>
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Satuan (Unit)</label
+                        >
+                        <select v-model="form.unit_id" class="form-select">
+                            <option value="">Semua Satuan</option>
+                            <option
+                                v-for="opt in dropdowns.units"
+                                :key="opt.id"
+                                :value="opt.id"
                             >
-                                <option value="">Semua Supplier</option>
-                                <option
-                                    v-for="opt in dropdowns.suppliers"
-                                    :key="opt.id"
-                                    :value="opt.id"
-                                >
-                                    {{ opt.name }}
-                                </option>
-                            </select>
+                                {{ opt.name }}
+                            </option>
+                        </select>
+                    </div>
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Ukuran (Size)</label
+                        >
+                        <select v-model="form.size_id" class="form-select">
+                            <option value="">Semua Ukuran</option>
+                            <option
+                                v-for="opt in dropdowns.sizes"
+                                :key="opt.id"
+                                :value="opt.id"
+                            >
+                                {{ opt.name }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <section>
+                <h3
+                    class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
+                >
+                    Rentang Nilai
+                </h3>
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Jumlah Stok</label
+                        >
+                        <div class="flex gap-2">
+                            <input
+                                type="number"
+                                v-model="form.min_stock"
+                                placeholder="Min"
+                                class="px-1 text-center form-input"
+                            />
+                            <span class="self-center text-gray-400">-</span>
+                            <input
+                                type="number"
+                                v-model="form.max_stock"
+                                placeholder="Max"
+                                class="px-1 text-center form-input"
+                            />
                         </div>
                     </div>
-                </section>
 
-                <section>
-                    <h3
-                        class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
-                    >
-                        Spesifikasi Fisik
-                    </h3>
-                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Satuan (Unit)</label
-                            >
-                            <select v-model="form.unit_id" class="form-select">
-                                <option value="">Semua Satuan</option>
-                                <option
-                                    v-for="opt in dropdowns.units"
-                                    :key="opt.id"
-                                    :value="opt.id"
-                                >
-                                    {{ opt.name }}
-                                </option>
-                            </select>
-                        </div>
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Ukuran (Size)</label
-                            >
-                            <select v-model="form.size_id" class="form-select">
-                                <option value="">Semua Ukuran</option>
-                                <option
-                                    v-for="opt in dropdowns.sizes"
-                                    :key="opt.id"
-                                    :value="opt.id"
-                                >
-                                    {{ opt.name }}
-                                </option>
-                            </select>
-                        </div>
-                    </div>
-                </section>
-
-                <section>
-                    <h3
-                        class="pb-1 mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase border-b border-gray-100 dark:border-gray-700"
-                    >
-                        Rentang Nilai
-                    </h3>
-                    <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Jumlah Stok</label
-                            >
-                            <div class="flex gap-2">
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Harga Jual</label
+                        >
+                        <div class="flex gap-2">
+                            <div class="">
                                 <input
                                     type="number"
-                                    v-model="form.min_stock"
+                                    v-model="form.min_price"
                                     placeholder="Min"
                                     class="px-1 text-center form-input"
                                 />
-                                <span class="self-center text-gray-400">-</span>
+                                <p
+                                    class="text-[10px] text-gray-400 mt-1 text-left"
+                                >
+                                    {{ formatRupiah(form.min_price) }}
+                                </p>
+                            </div>
+                            <span class="self-start mt-2 text-gray-400">-</span>
+                            <div>
                                 <input
                                     type="number"
-                                    v-model="form.max_stock"
+                                    v-model="form.max_price"
                                     placeholder="Max"
                                     class="px-1 text-center form-input"
                                 />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Harga Jual</label
-                            >
-                            <div class="flex gap-2">
-                                <div class="">
-                                    <input
-                                        type="number"
-                                        v-model="form.min_price"
-                                        placeholder="Min"
-                                        class="px-1 text-center form-input"
-                                    />
-                                    <p
-                                        class="text-[10px] text-gray-400 mt-1 text-left"
-                                    >
-                                        {{ formatRupiah(form.min_price) }}
-                                    </p>
-                                </div>
-                                <span class="self-start mt-2 text-gray-400"
-                                    >-</span
+                                <p
+                                    class="text-[10px] text-gray-400 mt-1 text-left"
                                 >
-                                <div>
-                                    <input
-                                        type="number"
-                                        v-model="form.max_price"
-                                        placeholder="Max"
-                                        class="px-1 text-center form-input"
-                                    />
-                                    <p
-                                        class="text-[10px] text-gray-400 mt-1 text-left"
-                                    >
-                                        {{ formatRupiah(form.max_price) }}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Harga Beli</label
-                            >
-                            <div class="flex gap-2">
-                                <div class="">
-                                    <input
-                                        type="number"
-                                        v-model="form.min_cost"
-                                        placeholder="Min"
-                                        class="px-1 text-center form-input"
-                                    />
-                                    <p
-                                        class="text-[10px] text-gray-400 mt-1 text-left"
-                                    >
-                                        {{ formatRupiah(form.min_cost) }}
-                                    </p>
-                                </div>
-                                <span class="self-start mt-2 text-gray-400"
-                                    >-</span
-                                >
-                                <div class="">
-                                    <input
-                                        type="number"
-                                        v-model="form.max_cost"
-                                        placeholder="Max"
-                                        class="px-1 text-center form-input"
-                                    />
-                                    <p
-                                        class="text-[10px] text-gray-400 mt-1 text-left"
-                                    >
-                                        {{ formatRupiah(form.max_cost) }}
-                                    </p>
-                                </div>
+                                    {{ formatRupiah(form.max_price) }}
+                                </p>
                             </div>
                         </div>
                     </div>
-                </section>
 
-                <section
-                    class="p-4 border border-gray-100 bg-gray-50 dark:bg-gray-700/30 rounded-xl dark:border-gray-600"
-                >
-                    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Status Produk</label
-                            >
-                            <select v-model="form.status" class="form-select">
-                                <option value="">Semua Status</option>
-                                <option value="active">Aktif (Tampil)</option>
-                                <option value="inactive">
-                                    Non-Aktif (Disembunyikan)
-                                </option>
-                            </select>
-                        </div>
-
-                        <div>
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Data Terhapus</label
-                            >
-                            <select
-                                v-model="form.trashed"
-                                class="font-medium text-red-600 form-select"
-                            >
-                                <option value="">Sembunyikan Sampah</option>
-                                <option value="with">
-                                    Tampilkan Arsip Sampah
-                                </option>
-                                <option value="only">
-                                    Hanya Sampah (Recovery)
-                                </option>
-                            </select>
-                        </div>
-
-                        <div class="sm:col-span-2">
-                            <label
-                                class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                                >Urutkan Data</label
-                            >
-                            <div class="flex gap-2">
-                                <select
-                                    v-model="form.sort"
-                                    class="flex-1 form-select"
-                                >
-                                    <option
-                                        v-for="opt in sortOptions"
-                                        :key="opt.value"
-                                        :value="opt.value"
-                                    >
-                                        {{ opt.label }}
-                                    </option>
-                                </select>
-                                <div
-                                    class="flex overflow-hidden bg-white border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
-                                >
-                                    <button
-                                        type="button"
-                                        @click="form.order = 'asc'"
-                                        class="px-3 py-2 text-xs font-bold transition hover:bg-lime-50 dark:hover:bg-gray-600"
-                                        :class="
-                                            form.order === 'asc'
-                                                ? 'bg-lime-500 text-white hover:bg-lime-600'
-                                                : 'text-gray-600 dark:text-gray-300'
-                                        "
-                                    >
-                                        A-Z
-                                    </button>
-                                    <div
-                                        class="w-px bg-gray-300 dark:bg-gray-600"
-                                    ></div>
-                                    <button
-                                        type="button"
-                                        @click="form.order = 'desc'"
-                                        class="px-3 py-2 text-xs font-bold transition hover:bg-lime-50 dark:hover:bg-gray-600"
-                                        :class="
-                                            form.order === 'desc'
-                                                ? 'bg-lime-500 text-white hover:bg-lime-600'
-                                                : 'text-gray-600 dark:text-gray-300'
-                                        "
-                                    >
-                                        Z-A
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
-
-            <div
-                class="flex flex-col-reverse items-center justify-between gap-4 p-5 border-t border-gray-100 sm:flex-row dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 sm:gap-0"
-            >
-                <button
-                    @click="resetFilter"
-                    class="text-xs font-bold text-gray-500 transition border-b border-gray-400 border-dashed hover:text-red-500 hover:border-red-500"
-                >
-                    Reset ke Default
-                </button>
-                <div class="flex w-full gap-3 sm:w-auto">
-                    <button
-                        @click="$emit('close')"
-                        class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition"
-                    >
-                        Batal
-                    </button>
-                    <button
-                        @click="applyFilter"
-                        class="flex-1 sm:flex-none px-8 py-2.5 rounded-xl bg-lime-500 hover:bg-lime-600 text-white font-bold text-sm shadow-md shadow-lime-200 dark:shadow-none transition flex items-center justify-center gap-2"
-                        :disabled="isActionLoading"
-                    >
-                        <svg
-                            v-if="isActionLoading"
-                            class="w-4 h-4 text-white animate-spin"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Harga Beli</label
                         >
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4"
-                            ></circle>
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                            ></path>
-                        </svg>
-                        <span>Terapkan Filter</span>
-                    </button>
+                        <div class="flex gap-2">
+                            <div class="">
+                                <input
+                                    type="number"
+                                    v-model="form.min_cost"
+                                    placeholder="Min"
+                                    class="px-1 text-center form-input"
+                                />
+                                <p
+                                    class="text-[10px] text-gray-400 mt-1 text-left"
+                                >
+                                    {{ formatRupiah(form.min_cost) }}
+                                </p>
+                            </div>
+                            <span class="self-start mt-2 text-gray-400">-</span>
+                            <div class="">
+                                <input
+                                    type="number"
+                                    v-model="form.max_cost"
+                                    placeholder="Max"
+                                    class="px-1 text-center form-input"
+                                />
+                                <p
+                                    class="text-[10px] text-gray-400 mt-1 text-left"
+                                >
+                                    {{ formatRupiah(form.max_cost) }}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+            </section>
+
+            <section
+                class="p-4 border border-gray-100 bg-gray-50 dark:bg-gray-700/30 rounded-xl dark:border-gray-600"
+            >
+                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Status Produk</label
+                        >
+                        <select v-model="form.status" class="form-select">
+                            <option value="">Semua Status</option>
+                            <option value="active">Aktif (Tampil)</option>
+                            <option value="inactive">
+                                Non-Aktif (Disembunyikan)
+                            </option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Data Terhapus</label
+                        >
+                        <select
+                            v-model="form.trashed"
+                            class="font-medium text-red-600 form-select"
+                        >
+                            <option value="">Sembunyikan Sampah</option>
+                            <option value="with">Tampilkan Arsip Sampah</option>
+                            <option value="only">
+                                Hanya Sampah (Recovery)
+                            </option>
+                        </select>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label
+                            class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
+                            >Urutkan Data</label
+                        >
+                        <div class="flex gap-2">
+                            <select
+                                v-model="form.sort"
+                                class="flex-1 form-select"
+                            >
+                                <option
+                                    v-for="opt in sortOptions"
+                                    :key="opt.value"
+                                    :value="opt.value"
+                                >
+                                    {{ opt.label }}
+                                </option>
+                            </select>
+                            <div
+                                class="flex overflow-hidden bg-white border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                            >
+                                <button
+                                    type="button"
+                                    @click="form.order = 'asc'"
+                                    class="px-3 py-2 text-xs font-bold transition hover:bg-lime-50 dark:hover:bg-gray-600"
+                                    :class="
+                                        form.order === 'asc'
+                                            ? 'bg-lime-500 text-white hover:bg-lime-600'
+                                            : 'text-gray-600 dark:text-gray-300'
+                                    "
+                                >
+                                    A-Z
+                                </button>
+                                <div
+                                    class="w-px bg-gray-300 dark:bg-gray-600"
+                                ></div>
+                                <button
+                                    type="button"
+                                    @click="form.order = 'desc'"
+                                    class="px-3 py-2 text-xs font-bold transition hover:bg-lime-50 dark:hover:bg-gray-600"
+                                    :class="
+                                        form.order === 'desc'
+                                            ? 'bg-lime-500 text-white hover:bg-lime-600'
+                                            : 'text-gray-600 dark:text-gray-300'
+                                    "
+                                >
+                                    Z-A
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div
+            class="flex flex-col-reverse items-center justify-between gap-4 px-5 py-3 mt-3 border-t border-gray-100 rounded-xl sm:flex-row dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 sm:gap-0"
+        >
+            <button
+                @click="resetFilter"
+                class="text-xs font-bold text-gray-500 transition border-b border-gray-400 border-dashed dark:text-gray-400 hover:text-red-500 hover:border-red-500"
+            >
+                Reset ke Default
+            </button>
+            <div class="flex w-full gap-3 sm:w-auto">
+                <button
+                    @click="$emit('close')"
+                    class="flex-1 sm:flex-none px-5 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold text-sm hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                >
+                    Batal
+                </button>
+                <button
+                    @click="applyFilter"
+                    class="flex-1 sm:flex-none px-8 py-2.5 rounded-xl bg-lime-500 hover:bg-lime-600 text-white font-bold text-sm shadow-md shadow-lime-200 dark:shadow-none transition flex items-center justify-center gap-2"
+                    :disabled="isActionLoading"
+                >
+                    <svg
+                        v-if="isActionLoading"
+                        class="w-4 h-4 text-white animate-spin"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                    >
+                        <circle
+                            class="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            stroke-width="4"
+                        ></circle>
+                        <path
+                            class="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
+                    </svg>
+                    <span>Terapkan Filter</span>
+                </button>
             </div>
         </div>
-    </Modal>
+        <!-- </div> -->
+    </BottomSheetFilter>
 </template>
 
 <style scoped>
