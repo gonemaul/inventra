@@ -52,7 +52,7 @@ class ProductService
     public function get(array $params)
     {
         // Selalu ambil relasi (eager load) untuk efisiensi
-        $query = Product::with(['category', 'unit', 'size', 'supplier', 'brand', 'productType', 'insights' => function ($q) {
+        $query = Product::with(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insights' => function ($q) {
             // Ambil insight yang masih aktif (belum dibaca/diselesaikan)
             $q->where('is_read', false);
         }]);
@@ -105,26 +105,37 @@ class ProductService
 
         $perPage = $params['per_page'] ?? 10;
         // Helper finansial Analis Pertumbuhan
-        $startThisMonth = now()->subDays(30);
-        $startLastMonth = now()->subDays(60);
-        $endLastMonth   = now()->subDays(30);
-        $query->withSum(['saleItems as qty_this_month' => function ($query) use ($startThisMonth) {
-            $query->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', $startThisMonth));
+        // 1. Tentukan Range Tanggal yang PRESISI (00:00:00 s/d 23:59:59)
+        // Periode A: 30 Hari Terakhir (H-29 s/d Hari Ini = 30 Hari)
+        $today   = now()->endOfDay();
+        $startThisMonth = now()->subDays(29)->startOfDay();
+        // Periode B: 30 Hari Sebelumnya (H-59 s/d H-30 = 30 Hari)
+        $endLastMonth   = now()->subDays(30)->endOfDay();
+        $startLastMonth = now()->subDays(59)->startOfDay();
+        // --- A. Hitung Penjualan Bulan Ini (30 Hari Terakhir) ---
+        // Hasilnya akan masuk ke atribut: 'qty_this_month'
+        $query->withSum(['saleItems as qty_this_month' => function ($query) use ($startThisMonth, $today) {
+            $query->whereHas('sale', function ($q) use ($startThisMonth, $today) {
+                $q->whereBetween('transaction_date', [$startThisMonth, $today]);
+            });
         }], 'quantity')
 
-            // Query Total Bulan Lalu
+            // --- B. Hitung Penjualan Bulan Lalu (30 Hari Sebelumnya) ---
+            // Hasilnya akan masuk ke atribut: 'qty_last_month'
             ->withSum(['saleItems as qty_last_month' => function ($query) use ($startLastMonth, $endLastMonth) {
-                $query->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startLastMonth, $endLastMonth]));
-            }], 'quantity');
+                $query->whereHas('sale', function ($q) use ($startLastMonth, $endLastMonth) {
+                    $q->whereBetween('transaction_date', [$startLastMonth, $endLastMonth]);
+                });
+            }], 'quantity')
+            ->withSum('saleItems as total_sold_all_time', 'quantity'); // 1. Total Selamanya
+
 
         $products = $query->paginate($perPage)
             ->withQueryString();
-
         $products->getCollection()->transform(function ($product) {
             $product->financials = $this->calculator->calculateFinancialHealth($product);
             return $product;
         });
-
         return $products;
     }
 
@@ -332,38 +343,59 @@ class ProductService
      * @return Product
      * @throws ValidationException|ModelNotFoundException
      */
-    public function update($id, array $data)
+    public function update($product, array $data)
     {
-        $product = Product::findOrFail($id);
         $imageFile = $data['image'] ?? null;
         unset($data['image']);
-        $validator = Validator::make($data, [
-            // Relasi
-            'category_id' => ['required', 'integer', Rule::exists('categories', 'id')],
-            'unit_id' => ['nullable', 'integer', Rule::exists('units', 'id')],
-            'size_id' => ['nullable', 'integer', Rule::exists('sizes', 'id')],
-            'supplier_id' => ['nullable', 'integer', Rule::exists('suppliers', 'id')],
+        // $validator = Validator::make($data, [
+        //     // Relasi
+        //     'category_id' => ['required_if:type,full', 'integer', Rule::exists('categories', 'id')],
+        //     'unit_id' => ['nullable', 'integer', Rule::exists('units', 'id')],
+        //     'size_id' => ['nullable', 'integer', Rule::exists('sizes', 'id')],
+        //     'supplier_id' => ['nullable', 'integer', Rule::exists('suppliers', 'id')],
 
-            // Detail Produk (ubah aturan 'unique')
-            'name' => 'required|string|max:255',
-            'code' => ['required', 'string', 'max:255', Rule::unique('products')->ignore($id)],
-            'description' => 'nullable|string',
-            // 'image_path' => 'nullable|string|max:255',
-            'status' => ['required', Rule::in(Product::STATUSES)],
+        //     // Detail Produk (ubah aturan 'unique')
+        //     'name' => 'required_if:type,full|string|max:255',
+        //     'code' => ['required_if:type,full', 'string', 'max:255', Rule::unique('products')->ignore($id)],
+        //     'description' => 'nullable|string',
+        //     // 'image_path' => 'nullable|string|max:255',
+        //     'status' => ['required_if:type,full', Rule::in(Product::STATUSES)],
 
-            // Harga & Stok
-            'stock' => 'required|integer|min:0',
-            'min_stock' => 'required|integer|min:0',
-            'purchase_price' => 'required|numeric|min:0',
-            'selling_price' => 'required|numeric|min:0',
-        ]);
+        //     // Harga & Stok
+        //     'stock' => 'required_if:type,stock|integer|min:0',
+        //     'min_stock' => 'required|integer|min:0',
+        //     'purchase_price' => 'required_if:type,price|numeric|min:0',
+        //     'selling_price' => 'required_if:type,price|numeric|min:0',
+        //     // type
+        //     'type' => 'required|in:full,stock,price'
+        // ]);
 
-        if ($validator->fails()) {
-            throw new ValidationException($validator);
+        if ($data['type'] == 'stock') {
+            if ($data['adjustment'] == 'add') {
+                $this->stockService->record(
+                    productId: $product->id,
+                    qty: $data['qty'],
+                    type: StockMovement::TYPE_ADJUSTMENT_IN,
+                    desc: $data['note']
+                );
+            } else if ($data['adjustment'] == 'reduce') {
+                $this->stockService->record(
+                    productId: $product->id,
+                    qty: $data['qty'],
+                    type: StockMovement::TYPE_ADJUSTMENT_OUT,
+                    desc: $data['note']
+                );
+            } else if ($data['adjustment'] == 'set') {
+                $this->stockService->record(
+                    productId: $product->id,
+                    qty: $data['qty'],
+                    type: StockMovement::TYPE_ADJUSTMENT_OPNAME,
+                    desc: $data['note']
+                );
+            }
+        } else {
+            $product->update($data);
         }
-        $validatedData = $validator->validated();
-
-        // 3. Validasi dan proses gambar HANYA JIKA ada
         if ($imageFile) {
             $imageValidator = Validator::make(['image' => $imageFile], [
                 'image' => 'nullable|image|mimes:jpeg,png,webp|max:20480'
@@ -371,9 +403,8 @@ class ProductService
             if ($imageValidator->fails()) throw new ValidationException($imageValidator);
 
             // Kirim path lama untuk dihapus
-            $validatedData['image_path'] = $this->handleImageUpload($imageFile, $product->image_path);
+            $data['image_path'] = $this->handleImageUpload($imageFile, $product->image_path);
         }
-        $product->update($validatedData);
         return $product;
     }
 

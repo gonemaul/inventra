@@ -65,7 +65,6 @@ const currentItem = ref({
 });
 // Fungsi ini dipanggil saat Scan berhasil & Produk ditemukan
 const prepareModalData = (productMaster) => {
-    console.log(productMaster);
     currentItem.value = {
         id: productMaster.id,
         name: productMaster.name,

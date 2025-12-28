@@ -29,16 +29,27 @@ class StockService
 
         // 1. Update Master Stok di Produk
         if ($type != StockMovement::TYPE_INITIAL) {
+            // tambah stok
+            if (in_array($type, [StockMovement::TYPE_ADJUSTMENT_IN, StockMovement::TYPE_PURCHASE, StockMovement::TYPE_RETURN_IN])) {
+                $stockAfter = $stockBefore + $qty;
+            }
+            // rubah stok(timpa)
+            else if (in_array($type, [StockMovement::TYPE_ADJUSTMENT_OPNAME])) {
+                $stockAfter = $qty;
+                $qty = $qty > $stockBefore ? $qty - $stockBefore : $stockBefore - $qty;
+            }
+            // kurangi stock
+            else if (in_array($type, [StockMovement::TYPE_ADJUSTMENT_OUT, StockMovement::TYPE_SALE, StockMovement::TYPE_RETURN_OUT])) {
+                $stockAfter = $stockBefore - $qty;
+            }
             $product->stock = $stockAfter;
         }
-        // Jika ini pembelian (qty > 0), biasanya harga beli diupdate di controller Purchase
-        // Jadi disini kita hanya update qty stok saja.
         $product->save();
 
         // 2. Catat di Buku Sejarah (Stock Movement)
         StockMovement::create([
             'product_id' => $productId,
-            'user_id' => Auth::id() ?? null, // Handle jika dijalankan seeder/system
+            'user_id' => Auth::id() ?? 'system', // Handle jika dijalankan seeder/system
             'type' => $type,
             'reference_number' => $ref,
             'quantity' => $qty,

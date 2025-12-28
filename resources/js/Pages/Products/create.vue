@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head } from "@inertiajs/vue3";
-import FormCreateEdit from "./partials/form-create-edit.vue";
+import FormProduct from "./Components/FormProduct.vue";
 
 const props = defineProps({
     dropdowns: Object,
@@ -13,7 +13,8 @@ const props = defineProps({
 
     <AuthenticatedLayout headerTitle="Tambah Barang">
         <div class="w-full min-h-screen">
-            <FormCreateEdit :dropdowns="props.dropdowns" mode="create" />
+            <FormProduct :dropdowns="props.dropdowns" mode="create" />
+            <!-- <FormCreateEdit :dropdowns="props.dropdowns" mode="create" /> -->
         </div>
     </AuthenticatedLayout>
 </template>

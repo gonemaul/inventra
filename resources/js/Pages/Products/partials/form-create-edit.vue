@@ -7,9 +7,6 @@ import { Link, useForm } from "@inertiajs/vue3";
 import { ref, computed, onMounted } from "vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import BarcodeScanner from "@/Components/BarcodeScanner.vue";
-// const BarcodeScanner = defineAsyncComponent(() =>
-//     import("@/Components/BarcodeScanner.vue")
-// );
 
 const props = defineProps({
     dropdowns: Object, // Berisi { categories: [], units: [], sizes: [], suppliers: [], productStatuses: [] }

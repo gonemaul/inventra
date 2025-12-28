@@ -40,6 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('products/{id}', [\App\Http\Controllers\ProductController::class, 'destroy'])
         ->name('products.destroy');
     Route::put('products/restore/{id}', [\App\Http\Controllers\ProductController::class, 'restoreProduct'])->name('products.restoreProduct');
+    Route::get('products/search/', [\App\Http\Controllers\ProductController::class, 'searchProducts'])->name('products.searchProducts');
 
     // Pemmbelian
     Route::resource('purchases', PurchaseController::class)->except([

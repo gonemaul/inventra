@@ -18,6 +18,7 @@ use App\Services\CategoryService;
 use App\Services\SupplierService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use App\Http\Requests\ProductUpdateRequest;
 
 class ProductController extends Controller
 {
@@ -62,6 +63,41 @@ class ProductController extends Controller
             'productStatuses' => Product::STATUSES,
         ];
     }
+    public function searchProducts(Request $request)
+    {
+        $keyword = $request->input('q'); // misal frontend kirim parameter ?q=nama_produk
+        $limit = $request->input('limit', 20); // Default ambil 20 item saja agar ringan
+
+        $query = Product::query()
+            ->with('category:id,name', 'unit:id,name', "size:id,name", 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insight', 'movements');
+
+        if ($keyword) {
+            $query->where(function ($q) use ($keyword) {
+                $q->where('name', 'LIKE', "%{$keyword}%")
+                    ->orWhere('code', 'LIKE', "%{$keyword}%")
+                    ->orWhere('slug', 'LIKE', "%{$keyword}%")
+                    ->orWhereHas('productType', fn($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
+                    ->orWhereHas('supplier', fn($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
+                    ->orWhereHas('brand', fn($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
+                    ->orWhereHas('size', fn($s) => $s->where('name', 'LIKE', "%{$keyword}%"));
+            });
+        }
+
+        $products = $query->limit($limit)->get();
+        $products->makeHidden([
+            'created_at',
+            'updated_at',
+            'deleted_at',
+            'category_id',
+            'unit_id',
+            'size_id',
+            'supplier_id',
+            'brand_id',
+            'product_type_id',
+            'inventory_type',
+        ]);
+        return response()->json($products);
+    }
     /**
      * Display a listing of the resource.
      */
@@ -70,7 +106,9 @@ class ProductController extends Controller
         return Inertia::render('Products/index', [
             'products' => $this->productService->get($request->all()),
             'filters' => $request->all(),
-            'dropdowns' => $this->getDropdownData()
+            'dropdowns' => Inertia::defer(
+                fn() => $this->getDropdownData()
+            )
         ]);
     }
 
@@ -80,7 +118,8 @@ class ProductController extends Controller
     public function create()
     {
         return Inertia::render('Products/create', [
-            'dropdowns' => $this->getDropdownData()
+            // 'dropdowns' => $this->getDropdownData()
+            'dropdowns' => Inertia::defer(fn() => $this->getDropdownData())
         ]);
     }
 
@@ -100,11 +139,9 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        // 2. Ambil Semua Data Detail dari Service
-        $data = $this->productService->getProductDetails($product->id);
-
-        // 3. Kirim ke Vue
-        return Inertia::render('Products/detail', $data);
+        return Inertia::render('Products/detail', [
+            'detail' => Inertia::defer(fn() => $this->productService->getProductDetails($product->id))
+        ]);
     }
 
     /**
@@ -113,17 +150,23 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         return Inertia::render('Products/edit', [
-            'product' => $product, // Kirim data produk yang ada
-            'dropdowns' => $this->getDropdownData() // Kirim data dropdown
+            'product' => Inertia::defer(
+                fn() => $product
+            ), // Kirim data produk yang ada
+            'dropdowns' => Inertia::defer(
+                fn() => $this->getDropdownData()
+            ) // Kirim data dropdown
         ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Product $product)
+    public function update(ProductUpdateRequest $request, Product $product)
     {
-        $this->productService->update($product->id, $request->all());
+        // dd($request);
+        $data = $request->validated();
+        $this->productService->update($product, $data);
 
         return Redirect::route('products.index')
             ->with('success', 'Produk berhasil diperbarui!');

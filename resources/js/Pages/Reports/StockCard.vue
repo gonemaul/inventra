@@ -258,7 +258,9 @@ const getTypeBadge = (type) => {
 
                                 <td class="px-6 py-3 text-center">
                                     <span
-                                        v-if="row.quantity > 0"
+                                        v-if="
+                                            row.stock_after > row.stock_before
+                                        "
                                         class="px-2 py-1 font-bold text-green-600 rounded bg-green-50"
                                     >
                                         +{{ row.quantity }}
@@ -268,10 +270,12 @@ const getTypeBadge = (type) => {
 
                                 <td class="px-6 py-3 text-center">
                                     <span
-                                        v-if="row.quantity < 0"
+                                        v-if="
+                                            row.stock_after < row.stock_before
+                                        "
                                         class="px-2 py-1 font-bold text-red-600 rounded bg-red-50"
                                     >
-                                        {{ row.quantity }}
+                                        -{{ row.quantity }}
                                     </span>
                                     <span v-else class="text-gray-300">-</span>
                                 </td>
@@ -279,7 +283,7 @@ const getTypeBadge = (type) => {
                                 <td
                                     class="px-6 py-3 font-bold text-right text-gray-900 dark:text-white"
                                 >
-                                    {{ row.balance_after }}
+                                    {{ row.stock_after }}
                                 </td>
                             </tr>
 

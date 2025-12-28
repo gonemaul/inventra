@@ -2,6 +2,7 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head } from "@inertiajs/vue3";
 import FormCreateEdit from "./partials/form-create-edit.vue";
+import FormProduct from "./Components/FormProduct.vue";
 
 const props = defineProps({
     dropdowns: Object,
@@ -13,10 +14,15 @@ const props = defineProps({
 
     <AuthenticatedLayout headerTitle="Edit Barang">
         <div class="w-full min-h-screen">
-            <FormCreateEdit
+            <!-- <FormCreateEdit
                 :dropdowns="props.dropdowns"
                 mode="edit"
                 :product="product"
+            /> -->
+            <FormProduct
+                :dropdowns="dropdowns"
+                :product="product"
+                mode="edit"
             />
         </div>
     </AuthenticatedLayout>

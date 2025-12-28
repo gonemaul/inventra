@@ -139,21 +139,43 @@ class FinancialAnalyzer
      */
     private function analyzeSalesGrowth(Product $product): array
     {
-        // Periode A: 30 Hari Terakhir
-        // $startThisMonth = now()->subDays(30);
-        // $qtyThisMonth = SaleItem::where('product_id', $product->id)
-        //     ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', $startThisMonth))
-        //     ->sum('quantity'); //evaluasi
+        //     // 1. Tentukan Range Tanggal yang PRESISI (00:00:00 s/d 23:59:59)
+        //     // Periode A: 30 Hari Terakhir (H-29 s/d Hari Ini = 30 Hari)
+        //     $endPeriodA   = now()->endOfDay();
+        //     $startPeriodA = now()->subDays(29)->startOfDay();
+        //     // Periode B: 30 Hari Sebelumnya (H-59 s/d H-30 = 30 Hari)
+        //     $endPeriodB   = now()->subDays(30)->endOfDay();
+        //     $startPeriodB = now()->subDays(59)->startOfDay();
+        //     // 2. Query Satu Kali Jalan (Single Query)
+        //     $stats = SaleItem::where('product_id', $product->id)
+        //         ->whereHas('sale', function ($q) use ($startPeriodB, $endPeriodA) {
+        //             // Ambil range terluar (dari awal B sampai akhir A)
+        //             $q->whereBetween('transaction_date', [$startPeriodB, $endPeriodA]);
+        //         })
+        //         ->join('sales', 'sale_items.sale_id', '=', 'sales.id') // Join manual agar bisa akses kolom sales di selectRaw
+        //         ->selectRaw("
+        //     -- Hitung Periode A (Bulan Ini)
+        //     COALESCE(SUM(CASE
+        //         WHEN sales.transaction_date >= ?
+        //         THEN sale_items.quantity
+        //         ELSE 0
+        //     END), 0) as qty_this_month,
 
-        // // Periode B: 30 Hari Sebelumnya (Bulan Lalu)
-        // $startLastMonth = now()->subDays(60);
-        // $endLastMonth   = now()->subDays(30);
-        // $qtyLastMonth = SaleItem::where('product_id', $product->id)
-        //     ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startLastMonth, $endLastMonth]))
-        //     ->sum('quantity'); //perlu evaluasi
+        //     -- Hitung Periode B (Bulan Lalu)
+        //     COALESCE(SUM(CASE
+        //         WHEN sales.transaction_date >= ? AND sales.transaction_date <= ?
+        //         THEN sale_items.quantity
+        //         ELSE 0
+        //     END), 0) as qty_last_month
+        // ", [
+        //             $startPeriodA,              // Parameter untuk Periode A
+        //             $startPeriodB,
+        //             $endPeriodB  // Parameter untuk Periode B
+        //         ])
+        //         ->first();
 
-        $qtyThisMonth = $product->qty_this_month ?? 0;
-        $qtyLastMonth = $product->qty_last_month ?? 0;
+        $qtyThisMonth = $stats->qty_this_month ?? 0;
+        $qtyLastMonth = $stats->qty_last_month ?? 0;
         // Hitung Persentase Pertumbuhan
         $growthPercent = 0;
         if ($qtyLastMonth > 0) {
@@ -164,11 +186,11 @@ class FinancialAnalyzer
 
         // Logic Status Trending
         // Syarat: Minimal laku 10 pcs DAN tumbuh > 20%
-        $isTrending = ($qtyThisMonth >= 10 && $growthPercent > 20);
+        $isTrending = $qtyThisMonth >= 10 && $growthPercent > 20;
 
         // Logic Status Declining (Meredup)
         // Syarat: Penurunan > 30%
-        $isDeclining = ($growthPercent < -30);
+        $isDeclining = $growthPercent < -30;
 
         return [
             'qty_this_month' => $qtyThisMonth,

@@ -1,34 +1,47 @@
 <script setup>
-import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, router } from "@inertiajs/vue3";
-import FilterModal from "./partials/modalFilter.vue";
-import ProductCardList from "./partials/ProductCardList.vue";
-import ProductCardGrid from "./partials/ProductCardGrid.vue";
-import ProductKanbanBoard from "./partials/ProductKanbanBoard.vue";
-import Pagination from "./partials/pagination.vue";
-import { ref, watch, computed } from "vue";
-import Filter from "@/Components/Filter.vue";
+// main
+import { Deferred, Head, router } from "@inertiajs/vue3";
+import { ref, watch, computed, onMounted, onUnmounted } from "vue";
 import { throttle } from "lodash";
 import { useActionLoading } from "@/Composable/useActionLoading";
+// Main view
+import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
+import FilterModal from "./partials/modalFilter.vue";
+import Pagination from "./partials/pagination.vue";
+import Filter from "@/Components/Filter.vue";
 import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 import ImageModal from "@/Components/ImageModal.vue";
-import EmptyState from "./partials/EmptyState.vue";
+import BottomSheet from "@/Components/BottomSheet.vue";
+// Product view
+import ProductCardList from "./Components/ProductCardList.vue";
+import ProductCardGrid from "./Components/ProductCardGrid.vue";
+import ProductKanbanBoard from "./Components/ProductKanbanBoard.vue";
+import EmptyState from "./Components/EmptyState.vue";
+import StockAdjustmentForm from "./Components/Mobile/StockAdjustmentSheet.vue";
+import PriceAdjustmentForm from "./Components/Mobile/PriceAdjustmentSheet.vue";
+import ProductDetailSheet from "./Components/Mobile/ProductDetailSheet.vue";
+// Child
+import MobileCardGrid from "./Components/Mobile/MobileCardGrid.vue";
 
 const props = defineProps({
     products: Object, // Berisi data produk yang sudah dipaginasi
     filters: Object,
     dropdowns: Object,
 });
-const viewMode = ref("grid"); // Opsi: 'grid', 'list', 'kanban'
-const search = ref(props.filters.search || "");
-const showFilterModal = ref(false);
+console.log(props.products);
 const { isActionLoading } = useActionLoading();
-const showConfirmModal = ref(null);
-// image
-const showImageModal = ref(false);
-const selectedImageUrl = ref(null);
-const selectedProductName = ref(null);
-// sampah
+const configSheet = ref({
+    title: "Detail Produk",
+    data: {},
+});
+// state view
+const viewMode = ref("grid"); // Opsi: 'grid', 'list', 'kanban'
+const modalMode = ref("detail"); // Opsi: detail, stok, price
+const showFilterModal = ref(false); // modal filter
+const showConfirmModal = ref(null); //delete
+const showBottomSheet = ref(false); // modal bottom sheet
+// state filter
+const search = ref(props.filters.search || "");
 const isTrashView = computed(() => {
     return props.filters.trashed === true || props.filters.trashed === "true";
 });
@@ -37,7 +50,31 @@ const activeFilterCount = computed(() => {
     const ignoredKeys = ["search", "page", "per_page"];
     return filterKeys.filter((key) => !ignoredKeys.includes(key)).length;
 });
+// image
+const showImageModal = ref(false);
+const selectedImageUrl = ref(null);
+const selectedProductName = ref(null);
+// State Deteksi Layar
+const isMobile = ref(window.innerWidth < 1024);
+const updateScreenSize = () => {
+    isMobile.value = window.innerWidth < 1024;
+};
 
+const openOpsiSheet = (mode, item = null) => {
+    modalMode.value = mode;
+    if (item != null) {
+        configSheet.value = {};
+        configSheet.value.data = item;
+    }
+    if (mode == "detail") {
+        configSheet.value.title = "Detail Produk";
+    } else if (mode == "stock") {
+        configSheet.value.title = "Penyesuaian Stock";
+    } else if (mode == "price") {
+        configSheet.value.title = "Penyesuaian Harga";
+    }
+    showBottomSheet.value = true;
+};
 const openImageModal = (payload) => {
     selectedImageUrl.value = payload.path;
     selectedProductName.value = payload.name;
@@ -117,6 +154,8 @@ const resetFilter = () => {
         }
     );
 };
+onMounted(() => window.addEventListener("resize", updateScreenSize));
+onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
 </script>
 <template>
     <ImageModal
@@ -126,14 +165,20 @@ const resetFilter = () => {
         @close="showImageModal = false"
     />
     <DeleteConfirm ref="showConfirmModal" @success="" />
-    <Head title="Data Barang" /><AuthenticatedLayout headerTitle="Data Barang"
-        ><div class="w-full">
-            <FilterModal
-                :show="showFilterModal"
-                @close="showFilterModal = false"
-                :filters="filters"
-                :dropdowns="dropdowns"
-            />
+    <Head title="Data Barang" />
+    <AuthenticatedLayout headerTitle="Data Barang">
+        <div class="w-full pb-10">
+            <Deferred data="dropdowns">
+                <FilterModal
+                    :show="showFilterModal"
+                    @close="showFilterModal = false"
+                    :filters="filters"
+                    :dropdowns="dropdowns"
+                />
+                <template #fallback>
+                    <div class=""></div>
+                </template>
+            </Deferred>
             <Filter
                 :filters="filters"
                 v-model="search"
@@ -232,21 +277,32 @@ const resetFilter = () => {
             <div class="" v-if="products.data.length > 0">
                 <div
                     v-if="viewMode === 'grid'"
-                    class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+                    class="grid grid-cols-2 gap-6 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
                 >
-                    <ProductCardGrid
+                    <MobileCardGrid
+                        v-if="isMobile"
                         v-for="product in products.data"
-                        :key="product.id"
+                        :key="'mobile' + product.id"
                         :data="product"
-                        @delete="openDeleteModal(product, false)"
+                        @click="openOpsiSheet('detail', product)"
+                        @imageClick="openImageModal"
+                    />
+                    <ProductCardGrid
+                        v-else
+                        v-for="product in products.data"
+                        :key="'desktop' + product.id"
+                        :data="product"
+                        @delete="openDeleteModal(product)"
                         @forceDelete="openDeleteModal(product, true)"
                         @restore="restoreProduct(product)"
                         @imageClick="openImageModal"
+                        @adjustStock="openOpsiSheet('stock', product)"
+                        @adjustPrice="openOpsiSheet('price', product)"
                     />
                 </div>
                 <div
                     v-else-if="viewMode === 'list'"
-                    class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-1 lg:grid-cols-2"
+                    class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-3"
                 >
                     <ProductCardList
                         v-for="product in products.data"
@@ -290,4 +346,32 @@ const resetFilter = () => {
             />
         </div>
     </AuthenticatedLayout>
+    <BottomSheet
+        :show="showBottomSheet"
+        @close="showBottomSheet = false"
+        :title="configSheet.title"
+    >
+        <ProductDetailSheet
+            v-if="modalMode == 'detail'"
+            :data="configSheet.data"
+            @adjustStock="openOpsiSheet('stock')"
+            @adjustPrice="openOpsiSheet('price')"
+            @delete="openDeleteModal"
+        />
+        <StockAdjustmentForm
+            v-else-if="modalMode == 'stock'"
+            :product="configSheet.data"
+            @close="showBottomSheet = false"
+            @success="
+                {
+                    (showBottomSheet = false), (modalMode = 'detail');
+                }
+            "
+        />
+        <PriceAdjustmentForm
+            v-else-if="modalMode == 'price'"
+            :product="configSheet.data"
+            @close="showBottomSheet = false"
+        />
+    </BottomSheet>
 </template>
