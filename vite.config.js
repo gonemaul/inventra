@@ -21,38 +21,61 @@ export default defineConfig({
         }),
         VitePWA({
             registerType: "autoUpdate",
-            outDir: "public/build", // Output ke folder public build Laravel
+            outDir: "public", // Output ke folder public build Laravel
+            scope: "/",
+            base: "/",
             manifest: {
                 name: "Inventra",
                 short_name: "Inventra",
                 description: "Aplikasi Pintar Manajemen Toko",
                 theme_color: "#ffffff",
                 background_color: "#ffffff",
+                start_url: "/",
                 display: "standalone", // Agar terlihat seperti native app (tanpa browser bar)
                 orientation: "portrait",
                 icons: [
                     {
-                        src: "/icons/pwa-192x192.png", // Anda harus buat icon ini
+                        src: "/icons/pwa-192x192.png",
                         sizes: "192x192",
                         type: "image/png",
-                    },
-                    {
-                        src: "/icons/pwa-512x512.png", // Anda harus buat icon ini
-                        sizes: "512x512",
-                        type: "image/png",
+                        purpose: "any", // Icon standar (biasanya background transparan)
                     },
                     {
                         src: "/icons/pwa-512x512.png",
                         sizes: "512x512",
                         type: "image/png",
-                        purpose: "any maskable",
+                        purpose: "any",
+                    },
+                    {
+                        src: "/icons/pwa-512x512.png", // Gunakan gambar yang sama atau khusus maskable (full bleed)
+                        sizes: "512x512",
+                        type: "image/png",
+                        purpose: "maskable", // Icon untuk Android adaptif (biasanya background penuh warna)
+                    },
+                ],
+                screenshots: [
+                    {
+                        // Screenshot Tampilan Mobile
+                        src: "/screenshots/mobile-home.png", // Pastikan file ini ada di public/screenshots
+                        sizes: "401x811", // Sesuaikan dengan ukuran asli gambar
+                        type: "image/png",
+                        label: "Tampilan Beranda Mobile",
+                    },
+                    {
+                        // Screenshot Tampilan Desktop (Wajib ada form_factor: wide)
+                        src: "/screenshots/desktop-dashboard.png", // Pastikan file ini ada
+                        sizes: "1897x922", // Sesuaikan dengan ukuran asli gambar
+                        type: "image/png",
+                        form_factor: "wide", // INI KUNCINYA untuk menghilangkan warning desktop
+                        label: "Dashboard Desktop",
                     },
                 ],
             },
             workbox: {
                 // Pola file yang akan dicache (offline support dasar)
-                globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
                 navigateFallback: null, // Penting untuk SPA/Inertia agar tidak 404 saat refresh
+                cleanupOutdatedCaches: true,
+                globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
             },
         }),
     ],

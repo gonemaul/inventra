@@ -7,6 +7,7 @@
     {{-- <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests"> --}}
     <title inertia>{{ config('app.name', 'Laravel') }}</title>
     <meta name="theme-color" content="#ffffff">
+    <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="/icons/pwa-192x192.png">
 
     <!-- Fonts -->

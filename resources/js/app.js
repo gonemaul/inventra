@@ -9,6 +9,19 @@ import { ZiggyVue } from "../../vendor/tightenco/ziggy";
 import Toast, { POSITION } from "vue-toastification";
 import "vue-toastification/dist/index.css";
 
+import { registerSW } from "virtual:pwa-register";
+
+// Register Service Worker (Hanya reload jika ada update baru)
+const updateSW = registerSW({
+    onNeedRefresh() {
+        if (confirm("Konten baru tersedia. Reload sekarang?")) {
+            updateSW(true);
+        }
+    },
+    onOfflineReady() {
+        console.log("App siap bekerja offline!");
+    },
+});
 const toastOptions = {
     position: POSITION.TOP_RIGHT,
     timeout: 5000,
