@@ -1,0 +1,21 @@
+services:
+  app:
+    image: serversideup/php:8.2-fpm-nginx
+    container_name: inventra
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Asia/Jakarta
+      - AUTORUN_LARAVEL_MIGRATION=false
+      - PHP_MEMORY_LIMIT=2048M
+    volumes:
+      - .:/var/www/html
+    ports:
+      - "8010:80"
+    networks:
+      - default
+
+networks:
+  default:
+    driver: bridge

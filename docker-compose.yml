@@ -1,0 +1,76 @@
+name: inventra
+services:
+    redis:
+        image: redis:alpine
+        container_name: redis
+        restart: unless-stopped
+        volumes:
+            - redis-data:/data
+    cloudflared:
+        image: cloudflare/cloudflared:latest
+        container_name: cloudflared
+        restart: unless-stopped
+        command: tunnel run --token eyJhIjoiZWVmYzMyMTk4YTdkMWRjZTk0NDhhZWQ5ODQ5YTdjMDkiLCJ0IjoiNTY0NTI2NDQtODNlZS00ZWZjLTk0ZWItZWYzMTA0NDBkNjhjIiwicyI6Ik1XSmxOemxoTUdJdFpUVmhOeTAwTXprMkxUazBZemd0WlRJd1ltSXlORGN6TVRjMiJ9
+
+    #       environment:
+    #          - TUNEL_TOKEN=eyJhIjoiZWVmYzMyMTk4YTdkMWRjZTk0NDhhZWQ5ODQ5YTdjMDkiLCJ0IjoiNTY0NTI2NDQtODNlZS00ZWZjLTk0ZWItZWYzMTA0NDBkNjhjIiwicyI6Ik1XSmxOemxoTUdJdFpUVmhOeTAwTXprMkxUazBZemd0WlRJd1ltSXlORGN6TVRjMiJ9
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        cpu_shares: 90
+        command: []
+        container_name: inventra
+        deploy:
+            resources:
+                limits:
+                    memory: "7876902912"
+        environment:
+            AUTORUN_LARAVEL_MIGRATION: "false"
+            AUTORUN_LARAVEL_SCHEDULER: true
+            PGID: 1000
+            PUID: 1000
+            USER_NAME: www-data
+            GROUP_NAME: www-data
+            PHP_MEMORY_LIMIT: 2048M
+            TZ: Asia/Jakarta
+            PHP_EXTENSION_GD: 1
+            PHP_EXTENSION_ZIP: 1
+            PHP_EXTENSION_INTL: 1
+            #            PHP_OPCACHE_ENABLE: 1
+            MINIO_SERVER_URL: "https://cdn.srvhome"
+            MINIO_BROWSER_REDIRECT_URL: "https://minio.srvhome"
+        hostname: inventra
+        #image: serversideup/php:8.3-fpm-nginx
+        user: www-data
+        networks:
+            default: null
+        ports:
+            - mode: ingress
+              target: 8080
+              published: "8010"
+              protocol: tcp
+        restart: unless-stopped
+        volumes:
+            - type: bind
+              source: /DATA/www/inventra
+              target: /var/www/html
+              bind:
+                  create_host_path: true
+networks:
+    default:
+        name: inventra_default
+        driver: bridge
+volumes:
+    redis-data:
+x-casaos:
+    author: self
+    category: self
+    hostname: ""
+    icon: ""
+    index: /
+    is_uncontrolled: false
+    port_map: "8010"
+    scheme: http
+    title:
+        custom: Inventra App
