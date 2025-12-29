@@ -164,80 +164,83 @@ const submit = () => {
             </form>
         </div>
 
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 bodyPrev">
             <h3 class="text-sm font-bold text-gray-500 uppercase">
                 Preview Struk
             </h3>
-
-            <div
-                class="p-4 mx-auto font-mono text-xs leading-tight text-gray-800 bg-white border border-gray-200 shadow-xl"
-                style="
-                    width: 280px;
-                    min-height: 400px;
-                    font-family: 'Courier New', Courier, monospace;
-                "
-            >
-                <div class="mb-4 text-center">
+            <div class="mx-auto sheet">
+                <div class="text-center">
                     <div
-                        v-if="previewImage"
-                        class="w-12 h-12 mx-auto mb-2 grayscale opacity-90"
+                        class="uppercase bold"
+                        style="font-size: 14px; margin-bottom: 3px"
                     >
-                        <img
-                            loading="lazy"
-                            :src="previewImage"
-                            class="object-contain w-full h-full"
-                        />
-                    </div>
-                    <h2 class="mb-1 text-sm font-black uppercase">
                         {{ form.shop_name || "NAMA TOKO" }}
-                    </h2>
-                    <p class="mb-1">
-                        {{ form.shop_address || "Alamat Toko..." }}
-                    </p>
-                    <p>Telp: {{ form.shop_phone || "08xx-xxxx" }}</p>
+                    </div>
+                    <div style="font-size: 11px">
+                        {{ form.shop_address || "Alamat Toko Belum Diisi" }}
+                    </div>
+                    <div style="font-size: 11px">
+                        {{ form.shop_phone || "" }}
+                    </div>
                 </div>
 
-                <div class="my-2 border-b border-gray-400 border-dashed"></div>
+                <div class="border-dashed"></div>
 
-                <div class="flex justify-between mb-1">
-                    <span>Kopi Susu</span>
-                    <span>15.000</span>
-                </div>
-                <div class="flex justify-between mb-1 text-gray-500">
-                    <span class="pl-2">x 1</span>
-                    <span>15.000</span>
+                <div>
+                    No : POS/101224/2029 <br />
+                    Tgl : 12/12/2021 WIB<br />
+                    Kasir : Admin <br />
+                    Member: Customer
                 </div>
 
-                <div class="flex justify-between mb-1">
-                    <span>Roti Bakar</span>
-                    <span>20.000</span>
-                </div>
-                <div class="flex justify-between mb-1 text-gray-500">
-                    <span class="pl-2">x 2</span>
-                    <span>40.000</span>
-                </div>
+                <div class="border-dashed"></div>
 
-                <div class="my-2 border-b border-gray-400 border-dashed"></div>
+                <table>
+                    <tr>
+                        <td colspan="2" style="padding-bottom: 2px">
+                            Produk A
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2 x 10.000</td>
+                        <td class="text-right">20.000</td>
+                    </tr>
+                    <tr>
+                        <td colspan="2" style="padding-bottom: 2px">
+                            Produk A
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>2 x 10.000</td>
+                        <td class="text-right">20.000</td>
+                    </tr>
+                </table>
 
-                <div class="flex justify-between text-sm font-bold">
-                    <span>TOTAL</span>
-                    <span>55.000</span>
-                </div>
-                <div class="flex justify-between mt-1">
-                    <span>TUNAI</span>
-                    <span>60.000</span>
-                </div>
-                <div class="flex justify-between mt-1">
-                    <span>KEMBALI</span>
-                    <span>5.000</span>
-                </div>
+                <div class="border-dashed"></div>
 
-                <div class="my-4 border-b border-gray-400 border-dashed"></div>
-                <div class="text-center whitespace-pre-wrap">
-                    {{ form.receipt_footer }}
-                </div>
-                <div class="text-center mt-4 text-[10px] text-gray-400">
-                    --- INVENTRA POS ---
+                <table>
+                    <tr>
+                        <td>Total</td>
+                        <td class="text-right bold">Rp 88.000</td>
+                    </tr>
+                    <tr>
+                        <td>Diskon</td>
+                        <td class="text-right">-</td>
+                    </tr>
+                    <tr>
+                        <td>Bayar (Cash)</td>
+                        <td class="text-right">100.000</td>
+                    </tr>
+                    <tr>
+                        <td>Kembali</td>
+                        <td class="text-right">12.000</td>
+                    </tr>
+                </table>
+
+                <div class="border-dashed"></div>
+
+                <div class="text-center" style="margin-top: 10px">
+                    <p>{{ form.receipt_footer }}</p>
                 </div>
             </div>
 
@@ -247,3 +250,68 @@ const submit = () => {
         </div>
     </div>
 </template>
+<style scoped>
+/* --- RESET & BASIC SETUP --- */
+.bodyPrev {
+    font-family: "Courier New", Courier, monospace;
+    /* Font struk */
+    font-size: 12px;
+    margin: 0;
+    /* padding: 20px 0; */
+    /* Jarak atas bawah di mode preview */
+    /* background-color: #525252; */
+    /* Latar belakang gelap untuk mode preview */
+    /* color: #000; */
+    display: flex;
+    justify-content: center;
+    /* min-height: 100vh; */
+    /* width: fit-content; */
+    /* max-width: 2; */
+    /* margin-left: auto; */
+    /* margin-right: auto; */
+}
+
+/* --- KERTAS STRUK (PREVIEW MODE) --- */
+.sheet {
+    background-color: #fff;
+    width: 58mm;
+    /* Sesuaikan ukuran kertas (58mm atau 80mm) */
+    padding: 5mm;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    /* Efek bayangan kertas */
+    /* margin-bottom: 60px; */
+    /* Ruang untuk tombol di bawah */
+}
+
+/* --- UTILITY CLASSES --- */
+.text-center {
+    text-align: center;
+}
+
+.text-right {
+    text-align: right;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+.uppercase {
+    text-transform: uppercase;
+}
+
+.border-dashed {
+    border-bottom: 1px dashed #000;
+    margin: 8px 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+td {
+    vertical-align: top;
+    padding: 2px 0;
+}
+</style>

@@ -149,8 +149,8 @@ class SalesRecapService
 
                 $this->stockService->record(
                     productId: $product->id,
-                    qty: -abs($inputQty), // PASTIKAN NEGATIF (Keluar)
-                    type: 'sale',
+                    qty: $inputQty, // PASTIKAN NEGATIF (Keluar)
+                    type: StockMovement::TYPE_SALE,
                     ref: $sale->reference_no, // No Nota Kasir
                     desc: 'Penjualan Kasir'
                 );

@@ -347,28 +347,6 @@ class ProductService
     {
         $imageFile = $data['image'] ?? null;
         unset($data['image']);
-        // $validator = Validator::make($data, [
-        //     // Relasi
-        //     'category_id' => ['required_if:type,full', 'integer', Rule::exists('categories', 'id')],
-        //     'unit_id' => ['nullable', 'integer', Rule::exists('units', 'id')],
-        //     'size_id' => ['nullable', 'integer', Rule::exists('sizes', 'id')],
-        //     'supplier_id' => ['nullable', 'integer', Rule::exists('suppliers', 'id')],
-
-        //     // Detail Produk (ubah aturan 'unique')
-        //     'name' => 'required_if:type,full|string|max:255',
-        //     'code' => ['required_if:type,full', 'string', 'max:255', Rule::unique('products')->ignore($id)],
-        //     'description' => 'nullable|string',
-        //     // 'image_path' => 'nullable|string|max:255',
-        //     'status' => ['required_if:type,full', Rule::in(Product::STATUSES)],
-
-        //     // Harga & Stok
-        //     'stock' => 'required_if:type,stock|integer|min:0',
-        //     'min_stock' => 'required|integer|min:0',
-        //     'purchase_price' => 'required_if:type,price|numeric|min:0',
-        //     'selling_price' => 'required_if:type,price|numeric|min:0',
-        //     // type
-        //     'type' => 'required|in:full,stock,price'
-        // ]);
 
         if ($data['type'] == 'stock') {
             if ($data['adjustment'] == 'add') {

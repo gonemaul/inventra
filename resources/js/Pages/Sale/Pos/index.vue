@@ -1,7 +1,6 @@
 <script setup>
 import { Head, Link } from "@inertiajs/vue3";
 import { ref } from "vue";
-// import { defineAsyncComponent } from "vue";
 import { usePosRealtime } from "@/Composable/usePosRealtime";
 
 import ConfirmSubmit from "./ConfirmSubmit.vue";
@@ -9,9 +8,6 @@ import ScannerBox from "./ScannerBox.vue";
 import BottomSheet from "@/Components/BottomSheet.vue";
 import { useToast } from "vue-toastification";
 import Cart from "./Cart.vue";
-// const BarcodeScanner = defineAsyncComponent(() =>
-//     import("@/Components/BarcodeScanner.vue")
-// );
 import BarcodeScanner from "@/Components/BarcodeScanner.vue";
 
 const props = defineProps({

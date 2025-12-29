@@ -248,8 +248,8 @@ const monthlyGrowth = computed(() => {
                 >
                     <span class="text-gray-500">Kategori</span>
                     <span class="font-medium text-gray-900 dark:text-white"
-                        >{{ data.category?.name }} |
-                        {{ data.product_type?.name }}</span
+                        >{{ data.category?.name || "-" }} |
+                        {{ data.product_type?.name || "-" }}</span
                     >
                 </div>
                 <div
@@ -267,7 +267,7 @@ const monthlyGrowth = computed(() => {
                     <span class="text-gray-500">Ukuran</span>
                     <span class="font-medium text-gray-900 dark:text-white"
                         >{{ data.size?.name || "-" }} /
-                        {{ data.unit?.name }}</span
+                        {{ data.unit?.name || "-" }}</span
                     >
                 </div>
                 <div

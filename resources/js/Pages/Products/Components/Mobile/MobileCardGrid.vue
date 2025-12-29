@@ -62,7 +62,7 @@ const isStockLow = computed(() => {
                     v-if="isStockLow"
                     class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
                 >
-                    Stok {{ data.stock }}
+                    Stok {{ data.stock || 0 }}
                 </span>
                 <span
                     v-else-if="data.stock <= 0"
@@ -85,7 +85,7 @@ const isStockLow = computed(() => {
             class="flex flex-col flex-1 gap-1 p-2"
         >
             <div class="text-[9px] text-gray-400 truncate uppercase">
-                {{ data.brand?.name }}
+                {{ data.brand?.name || "-" }}
             </div>
             <h3
                 class="text-xs font-medium leading-snug text-gray-800 dark:text-gray-100 line-clamp-2"
@@ -99,7 +99,8 @@ const isStockLow = computed(() => {
                 </div>
                 <div class="flex items-center justify-between mt-1">
                     <span class="text-[9px] text-gray-400">
-                        {{ data.size?.name }} | {{ data.unit?.name }}
+                        {{ data.size?.name || "-" }} |
+                        {{ data.unit?.name || "-" }}
                     </span>
                     <span
                         class="text-[9px] font-bold px-1 rounded"
