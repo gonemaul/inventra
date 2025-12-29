@@ -57,7 +57,7 @@ const isStockLow = computed(() => {
                 <span class="text-[9px] font-bold">No Image</span>
             </div>
 
-            <div class="absolute flex flex-col gap-1 top-1 left-1">
+            <div class="absolute z-20 flex flex-col gap-1 top-1 left-1">
                 <span
                     v-if="isStockLow"
                     class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
@@ -72,7 +72,7 @@ const isStockLow = computed(() => {
                 </span>
             </div>
             <div
-                class="absolute bottom-0 left-0 right-0 p-1 pt-4 bg-gradient-to-t from-black/60 to-transparent"
+                class="absolute bottom-0 left-0 right-0 z-20 p-1 pt-4 bg-gradient-to-t from-black/60 to-transparent"
             >
                 <p class="text-[9px] text-white truncate font-medium">
                     {{ data.supplier?.name }}

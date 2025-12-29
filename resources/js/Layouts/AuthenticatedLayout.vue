@@ -79,7 +79,7 @@ defineProps({
         <!-- Main -->
         <div
             v-if="isSidebarOpen"
-            class="fixed inset-0 z-30 bg-black bg-opacity-50 lg:hidden"
+            class="fixed inset-0 z-50 bg-black bg-opacity-50 lg:hidden"
             @click="closeSidebar"
         ></div>
         <div
@@ -100,7 +100,7 @@ defineProps({
     </div>
     <div
         v-if="showBottomBar"
-        class="fixed print:hidden bottom-0 left-0 z-50 w-full h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 lg:hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
+        class="fixed print:hidden bottom-0 left-0 z-40 w-full h-16 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 lg:hidden shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]"
     >
         <div class="grid h-full max-w-lg grid-cols-3 mx-auto font-medium">
             <Link

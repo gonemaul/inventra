@@ -1,15 +1,17 @@
 <script setup>
 import { computed, watch } from "vue";
 import { useForm } from "@inertiajs/vue3";
+import { useActionLoading } from "@/Composable/useActionLoading";
 
 const props = defineProps({
     product: Object,
 });
 
 const emit = defineEmits(["close", "success"]);
-
+const { isActionLoading } = useActionLoading();
 const form = useForm({
     id: props.product?.id,
+    type: "price",
     purchase_price: props.product?.purchase_price || 0,
     selling_price: props.product?.selling_price || 0,
 });
@@ -31,11 +33,23 @@ const profitNominal = computed(() => {
     );
 });
 
+const oldProfitNominal = computed(() => {
+    return (
+        (parseInt(props.product?.selling_price) || 0) -
+        (parseInt(props.product?.purchase_price) || 0)
+    );
+});
+
 // Computed: Hitung Margin % (Markup dari HPP)
 const profitPercent = computed(() => {
     const buy = parseInt(form.purchase_price) || 0;
     if (buy <= 0) return 0;
     return ((profitNominal.value / buy) * 100).toFixed(1);
+});
+const oldProfitPercent = computed(() => {
+    const buy = parseInt(props.product?.purchase_price) || 0;
+    if (buy <= 0) return 0;
+    return ((oldProfitNominal.value / buy) * 100).toFixed(1);
 });
 
 // Helper: Set Harga Jual berdasarkan target margin %
@@ -47,8 +61,10 @@ const setMargin = (percent) => {
 };
 
 const submit = () => {
-    form.put(route("products.update-price", form.id), {
+    isActionLoading.value = true;
+    form.put(route("products.update", props.product?.id), {
         onSuccess: () => emit("success"),
+        onFinish: () => (isActionLoading.value = false),
         preserveScroll: true,
     });
 };
@@ -64,35 +80,46 @@ const submit = () => {
                 class="flex items-center gap-3 pb-3 border-b border-gray-100 dark:border-gray-700"
             >
                 <div
-                    class="flex-shrink-0 w-12 h-12 overflow-hidden bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600"
+                    class="relative flex-shrink-0 w-20 h-20 overflow-hidden bg-gray-100 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600"
                 >
                     <img
-                        v-if="product?.image_url"
+                        v-if="product.image_url"
                         :src="product.image_url"
-                        class="object-cover w-full h-full"
+                        loading="lazy"
+                        decoding="async"
+                        onerror="this.style.display='none'"
+                        onload="this.classList.remove('opacity-0')"
+                        class="absolute inset-0 z-10 object-cover w-full h-full opacity-0"
                     />
                     <div
-                        v-else
-                        class="w-full h-full flex items-center justify-center text-[10px] text-gray-400"
+                        class="absolute inset-0 z-0 w-full h-full flex items-center justify-center text-[10px] text-gray-400"
                     >
                         NO IMG
                     </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-0.5">
+                    <div class="flex items-center mb-1">
                         <span
-                            class="text-[10px] font-bold bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-600 dark:text-gray-300"
-                            >{{ product?.code }}</span
+                            class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold"
                         >
-                        <span class="text-[10px] text-gray-400">{{
-                            product?.category?.name
-                        }}</span>
+                            {{ product.code }}
+                        </span>
                     </div>
-                    <h3
-                        class="text-sm font-bold leading-tight text-gray-800 truncate dark:text-white"
+
+                    <div
+                        class="text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1"
                     >
-                        {{ product?.name }}
-                    </h3>
+                        {{ product.category?.name }}
+                        <span v-if="product.product_type">
+                            | {{ product.product_type?.name }}</span
+                        >
+                    </div>
+
+                    <h2
+                        class="text-sm font-bold leading-snug text-gray-900 dark:text-white line-clamp-2"
+                    >
+                        {{ product.name }}
+                    </h2>
                 </div>
             </div>
 
@@ -103,7 +130,7 @@ const submit = () => {
                     <label
                         class="block text-[10px] font-bold text-yellow-700 dark:text-yellow-500 uppercase tracking-wider mb-1"
                     >
-                        Harga Beli (HPP)
+                        Harga Beli (HPP) | Rp {{ product?.purchase_price }}
                     </label>
                     <div class="relative">
                         <span
@@ -131,7 +158,7 @@ const submit = () => {
                     <label
                         class="block text-[10px] font-bold text-lime-700 dark:text-lime-500 uppercase tracking-wider mb-1"
                     >
-                        Harga Jual
+                        Harga Jual | Rp {{ product?.selling_price }}
                     </label>
                     <div class="relative">
                         <span
@@ -192,6 +219,7 @@ const submit = () => {
                                 ? "Potensi Rugi"
                                 : "Estimasi Profit"
                         }}
+                        | Rp {{ oldProfitNominal }}
                     </span>
                     <span
                         class="text-xl font-black"
@@ -208,8 +236,8 @@ const submit = () => {
                 <div class="text-right">
                     <span
                         class="text-[10px] text-gray-400 uppercase font-bold block mb-0.5"
-                        >Margin</span
-                    >
+                        >Margin | {{ oldProfitPercent }} %
+                    </span>
                     <span
                         class="inline-block px-2 py-1 text-sm font-bold rounded"
                         :class="

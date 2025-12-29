@@ -106,7 +106,9 @@ const monthlyGrowth = computed(() => {
             </Link>
         </div>
 
-        <div class="flex-1 p-4 space-y-5 overflow-y-auto custom-scrollbar">
+        <div
+            class="flex-1 px-2 py-4 space-y-5 overflow-y-auto custom-scrollbar"
+        >
             <div class="grid grid-cols-4 gap-2">
                 <div
                     class="p-2 text-center border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700"
@@ -233,7 +235,7 @@ const monthlyGrowth = computed(() => {
                         Profit
                     </div>
                     <div
-                        class="text-lg font-bold text-blue-600 dark:text-blue-400"
+                        class="text-sm font-bold text-blue-600 dark:text-blue-400"
                     >
                         {{ data.financials.margin.percent }}%
                     </div>

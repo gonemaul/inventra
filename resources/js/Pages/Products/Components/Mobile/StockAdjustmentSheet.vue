@@ -1,12 +1,13 @@
 <script setup>
 import { computed } from "vue";
 import { useForm } from "@inertiajs/vue3";
+import { useActionLoading } from "@/Composable/useActionLoading";
 
 const props = defineProps({
     product: Object, // Data produk yang sedang diedit stoknya
 });
 const emit = defineEmits(["close", "success"]);
-
+const { isActionLoading } = useActionLoading();
 const form = useForm({
     product_id: props.product?.id,
     type: "stock",
@@ -40,8 +41,10 @@ const adjustQty = (amount) => {
 };
 
 const submit = () => {
+    isActionLoading.value = true;
     form.put(route("products.update", props.product?.id), {
         onSuccess: () => emit("success"),
+        onFinish: () => (isActionLoading.value = false),
         preserveScroll: true,
     });
 };
@@ -57,31 +60,51 @@ const submit = () => {
                 class="flex items-center gap-4 p-3 border border-gray-100 bg-gray-50 dark:bg-gray-700/50 rounded-xl dark:border-gray-700"
             >
                 <div
-                    class="flex-shrink-0 w-12 h-12 overflow-hidden bg-gray-200 rounded-lg dark:bg-gray-600"
+                    class="relative flex-shrink-0 w-20 h-20 overflow-hidden bg-gray-100 border rounded-lg dark:bg-gray-700"
                 >
                     <img
-                        v-if="product?.image_url"
-                        :src="product.name"
-                        class="object-cover w-full h-full"
+                        v-if="product.image_url"
+                        :src="product.image_url"
+                        loading="lazy"
+                        decoding="async"
+                        onerror="this.style.display='none'"
+                        onload="this.classList.remove('opacity-0')"
+                        class="absolute inset-0 z-10 object-cover w-full h-full opacity-0"
                     />
+                    <div
+                        class="absolute inset-0 z-0 w-full h-full flex items-center justify-center text-[10px] text-gray-400"
+                    >
+                        NO IMG
+                    </div>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-xs text-gray-500 dark:text-gray-400 mb-0.5">
-                        {{ product?.code }}
-                    </p>
-                    <h3
-                        class="text-sm font-bold text-gray-800 truncate dark:text-white"
+                    <div class="flex items-center mb-1">
+                        <span
+                            class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-1.5 py-0.5 rounded text-[10px] font-mono font-bold"
+                        >
+                            {{ product.code }}
+                        </span>
+                    </div>
+
+                    <div
+                        class="text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1"
                     >
-                        {{ product?.name }}
-                    </h3>
-                </div>
-                <div class="text-right">
-                    <p class="text-[10px] text-gray-400 uppercase">Stok Awal</p>
-                    <p
-                        class="text-lg font-black text-gray-700 dark:text-gray-200"
+                        {{ product.category?.name }}
+                        <span v-if="product.product_type">
+                            | {{ product.product_type?.name }}</span
+                        >
+                    </div>
+                    <h2
+                        class="text-sm font-bold leading-snug text-gray-900 dark:text-white line-clamp-2"
                     >
-                        {{ product?.stock }}
-                    </p>
+                        {{ product.name }}
+                    </h2>
+                    <div
+                        class="text-lg font-black text-lime-600 dark:text-lime-400"
+                    >
+                        <span class="text-[11px]">Stock Awal : </span>
+                        {{ product.stock }}
+                    </div>
                 </div>
             </div>
 

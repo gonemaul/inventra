@@ -13,9 +13,9 @@ import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 import ImageModal from "@/Components/ImageModal.vue";
 import BottomSheet from "@/Components/BottomSheet.vue";
 // Product view
-import ProductCardList from "./Components/ProductCardList.vue";
-import ProductCardGrid from "./Components/ProductCardGrid.vue";
-import ProductKanbanBoard from "./Components/ProductKanbanBoard.vue";
+import ProductCardList from "./Components/Desktop/ProductCardList.vue";
+import ProductCardGrid from "./Components/Desktop/ProductCardGrid.vue";
+import ProductKanbanBoard from "./Components/Desktop/ProductKanbanBoard.vue";
 import EmptyState from "./Components/EmptyState.vue";
 import StockAdjustmentForm from "./Components/Mobile/StockAdjustmentSheet.vue";
 import PriceAdjustmentForm from "./Components/Mobile/PriceAdjustmentSheet.vue";
@@ -372,6 +372,11 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
             v-else-if="modalMode == 'price'"
             :product="configSheet.data"
             @close="showBottomSheet = false"
+            @success="
+                {
+                    (showBottomSheet = false), (modalMode = 'detail');
+                }
+            "
         />
     </BottomSheet>
 </template>
