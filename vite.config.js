@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import laravel from "laravel-vite-plugin";
 import vue from "@vitejs/plugin-vue";
 import viteCompression from "vite-plugin-compression";
+import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
     plugins: [
@@ -16,6 +17,42 @@ export default defineConfig({
                     base: null,
                     includeAbsolute: false,
                 },
+            },
+        }),
+        VitePWA({
+            registerType: "autoUpdate",
+            outDir: "public/build", // Output ke folder public build Laravel
+            manifest: {
+                name: "Inventra",
+                short_name: "Inventra",
+                description: "Aplikasi Pintar Manajemen Toko",
+                theme_color: "#ffffff",
+                background_color: "#ffffff",
+                display: "standalone", // Agar terlihat seperti native app (tanpa browser bar)
+                orientation: "portrait",
+                icons: [
+                    {
+                        src: "/icons/pwa-192x192.png", // Anda harus buat icon ini
+                        sizes: "192x192",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/icons/pwa-512x512.png", // Anda harus buat icon ini
+                        sizes: "512x512",
+                        type: "image/png",
+                    },
+                    {
+                        src: "/icons/pwa-512x512.png",
+                        sizes: "512x512",
+                        type: "image/png",
+                        purpose: "any maskable",
+                    },
+                ],
+            },
+            workbox: {
+                // Pola file yang akan dicache (offline support dasar)
+                globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+                navigateFallback: null, // Penting untuk SPA/Inertia agar tidak 404 saat refresh
             },
         }),
     ],

@@ -82,12 +82,12 @@ const navigation = [
                 v-if="isExtended"
                 class="flex items-center justify-between gap-5"
             >
-                <div class="p-2 bg-white rounded-full">
+                <div class="p-0.5 bg-white rounded-full">
                     <img
                         loading="lazy"
-                        src="/images/logo.webp"
+                        src="/icons/logo.webp"
                         alt="Logo"
-                        class="w-8 h-8"
+                        class="w-10 h-10"
                     />
                 </div>
                 <span class="text-xl font-bold">Inventra</span>
