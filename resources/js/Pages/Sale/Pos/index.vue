@@ -303,6 +303,7 @@ const getCartQty = (productId) => {
                 >
                     <div
                         v-for="product in filteredProducts"
+                        :disabled="product.stock == 0"
                         :key="product.id"
                         @click="addItem(product)"
                         class="relative overflow-hidden transition-all bg-white border border-gray-200 shadow-sm cursor-pointer group dark:bg-gray-800 rounded-xl dark:border-gray-700 hover:shadow-md hover:border-lime-500 active:scale-95"
@@ -365,18 +366,31 @@ const getCartQty = (productId) => {
                                 </span>
                             </div>
 
-                            <div
-                                v-if="product.stock <= 5"
-                                class="absolute z-10 top-2 left-2"
-                            >
+                            <div class="absolute z-10 top-2 left-2">
                                 <span
+                                    v-if="product.stock == 0"
+                                    class="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm animate-pulse"
+                                >
+                                    HABIS
+                                </span>
+                                <span
+                                    v-if="
+                                        product.stock <= 5 && product.stock > 0
+                                    "
                                     class="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm animate-pulse"
                                 >
                                     Sisa {{ parseFloat(product.stock) }}
                                 </span>
+                                <span
+                                    v-if="product.stock > 5"
+                                    class="bg-gray-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm"
+                                >
+                                    Stock {{ parseFloat(product.stock) }}
+                                </span>
                             </div>
 
                             <div
+                                v-if="product.stock > 0"
                                 class="absolute inset-0 z-20 flex items-center justify-center transition-opacity opacity-0 bg-lime-500/20 group-hover:opacity-100"
                             >
                                 <div
@@ -399,7 +413,15 @@ const getCartQty = (productId) => {
                             </div>
                         </div>
 
-                        <div class="p-3 flex flex-col h-[85px] justify-between">
+                        <div
+                            class="p-3 flex flex-col max-h-[150px] justify-between"
+                        >
+                            <div
+                                class="flex justify-between text-[10px] text-gray-500 font-medium truncate uppercase"
+                            >
+                                <span>{{ product.brand.name }}</span>
+                                <span>{{ product.size?.name || "-" }}</span>
+                            </div>
                             <h3
                                 class="text-xs font-bold leading-snug text-gray-800 sm:text-sm dark:text-gray-100 line-clamp-2"
                             >
@@ -421,6 +443,7 @@ const getCartQty = (productId) => {
                                 </div>
 
                                 <div
+                                    v-if="product.stock > 0"
                                     class="text-gray-300 transition-colors group-hover:text-lime-500"
                                 >
                                     <svg

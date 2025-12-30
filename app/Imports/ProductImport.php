@@ -9,6 +9,8 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\Supplier;
 use App\Models\ProductType;
+use App\Models\StockMovement;
+use App\Services\StockService;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -17,6 +19,7 @@ use Maatwebsite\Excel\Concerns\WithValidation;
 class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmptyRows
 {
     // Cache Memori (Key = Nama di Excel, Value = ID Database)
+    protected $stockService;
     protected $categories;
     protected $units;
     protected $sizes;
@@ -24,8 +27,9 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
     protected $brands;
     protected $types;
 
-    public function __construct()
+    public function __construct(StockService $stockService)
     {
+        $this->stockService = $stockService;
         // Load semua data master ke RAM biar ngebut
         // Format: ['oli mesin' => 1, 'ban' => 2]
         // Kita lowercase semua biar tidak sensitif huruf besar/kecil
@@ -61,8 +65,7 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
             $brandId,
             $sizeId
         );
-        // 4. SUSUN DATA PRODUK
-        return new Product([
+        $product = new Product([
             'code'           => $row['kode_produk'] ?? $generatedCode,
             'name'           => $row['nama_produk'],
             'description'    => $row['deskripsi'] ?? null,
@@ -81,6 +84,14 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
             'min_stock'      => $row['min_stok'] ?? 0,
             'status'         => Product::STATUS_ACTIVE
         ]);
+        $this->stockService->record(
+            productId: $product->id,
+            qty: $product->stock,
+            type: StockMovement::TYPE_INITIAL,
+            ref: 'INIT',
+            desc: 'Stok Awal Produk Baru'
+        );
+        return $product;
     }
 
     public function rules(): array

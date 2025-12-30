@@ -21,6 +21,7 @@ const isStockLow = computed(() => {
 
 <template>
     <div
+        :class="data.stock == 0 ? 'animate-pulse shadow-lg shadow-red-400' : ''"
         class="flex flex-col h-full overflow-hidden transition-transform duration-200 bg-white border border-gray-100 rounded-lg shadow-sm cursor-pointer dark:bg-gray-800 dark:border-gray-700 active:scale-95"
     >
         <div class="relative w-full aspect-square bg-gray-50 dark:bg-gray-900">
@@ -59,16 +60,16 @@ const isStockLow = computed(() => {
 
             <div class="absolute z-20 flex flex-col gap-1 top-1 left-1">
                 <span
-                    v-if="isStockLow"
-                    class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
-                >
-                    Stok {{ data.stock || 0 }}
-                </span>
-                <span
-                    v-else-if="data.stock <= 0"
+                    v-if="data.stock == 0"
                     class="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
                 >
                     Habis
+                </span>
+                <span
+                    v-else-if="isStockLow"
+                    class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
+                >
+                    Stok {{ data.stock || 0 }}
                 </span>
             </div>
             <div

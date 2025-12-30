@@ -52,6 +52,11 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
 </script>
 <template>
     <div
+        :class="
+            data.stock == 0
+                ? 'shadow-lg border-red-500 shadow-red-400 hover:shadow-red-600'
+                : ''
+        "
         class="relative flex flex-col h-full overflow-hidden transition-all duration-300 bg-white border border-gray-200 shadow-sm group dark:bg-gray-800 rounded-2xl dark:border-gray-700 hover:shadow-xl hover:-translate-y-1"
         @mouseleave="showOptions = false"
     >
@@ -117,7 +122,12 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                     >⚠️ Margin</span
                 >
                 <span
-                    v-if="isStockLow"
+                    v-if="data.stock == 0"
+                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-gray-500 text-white rounded-md shadow-sm"
+                    >HABIS</span
+                >
+                <span
+                    v-else-if="isStockLow"
                     class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500 animate-pulse text-white rounded-md shadow-sm"
                     >🚨 Stok</span
                 >
@@ -245,6 +255,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                             @click.stop
                         >
                             <button
+                                v-if="!isTrashed"
                                 @click="
                                     emit('adjustPrice', data);
                                     showOptions = false;
@@ -265,6 +276,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                                 </svg>
                             </button>
                             <button
+                                v-if="!isTrashed"
                                 @click="
                                     emit('adjustStock', data);
                                     showOptions = false;

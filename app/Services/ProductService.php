@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\Category;
 use App\Models\SaleItem;
 use App\Models\ProductType;
+use Illuminate\Support\Str;
 use App\Models\PurchaseItem;
 use App\Models\SmartInsight;
 use App\Models\StockMovement;
@@ -22,13 +23,11 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 class ProductService
 {
-    protected $insightService;
     protected $stockService;
     protected $imageService;
     protected $calculator;
-    public function __construct(InsightService $insightService, StockService $stockService, ImageService $imageService, ProductDSSCalculator $calculator)
+    public function __construct(StockService $stockService, ImageService $imageService, ProductDSSCalculator $calculator)
     {
-        $this->insightService = $insightService;
         $this->stockService = $stockService;
         $this->imageService = $imageService;
         $this->calculator = $calculator;
@@ -58,10 +57,11 @@ class ProductService
         }]);
 
         // 1. SEARCH GLOBAL
-        $query->when($params['search'] ?? null, function ($q, $search) {
-            $q->where(function ($sub) use ($search) {
-                $sub->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
+        $query->when($paramSearch ?? null, function ($q, $search) {
+            $keyword = Str::lower($search) ?? null;
+            $q->where(function ($sub) use ($keyword) {
+                $sub->where('name', 'like', "%{$keyword}%")
+                    ->orWhere('code', 'like', "%{$keyword}%");
             });
         });
 
@@ -153,18 +153,17 @@ class ProductService
     /**
      * MENGAMBIL SEMUA DATA DETAIL PRODUK + DSS (Untuk Halaman Show)
      */
-    public function getProductDetails($id)
+    public function getProductDetails(Product $product)
     {
         // 2. Ambil Data Produk & Relasi
-        $product = Product::with(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType::id,name'])
-            // ->select(['id', 'code', 'name', 'stock', 'min_stock', 'image_url', 'status', 'purchase_price', 'selling_price', 'supplier_id', 'brand_id', 'category_id', 'product_type_id', 'size_id', 'unit_id'])
-            ->withTrashed() // Handle jika produk soft deleted
-            ->findOrFail($id);
+        // $product = Product::with(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType::id,name'])
+        //     // ->withTrashed() // Handle jika produk soft deleted
+        //     ->findOrFail($id);
 
         $inventory = $this->calculator->calculateInventoryHealth($product);
         $financials = $this->calculator->calculateFinancialHealth($product);
         // 3. Ambil Insight DSS (Hasil Analisa)
-        $insights = SmartInsight::where('product_id', $id)->get();
+        $insights = SmartInsight::where('product_id', $product->id)->get();
 
         // Struktur data DSS untuk Frontend
         $dssData = [
@@ -179,7 +178,7 @@ class ProductService
 
 
         // 4. Statistik Penjualan (Untuk Tab Ringkasan)
-        $salesStats = SaleItem::where('product_id', $id)
+        $salesStats = SaleItem::where('product_id', $product->id)
             ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
             ->sum('quantity');
 
@@ -189,7 +188,7 @@ class ProductService
         // 5. Data Grafik (7 Hari Terakhir)
         $startDate = now()->subDays(6)->startOfDay();
         $endDate = now()->endOfDay();
-        $rawData = SaleItem::where('product_id', $id)
+        $rawData = SaleItem::where('product_id', $product->id)
             ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startDate, $endDate]))
             ->with('sale:id,transaction_date') // Eager load tanggalnya
             ->get();
@@ -208,10 +207,8 @@ class ProductService
         }
 
         // 6. Riwayat Stok (Gabungan Beli & Jual Terakhir)
-        $stockHistory = $this->getStockHistory($id);
-
+        $stockHistory = $this->getStockHistory($product->id);
         // 7. Tren Harga (Logic Snapshot)
-        $priceTrend = $this->calculatePriceTrend($product);
         $product->financials = $financials;
         $product->inventory = $inventory;
         return [
@@ -219,49 +216,18 @@ class ProductService
             'dss' => $dssData,
             'chart_data' => $chartData,
             'stock_history' => $stockHistory,
-            'price_trend' => $priceTrend
+            'price_trend' => $financials['price_trend']
         ];
     }
     private function getStockHistory($id)
     {
-        $lastSales = SaleItem::with('sale')->where('product_id', $id)->latest()->limit(5)->get()
-            ->map(fn($item) => [
-                'type' => 'out',
-                'qty' => $item->quantity,
-                'date' => $item->sale->transaction_date ?? $item->created_at,
-                'note' => 'Terjual'
-            ]);
-
-        $lastPurchases = PurchaseItem::with('purchase')->where('product_id', $id)->latest()->limit(5)->get()
-            ->map(fn($item) => [
-                'type' => 'in',
-                'qty' => $item->quantity,
-                'date' => $item->purchase->transaction_date ?? $item->created_at,
-                'note' => 'Restock'
-            ]);
-
-        return collect($lastSales)->merge($lastPurchases)->sortByDesc('date')->values()->all();
+        $movements = StockMovement::where('product_id', $id)
+            ->orderBy('created_at', 'desc') // Urut kronologis (Lama -> Baru)
+            ->limit(10)
+            ->get();
+        return $movements;
     }
 
-    private function calculatePriceTrend($product)
-    {
-        // Default
-        $trend = ['direction' => 'flat', 'diff' => 0, 'percent' => 0, 'old_price' => 0];
-
-        if (!empty($product->snapshot) && isset($product->snapshot['purchase_price'])) {
-            $current = $product->purchase_price;
-            $old = $product->snapshot['purchase_price'];
-            $diff = $current - $old;
-            $percent = $old > 0 ? ($diff / $old) * 100 : 0;
-
-            if ($diff > 0) {
-                $trend = ['direction' => 'up', 'diff' => $diff, 'percent' => round(abs($percent), 1), 'old_price' => $old];
-            } elseif ($diff < 0) {
-                $trend = ['direction' => 'down', 'diff' => abs($diff), 'percent' => round(abs($percent), 1), 'old_price' => $old];
-            }
-        }
-        return $trend;
-    }
     /**
      * Validasi dan simpan produk baru.
      *
@@ -322,15 +288,15 @@ class ProductService
                 $validatedData['image_path'] = $this->handleImageUpload($imageFile);
             }
             $product = Product::create($validatedData);
-            if ($validatedData['stock'] > 0) {
-                $this->stockService->record(
-                    productId: $product->id,
-                    qty: $product->stock,
-                    type: StockMovement::TYPE_INITIAL,
-                    ref: 'INIT',
-                    desc: 'Stok Awal Produk Baru'
-                );
-            }
+            // if ($validatedData['stock'] > 0) {
+            $this->stockService->record(
+                productId: $product->id,
+                qty: $product->stock,
+                type: StockMovement::TYPE_INITIAL,
+                ref: 'INIT',
+                desc: 'Stok Awal Produk Baru'
+            );
+            // }
             return true;
         });
     }

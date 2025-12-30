@@ -28,7 +28,6 @@ const props = defineProps({
     filters: Object,
     dropdowns: Object,
 });
-console.log(props.products);
 const { isActionLoading } = useActionLoading();
 const configSheet = ref({
     title: "Detail Produk",
@@ -126,7 +125,7 @@ const restoreProduct = (row) => {
 const performSearch = throttle(() => {
     const currentFilters = { ...props.filters };
     currentFilters.search = search.value;
-    if (!currentFilters.search) {
+    if (!currentFilters.search || search.value == "") {
         delete currentFilters.search;
     }
     router.get(route("products.index"), currentFilters, {
@@ -135,7 +134,6 @@ const performSearch = throttle(() => {
     });
 }, 300);
 watch(search, performSearch);
-
 const isFiltering = computed(() => {
     // Sesuaikan dengan props filters Anda
     return props.filters;
@@ -273,6 +271,7 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                 v-if="products.data.length > 10"
                 :metadata="products"
                 :filters="filters"
+                class="mb-3"
             />
             <div class="" v-if="products.data.length > 0">
                 <div
@@ -340,7 +339,7 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                 />
             </div>
             <Pagination
-                v-if="products.data.length > 8"
+                v-if="products.total > 8"
                 :metadata="products"
                 :filters="filters"
             />

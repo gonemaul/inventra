@@ -1,9 +1,9 @@
 <template>
     <picture>
-        <source srcset="/images/logo.webp" type="image/webp" />
+        <source srcset="/icons/logo.webp" type="image/webp" />
         <img
             loading="lazy"
-            src="/images/logo.png"
+            src="/icons/logo.webp"
             alt="Application Logo"
             class="w-auto h-16"
         />

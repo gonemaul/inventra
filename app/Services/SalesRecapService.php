@@ -164,7 +164,7 @@ class SalesRecapService
                 $analysis = $this->inventoryAnalyzer->calculateInventoryHealth($product);
 
                 if (in_array($analysis['status'], [SmartInsight::SEVERITY_CRITICAL, SmartInsight::SEVERITY_WARNING])) {
-                    $this->sendLowStock($product, $analysis);
+                    $this->stockService->sendLowStock($product, $analysis);
                 }
             }
 
@@ -356,36 +356,5 @@ class SalesRecapService
         }
 
         return $prefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
-    }
-
-    private function sendLowStock($product, $analysis)
-    {
-        if (!Cache::has('notif_critical_' . $product->id)) {
-
-            // A. Buat Pesan Singkat & Padat (Actionable)
-            $msg  = "⚠️ <b>STOK KRITIS ALERT!</b>\n\n";
-            $msg .= "📦 <b>{$product->name}</b>\n";
-            $msg .= "Sisa Stok: <b>{$analysis['current_stock']} {$product->unit->name}</b>\n";
-            $msg .= "Habis dalam: <b>{$analysis['days_left']} hari</b>\nPada Tgl: {$analysis['stockout_date']}\n";
-            $msg .= "<i>Saran: Segera order {$analysis['suggested_qty']} pcs</i>";
-
-            // B. Kirim Telegram Langsung
-            TelegramService::send($msg);
-
-            // C. Simpan ke Tabel Insight (Sebagai Log History)
-            // Kita set is_notified = 1 karena sudah dikirim barusan.
-            // Jadi besok pagi tidak perlu dikirim ulang di laporan rangkuman, cukup jadi arsip.
-            SmartInsight::create([
-                'product_id'  => $product->id,
-                'type'        => SmartInsight::TYPE_RESTOCK,
-                'severity'    => SmartInsight::SEVERITY_CRITICAL,
-                'title'       => 'Stok Kritis (Realtime)',
-                'message'     => $analysis['message'],
-                'payload'     => $analysis, // Simpan semua data analisa lengkap di sini
-                'is_read'     => false,
-                'is_notified' => true, // <--- PENTING: Agar tidak dobel notif besok pagi
-            ]);
-            Cache::put('notif_critical_' . $product->id, true, now()->addHours(6));
-        }
     }
 }

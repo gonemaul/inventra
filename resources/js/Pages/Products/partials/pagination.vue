@@ -6,7 +6,7 @@ const props = defineProps({
     metadata: Object,
     filters: Object,
 });
-const pageSizeOptions = [10, 26, 50, 100];
+const pageSizeOptions = [10, 25, 50, 100];
 const perPage = ref(props.metadata.per_page);
 watch(perPage, (newValue) => {
     let allFilters = { ...props.filters };

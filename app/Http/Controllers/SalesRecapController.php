@@ -238,22 +238,21 @@ class SalesRecapController extends Controller
 
     public function getAllProductsLite()
     {
-        // Gunakan cursor atau chunk jika datanya puluhan ribu,
-        // tapi untuk < 10.000, get() dengan select spesifik sudah sangat cepat.
-
         $products = Product::query()
             ->select([
                 'id',
                 'code',
                 'name',
                 'category_id',
+                'brand_id',
                 'selling_price', // atau price
                 'stock',
                 'image_path', // string pendek
-                'unit_id'
+                'unit_id',
+                'size_id'
             ])
-            ->with(['unit:id,name,is_decimal']) // Eager load unit, ambil nama saja
-            ->where('stock', '>', 0) // Opsional: hanya yang ada stok
+            ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name']) // Eager load unit, ambil nama saja
+            // ->where('stock', '>', 0) // Opsional: hanya yang ada stok
             ->orderBy('name')
             ->get();
 

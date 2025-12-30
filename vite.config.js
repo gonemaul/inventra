@@ -30,7 +30,7 @@ export default defineConfig({
                 description: "Aplikasi Pintar Manajemen Toko",
                 theme_color: "#ffffff",
                 background_color: "#ffffff",
-                start_url: "/",
+                start_url: "/dashboard",
                 display: "standalone", // Agar terlihat seperti native app (tanpa browser bar)
                 orientation: "portrait",
                 icons: [

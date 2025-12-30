@@ -24,7 +24,93 @@ const formatRupiah = (val) =>
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(val);
+const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    return new Date(dateString).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+};
+// Konfigurasi Tampilan Berdasarkan Type
+const getLogConfig = (log) => {
+    const type = log.type;
+    const qty = Number(log.quantity);
 
+    // Default Config
+    let config = {
+        label: "Transaksi",
+        icon: "📝", // Default icon
+        colorClass: "bg-gray-100 text-gray-600",
+        isPositive: qty > 0,
+        sign: qty > 0 ? "+" : "",
+    };
+
+    switch (type) {
+        case "initial":
+            config.label = "Stok Awal";
+            config.icon = "🏁";
+            config.colorClass = "bg-blue-100 text-blue-600";
+            config.isPositive = true;
+            break;
+
+        case "purchase":
+            config.label = "Pembelian";
+            config.icon = "🚛";
+            config.colorClass = "bg-green-100 text-green-600";
+            config.isPositive = true;
+            break;
+
+        case "sale":
+            config.label = "Penjualan";
+            config.icon = "🛒";
+            config.colorClass = "bg-red-100 text-red-600";
+            config.isPositive = false;
+            break;
+
+        case "adjustment_in":
+            config.label = "Koreksi Masuk";
+            config.icon = "🔧";
+            config.colorClass = "bg-emerald-100 text-emerald-600";
+            config.isPositive = true;
+            break;
+
+        case "adjustment_out":
+            config.label = "Koreksi Keluar";
+            config.icon = "📉";
+            config.colorClass = "bg-orange-100 text-orange-600";
+            config.isPositive = false;
+            break;
+
+        case "adjustment_opname":
+            config.label = "Stok Opname";
+            config.icon = "📋";
+            // Opname bisa plus (hijau) atau minus (merah) tergantung selisih
+            config.isPositive = qty >= 0;
+            config.colorClass = config.isPositive
+                ? "bg-purple-100 text-purple-600"
+                : "bg-pink-100 text-pink-600";
+            break;
+
+        case "return_in":
+            config.label = "Retur Customer";
+            config.icon = "↩️";
+            config.colorClass = "bg-teal-100 text-teal-600";
+            config.isPositive = true;
+            break;
+
+        case "return_out":
+            config.label = "Retur Supplier";
+            config.icon = "↪️";
+            config.colorClass = "bg-rose-100 text-rose-600";
+            config.isPositive = false;
+            break;
+    }
+
+    return config;
+};
 // Helper Chart Max Value (Agar grafik proporsional)
 const maxChartValue = computed(() => {
     const max = Math.max(...props.detail.chart_data.map((d) => d.qty));
@@ -332,75 +418,100 @@ const maxChartValue = computed(() => {
                             </div>
 
                             <ul
-                                class="mt-4 divide-y divide-gray-100 dark:divide-gray-700"
+                                class="divide-y divide-gray-100 dark:divide-gray-700"
                             >
                                 <li
                                     v-for="(log, idx) in detail.stock_history"
                                     :key="idx"
-                                    class="flex items-center justify-between py-3"
+                                    class="flex items-start justify-between px-2 py-4 transition rounded-lg group hover:bg-gray-50 dark:hover:bg-gray-800/50"
                                 >
-                                    <div class="flex items-center gap-3">
+                                    <div
+                                        class="flex gap-3"
+                                        :class="{
+                                            'opacity-50':
+                                                log.type === 'deleted',
+                                        }"
+                                    >
                                         <div
-                                            class="flex items-center justify-center w-8 h-8 rounded-full"
+                                            class="flex items-center justify-center w-10 h-10 rounded-full shadow-sm shrink-0"
                                             :class="
-                                                log.type == 'in'
-                                                    ? 'bg-green-100 text-green-600'
-                                                    : 'bg-red-100 text-red-600'
+                                                getLogConfig(log).colorClass
                                             "
                                         >
-                                            <span v-if="log.type == 'in'"
-                                                >⬇️</span
-                                            >
-                                            <span v-else>⬆️</span>
+                                            <span class="text-lg">{{
+                                                getLogConfig(log).icon
+                                            }}</span>
                                         </div>
-                                        <div>
-                                            <p
+
+                                        <div class="flex flex-col">
+                                            <h4
                                                 class="text-sm font-bold text-gray-800 dark:text-gray-200"
                                             >
-                                                {{
-                                                    log.type == "in"
-                                                        ? "Barang Masuk"
-                                                        : "Barang Keluar"
-                                                }}
-                                            </p>
-                                            <p
-                                                class="text-xs text-gray-500 dark:text-gray-400"
+                                                {{ getLogConfig(log).label }}
+                                            </h4>
+
+                                            <div
+                                                class="text-xs text-gray-500 dark:text-gray-400 mt-0.5 space-y-0.5"
                                             >
-                                                {{ log.note }}
-                                            </p>
+                                                <p
+                                                    v-if="log.reference_number"
+                                                    class="font-mono text-[10px] text-gray-400 uppercase tracking-wide"
+                                                >
+                                                    #{{ log.reference_number }}
+                                                </p>
+                                                <p
+                                                    v-if="log.description"
+                                                    class="line-clamp-1"
+                                                >
+                                                    {{ log.description }}
+                                                </p>
+                                                <p
+                                                    class="text-[10px] text-gray-400 flex items-center gap-1 mt-1"
+                                                >
+                                                    <span
+                                                        class="px-1 bg-gray-100 rounded dark:bg-gray-700"
+                                                        >{{
+                                                            log.stock_before
+                                                        }}</span
+                                                    >
+                                                    <span>➜</span>
+                                                    <span
+                                                        class="px-1 font-bold text-gray-600 bg-gray-100 rounded dark:bg-gray-700 dark:text-gray-300"
+                                                        >{{
+                                                            log.stock_after
+                                                        }}</span
+                                                    >
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div class="text-right">
+
+                                    <div class="ml-2 text-right shrink-0">
                                         <p
-                                            class="font-bold"
+                                            class="text-sm font-bold"
                                             :class="
-                                                log.type == 'in'
+                                                getLogConfig(log).isPositive
                                                     ? 'text-green-600'
                                                     : 'text-red-600'
                                             "
                                         >
-                                            {{ log.type == "in" ? "+" : "-" }}
-                                            {{ log.qty }}
-                                        </p>
-                                        <p class="text-xs text-gray-400">
                                             {{
-                                                new Date(
-                                                    log.date
-                                                ).toLocaleDateString("id-ID", {
-                                                    day: "numeric",
-                                                    month: "short",
-                                                    year: "numeric",
-                                                })
+                                                getLogConfig(log).isPositive
+                                                    ? "+"
+                                                    : "-"
+                                            }}{{ log.quantity }}
+                                        </p>
+                                        <p
+                                            class="text-[10px] text-gray-400 mt-1"
+                                        >
+                                            {{
+                                                formatDate(
+                                                    log.created_at || log.date
+                                                )
                                             }}
+                                            WIB
                                         </p>
                                     </div>
-                                </li>
-
-                                <li
-                                    v-if="detail.stock_history.length === 0"
-                                    class="py-4 text-sm text-center text-gray-400"
-                                >
-                                    Belum ada riwayat transaksi.
                                 </li>
                             </ul>
                         </div>

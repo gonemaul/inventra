@@ -139,8 +139,10 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
+        $product->load(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType::id,name'])
+            ->withTrashed(); // Handle jika produk soft deleted
         return Inertia::render('Products/detail', [
-            'detail' => Inertia::defer(fn() => $this->productService->getProductDetails($product->id))
+            'detail' => Inertia::defer(fn() => $this->productService->getProductDetails($product))
         ]);
     }
 

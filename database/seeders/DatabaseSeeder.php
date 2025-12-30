@@ -34,7 +34,7 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'),
         ]);
 
-        $this->call(MasterDataSeeder::class);
+        // $this->call(MasterDataSeeder::class);
         $this->call(SettingSeeder::class);
         // $this->call(ProductSeeder::class);
         // Product::create([
