@@ -14,8 +14,8 @@ class BackupTelegramNotification
     public function handle(object $event): void
     {
         // Cek apakah Token & Chat ID sudah diisi
-        $token = env('TELEGRAM_BOT_TOKEN');
-        $chatId = env('TELEGRAM_CHAT_ID');
+        $token = config('services.telegram.bot_token');
+        $chatId = config('services.telegram.chat_id');
 
         if (!$token || !$chatId) {
             return; // Jangan jalan kalau belum disetting

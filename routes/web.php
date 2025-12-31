@@ -220,8 +220,8 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::get('/test-telegram', function () {
-    $token = env('TELEGRAM_BOT_TOKEN');
-    $chatId = env('TELEGRAM_CHAT_ID');
+    $token = config('services.telegram.bot_token');
+    $chatId = config('services.telegram.chat_id');
 
     if (!$token || !$chatId) {
         return "ERROR: Token atau Chat ID belum terbaca di .env";
