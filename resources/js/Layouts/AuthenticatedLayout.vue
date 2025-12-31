@@ -9,6 +9,7 @@ import { useToast } from "vue-toastification";
 import { watch } from "vue";
 import { Link } from "@inertiajs/vue3";
 import ActionLoader from "@/Components/ActionLoader.vue";
+import ScrollToTop from "@/Components/ScrollToTop.vue";
 
 const page = usePage();
 const toast = useToast();
@@ -97,6 +98,7 @@ defineProps({
                 <slot />
             </main>
         </div>
+        <ScrollToTop />
     </div>
     <div
         v-if="showBottomBar"

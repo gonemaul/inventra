@@ -139,7 +139,7 @@ class PurchaseService
 
         // CASE 2: Status ORDERED (Hanya Boleh Nambah)
         if ($purchase->status === Purchase::STATUS_ORDERED) {
-            return $this->handleAddOnlyUpdate($purchase, $data);
+            return $this->handleHalfUpdate($purchase, $data);
         }
 
         // CASE 3: Status LAIN (Received/Paid) -> Tolak
@@ -204,51 +204,70 @@ class PurchaseService
      * LOGIKA 2: ADD ONLY (Khusus Ordered)
      * Validasi ketat: Tidak boleh hapus, tidak boleh ubah item lama.
      */
-    private function handleAddOnlyUpdate(Purchase $purchase, array $data)
+    private function handleHalfUpdate(Purchase $purchase, array $data)
     {
         return DB::transaction(function () use ($purchase, $data) {
             $existingItems = $purchase->items;
             $inputItems = collect($data['items']);
 
             // --- VALIDASI KEAMANAN (SECURITY CHECK) ---
-            // 1. Cek Header: Biasanya supplier tidak boleh berubah kalau sudah dipesan
+
+            // 1. Cek Header: Supplier tidak boleh berubah
             if ($purchase->supplier_id != $data['supplier_id']) {
-                throw ValidationException::withMessages(['supplier_id' => 'Tidak bisa ganti supplier untuk pesanan yang sudah dikirim.']);
+                throw ValidationException::withMessages(['supplier_id' => 'Tidak bisa ganti supplier untuk pesanan yang sudah dipesan/dikirim.']);
             }
 
             // 2. Cek Deleted Items: Pastikan semua item lama MASIH ADA di input
+            // Kita ambil ID dari input, filter yang punya ID saja (item lama)
             $inputIds = $inputItems->pluck('id')->filter()->toArray();
+
             foreach ($existingItems as $existing) {
+                // Jika ID item lama tidak ditemukan di array input, berarti user mencoba menghapusnya -> TOLAK
                 if (!in_array($existing->id, $inputIds)) {
-                    throw ValidationException::withMessages(['items' => "Item '{$existing->product->name}' tidak boleh dihapus karena sudah dipesan."]);
+                    throw ValidationException::withMessages(['items' => "Item '{$existing->product->name}' tidak boleh dihapus karena sudah dipesan. Silakan edit Qty jika perlu revisi."]);
                 }
             }
 
-            // 3. Cek Modified Items: Pastikan item lama NILAINYA TIDAK BERUBAH
+            // --- EKSEKUSI DATA (Update Lama & Tambah Baru) ---
+            $grandTotalItemPrice = 0;
+
             foreach ($inputItems as $item) {
+                $subtotal = $item['quantity'] * $item['purchase_price'];
+                $grandTotalItemPrice += $subtotal;
+
                 if (isset($item['id']) && $item['id']) {
-                    $existing = $existingItems->firstWhere('id', $item['id']);
+                    // --- KASUS A: ITEM LAMA (UPDATE) ---
+                    // Cari item asli di database berdasarkan ID
+                    $existingItem = $existingItems->firstWhere('id', $item['id']);
 
-                    // Jika user mencoba mengutak-atik qty atau harga item lama
-                    if ($existing->quantity != $item['quantity'] || $existing->purchase_price != $item['purchase_price']) {
-                        throw ValidationException::withMessages(['items' => "Item lama tidak boleh diedit (Qty/Harga terkunci). Hanya boleh tambah item baru."]);
+                    if ($existingItem) {
+                        // Update Qty dan Harga (Boleh diedit)
+                        $existingItem->update([
+                            'quantity' => $item['quantity'],
+                            'purchase_price' => $item['purchase_price'],
+                            'total_price' => $subtotal
+                        ]);
                     }
-                }
-            }
-
-            // --- EKSEKUSI PENAMBAHAN ---
-            $additionalTotal = 0;
-            foreach ($inputItems as $item) {
-                // HANYA PROSES YANG ID-NYA NULL (ITEM BARU)
-                if (!isset($item['id']) || is_null($item['id'])) {
-                    $subtotal = $item['quantity'] * $item['purchase_price'];
-                    $additionalTotal += $subtotal;
+                } else {
+                    // --- KASUS B: ITEM BARU (CREATE) ---
+                    // Item baru tidak punya ID
                     $this->createItems($purchase, $item, $subtotal);
                 }
             }
-            // Update Total Invoice (Total Lama + Total Tambahan)
-            $grandTotal = $purchase->grand_total + $additionalTotal;
-            $purchase->update(['total_item_price' => $grandTotal, 'grand_total' => $grandTotal]);
+
+            // Update Total Header
+            // Hitung ulang shipping/other cost jika ada di input data, atau pakai yang lama
+            $shipping = isset($data['shipping_cost']) ? $data['shipping_cost'] : $purchase->shipping_cost;
+            $other = isset($data['other_costs']) ? $data['other_costs'] : $purchase->other_costs;
+
+            $purchase->update([
+                'transaction_date' => $data['transaction_date'], // Tanggal boleh revisi jika perlu
+                'shipping_cost' => $shipping,
+                'other_costs' => $other,
+                'total_item_price' => $grandTotalItemPrice,
+                'grand_total' => $grandTotalItemPrice + $shipping + $other,
+                'notes' => $data['notes'] ?? $purchase->notes
+            ]);
 
             return $purchase;
         });

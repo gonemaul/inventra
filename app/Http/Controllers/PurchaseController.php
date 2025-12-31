@@ -64,7 +64,7 @@ class PurchaseController extends Controller
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
                 'statuses' => Purchase::STATUSES,
-                'purchase' => collect([])
+                'purchase' => null
             ],
         ]);
     }
@@ -362,13 +362,7 @@ class PurchaseController extends Controller
                 ->with('error', 'Transaksi sudah diterima, tidak bisa diedit.');
         }
 
-        // PENTING: Frontend perlu tahu status untuk mengunci UI
-        // Draft = UI Terbuka Bebas
-        // Ordered = UI Terkunci (Kecuali tambah baru)
-        $isLocked = ($purchase->status === Purchase::STATUS_ORDERED);
-
         return Inertia::render('Purchases/create', [
-            'isEdit' => true,
             'purchase' => $purchase,
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),

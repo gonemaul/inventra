@@ -1,78 +1,77 @@
 import { ref, computed, watch, onMounted } from "vue";
 
-const STORAGE_KEY = "inventra_purchase_cart_temp";
-
 export function usePurchaseCart(isEdit = false, purchase = {}) {
     // State Keranjang
     const cartItems = ref([]);
-
-    // 1. Load dari Cache Browser
-    function loadCart() {
-        // 1. LOGIKA EDIT MODE
-        // Jika sedang Edit, kita Wajib pakai data dari Database (props purchase)
-        // Abaikan LocalStorage agar draft lama tidak menimpa data edit yang valid
-        if (isEdit) {
-            if (purchase && purchase.items) {
-                // Pastikan cart bersih dulu sebelum diisi (menghindari duplikasi jika fungsi dipanggil 2x)
-                cartItems.value = [];
-
-                // Masukkan item dari database ke cart
-                // Pastikan addMultipleItems menangani mapping field (id, qty, price) dengan benar
-                addMultipleItems(purchase.items);
-            }
-            return; // PENTING: Berhenti di sini. Jangan jalankan kode di bawahnya.
+    const getStorageKey = () => {
+        // Jika Mode Edit: "cart_edit_123"
+        if (isEdit && purchase?.id) {
+            return `inventra_edit_${purchase.id}`;
         }
+        // Jika Mode Create: "cart_draft_new"
+        return "inventra_create_draft";
+    };
 
-        // 2. LOGIKA CREATE MODE
-        // Jika bukan Edit, baru kita cek apakah ada draft tersimpan di LocalStorage
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
+    const loadCart = () => {
+        const storageKey = getStorageKey();
+        const savedLocal = localStorage.getItem(storageKey);
+
+        // 1. CEK LOCAL STORAGE DULU (Prioritas Tertinggi)
+        // Jika ada data di local, artinya user pernah mengedit ini sebelumnya (dan belum submit)
+        // Kita pakai data ini agar perubahan dia tidak hilang tertimpa data DB lama.
+        if (savedLocal) {
             try {
-                cartItems.value = JSON.parse(saved);
+                cartItems.value = JSON.parse(savedLocal);
+                console.log("Loaded from LocalStorage (Unsaved Changes)");
+                return; // STOP DISINI. Jangan load dari DB.
             } catch (e) {
-                // Jika JSON rusak, hapus storage biar bersih
-                localStorage.removeItem(STORAGE_KEY);
+                console.error("Local data corrupt, clearing...");
+                localStorage.removeItem(storageKey);
             }
         }
-    }
+
+        // 2. JIKA LOCAL KOSONG & ADA DATA DB (Initial Load Edit)
+        // Ini terjadi saat pertama kali user klik tombol Edit dari halaman Index
+        if (isEdit && purchase && purchase.items) {
+            cartItems.value = [];
+            // Mapping Data DB -> Format Cart
+            addMultipleItems(purchase.items);
+        }
+
+        // 3. JIKA CREATE MODE
+        else {
+            // Karena di step 1 sudah dicek savedLocal (dan kosong),
+            // berarti ini benar-benar buat baru bersih.
+            cartItems.value = [];
+        }
+    };
 
     // 2. Tambah Item Baru (Mode: ADD)
     // Jika barang sudah ada, kita tambahkan jumlahnya (merge)
-    function addToCart(product, quantity, price, isDraft = false) {
+    function addToCart(product, quantity, price) {
         const targetId = product.product_id;
         const qty = parseInt(quantity);
         const buyPrice = parseFloat(price);
 
-        const existingItem = cartItems.value.find(
-            (item) => item.product_id === targetId
-        );
+        // Barang baru? Push ke array
+        // Kita simpan SNAPSHOT data produk di sini untuk tabel & backend
+        cartItems.value.push({
+            id: targetId ? product.id : "",
+            product_id: targetId ?? product.id,
+            // Snapshot Data Produk (Read-only di tabel)
+            name: product.name,
+            code: product.code,
+            category: product.category?.name || product.category || "-",
+            unit: product.unit?.name || product.unit || "-",
+            size: product.size?.name || product.size || "-",
+            current_stock: product.stock || product.current_stock,
+            image_url: product.image_url || "",
 
-        if (existingItem && isDraft) {
-            // Barang ada? Tambahkan quantity-nya
-            existingItem.quantity += qty;
-            existingItem.purchase_price = buyPrice; // Update harga ke input terakhir
-            existingItem.subtotal = existingItem.quantity * buyPrice;
-        } else {
-            // Barang baru? Push ke array
-            // Kita simpan SNAPSHOT data produk di sini untuk tabel & backend
-            cartItems.value.push({
-                id: targetId ? product.id : "",
-                product_id: targetId ?? product.id,
-                // Snapshot Data Produk (Read-only di tabel)
-                name: product.name,
-                code: product.code,
-                category: product.category?.name || product.category || "-",
-                unit: product.unit?.name || product.unit || "-",
-                size: product.size?.name || product.size || "-",
-                current_stock: product.stock || product.current_stock,
-                image_url: product.image_url || "",
-
-                // Data Transaksi (Editable)
-                quantity: qty,
-                purchase_price: buyPrice,
-                subtotal: qty * buyPrice,
-            });
-        }
+            // Data Transaksi (Editable)
+            quantity: qty,
+            purchase_price: buyPrice,
+            subtotal: qty * buyPrice,
+        });
     }
 
     // 3. Update Item (Mode: EDIT)
@@ -105,7 +104,7 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
     // 5. Reset Keranjang
     function clearCart() {
         cartItems.value = [];
-        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(getStorageKey);
     }
 
     function addMultipleItems(itemsArray) {
@@ -141,9 +140,10 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
     watch(
         cartItems,
         (newVal) => {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(newVal));
+            const key = getStorageKey();
+            localStorage.setItem(key, JSON.stringify(newVal));
         },
-        { deep: true }
+        { deep: true } // Deep watch agar perubahan properti qty di dalam object terdeteksi
     );
 
     onMounted(() => {

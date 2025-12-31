@@ -2,6 +2,7 @@
 import { ref, watch, onMounted } from "vue";
 import axios from "axios";
 import debounce from "lodash/debounce";
+import CatalogCard from "./CatalogCard.vue";
 
 // --- PROPS & EMITS ---
 const props = defineProps({
@@ -9,6 +10,8 @@ const props = defineProps({
         type: [Number, String],
         required: true,
     },
+    items: Object,
+    stagingItem: Object,
 });
 
 const emit = defineEmits(["select-product"]);
@@ -105,13 +108,8 @@ onMounted(() => {
     if (observerTarget.value) observer.observe(observerTarget.value);
 });
 
-// --- HELPER FORMAT RUPIAH ---
-const formatRupiah = (val) => {
-    return new Intl.NumberFormat("id-ID", {
-        style: "currency",
-        currency: "IDR",
-        minimumFractionDigits: 0,
-    }).format(val);
+const getItemInCart = (itemId) => {
+    return props.items.find((c) => c.product_id === itemId);
 };
 
 // --- ACTION ---
@@ -121,9 +119,9 @@ const selectItem = (item) => {
 </script>
 
 <template>
-    <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
+    <div class="flex flex-col h-full">
         <div
-            class="sticky top-0 z-20 p-3 bg-white border-b shadow-sm dark:bg-gray-800 dark:border-gray-700"
+            class="sticky top-0 z-20 p-3 bg-white border-b rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700"
         >
             <div class="relative">
                 <div
@@ -179,7 +177,16 @@ const selectItem = (item) => {
                 v-else-if="products.length > 0"
                 class="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
             >
-                <div
+                <CatalogCard
+                    v-for="item in products"
+                    :key="item.id"
+                    :item="item"
+                    :is-selected="stagingItem.product_id === item.id"
+                    :is-in-cart="!!getItemInCart(item.id)"
+                    :cart-qty="getItemInCart(item.id)?.quantity || 0"
+                    @select="selectItem"
+                />
+                <!-- <div
                     v-for="item in products"
                     :key="item.id"
                     @click="selectItem(item)"
@@ -281,7 +288,7 @@ const selectItem = (item) => {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div> -->
             </div>
 
             <div
