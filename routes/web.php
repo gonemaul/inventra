@@ -15,15 +15,14 @@ use App\Http\Controllers\DataImportController;
 use App\Http\Controllers\SalesRecapController;
 use App\Http\Controllers\ShopSettingController;
 use App\Services\Analysis\ProductDSSCalculator;
+use App\Http\Controllers\OtherBrowserSessionsController;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
+        'appName' => config('app.name'),
     ]);
-});
+})->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/test-dss', function (InsightService $service, ProductDSSCalculator $calculator) {
@@ -217,6 +216,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::delete('/profile/other-browser-sessions', [OtherBrowserSessionsController::class, 'destroy'])
+        ->name('other-browser-sessions.destroy');
 });
 
 Route::get('/test-telegram', function () {
