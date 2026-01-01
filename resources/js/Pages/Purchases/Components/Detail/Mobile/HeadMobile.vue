@@ -193,28 +193,30 @@ const StatCard = defineComponent({
 
                 <div
                     :class="[
-                        'flex items-center justify-between p-3  border border-l-4 rounded-lg ',
-                        total_rupiah_dipesan > total_rupiah_diterima
-                            ? 'border-l-lime-500 bg-lime-500/15 dark:bg-lime-900/10 border-lime-100 dark:border-lime-900/30 '
-                            : 'border-l-red-500 bg-red-500/15 dark:bg-red-900/10 border-red-100 dark:border-red-900/30 ',
+                        'flex items-center justify-between p-3 border border-l-4 rounded-lg transition-colors',
+                        // LOGIKA: Jika Realisasi (Diterima) melebihi Budget (Dipesan) -> Merah
+                        total_rupiah_diterima > total_rupiah_dipesan
+                            ? 'border-l-red-500 bg-red-50 border-red-100 dark:bg-red-900/20 dark:border-red-900/50'
+                            : 'border-l-emerald-500 bg-emerald-50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-900/50',
                     ]"
-                    class=""
                 >
                     <span
                         :class="[
-                            'text-xs font-semibold tracking-wide uppercase',
-                            total_rupiah_dipesan > total_rupiah_diterima
-                                ? 'text-lime-700 dark:text-lime-400'
-                                : 'text-red-700 dark:text-red-400',
+                            'text-xs font-bold tracking-wide uppercase',
+                            total_rupiah_diterima > total_rupiah_dipesan
+                                ? 'text-red-700 dark:text-red-400'
+                                : 'text-emerald-700 dark:text-emerald-400',
                         ]"
-                        >Fisik Diterima</span
                     >
+                        Fisik Diterima
+                    </span>
+
                     <span
                         :class="[
-                            'text-sm font-bold',
-                            total_rupiah_dipesan > total_rupiah_diterima
-                                ? 'text-lime-700 dark:text-lime-400'
-                                : 'text-red-700 dark:text-red-400',
+                            'text-sm font-black',
+                            total_rupiah_diterima > total_rupiah_dipesan
+                                ? 'text-red-700 dark:text-red-400'
+                                : 'text-emerald-700 dark:text-emerald-400',
                         ]"
                     >
                         {{

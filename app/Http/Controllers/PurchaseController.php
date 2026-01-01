@@ -147,7 +147,7 @@ class PurchaseController extends Controller
 
             // 4. Product (Induk): Ambil data display saja + Foreign Key untuk relasi bawahnya
             // Wajib bawa: brand_id, product_type_id, unit_id
-            'items.product:id,name,code,image_path,image_url,brand_id,product_type_id,unit_id',
+            'items.product:id,name,code,image_path,brand_id,product_type_id,unit_id',
 
             // 5. Relasi Nested (Brand, Type, Unit) - Sudah Anda optimalkan, ini oke.
             'items.product.brand:id,name',
@@ -158,10 +158,10 @@ class PurchaseController extends Controller
             'items.invoice:id,invoice_number,payment_status,total_amount',
 
             // 7. Daftar Invoice (Header): Ambil ringkasan keuangan saja
-            'invoices:id,purchase_id,invoice_number,invoice_date,due_date,total_amount,payment_status,status,invoice_image,invoice_url',
+            'invoices:id,purchase_id,invoice_number,invoice_date,due_date,total_amount,payment_status,status,invoice_image',
 
             // 8. Item di dalam Invoice: Biasanya cuma butuh snapshot/qty untuk display
-            // 'invoices.items:id,purchase_id,purchase_invoice_id,quantity,purchase_price,subtotal,item_status,product_snapshot'
+            'invoices.items:id,purchase_id,purchase_invoice_id'
         ]);
         $purchase->loadSum('invoices', 'total_amount');
         $invoice = $purchase->invoices->first() ?? new PurchaseInvoice();
@@ -447,12 +447,13 @@ class PurchaseController extends Controller
             'items.product.size'  // Relasi ke Size produk
         ])->findOrFail($id);
 
+        $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
         // 2. Data Toko (Hardcode dulu atau ambil dari Setting jika ada)
         $storeProfile = [
-            'name' => 'INVENTRA CORP',
-            'address' => 'Jl. Raya Kediri No. 123, Jawa Timur',
-            'phone' => '0812-3456-7890',
-            'email' => 'admin@inventra.com'
+            'name' => $settings['shop_name'] ?? 'INVENTRA CORP',
+            'address' => $settings['shop_address'] ?? 'Alamat Belum Diisi',
+            'phone' => $settings['shop_phone'] ?? '-',
+            'email' => ''
         ];
 
         // 3. Load View PDF
@@ -462,7 +463,7 @@ class PurchaseController extends Controller
         ]);
 
         $safeRef = str_replace(['/', '\\'], '-', $purchase->reference_no);
-        $filename = 'PO-' . $safeRef . '.pdf';
+        $filename = $safeRef . '.pdf';
 
         // 4. Set Kertas & Stream (Tampil di browser)
         $pdf->setPaper('a4', 'portrait');

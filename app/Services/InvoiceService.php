@@ -220,14 +220,18 @@ class InvoiceService
                     $subtotal = $item->subtotal;
                     $newQty = $item->quantity;
                     $newPrice = $item->purchase_price;
-                    if (is_numeric($payload['newQty']) && $payload['newQty'] > 0) {
+                    if (is_numeric($payload['newQty']) && $payload['newQty'] !== $item->quantity) {
+                        if ($payload['newQty'] > $item->quantity) {
+                            $status = PurchaseItem::STATUS_OVER; // Set status ke Pending saat ditautkan
+                        } else {
+                            $status = PurchaseItem::STATUS_PARTIAL; // Set status ke Pending saat ditautkan
+                        }
                         $newQty = $payload['newQty'];
-                        $status = PurchaseItem::STATUS_PENDING; // Set status ke Pending saat ditautkan
                     }
-                    if (is_numeric($payload['newPrice']) && $payload['newPrice'] > 0) {
+                    if (is_numeric($payload['newPrice']) && $payload['newPrice'] !== $item->purchase_price) {
                         $newPrice = $payload['newPrice'];
                         $subtotal = $newQty * $newPrice;
-                        $status = PurchaseItem::STATUS_PENDING; // Set status ke Pending saat ditautkan
+                        $status = PurchaseItem::STATUS_PRICE_CORRECTED; // Set status ke Pending saat ditautkan
                     }
                     $item->update([
                         'quantity' => $newQty,

@@ -33,7 +33,7 @@ class PurchaseItem extends Model
     const STATUS_EXTRA = 'extra'; //Susulan (Barang tidak dipesan, tapi dikirim/ditambahkan manual).
     const STATUS_OVER = 'over'; //Berlebih (Pesan 10, dikasih bonus jadi 12). Opsional
     const STATUS_REJECTED = 'rejected'; //Ditolak (Barang rusak/tidak sesuai saat diterima).
-    // const STATUS_PRICE_CORRECTED = 'price_corrected'; //Harga dikoreksi (Harga beli di nota berbeda dengan kesepakatan awal).
+    const STATUS_PRICE_CORRECTED = 'price_corrected'; //Harga dikoreksi (Harga beli di nota berbeda dengan kesepakatan awal).
 
     // Item ini milik SATU transaksi
     public function purchase(): BelongsTo

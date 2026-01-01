@@ -487,18 +487,6 @@ class PurchaseService
             throw new \Exception("Transaksi harus memiliki minimal 1 nota (invoice) yang terupload.");
         }
 
-        // 3. Cek Linkage (Apakah ada item yang menggantung?)
-        // Semua item yang punya Qty > 0 HARUS sudah tertaut ke invoice.
-        // Item dengan Qty 0 (Barang Kosong) boleh tidak tertaut.
-        $unlinkedItemsCount = $purchase->items()
-            ->where('quantity', '>', 0) // Hanya item yang ada fisiknya
-            ->whereNull('purchase_invoice_id')
-            ->count();
-
-        if ($unlinkedItemsCount > 0) {
-            throw new \Exception("Masih ada {$unlinkedItemsCount} item fisik yang belum ditautkan ke nota. Harap tautkan atau nol-kan quantity jika barang tidak ada.");
-        }
-
         // 4. Cek Total Qty
         $totalQtyReceived = $purchase->items()->sum('quantity');
         if ($totalQtyReceived <= 0) {
@@ -506,26 +494,29 @@ class PurchaseService
         }
 
         // --- LAYER 2: KALKULASI BIAYA ---
+        // Ambil item yang tertaut invoice saja
+        $linkedItems = $purchase->items()->whereNotNull('purchase_invoice_id')->get();
 
-        $shippingCost = $extraCosts['shipping_cost'] ?? 0;
-        $otherCosts = $extraCosts['other_costs'] ?? 0;
-        $totalExtraCost = $shippingCost + $otherCosts;
+        // HITUNG TOTAL NET (Qty Awal - Qty Retur)
+        // Kita hanya membagi biaya ongkir ke barang yang benar-benar kita simpan.
+        $totalNetQty = $linkedItems->sum(function ($item) {
+            return $item->quantity - ($item->rejected_qty ?? 0);
+        });
+        $totalExtraCost = ($extraCosts['shipping_cost'] ?? 0) + ($extraCosts['other_costs'] ?? 0);
 
-        // Hitung alokasi biaya per unit (Uniform Allocation)
-        // Rumus: (Total Ongkir + Lainnya) / Total Qty Barang Diterima
-        $costPerUnitAllocation = $totalExtraCost / $totalQtyReceived;
-
+        // Alokasi per unit berdasarkan barang bagus
+        $costPerUnitAllocation = $totalNetQty > 0 ? ($totalExtraCost / $totalNetQty) : 0;
 
         // --- LAYER 3: EKSEKUSI DATABASE (TRANSACTION) ---
 
-        return DB::transaction(function () use ($extraCosts, $purchase, $shippingCost, $otherCosts, $costPerUnitAllocation) {
+        return DB::transaction(function () use ($extraCosts, $purchase, $costPerUnitAllocation) {
 
             // A. Update Header Transaksi
             $purchase->update([
                 'status' => Purchase::STATUS_COMPLETED,
-                'shipping_cost' => $shippingCost,
-                'other_costs' => $otherCosts,
-                'notes' => $extraCosts['notes'],
+                'shipping_cost' => $extraCosts['shipping_cost'] ?? 0,
+                'other_costs' => $extraCosts['other_costs'] ?? 0,
+                'notes' => $extraCosts['note'] ?? null,
                 // Opsional: set tanggal selesai
                 // 'completed_at' => now(),
             ]);
@@ -533,34 +524,58 @@ class PurchaseService
             $marginAlerts = [];
             // B. Proses Setiap Item
             foreach ($purchase->items as $item) {
-                // Skip barang kosong
-                if ($item->quantity <= 0) continue;
+                // KASUS 1: ITEM TIDAK TERTAUT (Batal/Tidak Dikirim)
+                // Logic: Qty dinolkan.
+                if (is_null($item->purchase_invoice_id)) {
+                    $item->update([
+                        'quantity' => 0,
+                        'rejected_qty' => 0,
+                        'subtotal' => 0,
+                        'item_status' => 'cancelled',
+                        'note' => 'Batal (Unlinked)'
+                    ]);
+                    continue;
+                }
 
-                $product = Product::find($item->product_id);
-                if (!$product) continue;
+                // KASUS 2: ITEM TERTAUT (Ada Invoice)
+                // Hitung Qty Bersih yang akan masuk gudang
+                $netQty = $item->quantity - ($item->rejected_qty ?? 0);
 
-                // 1. Hitung HPP Final Item Ini
-                // HPP = Harga Beli di Nota + Alokasi Biaya Tambahan
+                // Jika Net Qty <= 0, artinya semua barang diretur/rusak
+                if ($netQty <= 0) {
+                    // Tandai item ini sebagai 'returned' (full retur)
+                    // $item->update([
+                    //     'item_status' => 'returned',
+                    //     'subtotal' => 0 // Tidak ada nilai stok yang masuk
+                    // ]);
+                    // Tidak perlu update stok atau harga master product
+                    continue;
+                }
+
+                // Jika ada Qty Bersih, proses sebagai stok masuk
                 $finalHpp = $item->purchase_price + $costPerUnitAllocation;
-                $item->subtotal = $item->quantity * $finalHpp;
-                $item->save();
+
+                $item->update([
+                    'subtotal' => $netQty * $finalHpp
+                ]);
+
+                // Update Master Data Produk (Harga Beli Baru)
+                $product = Product::find($item->product_id);
+                if ($product) {
+                    $product->updateWithSnapshot([
+                        'purchase_price' => $finalHpp
+                    ], 'purchase');
+                }
 
                 $newCost = $finalHpp; // Harga Beli Baru
                 $currentSelling = $product->selling_price;
 
-                // Panggil fungsi sakti tadi
-                // Kita kirim array data yang ingin diubah
-                $product->updateWithSnapshot([
-                    'purchase_price' => $finalHpp,
-                    // 'stock'          => $product->stock + $item->quantity, // Tambah stok
-                    // 'supplier_id' => $purchase->supplier_id // (Opsional: update supplier default produk)
-                ], 'purchase'); // Reason: 'purchase'
                 $this->stockService->record(
                     productId: $item->product_id,
-                    qty: $item->quantity, // Positif = Masuk
+                    qty: $netQty,
                     type: StockMovement::TYPE_PURCHASE,
                     ref: $purchase->reference_no, // Referensi PO / Invoice Supplier
-                    desc: 'Penerimaan Barang Pembelian'
+                    desc: 'Pembelian Stok' . ($item->rejected_qty > 0 ? " (Retur {$item->rejected_qty})" : "")
                 );
 
                 // hitung margin baru
@@ -568,13 +583,13 @@ class PurchaseService
                 $marginPercent = $currentSelling > 0 ? ($marginRp / $currentSelling) * 100 : 0;
 
                 // Jika Margin < 10% (Bahaya) atau Negatif (Rugi)
-                if ($marginPercent < 10) {
-                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: " . number_format($newCost) . "\nJual: " . number_format($currentSelling) . "\nMargin: <b>" . round($marginPercent, 1) . "%</b> (Tipis!)";
+                if ($marginPercent < 15) {
+                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp " . number_format($newCost) . "\nJual: Rp " . number_format($currentSelling) . "\nMargin: <b>" . round($marginPercent, 1) . "%</b> (Tipis!)";
                 }
             }
             if (!empty($marginAlerts)) {
                 $msg = "🚨 <b>MARGIN GUARDIAN ALERT!</b>\n";
-                $msg .= "Ada kenaikan harga modal di PO #{$purchase->reference_no}, segera update harga jual!\n\n";
+                $msg .= "Ada kenaikan harga modal di pembelian {$purchase->reference_no}, segera update harga jual!\n\n";
                 $msg .= implode("\n\n", $marginAlerts);
 
                 $this->telegramService->send($msg);

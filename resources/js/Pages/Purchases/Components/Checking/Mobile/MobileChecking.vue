@@ -333,7 +333,7 @@ const adjustQty = (amount) => {
 
         <div
             class="fixed z-30 w-full max-w-xs px-4 -translate-x-1/2 bottom-6 left-1/2"
-            v-if="!showSearch && !showScanner"
+            v-if="!showSearch && !showScanner && unlinkedItems"
         >
             <div class="flex gap-3">
                 <button

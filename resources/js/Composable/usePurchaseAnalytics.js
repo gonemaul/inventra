@@ -52,7 +52,6 @@ export function usePurchaseAnalytics(itemsRef) {
             metrics.total_qty_diterima += qtyReceived;
             metrics.total_rupiah_dipesan += qtyOrdered * priceOrdered;
             if (item.purchase_invoice_id) {
-                console.log(item);
                 metrics.total_rupiah_diterima += qtyReceived * priceReceived;
             }
 

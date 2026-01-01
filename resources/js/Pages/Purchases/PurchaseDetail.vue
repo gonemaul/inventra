@@ -14,6 +14,7 @@ import ConfirmModal from "@/Components/ConfirmModal.vue";
 import FinalizeModal from "./Components/Detail/FinalizeModal.vue";
 import OrderImageModal from "./Components/OrderImageModal.vue";
 import InvoiceForm from "./Components/Detail/InvoiceForm.vue";
+import BottomSheet from "@/Components/BottomSheet.vue";
 
 // Import Anak
 const DesktopDetail = defineAsyncComponent(() =>
@@ -25,7 +26,6 @@ const MobileDetail = defineAsyncComponent(() =>
 
 const props = defineProps({
     purchase: Object, // Data transaksi utama (purchase, items, supplier)
-    invoices: Object, // Koleksi invoices yang sudah ada (Dipisahkan dari objek purchase di BE untuk kejelasan)
     invoice: Object, // Nota pertama/terakhir (atau Nota baru)
     paymentStatuses: Array,
     isCheckingMode: Boolean, // [FIX] Mengubah tipe prop menjadi Boolean
@@ -38,6 +38,7 @@ const showInvoiceModal = ref(false);
 const editingInvoiceData = ref(null);
 const showFinalizeModal = ref(false);
 const showConfirmModal = ref(false);
+const showReviewModal = ref(false);
 
 // State Deteksi Layar
 const isMobile = ref(window.innerWidth < 1024);
@@ -67,18 +68,17 @@ const validationItems = ref(
 // --- STATE KONDISI UTAMA (v-if) ---
 const allowFinalize = computed(() => {
     const p = props.purchase;
+    // 1. Status PO wajib Checking
     if (p.status !== "checking") return false;
-    const hasPendingItems = p.items.some(
-        (item) => item.item_status === "pending"
-    );
-    if (hasPendingItems) return false;
+
+    // 2. Wajib ada minimal 1 Invoice
     if (p.invoices.length === 0) return false;
+
+    // 3. Semua Invoice Wajib Validated (Ini syarat mutlak)
     const allInvoicesValid = p.invoices.every((inv) => {
-        const isValid = inv.status === "validated";
-        const hasItems = inv.items && inv.items.length > 0;
-        return isValid && hasItems;
+        return inv.status === "validated" && inv.items?.length > 0;
     });
-    console.log(allInvoicesValid);
+
     return allInvoicesValid;
 });
 const canEditDeleteInvoice = computed(() =>

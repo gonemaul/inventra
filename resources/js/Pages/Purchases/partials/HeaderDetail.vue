@@ -217,9 +217,7 @@ function formatRupiah(value) {
         minimumFractionDigits: 0,
     }).format(value);
 }
-const isReceived = computed(
-    () => props.data.status === "diterima" || props.data.status === "checking"
-);
+const isReceived = computed(() => props.data.received_at);
 const totalAddedCost =
     (props.data.shipping_cost || 0) + (props.data.other_costs || 0);
 const total_nominal =
