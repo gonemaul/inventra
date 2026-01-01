@@ -5,6 +5,7 @@ namespace App\Services;
 use Carbon\Carbon;
 use App\Models\Sale;
 use App\Models\Product;
+use App\Models\Purchase;
 use App\Models\SmartInsight;
 use App\Models\PurchaseInvoice;
 use Illuminate\Support\Facades\DB;
@@ -107,6 +108,7 @@ class InsightService
 
         $projectedOut = DB::table('purchase_invoices')
             ->where('payment_status', '!=', PurchaseInvoice::PAYMENT_STATUS_PAID)
+            ->whereRelation('purchase', 'status', Purchase::STATUS_COMPLETED)
             ->whereBetween('due_date', [now(), now()->addDays(7)])
             ->sum(DB::raw('total_amount - amount_paid'));
 

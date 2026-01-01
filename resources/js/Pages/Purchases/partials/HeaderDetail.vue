@@ -43,7 +43,14 @@
                             </div>
                         </InfoCard>
                         <InfoCard label="Status">
-                            <span>{{ data.status.toUpperCase() }}</span>
+                            <span
+                                :class="[
+                                    'px-3 py-1 rounded-md text-sm uppercase font-bold border',
+                                    getStatusColor(data.status),
+                                ]"
+                            >
+                                {{ data.status }}
+                            </span>
                         </InfoCard>
 
                         <InfoCard
@@ -133,13 +140,13 @@
 
                         <InfoCard
                             label="Qty Kekurangan"
-                            :value="produk_qty_kurang"
+                            :value="data.received_at ? produk_qty_kurang : '-'"
                             type="danger"
                         />
 
                         <InfoCard
                             label="Qty Kelebihan"
-                            :value="produk_qty_lebih"
+                            :value="data.received_at ? produk_qty_lebih : '-'"
                             type="warning"
                         />
 
@@ -217,6 +224,39 @@ const totalAddedCost =
     (props.data.shipping_cost || 0) + (props.data.other_costs || 0);
 const total_nominal =
     (props.data.invoices_sum_total_amount || 0) + totalAddedCost;
+
+const getStatusColor = (status) => {
+    const map = {
+        // 1. Draft: Abu-abu (Netral)
+        draft: "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+
+        // 2. Dipesan: Biru (Info/Aktif)
+        dipesan:
+            "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+
+        // 3. Dikirim: Oranye (Proses/Perjalanan - Truk)
+        dikirim:
+            "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+
+        // 4. Diterima: Cyan/Teal (Barang sampai, fresh)
+        diterima:
+            "bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800",
+
+        // 5. Checking: Ungu (Proses Audit/Pengecekan)
+        checking:
+            "bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+
+        // 6. Selesai: Hijau (Sukses)
+        selesai:
+            "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+
+        // 7. Batal: Merah (Danger)
+        dibatalkan:
+            "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
+    };
+
+    return map[status] || "bg-gray-100 text-gray-600 border border-gray-200";
+};
 const {
     kosong,
     baru_pengganti,

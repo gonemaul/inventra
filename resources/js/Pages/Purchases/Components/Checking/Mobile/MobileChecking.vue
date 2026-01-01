@@ -73,7 +73,7 @@ const onSelectUnlinked = (item) => {
 // Dari Search / Scan
 const onSelectSearch = (product) => {
     // Cek dulu, apakah barang ini sebenarnya ada di Sisa PO?
-    const match = props.unlinkedItems.find((u) => u.product_id === product.id);
+    const match = props.unlinkedItems?.find((u) => u.product_id === product.id);
 
     if (match) {
         // Jika ADA, arahkan ke logic Link
@@ -187,7 +187,7 @@ const filteredProducts = computed(() => {
 const onScanResult = (decodedText) => {
     showScanner.value = false;
     // code only
-    const match = props.unlinkedItems.find((u) => u.code === decodedText);
+    const match = props.unlinkedItems?.find((u) => u.code === decodedText);
     if (match) {
         onSelectUnlinked(match);
     } else {
@@ -285,7 +285,8 @@ const adjustQty = (amount) => {
                             : 'text-gray-500',
                     ]"
                 >
-                    Sisa PO ({{ unlinkedItems.length }})
+                    Sisa PO
+                    {{ unlinkedItems ? "(" + unlinkedItems?.length + ")" : "" }}
                 </button>
                 <button
                     @click="activeTab = 'linked'"

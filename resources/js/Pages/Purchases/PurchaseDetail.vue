@@ -1,5 +1,11 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import {
+    ref,
+    computed,
+    onMounted,
+    onUnmounted,
+    defineAsyncComponent,
+} from "vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head } from "@inertiajs/vue3";
 
@@ -10,8 +16,12 @@ import OrderImageModal from "./Components/OrderImageModal.vue";
 import InvoiceForm from "./Components/Detail/InvoiceForm.vue";
 
 // Import Anak
-import DesktopDetail from "./Components/Detail/Desktop/DesktopDetail.vue";
-import MobileDetail from "./Components/Detail/Mobile/MobileDetail.vue";
+const DesktopDetail = defineAsyncComponent(() =>
+    import("./Components/Detail/Desktop/DesktopDetail.vue")
+);
+const MobileDetail = defineAsyncComponent(() =>
+    import("./Components/Detail/Mobile/MobileDetail.vue")
+);
 
 const props = defineProps({
     purchase: Object, // Data transaksi utama (purchase, items, supplier)
@@ -68,6 +78,7 @@ const allowFinalize = computed(() => {
         const hasItems = inv.items && inv.items.length > 0;
         return isValid && hasItems;
     });
+    console.log(allInvoicesValid);
     return allInvoicesValid;
 });
 const canEditDeleteInvoice = computed(() =>
@@ -128,21 +139,6 @@ const handleDelete = () => {
     deleteModalRef.value.open(config);
 };
 
-const updateStatus = (purchase, newStatus) => {
-    const config = {
-        title: `Konfirmasi Perubahan Status`,
-        message: `Anda yakin ingin mengubah status transaksi ${
-            purchase.reference_no
-        } menjadi ${newStatus.toUpperCase()}?`,
-        itemName: purchase.reference_no,
-        url: route("purchases.update-status", { purchase: purchase.id }),
-        method: "put",
-        // Tambahkan data status yang akan dikirim
-        data: { status: newStatus },
-    };
-    showConfirmModal.value.open(config);
-};
-
 const getActions = (row) => {
     const actions = [];
     switch (row.status) {
@@ -196,7 +192,7 @@ const actions = {
     handleEditInvoice,
     handleDeleteInvoice,
     handleDelete,
-    updateStatus,
+    // updateStatus,
     openFinalizeModal,
     getActions, // Method helper status button
     openImageModal: () => (showImageModal.value = true),

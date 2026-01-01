@@ -251,10 +251,10 @@ const formatTanggal = (date) =>
                                         : "Selisih"
                                 }}
                             </p>
-                            <p class="text-sm font-black truncate">
+                            <p class="text-sm font-black uppercase truncate">
                                 {{
                                     Math.abs(invoiceBalance) < 100
-                                        ? "SELESAI"
+                                        ? invoice.status
                                         : formatRupiah(invoiceBalance)
                                 }}
                             </p>

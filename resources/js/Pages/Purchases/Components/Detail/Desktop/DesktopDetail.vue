@@ -1,10 +1,12 @@
 <script setup>
+import { ref } from "vue";
 import { Link } from "@inertiajs/vue3";
 import Tabs from "@/Components/Tabs.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import HeaderDetail from "@/Pages/Purchases/partials/HeaderDetail.vue";
 import InvoiceTransactionTable from "@/Pages/Purchases/partials/invoiceTable.vue";
 import ItemValidationTable from "@/Pages/Purchases/partials/productTable.vue";
+import StatusModalMobile from "../StatusModalMobile.vue";
 
 // Terima semua props dari Parent
 const props = defineProps({
@@ -25,8 +27,22 @@ const tabs = [
     { key: "invoices", label: "Invoice & Pembayaran" },
     { key: "products", label: "Validasi Item" },
 ];
+const showStatusModal = ref(false); // Modal ubah status
+const targetStatus = ref("");
+const updateStatus = (purchase, newStatus) => {
+    const config = {
+        data: { status: newStatus },
+    };
+    targetStatus.value = newStatus;
+    showStatusModal.value.open(config);
+};
 </script>
 <template>
+    <StatusModalMobile
+        ref="showStatusModal"
+        :purchase="purchase"
+        v-bind:target-status="targetStatus"
+    />
     <div
         class="flex items-center gap-2 mb-3 text-sm text-gray-500 dark:text-gray-300"
     >
@@ -57,7 +73,7 @@ const tabs = [
         <button
             v-for="(action, index) in actions.getActions(purchase)"
             :key="index"
-            @click="actions.updateStatus(purchase, action.newStatus)"
+            @click="updateStatus(purchase, action.newStatus)"
             :class="{
                 'text-lime-600 font-semibold': action.isPrimary,
                 'border-b-2': action.newStatus === 'ordered', // Garis pemisah
@@ -68,9 +84,9 @@ const tabs = [
             {{ action.label }}
         </button>
         <PrimaryButton
-            v-if="purchase.status === 'checking'"
+            v-if="allowFinalize"
             :disable="!allowFinalize"
-            @click="actions.openFinalizeModal"
+            @click="actions.openFinalizeModal()"
             :class="{ 'opacity-50 cursor-not-allowed': !allowFinalize }"
         >
             Selesaikan Validasi
@@ -128,7 +144,7 @@ const tabs = [
         </a>
 
         <button
-            v-if="purchase.status === 'draft'"
+            v-if="!['selesai', 'dibatalkan'].includes(purchase.status)"
             @click="actions.openImageModal"
             class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-green-500 rounded-lg shadow-sm hover:bg-green-600 active:scale-95"
             title="Kirim Pesanan via WhatsApp"

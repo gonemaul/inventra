@@ -791,7 +791,8 @@ const localSearchKeyword = computed({
                     <form @submit.prevent="actions.submitLinkage">
                         <p
                             v-if="
-                                pageMode === 'edit' && unlinkedItems.length == 0
+                                pageMode === 'edit' &&
+                                unlinkedItems?.length == 0
                             "
                             class="py-4 text-center text-gray-500"
                         >
@@ -859,7 +860,7 @@ const localSearchKeyword = computed({
                         </div>
 
                         <div
-                            v-if="unlinkedItems.length > 0"
+                            v-if="unlinkedItems?.length > 0"
                             class="flex justify-end mt-4"
                         >
                             <PrimaryButton

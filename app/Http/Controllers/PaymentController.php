@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Inertia\Inertia;
+use App\Models\Purchase;
 use Illuminate\Http\Request;
 use App\Services\ImageService;
 use App\Models\PurchaseInvoice;
@@ -25,6 +26,8 @@ class PaymentController extends Controller
         $threeDaysLater = now()->addDays(3)->format('Y-m-d');
 
         $statsData = DB::table('purchase_invoices')
+            ->join('purchases', 'purchase_invoices.purchase_id', '=', 'purchases.id')
+            ->where('purchases.status', Purchase::STATUS_COMPLETED)
             ->selectRaw("
             -- Total Uang
             SUM(total_amount) as total_bill,
@@ -82,7 +85,8 @@ class PaymentController extends Controller
     }
     public function index()
     {
-        $query = PurchaseInvoice::with(['purchase.supplier']);
+        $query = PurchaseInvoice::with(['purchase.supplier'])
+            ->whereRelation('purchase', 'status', Purchase::STATUS_COMPLETED);
         $sortBy = $params['sort'] ?? 'due_date';
         $sortDirection = $params['order'] ?? 'asc';
         $perPage = $params['per_page'] ?? 10;

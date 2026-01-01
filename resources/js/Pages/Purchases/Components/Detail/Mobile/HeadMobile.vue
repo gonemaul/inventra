@@ -217,7 +217,11 @@ const StatCard = defineComponent({
                                 : 'text-red-700 dark:text-red-400',
                         ]"
                     >
-                        {{ rp(total_rupiah_diterima) || "-" }}
+                        {{
+                            purchase.received_at
+                                ? rp(total_rupiah_diterima)
+                                : "-"
+                        }}
                     </span>
                 </div>
             </div>
@@ -228,7 +232,7 @@ const StatCard = defineComponent({
         >
             <div class="flex items-center gap-3">
                 <div
-                    class="flex items-center justify-center w-10 h-10 text-blue-600 rounded-full bg-blue-50 dark:bg-blue-900/20 dark:text-blue-400"
+                    class="flex items-center justify-center w-10 h-10 rounded-full text-lime-600 bg-lime-50 dark:bg-lime-900/20 dark:text-lime-400"
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -281,14 +285,14 @@ const StatCard = defineComponent({
                 <StatCard label="Macam Dipesan" :value="total_macam_dipesan" />
                 <StatCard
                     label="Macam Diterima"
-                    :value="total_macam_diterima"
+                    :value="purchase.received_at ? total_macam_diterima : ''"
                     is-subtle
                 />
 
                 <StatCard label="Qty Total Pesan" :value="total_qty_dipesan" />
                 <StatCard
                     label="Qty Total Terima"
-                    :value="total_qty_diterima"
+                    :value="purchase.received_at ? total_qty_diterima : ''"
                     is-subtle
                 />
                 <StatCard
@@ -299,7 +303,7 @@ const StatCard = defineComponent({
 
                 <StatCard
                     label="Qty Kelebihan"
-                    :value="produk_qty_lebih"
+                    :value="purchase.received_at ? produk_qty_lebih : ''"
                     :is-warning="produk_qty_lebih > 0"
                 />
                 <StatCard

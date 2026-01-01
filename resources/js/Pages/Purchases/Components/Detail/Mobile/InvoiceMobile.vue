@@ -71,7 +71,7 @@ const isNew = computed(() => {
     />
     <div class="space-y-4">
         <button
-            v-if="isNew"
+            v-if="isNew && purchase.invoices.length > 0"
             @click="actions.openCreateInvoiceModal()"
             class="flex items-center justify-center w-full gap-2 py-3 font-bold transition border-2 border-dashed border-lime-300 dark:border-lime-800 bg-lime-50 dark:bg-lime-900/10 text-lime-700 dark:text-lime-400 rounded-xl hover:bg-lime-100"
         >
@@ -237,9 +237,80 @@ const isNew = computed(() => {
 
         <div
             v-if="purchase.invoices.length === 0"
-            class="py-10 text-sm text-center text-gray-400"
+            class="flex flex-col items-center justify-center py-10 border-2 border-dashed rounded-xl"
+            :class="
+                isNew
+                    ? 'border-lime-300 bg-lime-50 dark:bg-lime-900/10 dark:border-lime-700/50'
+                    : 'border-gray-200 bg-gray-50 dark:bg-gray-800/50 dark:border-gray-700'
+            "
         >
-            Belum ada nota.
+            <div v-if="isNew" class="text-center">
+                <div
+                    class="p-3 mx-auto mb-3 rounded-full bg-lime-100 w-fit dark:bg-lime-900/30"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-8 h-8 text-lime-500"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                        />
+                    </svg>
+                </div>
+                <h3
+                    class="mb-1 text-sm font-bold text-gray-800 dark:text-gray-200"
+                >
+                    Belum Ada Nota
+                </h3>
+                <p
+                    class="max-w-xs mx-auto mb-4 text-xs text-gray-500 dark:text-gray-400"
+                >
+                    Barang sudah diterima, jangan lupa upload foto nota asli
+                    dari supplier untuk arsip.
+                </p>
+
+                <button
+                    @click="actions.openCreateInvoiceModal()"
+                    class="px-4 py-2 text-xs font-bold transition bg-white border rounded-lg shadow-sm text-lime-600 border-lime-200 hover:bg-lime-50 dark:bg-gray-800 dark:border-gray-700 dark:text-lime-400 hover:shadow-md"
+                >
+                    + Upload Nota Sekarang
+                </button>
+            </div>
+
+            <div v-else class="text-center opacity-60">
+                <div
+                    class="p-3 mx-auto mb-3 bg-gray-100 rounded-full w-fit dark:bg-gray-700"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-8 h-8 text-gray-400"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                        stroke-width="2"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                    </svg>
+                </div>
+                <h3
+                    class="mb-1 text-sm font-semibold text-gray-600 dark:text-gray-300"
+                >
+                    Menunggu Barang
+                </h3>
+                <p class="max-w-xs mx-auto text-xs text-gray-400">
+                    Upload nota tersedia setelah status barang <b>Diterima</b>.
+                </p>
+            </div>
         </div>
     </div>
 </template>

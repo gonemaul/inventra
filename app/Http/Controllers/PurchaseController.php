@@ -134,14 +134,34 @@ class PurchaseController extends Controller
     public function checking(Purchase $purchase)
     {
         $purchase->load([
-            'supplier',
-            'user',
-            // Load items dan relasi bersarang untuk mendapatkan data Brand, Tipe, Unit:
-            'items.product.brand',
-            'items.product.productType',
-            'items.product.unit',
-            'items.invoice',
-            'invoices.items' // Nota yang sudah di-upload
+            // 1. Supplier: Hanya ambil data identitas, abaikan timestamps/meta data
+            'supplier:id,name,code,phone,address',
+
+            // 2. User: PENTING! Hanya ambil Nama/ID. Jangan load email/password/token (Security Risk)
+            'user:id,name',
+
+            // 3. Purchase Items: Ambil kolom data transaksi saja
+            // Wajib bawa 'product_id' agar relasi ke product jalan
+            // Wajib bawa 'purchase_invoice_id' agar relasi ke invoice jalan
+            'items:id,purchase_id,product_id,purchase_invoice_id,quantity,purchase_price,subtotal,item_status,product_snapshot',
+
+            // 4. Product (Induk): Ambil data display saja + Foreign Key untuk relasi bawahnya
+            // Wajib bawa: brand_id, product_type_id, unit_id
+            'items.product:id,name,code,image_path,image_url,brand_id,product_type_id,unit_id',
+
+            // 5. Relasi Nested (Brand, Type, Unit) - Sudah Anda optimalkan, ini oke.
+            'items.product.brand:id,name',
+            'items.product.productType:id,name',
+            'items.product.unit:id,name',
+
+            // 6. Invoice per Item: Cukup ID dan Nomor/Status Nota
+            'items.invoice:id,invoice_number,payment_status,total_amount',
+
+            // 7. Daftar Invoice (Header): Ambil ringkasan keuangan saja
+            'invoices:id,purchase_id,invoice_number,invoice_date,due_date,total_amount,payment_status,status,invoice_image,invoice_url',
+
+            // 8. Item di dalam Invoice: Biasanya cuma butuh snapshot/qty untuk display
+            // 'invoices.items:id,purchase_id,purchase_invoice_id,quantity,purchase_price,subtotal,item_status,product_snapshot'
         ]);
         $purchase->loadSum('invoices', 'total_amount');
         $invoice = $purchase->invoices->first() ?? new PurchaseInvoice();
@@ -209,10 +229,13 @@ class PurchaseController extends Controller
      */
     public function linkItemsView(Purchase $purchase, PurchaseInvoice $invoice)
     {
-        $unlinkedItems = $purchase->items()
-            ->whereNull('purchase_invoice_id')
-            ->with('product:id,name,code,stock') // Load info produk master
-            ->get();
+        $unlinkedItems = null;
+        if ($invoice->status !== PurchaseInvoice::STATUS_VALIDATED) {
+            $unlinkedItems = $purchase->items()
+                ->whereNull('purchase_invoice_id')
+                ->with('product:id,name,code,stock') // Load info produk master
+                ->get();
+        }
 
         // 3. Ambil Item yang SUDAH Tertaut ke Invoice ini (untuk detail di FE)
         $linkedItems = $invoice->items()->with('product:id,name,code')->get();

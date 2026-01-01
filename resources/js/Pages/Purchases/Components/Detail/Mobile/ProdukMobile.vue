@@ -25,12 +25,14 @@ const formatDate = (date) =>
             v-for="item in purchase.items"
             :key="item.id"
             :class="[
-                'relative p-4 transition-all bg-white border border-gray-100 shadow-sm group dark:bg-gray-900 rounded-2xl dark:border-gray-800 hover:shadow-md',
-                item.quantity < item.product_snapshot.quantity
-                    ? 'border-2 border-red-500'
-                    : item.quantity > item.product_snapshot.quantity
-                    ? 'border-2 border-yellow-600'
-                    : 'border-2 border-lime-600',
+                'relative p-4 transition-all bg-white shadow-sm group dark:bg-gray-900 rounded-2xl hover:shadow-md',
+                item.purchase_invoice_id
+                    ? item.quantity < item.product_snapshot?.quantity
+                        ? 'border-2 border-red-500'
+                        : item.quantity > item.product_snapshot?.quantity
+                        ? 'border-2 border-yellow-500'
+                        : 'border-2 border-lime-500'
+                    : 'border border-gray-100 dark:border-gray-800',
             ]"
         >
             <div class="flex gap-3 mb-3">
@@ -47,7 +49,7 @@ const formatDate = (date) =>
                         >
                             {{ item.product?.name }}
                         </h4>
-                        <button
+                        <!-- <button
                             class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                         >
                             <svg
@@ -60,13 +62,13 @@ const formatDate = (date) =>
                                     d="M6 10a2 2 0 11-4 0 2 2 0 014 0zM12 10a2 2 0 11-4 0 2 2 0 014 0zM16 12a2 2 0 100-4 2 2 0 000 4z"
                                 />
                             </svg>
-                        </button>
+                        </button> -->
                     </div>
 
                     <p class="text-[11px] text-gray-500 font-medium mt-0.5">
                         {{ item.product?.code || "-" }}
                         <span class="mx-1 text-gray-300">|</span>
-                        {{ item.product_snapshot.unit }}
+                        {{ item.product_snapshot?.unit }}
                     </p>
 
                     <div class="flex gap-1 mt-1.5 flex-wrap">
@@ -74,13 +76,13 @@ const formatDate = (date) =>
                             v-if="item.product_snapshot?.brand"
                             class="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
                         >
-                            {{ item.product_snapshot.brand }}
+                            {{ item.product_snapshot?.brand }}
                         </span>
                         <span
                             v-if="item.product_snapshot?.category"
                             class="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
                         >
-                            {{ item.product_snapshot.category }}
+                            {{ item.product_snapshot?.category }}
                         </span>
                     </div>
                 </div>
@@ -113,35 +115,41 @@ const formatDate = (date) =>
                         <span class="text-[9px] text-gray-500 block mb-0.5"
                             >Qty</span
                         >
-                        {{ item.product_snapshot.quantity }}
+                        {{ item.product_snapshot?.quantity }}
                     </div>
 
                     <div
                         :class="[
                             'p-2 text-center font-bold bg-white dark:bg-gray-900',
-                            item.quantity < item.product_snapshot.quantity
-                                ? 'text-red-600'
-                                : item.quantity > item.product_snapshot.quantity
-                                ? 'text-yellow-600'
-                                : 'text-lime-600',
+                            item.purchase_invoice_id
+                                ? item.quantity <
+                                  item.product_snapshot?.quantity
+                                    ? 'text-red-600'
+                                    : item.quantity >
+                                      item.product_snapshot?.quantity
+                                    ? 'text-yellow-600'
+                                    : 'text-lime-600'
+                                : 'text-gray-800 dark:text-gray-200',
                         ]"
                     >
                         <span
                             class="text-[9px] text-gray-400 block mb-0.5 font-normal"
                             >Qty</span
                         >
-                        {{ item.quantity ?? "-" }}
+                        {{ purchase.received_at ? item.quantity : "-" }}
 
                         <span
                             v-if="
-                                item.quantity < item.product_snapshot.quantity
+                                purchase.received_at &&
+                                item.quantity < item.product_snapshot?.quantity
                             "
                             class="ml-1 text-[9px]"
                             >↓</span
                         >
                         <span
                             v-else-if="
-                                item.quantity > item.product_snapshot.quantity
+                                purchase.received_at &&
+                                item.quantity > item.product_snapshot?.quantity
                             "
                             class="ml-1 text-[9px]"
                             >↑</span
@@ -156,17 +164,17 @@ const formatDate = (date) =>
                         <span class="text-[9px] text-gray-400 block mb-0.5"
                             >@ Harga PO</span
                         >
-                        {{ rp(item.product_snapshot.purchase_price) }}
+                        {{ rp(item.product_snapshot?.purchase_price) }}
                     </div>
 
                     <div
                         :class="[
                             'p-2 text-center font-bold bg-white dark:bg-gray-900',
                             item.purchase_price >
-                            item.product_snapshot.purchase_price
+                            item.product_snapshot?.purchase_price
                                 ? 'text-red-600'
                                 : item.purchase_price <
-                                  item.product_snapshot.purchase_price
+                                  item.product_snapshot?.purchase_price
                                 ? 'text-green-600'
                                 : 'text-gray-700 dark:text-gray-300',
                         ]"
@@ -176,21 +184,25 @@ const formatDate = (date) =>
                             >@ Harga Nota</span
                         >
                         {{
-                            item.purchase_price ? rp(item.purchase_price) : "-"
+                            purchase.received_at && item.purchase_price
+                                ? rp(item.purchase_price)
+                                : "-"
                         }}
 
                         <span
                             v-if="
+                                purchase.received_at &&
                                 item.purchase_price >
-                                item.product_snapshot.purchase_price
+                                    item.product_snapshot?.purchase_price
                             "
                             class="ml-1 text-[9px]"
                             >▲</span
                         >
                         <span
                             v-else-if="
+                                purchase.received_at &&
                                 item.purchase_price <
-                                    item.product_snapshot.purchase_price &&
+                                    item.product_snapshot?.purchase_price &&
                                 item.purchase_price > 0
                             "
                             class="ml-1 text-[9px]"
@@ -204,14 +216,14 @@ const formatDate = (date) =>
                 <div class="flex flex-col gap-1.5">
                     <div class="flex items-center gap-1.5">
                         <Link
-                            @click="
+                            :href="
                                 route('purchases.linkInvoiceItems', {
                                     purchase: purchase.id,
                                     invoice: item.purchase_invoice_id,
                                 })
                             "
                             v-if="item.purchase_invoice_id"
-                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-100 text-[10px] font-bold dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300"
+                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-lime-50 text-lime-700 border border-lime-100 text-[10px] font-bold dark:bg-lime-900/20 dark:border-lime-800 dark:text-lime-300"
                         >
                             <svg
                                 xmlns="http://www.w3.org/2000/svg"
@@ -221,7 +233,7 @@ const formatDate = (date) =>
                             >
                                 <path
                                     fill-rule="evenodd"
-                                    d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z"
+                                    d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z"
                                     clip-rule="evenodd"
                                 />
                             </svg>

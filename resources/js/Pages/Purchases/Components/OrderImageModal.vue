@@ -1,5 +1,4 @@
 <script setup>
-import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import { ref, computed } from "vue";
 import html2canvas from "html2canvas";
@@ -13,6 +12,7 @@ const props = defineProps({
 
 const emit = defineEmits(["close"]);
 const loading = ref(false);
+const customMessage = ref("");
 
 // Helper Format Tanggal
 const formatDate = (date) =>
@@ -34,11 +34,12 @@ const getWhatsappUrl = () => {
     text += `Detail pesanan ada di gambar terlampir.`;
 
     // Jika ada item yang terpotong di gambar, ingatkan di teks
+    const message = customMessage.value != "" ? customMessage.value : text;
     if (remainingCount.value > 0) {
-        text += `\n(Catatan: Ada ${remainingCount.value} barang lagi yang tidak muat di gambar. Mohon cek detail lengkapnya).`;
+        message += `\n(Catatan: Ada ${remainingCount.value} barang lagi yang tidak muat di gambar. Mohon cek detail lengkapnya).`;
     }
 
-    return `https://wa.me/${p}?text=${encodeURIComponent(text)}`;
+    return `https://wa.me/${p}?text=${encodeURIComponent(message)}`;
 };
 
 // --- LOGIC "CUT" (PEMBATASAN ITEM) ---
@@ -95,9 +96,9 @@ const processToWhatsapp = async () => {
         @close="$emit('close')"
         title="📸 Preview Nota Order"
     >
-        <div class="p-6 bg-white dark:bg-gray-800">
+        <div class="bg-white dark:bg-gray-800">
             <div
-                class="flex justify-center p-4 mb-6 overflow-hidden bg-gray-100 border border-gray-200 rounded-xl"
+                class="flex justify-center p-4 mb-4 overflow-y-auto max-h-[350px] bg-gray-200 border border-gray-200 rounded-lg"
             >
                 <div
                     id="clean-receipt"
@@ -173,11 +174,27 @@ const processToWhatsapp = async () => {
                 </div>
             </div>
 
+            <div class="mb-5 space-y-2">
+                <label
+                    for="wa-caption"
+                    class="block text-xs font-bold tracking-wide text-gray-500 uppercase dark:text-gray-400"
+                >
+                    Pesan Custom
+                </label>
+                <textarea
+                    id="wa-caption"
+                    v-model="customMessage"
+                    rows="2"
+                    placeholder="Contoh: Halo gan, mohon segera diproses ya..."
+                    class="w-full px-4 py-3 text-sm text-gray-900 transition-all border border-gray-300 resize-none bg-gray-50 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white"
+                ></textarea>
+            </div>
+
             <div class="flex flex-col gap-3">
                 <button
                     @click="processToWhatsapp"
                     :disabled="loading"
-                    class="flex items-center justify-center w-full gap-2 py-3 font-bold text-white transition transform bg-green-500 shadow-lg hover:bg-green-600 rounded-xl shadow-green-200 dark:shadow-none active:scale-95"
+                    class="flex items-center justify-center w-full gap-2 py-3 font-bold text-white transition transform bg-green-500 shadow-lg hover:bg-green-600 rounded-xl shadow-green-200 dark:shadow-none active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     <svg
                         v-if="!loading"

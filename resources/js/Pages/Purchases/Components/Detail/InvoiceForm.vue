@@ -5,6 +5,7 @@ import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import InputError from "@/Components/InputError.vue";
 import TextInput from "@/Components/TextInput.vue";
+import InputRupiah from "@/Components/InputRupiah.vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import BottomSheet from "@/Components/BottomSheet.vue";
 
@@ -101,6 +102,10 @@ function closeModal() {
     form.reset();
     emit("close");
 }
+function parseRupiah(value) {
+    if (!value && value !== 0) return "";
+    return new Intl.NumberFormat("id-ID").format(value);
+}
 </script>
 
 <template>
@@ -160,20 +165,12 @@ function closeModal() {
                                 Total Nominal (Rp)
                                 <span class="text-red-500">*</span>
                             </label>
-                            <div class="relative">
-                                <span
-                                    class="absolute text-sm font-bold text-gray-500 -translate-y-1/2 left-3 top-1/2"
-                                    >Rp</span
-                                >
-                                <TextInput
-                                    v-model.number="form.total_amount"
-                                    type="number"
-                                    required
-                                    min="1"
-                                    placeholder="0"
-                                    class="w-full py-3 pl-10 font-bold text-gray-800"
-                                />
-                            </div>
+                            <InputRupiah
+                                v-model="form.total_amount"
+                                placeholder="0"
+                                min="1"
+                                class="w-full py-3 pl-10 font-bold text-gray-800"
+                            />
                             <InputError :message="form.errors.total_amount" />
                         </div>
                     </div>

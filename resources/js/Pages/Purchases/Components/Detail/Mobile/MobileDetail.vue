@@ -5,7 +5,7 @@ import HeadMobile from "./HeadMobile.vue";
 import InvoiceMobile from "./InvoiceMobile.vue";
 import { Link } from "@inertiajs/vue3";
 import ProdukMobile from "./ProdukMobile.vue";
-import StatusModalMobile from "./StatusModalMobile.vue";
+import StatusModalMobile from "../StatusModalMobile.vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import BottomSheet from "../../../../../Components/BottomSheet.vue";
 
@@ -51,15 +51,35 @@ const formatDate = (date) =>
 
 const getStatusColor = (status) => {
     const map = {
-        draft: "bg-gray-100 text-gray-600",
-        ordered: "bg-blue-100 text-blue-700 border-blue-200",
-        shipped: "bg-yellow-100 text-yellow-700 border-yellow-200",
-        received: "bg-lime-100 text-lime-700 border-lime-200",
-        checking: "bg-purple-100 text-purple-700 border-purple-200",
-        completed: "bg-green-100 text-green-700 border-green-200",
-        cancelled: "bg-red-100 text-red-700 border-red-200",
+        // 1. Draft: Abu-abu (Netral)
+        draft: "bg-gray-100 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700",
+
+        // 2. Dipesan: Biru (Info/Aktif)
+        dipesan:
+            "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800",
+
+        // 3. Dikirim: Oranye (Proses/Perjalanan - Truk)
+        dikirim:
+            "bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-800",
+
+        // 4. Diterima: Cyan/Teal (Barang sampai, fresh)
+        diterima:
+            "bg-cyan-50 text-cyan-700 border border-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:border-cyan-800",
+
+        // 5. Checking: Ungu (Proses Audit/Pengecekan)
+        checking:
+            "bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800",
+
+        // 6. Selesai: Hijau (Sukses)
+        selesai:
+            "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/30 dark:text-green-300 dark:border-green-800",
+
+        // 7. Batal: Merah (Danger)
+        dibatalkan:
+            "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800",
     };
-    return map[status] || "bg-gray-100";
+
+    return map[status] || "bg-gray-100 text-gray-600 border border-gray-200";
 };
 
 const isOpsi = computed(() => {
@@ -121,7 +141,7 @@ const invoiceCount = computed(() => {
             </div>
             <span
                 :class="[
-                    'px-3 py-1 rounded-full text-[10px] uppercase font-bold border dark:text-gray-900 text-gray-200',
+                    'px-3 py-1 rounded-full text-[10px] uppercase font-bold border',
                     getStatusColor(purchase.status),
                 ]"
             >
@@ -218,7 +238,9 @@ const invoiceCount = computed(() => {
                 </button>
 
                 <button
-                    v-else-if="purchase.status == 'draft'"
+                    v-else-if="
+                        !['selesai', 'dibatalkan'].includes(purchase.status)
+                    "
                     @click="actions.openImageModal"
                     class="flex-1 py-3.5 rounded-xl bg-green-600 text-white font-bold text-sm shadow-lg shadow-green-500/30 flex items-center justify-center gap-2"
                 >
@@ -282,9 +304,7 @@ const invoiceCount = computed(() => {
                             fill="currentColor"
                         >
                             <path
-                                fill-rule="evenodd"
-                                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v3.276a1 1 0 01-2 0V13.116a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                                clip-rule="evenodd"
+                                d="M8 5a1 1 0 100 2h5.586l-1.293 1.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L13.586 5H8zM12 15a1 1 0 100-2H6.414l1.293-1.293a1 1 0 10-1.414-1.414l-3 3a1 1 0 000 1.414l3 3a1 1 0 001.414-1.414L6.414 15H12z"
                             />
                         </svg>
                     </div>

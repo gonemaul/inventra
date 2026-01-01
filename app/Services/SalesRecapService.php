@@ -28,8 +28,7 @@ class SalesRecapService
      */
     public function get(array $params)
     {
-        $query = Sale::query()
-            ->with(['user', 'items']);
+        $query = Sale::query();
 
         // 1. Filter Trashed (Sampah)
         $query->when($params['trashed'] ?? false, function ($q) {

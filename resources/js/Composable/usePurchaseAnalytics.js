@@ -51,7 +51,10 @@ export function usePurchaseAnalytics(itemsRef) {
             metrics.total_qty_dipesan += qtyOrdered;
             metrics.total_qty_diterima += qtyReceived;
             metrics.total_rupiah_dipesan += qtyOrdered * priceOrdered;
-            metrics.total_rupiah_diterima += qtyReceived * priceReceived;
+            if (item.purchase_invoice_id) {
+                console.log(item);
+                metrics.total_rupiah_diterima += qtyReceived * priceReceived;
+            }
 
             // --- B. ANALISIS STATUS PER BARIS ---
 
@@ -100,7 +103,6 @@ export function usePurchaseAnalytics(itemsRef) {
             }
         });
 
-        console.log(itemsData);
         // Catatan: Metrik "macam" di sini berarti "jumlah baris item unik" yang memenuhi kriteria.
         return metrics;
     });

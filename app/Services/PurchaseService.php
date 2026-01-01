@@ -29,7 +29,7 @@ class PurchaseService
     public function get(array $params)
     {
         $query = Purchase::query()
-            ->with(['supplier', 'user', 'invoices']);
+            ->with(['supplier', 'user']);
 
         // 1. Filter Trashed (Sampah)
         $query->when($params['trashed'] ?? false, function ($q) {
@@ -339,6 +339,10 @@ class PurchaseService
         // [TIMESTAMPING] Catat tanggal barang tiba
         if ($newStatus === Purchase::STATUS_RECEIVED && is_null($purchase->received_at)) {
             $purchase->received_at = now();
+        }
+
+        if ($newStatus === Purchase::STATUS_SHIPPED && $oldStatus === Purchase::STATUS_RECEIVED) {
+            $purchase->received_at = null;
         }
 
         // [FINAL ACTION] Logika Penambahan Stok (Completed)

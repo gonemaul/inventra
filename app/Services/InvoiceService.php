@@ -300,9 +300,13 @@ class InvoiceService
             // Update: Set purchase_invoice_id menjadi NULL
             $unlinkedCount = $invoice->purchase->items()
                 ->whereIn('id', $itemIds)
-                ->where('purchase_invoice_id', $invoice->id) // Hanya item yang tertaut ke nota ini
-                ->update(['purchase_invoice_id' => null, 'item_status' => PurchaseItem::STATUS_PENDING]);
-
+                ->where('purchase_invoice_id', $invoice->id)
+                ->update([
+                    'purchase_invoice_id' => null,
+                    'item_status' => PurchaseItem::STATUS_PENDING,
+                    'quantity' => DB::raw("product_snapshot->'$.quantity'"),
+                    'purchase_price' => DB::raw("product_snapshot->'$.purchase_price'")
+                ]);
             if ($unlinkedCount === 0) {
                 throw new \Exception('Tidak ada item yang dilepas. Item mungkin sudah tertaut ke nota lain.');
             }
