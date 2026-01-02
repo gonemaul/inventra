@@ -161,26 +161,26 @@ class SendMorningReport extends Command
         }
 
         // Bulanan
-        // if (now()->day === 1) {
-        //     // Hitung Rekap Bulan Lalu
-        //     $lastMonth = now()->subMonth();
-        //     $bulanLalu = Sale::whereMonth('created_at', $lastMonth->month)
-        //         ->whereYear('created_at', $lastMonth->year)->get();
-        //     $omzetBulanLalu = $bulanLalu->sum('total_revenue');
-        //     $profitBulanLalu = $bulanLalu->sum('total_profit');
+        if (now()->day === 1) {
+            // Hitung Rekap Bulan Lalu
+            $lastMonth = now()->subMonth();
+            $bulanLalu = Sale::whereMonth('created_at', $lastMonth->month)
+                ->whereYear('created_at', $lastMonth->year)->get();
+            $omzetBulanLalu = $bulanLalu->sum('total_revenue');
+            $profitBulanLalu = $bulanLalu->sum('total_profit');
 
-        //     $totalTrx = Sale::whereMonth('created_at', $lastMonth->month)
-        //         ->whereYear('created_at', $lastMonth->year)
-        //         ->count();
+            $totalTrx = Sale::whereMonth('created_at', $lastMonth->month)
+                ->whereYear('created_at', $lastMonth->year)
+                ->count();
 
-        //     $msgBulanan = "🗓 <b>REKAP BULANAN (" . $lastMonth->isoFormat('MMMM Y') . ")</b>\n";
-        //     $msgBulanan .= "Total Omzet: <b>Rp " . number_format($omzetBulanLalu, 0, ',', '.') . "</b>\n";
-        //     $msgBulanan .= "Total Profit: <b>Rp " . number_format($profitBulanLalu, 0, ',', '.') . "</b>\n";
-        //     $msgBulanan .= "Total Transaksi: {$totalTrx} struk\n";
-        //     $msgBulanan .= "<i>Performance review bulan baru dimulai!</i> 🚀\n\n";
+            $msgBulanan = "🗓 <b>REKAP BULANAN (" . $lastMonth->isoFormat('MMMM Y') . ")</b>\n";
+            $msgBulanan .= "Total Omzet: <b>Rp " . number_format($omzetBulanLalu, 0, ',', '.') . "</b>\n";
+            $msgBulanan .= "Total Profit: <b>Rp " . number_format($profitBulanLalu, 0, ',', '.') . "</b>\n";
+            $msgBulanan .= "Total Transaksi: {$totalTrx} struk\n";
+            $msgBulanan .= "<i>Performance review bulan baru dimulai!</i> 🚀\n\n";
 
-        //     // Kirim terpisah atau gabung ke laporan pagi
-        //     TelegramService::send($msgBulanan);
-        // }
+            // Kirim terpisah atau gabung ke laporan pagi
+            TelegramService::send($msgBulanan);
+        }
     }
 }

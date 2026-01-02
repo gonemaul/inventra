@@ -22,17 +22,17 @@ class SendFinancialReport extends Command
         // ==========================================
         // 1. LAPORAN BULANAN (Khusus Tanggal 1)
         // ==========================================
-        // if (now()->day === 1) {
-        $this->appendMonthlyReport($message);
-        // $message .= "\n------------------------------------------------------------\n\n";
-        // }
+        if (now()->day === 1) {
+            $this->appendMonthlyReport($message);
+            // $message .= "\n------------------------------------------------------------\n\n";
+        }
         // ==========================================
         // 2. LAPORAN MINGGUAN (Khusus Hari Senin)
         // ==========================================
-        // if (now()->isMonday()) {
-        $this->appendWeeklyReport($message);
-        // $message .= "\n------------------------------------------------------------\n\n";
-        // }
+        if (now()->isMonday()) {
+            $this->appendWeeklyReport($message);
+            // $message .= "\n------------------------------------------------------------\n\n";
+        }
         // ==========================================
         // 3. LAPORAN HARIAN (Snapshot Siang Ini)
         // ==========================================
