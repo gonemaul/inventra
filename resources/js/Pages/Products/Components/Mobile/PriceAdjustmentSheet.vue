@@ -2,11 +2,12 @@
 import { computed, watch } from "vue";
 import { useForm } from "@inertiajs/vue3";
 import { useActionLoading } from "@/Composable/useActionLoading";
+import InputRupiah from "@/Components/InputRupiah.vue";
 
 const props = defineProps({
     product: Object,
 });
-
+console.log(props.product);
 const emit = defineEmits(["close", "success"]);
 const { isActionLoading } = useActionLoading();
 const form = useForm({
@@ -24,6 +25,9 @@ const formatRupiah = (num) => {
         minimumFractionDigits: 0,
     }).format(num || 0);
 };
+function parseRupiah(value) {
+    return parseInt(String(value).replace(/[^0-9]/g, "")) || 0;
+}
 
 // Computed: Hitung Profit (Selisih)
 const profitNominal = computed(() => {
@@ -33,23 +37,11 @@ const profitNominal = computed(() => {
     );
 });
 
-const oldProfitNominal = computed(() => {
-    return (
-        (parseInt(props.product?.selling_price) || 0) -
-        (parseInt(props.product?.purchase_price) || 0)
-    );
-});
-
 // Computed: Hitung Margin % (Markup dari HPP)
 const profitPercent = computed(() => {
-    const buy = parseInt(form.purchase_price) || 0;
-    if (buy <= 0) return 0;
-    return ((profitNominal.value / buy) * 100).toFixed(1);
-});
-const oldProfitPercent = computed(() => {
-    const buy = parseInt(props.product?.purchase_price) || 0;
-    if (buy <= 0) return 0;
-    return ((oldProfitNominal.value / buy) * 100).toFixed(1);
+    const sell = parseInt(form.selling_price) || 0;
+    if (sell <= 0) return 0;
+    return ((profitNominal.value / sell) * 100).toFixed(1);
 });
 
 // Helper: Set Harga Jual berdasarkan target margin %
@@ -130,20 +122,14 @@ const submit = () => {
                     <label
                         class="block text-[10px] font-bold text-yellow-700 dark:text-yellow-500 uppercase tracking-wider mb-1"
                     >
-                        Harga Beli (HPP) | Rp {{ product?.purchase_price }}
+                        Harga Beli (HPP) |
+                        {{ formatRupiah(product?.purchase_price) }}
                     </label>
-                    <div class="relative">
-                        <span
-                            class="absolute left-0 top-1.5 text-sm font-bold text-yellow-600/50"
-                            >Rp</span
-                        >
-                        <input
-                            v-model="form.purchase_price"
-                            type="number"
-                            placeholder="0"
-                            class="w-full p-0 text-xl font-black text-gray-800 placeholder-gray-300 bg-transparent border-none pl-7 dark:text-white focus:ring-0"
-                        />
-                    </div>
+                    <InputRupiah
+                        v-model="form.purchase_price"
+                        placeholder="0"
+                        class="w-full p-0 text-xl font-black text-left text-gray-800 placeholder-gray-300 bg-transparent border-none dark:text-white focus:ring-0"
+                    />
                     <p
                         v-if="form.errors.purchase_price"
                         class="text-[10px] text-red-500 mt-1"
@@ -158,20 +144,14 @@ const submit = () => {
                     <label
                         class="block text-[10px] font-bold text-lime-700 dark:text-lime-500 uppercase tracking-wider mb-1"
                     >
-                        Harga Jual | Rp {{ product?.selling_price }}
+                        Harga Jual | {{ formatRupiah(product?.selling_price) }}
                     </label>
-                    <div class="relative">
-                        <span
-                            class="absolute left-0 top-1.5 text-sm font-bold text-lime-600/50"
-                            >Rp</span
-                        >
-                        <input
-                            v-model="form.selling_price"
-                            type="number"
-                            placeholder="0"
-                            class="w-full p-0 text-xl font-black text-gray-800 placeholder-gray-300 bg-transparent border-none pl-7 dark:text-white focus:ring-0"
-                        />
-                    </div>
+                    <InputRupiah
+                        v-model="form.selling_price"
+                        placeholder="0"
+                        class="w-full p-0 text-xl font-black text-left text-gray-800 placeholder-gray-300 bg-transparent border-none dark:text-white focus:ring-0"
+                    />
+
                     <p
                         v-if="form.errors.selling_price"
                         class="text-[10px] text-red-500 mt-1"
@@ -184,7 +164,7 @@ const submit = () => {
             <div>
                 <label
                     class="text-[10px] text-gray-400 font-bold uppercase mb-2 block"
-                    >Set Profit Cepat (%)</label
+                    >Set Profit Cepat (%) | Markup</label
                 >
                 <div class="flex gap-2 pb-2 overflow-x-auto no-scrollbar">
                     <button
@@ -219,7 +199,6 @@ const submit = () => {
                                 ? "Potensi Rugi"
                                 : "Estimasi Profit"
                         }}
-                        | Rp {{ oldProfitNominal }}
                     </span>
                     <span
                         class="text-xl font-black"
@@ -236,7 +215,10 @@ const submit = () => {
                 <div class="text-right">
                     <span
                         class="text-[10px] text-gray-400 uppercase font-bold block mb-0.5"
-                        >Margin | {{ oldProfitPercent }} %
+                        >Target Margin |
+                        {{ product.current_margin["percent"] }} % ({{
+                            formatRupiah(product.current_margin["nominal"])
+                        }})
                     </span>
                     <span
                         class="inline-block px-2 py-1 text-sm font-bold rounded"

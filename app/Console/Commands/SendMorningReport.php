@@ -75,7 +75,7 @@ class SendMorningReport extends Command
             // 1. List Tagihan
             if ($dueInvoices->count() > 0) {
                 foreach ($dueInvoices as $inv) {
-                    $diff = now()->diffInDays(Carbon::parse($inv->due_date), false);
+                    $diff = round(now()->diffInDays(Carbon::parse($inv->due_date), false));
 
                     // Logic Label Waktu
                     if ($diff < 0) $label = "🔥 LEWAT JATUH TEMPO";

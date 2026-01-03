@@ -229,15 +229,19 @@ const monthlyGrowth = computed(() => {
                     </div>
                 </div>
                 <div
-                    class="p-2 text-center border border-blue-100 rounded-lg bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800"
+                    :class="[
+                        'p-2 text-center border  rounded-lg ',
+                        data.is_margin_low
+                            ? 'border-red-100 bg-red-50 dark:bg-red-900/20 dark:border-red-800 text-red-600 dark:text-red-400'
+                            : 'border-blue-100 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 text-blue-600 dark:text-blue-400',
+                    ]"
                 >
-                    <div class="text-[10px] text-blue-400 uppercase">
-                        Profit
-                    </div>
-                    <div
-                        class="text-sm font-bold text-blue-600 dark:text-blue-400"
-                    >
-                        {{ data.financials.margin.percent }}%
+                    <div class="text-[10px] uppercase">Profit</div>
+                    <div class="flex flex-col items-center text-sm font-bold">
+                        <span> {{ data.current_margin["percent"] }}% </span>
+                        <span class="!text-[10px] mt-1">
+                            {{ formatRupiah(data.current_margin["nominal"]) }}
+                        </span>
                     </div>
                 </div>
             </div>

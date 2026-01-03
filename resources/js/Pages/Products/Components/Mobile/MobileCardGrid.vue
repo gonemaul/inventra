@@ -108,12 +108,12 @@ const isStockLow = computed(() => {
                     <span
                         class="text-[9px] font-bold px-1 rounded"
                         :class="
-                            data.financials.margin.percent > 20
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
+                            data.is_margin_low
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-green-100 text-green-700'
                         "
                     >
-                        {{ data.financials.margin.percent }}%
+                        {{ data.current_margin["percent"] }}%
                     </span>
                 </div>
             </div>

@@ -20,6 +20,7 @@ const props = defineProps({
 const { isActionLoading } = useActionLoading();
 const showScanCode = ref(false);
 const form = useForm({
+    type: "",
     // Relasi
     category_id: props.product?.category_id || null,
     unit_id: props.product?.unit_id || null,
@@ -93,7 +94,9 @@ const onMarginPercentChange = () => {
     form.margin_nominal = Math.round(nominal);
 
     // Update Harga Jual
-    form.selling_price = Math.round(buy + nominal);
+    if (props.mode == "create") {
+        form.selling_price = Math.round(buy + nominal);
+    }
 };
 
 const onMarginNominalChange = () => {
@@ -126,6 +129,7 @@ const submitForm = () => {
             onFinish: () => (isActionLoading.value = false),
         });
     } else {
+        form.type = "full";
         form.transform((data) => ({
             ...data,
             _method: "put",

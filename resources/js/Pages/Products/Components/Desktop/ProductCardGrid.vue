@@ -39,15 +39,6 @@ const isStockLow = computed(() => {
     return hasInsight;
 });
 
-// Logic Profit
-const profitInfo = computed(() => {
-    const buy = props.data.purchase_price || 0;
-    const sell = props.data.selling_price || 0;
-    const profit = sell - buy;
-    const percent = buy > 0 ? ((profit / buy) * 100).toFixed(0) : 0;
-    return { amount: profit, percent: percent };
-});
-
 const isTrashed = computed(() => props.data.deleted_at !== null);
 </script>
 <template>
@@ -215,9 +206,14 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                         >Harga Jual</span
                     >
                     <span
-                        class="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded"
+                        :class="[
+                            'text-[10px] font-bold px-1.5 py-0.5 rounded',
+                            data.is_margin_low
+                                ? 'bg-red-100 text-red-700'
+                                : 'bg-green-100 text-green-700',
+                        ]"
                     >
-                        +{{ profitInfo.percent }}%
+                        +{{ data.current_margin["percent"] }}%
                     </span>
                 </div>
 

@@ -1,5 +1,6 @@
 <script setup>
-import { ref, watch, useAttrs, nextTick } from "vue";
+import { ref, watch, useAttrs, computed } from "vue";
+import { twMerge } from "tailwind-merge";
 
 defineOptions({
     inheritAttrs: false,
@@ -18,6 +19,15 @@ const emit = defineEmits(["update:modelValue"]);
 const displayValue = ref("");
 const attrs = useAttrs();
 
+const inputClasses = computed(() => {
+    return twMerge(
+        // 1. Default Class
+        "w-full py-3 pl-4 pr-4 border border-gray-300 rounded-lg shadow-sm focus:border-lime-500 focus:ring-lime-500 transition-all duration-200 placeholder-gray-400 text-gray-900 text-right",
+
+        // 2. Custom Class dari Parent (akan menimpa default jika konflik)
+        attrs.class
+    );
+});
 // --- FORMATTER ---
 const formatRupiah = (number) => {
     if (
@@ -131,17 +141,8 @@ watch(
             :value="displayValue"
             @input="onInput"
             @keydown="onKeydown"
-            v-bind="$attrs"
-            :class="[
-                // 1. CLASS DEFAULT
-                'w-full py-3 pl-4 pr-4 border border-gray-300 rounded-lg shadow-sm focus:border-lime-500 focus:ring-lime-500 transition-all duration-200 placeholder-gray-400 text-gray-900',
-
-                // Align right biasanya lebih enak untuk input uang (opsional, hapus jika tidak suka)
-                'text-right',
-
-                // 2. CLASS CUSTOM DARI PARENT
-                attrs.class,
-            ]"
+            v-bind="{ ...$attrs, class: null }"
+            :class="inputClasses"
         />
     </div>
 </template>

@@ -339,25 +339,15 @@ class ProductService
                 );
             }
         } else if ($data['type'] === 'price') {
-            $marginRp = $data['selling_price'] - $data['purchase_price'];
-            $marginPercent = $data['selling_price'] > 0
-                ? ($marginRp / $data['selling_price']) * 100
-                : 0;
-
             $product->updateWithSnapshot([
                 'purchase_price' => $data['purchase_price'],
                 'selling_price' => $data['selling_price'],
-                'target_margin_percent' => $marginPercent,
             ]);
-            if ($marginPercent < $product->target_margin_percent) {
-                $this->sendMarginAlert($product, [
-                    'selling_price' => $data['selling_price'],
-                    'purchase_price' => $data['purchase_price'],
-                    'margin_rp' => $marginRp,
-                    'margin_percent' => $marginPercent,
-                ]);
+            if ($product->is_margin_low) {
+                $this->calculator->sendMarginAlert($product);
             }
         } else {
+            // dd($data);
             $product->update($data);
         }
         if ($imageFile) {
@@ -466,38 +456,5 @@ class ProductService
         // 5. Gabungkan Hasil Akhir
         // Hasil: MAT-SEM-TR-001
         return $prefix . '-' . str_pad((string)$sequence, 3, '0', STR_PAD_LEFT);
-    }
-
-    private function sendMarginAlert($product, $analysis)
-    {
-        if (!Cache::has('notif_critical_marginLow_' . $product->id)) {
-            // A. Buat Pesan Singkat & Padat (Actionable)
-            $msg  = "⚠️ <b>Margin KRITIS ALERT!</b>\n\n";
-            $msg .= "📦 <b>{$product->name}</b>\n";
-            $msg .= "Sisa Stok: <b>{$analysis['current_stock']} {$product->unit->name}</b>\n";
-            $msg .= "Habis dalam: <b>{$analysis['days_left']} hari</b>\nPada Tgl: {$analysis['stockout_date']}\n";
-            $msg .= "<i>Saran: Segera order {$analysis['suggested_qty']} pcs</i>";
-
-            // B. Kirim Telegram Langsung
-            TelegramService::send($msg);
-
-            SmartInsight::updateOrCreate(
-                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_MARGIN_ALERT],
-                [
-                    'severity' => SmartInsight::SEVERITY_WARNING,
-                    'title'    => 'Peringatan Margin Tipis: ' . $product->name,
-                    'message'  => "Margin produk ini hanya " . round($analysis['margin_percent'], 2) . "%. Pertimbangkan untuk menaikkan harga jual.",
-                    'payload'  => [
-                        'current_margin_percent' => $analysis['margin_percent'],
-                        'target_margin_percent'  => $product->target_margin_percent,
-                    ],
-                    'action_url' => '/products/' . $product->id,
-                    'updated_at' => now(),
-                    'is_read'     => false,
-                    'is_notified' => true,
-                ]
-            );
-            Cache::put('notif_critical_' . $product->id, true, now()->addHours(6));
-        }
     }
 }

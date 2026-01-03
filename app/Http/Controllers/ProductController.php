@@ -168,6 +168,7 @@ class ProductController extends Controller
     {
         // dd($request);
         $data = $request->validated();
+
         $this->productService->update($product, $data);
 
         return Redirect::route('products.index')

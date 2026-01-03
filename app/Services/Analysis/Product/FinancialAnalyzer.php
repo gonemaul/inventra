@@ -54,17 +54,15 @@ class FinancialAnalyzer
     private function analyzeMargin(Product $product): array
     {
         $buy = (float) $product->purchase_price;
-        $sell = (float) $product->selling_price;
-        $marginRp = $sell - $buy;
-        // Menghindari error division by zero jika harga beli 0 (misal barang bonus)
-        $marginPercent = $buy > 0 ? ($marginRp / $buy) * 100 : 100;
+        $marginRp = $product->current_margin['nominal'];
+        $marginPercent = $product->current_margin['percent'];
         // Logic Alert:
-        $isCritical = ($marginPercent < 10 && $buy > 0);
-        $isHighMargin = ($marginPercent > 40);
+        $isCritical = ($marginPercent < $product->target_margin_percent && $buy > 0);
+        $isHighMargin = ($marginPercent > ($product->target_margin_percent + 15)); // Lebih dari 30% di atas target
 
         return [
             'rp'          => $marginRp,
-            'percent'     => round($marginPercent, 1),
+            'percent'     => $marginPercent,
             'is_critical' => $isCritical,
             'is_high_margin' => $isHighMargin,
             'message'     => $isCritical ? "Profit Tipis" : ($isHighMargin ? "Profit Tebal" : "Normal")

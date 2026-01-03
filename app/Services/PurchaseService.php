@@ -572,21 +572,19 @@ class PurchaseService
                     ref: $purchase->reference_no, // Referensi PO / Invoice Supplier
                     desc: 'Pembelian Stok' . ($item->rejected_qty > 0 ? " (Retur {$item->rejected_qty})" : "")
                 );
+                if ($product) {
+                    $product->updateWithSnapshot([
+                        'purchase_price' => $finalHpp,
+                    ], 'purchase');
+                }
 
                 // hitung margin baru
                 $marginRp = $currentSelling - $newCost;
                 $marginPercent = $currentSelling > 0 ? ($marginRp / $currentSelling) * 100 : 0;
 
                 // Jika Margin < 10% (Bahaya) atau Negatif (Rugi)
-                if ($marginPercent < $product->target_margin_percent) {
-                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp " . number_format($newCost) . "\nJual: Rp " . number_format($currentSelling) . "\nMargin: <b>" . round($marginPercent, 1) . "%</b> (Tipis!)";
-                }
-
-                if ($product) {
-                    $product->updateWithSnapshot([
-                        'purchase_price' => $finalHpp,
-                        'target_margin_percent' => $marginPercent,
-                    ], 'purchase');
+                if ($product->is_margin_low) {
+                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp " . number_format($newCost) . "\nJual: Rp " . number_format($currentSelling) . "\nMargin: <b>" . $product->current['percent'] . "%</b> (Tipis!)";
                 }
             }
             if (!empty($marginAlerts)) {

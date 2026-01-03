@@ -5,6 +5,9 @@ namespace App\Services\Analysis;
 use Carbon\Carbon;
 use App\Models\Product;
 use App\Models\SaleItem;
+use App\Models\SmartInsight;
+use App\Services\TelegramService;
+use Illuminate\Support\Facades\Cache;
 use App\Services\Analysis\Product\FinancialAnalyzer;
 use App\Services\Analysis\Product\InventoryAnalyzer;
 
@@ -57,7 +60,7 @@ class ProductDSSCalculator
      */
     public function calculateTrendHealth(Product $product): array
     {
-        $thisMonthStart = now()->subDays(30);
+        $thisMonthStart = now()->subDays(value: 30);
         $lastMonthStart = now()->subDays(60);
 
         // Hitung Qty Bulan Ini
@@ -97,17 +100,53 @@ class ProductDSSCalculator
      * LOGIC 4: ACTION MARGIN ALERT
      * (Rekomendasi Naikkan Harga Jika Margin Terlalu Rendah)
      */
-    public function checkAndSuggestMarginAction(Product $product): ?string
+    public function sendMarginAlert($product)
     {
-        $financialData = $this->calculateFinancialHealth($product);
-        $currentMargin = $financialData['current_margin_percent'] ?? 0;
+        $cacheKey = 'notif_margin_low_' . $product->id;
 
-        // Jika margin di bawah threshold, berikan saran
-        $marginThreshold = 20; // Contoh threshold 20%
-        if ($currentMargin < $marginThreshold) {
-            return "Margin produk ini rendah ({$currentMargin}%). Pertimbangkan untuk menaikkan harga jual.";
+        if (!Cache::has($cacheKey)) {
+
+            // --- A. FORMAT PESAN TELEGRAM (Update Margin Focus) ---
+            $msg  = "⚠️ <b>ALERT: PROFIT MARGIN RENDAH!</b>\n\n";
+            $msg .= "📦 <b>{$product->name}</b>\n";
+
+            // Baris 1: Margin Aktual vs Target (Highlight Merah/Alert secara visual)
+            $currentMargin = $product->current_margin['percent'];
+            $targetMargin  = $product->target_margin_percent;
+            $msg .= "🔻 Margin Saat Ini: <b>{$currentMargin}%</b>\n";
+            $msg .= "🎯 Target Margin: <b>{$targetMargin}%</b>\n\n";
+
+            $beli = number_format($product->purchase_price, 0, ',', '.');
+            $jual = number_format($product->selling_price, 0, ',', '.');
+
+            $msg .= "📊 <b>Analisa Harga:</b>\n";
+            $msg .= "├ Modal: Rp {$beli}\n";
+            $msg .= "└ Jual : Rp {$jual}\n\n";
+
+            // Baris 3: Action
+            $msg .= "👉 <i>Disarankan untuk melakukan Penyesuaian Harga (Adj Price) segera.</i>";
+
+            // B. Kirim Telegram Langsung
+            TelegramService::send($msg);
+
+            SmartInsight::updateOrCreate(
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_MARGIN], // TYPE MARGIN
+                [
+                    'severity' => SmartInsight::SEVERITY_WARNING, // HARDCODED CONSTANT
+                    'title'    => 'Margin Menipis: ' . $product->name,
+                    'message'  => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
+                    'payload'  => [
+                        'purchase_price' => $product->purchase_price,
+                        'selling_price'  => $product->selling_price,
+                        'current_margin' => $product->current_margin
+                    ],
+                    'action_url' => '/products/' . $product->id . '/edit',
+                    'updated_at' => now(),
+                    'is_read'     => false,
+                    'is_notified' => true,
+                ]
+            );
+            Cache::put($cacheKey, true, now()->addHours(6));
         }
-
-        return null; // Tidak ada saran
     }
 }

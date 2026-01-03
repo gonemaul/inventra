@@ -45,6 +45,7 @@ class ProductUpdateRequest extends FormRequest
 
             $rules = array_merge($rules, [
                 // Identitas
+                'image'       => ['nullable', 'image', 'max:20480'], // Max 20MB
                 'name'        => ['required', 'string', 'max:255'],
                 'code'        => ['required', 'string', 'max:50', Rule::unique('products')->ignore($productId)],
                 'status'      => ['required', Rule::in(Product::STATUSES)], // Hardcode atau Product::STATUSES
@@ -56,12 +57,13 @@ class ProductUpdateRequest extends FormRequest
                 'brand_id'    => ['nullable', 'integer', 'exists:brands,id'],
                 'size_id'     => ['nullable', 'integer', 'exists:sizes,id'],
                 'supplier_id' => ['nullable', 'integer', 'exists:suppliers,id'],
+                'product_type_id' => ['nullable', 'integer', 'exists:product_types,id'],
 
                 // Di Full Update, Harga & Stok biasanya juga wajib/bisa diedit
                 'purchase_price' => ['required', 'numeric', 'min:0'],
                 'selling_price'  => ['required', 'numeric', 'min:0'],
-                'stock'          => ['required', 'integer', 'min:0'],
                 'min_stock'      => ['required', 'integer', 'min:0'],
+                'target_margin_percent' => ['required', 'numeric', 'min:0']
             ]);
         }
 

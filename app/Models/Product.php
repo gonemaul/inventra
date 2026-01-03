@@ -98,17 +98,23 @@ class Product extends Model
     public function getCurrentMarginAttribute()
     {
         // Hindari error bagi nol
-        if ($this->selling_price <= 0) return 0;
+        if ($this->selling_price <= 0) return [
+            'nominal' => 0,
+            'percent' => 0
+        ];
 
+        $marginRp = $this->selling_price - $this->purchase_price;
         // Rumus: ((Jual - Beli) / Jual) * 100
-        $margin = ($this->selling_price - $this->purchase_price) / $this->selling_price * 100;
+        $marginPercent = $marginRp / $this->selling_price * 100;
 
-        return round($margin, 2); // Hasil misal: 15.5
+        return [
+            'nominal' => $marginRp,
+            'percent' => round($marginPercent, 2) // Hasil misal:
+        ];
     }
     public function getIsMarginLowAttribute()
     {
-        // Bandingkan Aktual vs Target
-        return $this->current_margin < $this->target_margin_percent;
+        return $this->current_margin['percent'] < $this->target_margin_percent;
     }
     /**
      * Fungsi Sakti untuk update data sambil menyimpan history (snapshot).
@@ -123,11 +129,8 @@ class Product extends Model
             (isset($newData['purchase_price']) && $newData['purchase_price'] != $this->purchase_price) ||
             (isset($newData['selling_price']) && $newData['selling_price'] != $this->selling_price);
 
-        $isStockChanged =
-            (isset($newData['stock']) && $newData['stock'] != $this->stock);
-
         // Jika tidak ada perubahan penting, langsung update biasa
-        if (!$isPriceChanged && !$isStockChanged) {
+        if (!$isPriceChanged) {
             $this->update($newData);
             return;
         }
@@ -138,7 +141,7 @@ class Product extends Model
             'purchase_price' => $this->purchase_price,
             'selling_price'  => $this->selling_price,
             'stock'          => $this->stock,
-            'margin_percent' => $this->current_margin_percent, // (Kita buat accessornya dibawah)
+            'margin_percent' => $this->current_margin['percent'], // (Kita buat accessornya dibawah)
             'supplier_id'    => $this->supplier_id, // Pantau jika ganti supplier
 
             // Metadata tambahan

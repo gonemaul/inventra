@@ -64,7 +64,7 @@ class InsightService
             ->where('severity', SmartInsight::SEVERITY_CRITICAL)
             ->count();
 
-        $stockHealth = max(0, 100 - (($criticalStockCount / $totalProducts) * 100 * 2));
+        $stockHealth = round(max(0, 100 - (($criticalStockCount / $totalProducts) * 100 * 2)));
 
         $overdueDebts = DB::table('purchase_invoices')
             ->where('payment_status', '!=', PurchaseInvoice::PAYMENT_STATUS_PAID)
@@ -73,6 +73,7 @@ class InsightService
 
         $financeHealth = max(0, 100 - ($overdueDebts * 10));
         $totalScore = round(($stockHealth + $financeHealth) / 2);
+
 
         $status = 'Sehat Walafiat';
         $color = 'text-green-600';
@@ -298,12 +299,15 @@ class InsightService
     private function processMarginInsight(Product $product, array $metrics)
     {
         if ($metrics['margin']['is_critical']) {
+            $currentMargin = round($metrics['margin']['percent'], 2);
+            $targetMargin  = $product->target_margin_percent;
+            $beli = number_format($product->purchase_price, 0, ',', '.');
             SmartInsight::updateOrCreate(
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_MARGIN], // TYPE MARGIN
                 [
                     'severity' => SmartInsight::SEVERITY_WARNING, // HARDCODED CONSTANT
                     'title'    => 'Margin Menipis: ' . $product->name,
-                    'message'  => "Profit produk ini < 10%.",
+                    'message'  => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
                     'payload'  => $metrics['margin'],
                     'action_url' => '/products/' . $product->id . '/edit',
                     'updated_at' => now()
