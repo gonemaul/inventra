@@ -92,4 +92,22 @@ class ProductDSSCalculator
             'message' => $message
         ];
     }
+
+    /**
+     * LOGIC 4: ACTION MARGIN ALERT
+     * (Rekomendasi Naikkan Harga Jika Margin Terlalu Rendah)
+     */
+    public function checkAndSuggestMarginAction(Product $product): ?string
+    {
+        $financialData = $this->calculateFinancialHealth($product);
+        $currentMargin = $financialData['current_margin_percent'] ?? 0;
+
+        // Jika margin di bawah threshold, berikan saran
+        $marginThreshold = 20; // Contoh threshold 20%
+        if ($currentMargin < $marginThreshold) {
+            return "Margin produk ini rendah ({$currentMargin}%). Pertimbangkan untuk menaikkan harga jual.";
+        }
+
+        return null; // Tidak ada saran
+    }
 }

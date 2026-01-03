@@ -13,7 +13,7 @@ class CategoryService
     public function getAll()
     {
         // Ambil ID dan Nama, urutkan berdasarkan Nama
-        return Category::orderBy('name')->get(['id', 'name']);
+        return Category::with('productTypes:id,category_id,name')->orderBy('name')->get(['id', 'name']);
     }
     /**
      * Mengambil semua data kategori.

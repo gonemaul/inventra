@@ -4,6 +4,7 @@ import { method } from "lodash";
 import { computed, watch } from "vue";
 import { useToast } from "vue-toastification";
 import { useActionLoading } from "@/Composable/useActionLoading";
+import InputRupiah from "@/Components/InputRupiah.vue";
 
 // 1. PROPS: Terima data Invoice & Status Tampil dari Parent
 const props = defineProps({
@@ -95,13 +96,19 @@ const submitPayment = () => {
                             class="absolute font-bold text-gray-500 left-3 top-2"
                             >Rp</span
                         >
-                        <input
-                            type="number"
+                        <InputRupiah
                             v-model="form.amount"
                             class="w-full py-2 pl-10 pr-3 text-lg font-bold border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             :max="remainingDebt"
                             placeholder="0"
                         />
+                        <!-- <input
+                            type="number"
+                            v-model="form.amount"
+                            class="w-full py-2 pl-10 pr-3 text-lg font-bold border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            :max="remainingDebt"
+                            placeholder="0"
+                        /> -->
                     </div>
                     <div class="mt-1 text-xs text-right text-gray-400">
                         Maks: {{ formatRupiah(remainingDebt) }}

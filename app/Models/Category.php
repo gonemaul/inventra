@@ -30,4 +30,9 @@ class Category extends Model
             }
         });
     }
+
+    public function productTypes()
+    {
+        return $this->hasMany(ProductType::class, 'category_id');
+    }
 }

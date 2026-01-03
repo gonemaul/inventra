@@ -561,11 +561,6 @@ class PurchaseService
 
                 // Update Master Data Produk (Harga Beli Baru)
                 $product = Product::find($item->product_id);
-                if ($product) {
-                    $product->updateWithSnapshot([
-                        'purchase_price' => $finalHpp
-                    ], 'purchase');
-                }
 
                 $newCost = $finalHpp; // Harga Beli Baru
                 $currentSelling = $product->selling_price;
@@ -583,8 +578,15 @@ class PurchaseService
                 $marginPercent = $currentSelling > 0 ? ($marginRp / $currentSelling) * 100 : 0;
 
                 // Jika Margin < 10% (Bahaya) atau Negatif (Rugi)
-                if ($marginPercent < 15) {
+                if ($marginPercent < $product->target_margin_percent) {
                     $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp " . number_format($newCost) . "\nJual: Rp " . number_format($currentSelling) . "\nMargin: <b>" . round($marginPercent, 1) . "%</b> (Tipis!)";
+                }
+
+                if ($product) {
+                    $product->updateWithSnapshot([
+                        'purchase_price' => $finalHpp,
+                        'target_margin_percent' => $marginPercent,
+                    ], 'purchase');
                 }
             }
             if (!empty($marginAlerts)) {

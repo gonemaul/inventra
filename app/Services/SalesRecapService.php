@@ -14,6 +14,8 @@ use App\Services\Analysis\Product\InventoryAnalyzer;
 use App\Models\Sale;       // Revisi: Kita pakai nama model 'Sale' sesuai migrasi terakhir
 use App\Models\SalesRecap; // Pastikan Model bernama Sale (sesuai migrasi terakhir 'sales')
 
+use function PHPUnit\Framework\isEmpty;
+
 class SalesRecapService
 {
     protected $stockService;
@@ -66,9 +68,9 @@ class SalesRecapService
     public function storeRecap(array $data)
     {
         return DB::transaction(function () use ($data) {
-            $transactionDate = ($data['input_type'] === Sale::TYPE_REKAP && $data['created_at'])
-                ? $data['created_at']
-                : now();
+            // $transactionDate = ($data['input_type'] === Sale::TYPE_REKAP && $data['created_at'])
+            //     ? $data['created_at']
+            //     : now();
             // 1. Buat Header Sales
             $sale = Sale::create([
                 'reference_no' => $this->generateReferenceNo($data['report_date'], $data['input_type']),
@@ -82,7 +84,7 @@ class SalesRecapService
                 'total_revenue' => 0, // Nanti diupdate
                 'total_profit' => 0,  // Nanti diupdate
                 'financial_summary' => [],
-                'created_at' => $transactionDate,
+                // 'created_at' => $transactionDate,
             ]);
 
             $totalRevenue = 0;
@@ -167,13 +169,16 @@ class SalesRecapService
                 }
             }
 
-            $discountTotal = 0;
-            if ($data['discount_value'] > 0) {
-                if ($data['discount_type'] === Sale::DISCON_PERCENT) {
+            if (!empty($data['discount_value']) && $data['discount_value'] > 0) {
+                $type = $data['discount_type'] ?? null;
+                if ($type === Sale::DISCON_PERCENT) {
                     $discountTotal = ($totalRevenue * $data['discount_value']) / 100;
                 } else {
                     $discountTotal = $data['discount_value'];
                 }
+            } else {
+                // Opsional: Set 0 jika tidak ada diskon
+                $discountTotal = 0;
             }
 
             if ($discountTotal > $totalRevenue) $discountTotal = $totalRevenue;
@@ -184,8 +189,8 @@ class SalesRecapService
             $sale->update(attributes: [
                 'total_revenue' => $grandTotal,
                 'total_profit' => $totalProfit,
-                'discount_type' => $data['discount_type'], // 'percent' atau 'fixed'
-                'discount_value' => $data['discount_value'], // Input user
+                'discount_type' => $data['discount_type'] ?? Sale::DISCON_FIXED,
+                'discount_value' => $data['discount_value'] ?? 0,
                 'discount_total' => $discountTotal, // Rupiah potongannya
                 'financial_summary' => [
                     'item_count' => $itemsCount,

@@ -1,4 +1,5 @@
 <script setup>
+import InputRupiah from "@/Components/InputRupiah.vue";
 import MoneyInput from "../partials/MoneyInput.vue";
 import { ref } from "vue";
 const props = defineProps({
@@ -219,9 +220,9 @@ const {
                         </h4>
                         <div class="flex items-center gap-2 mt-1">
                             <span
-                                class="text-[10px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded tracking-wide"
+                                class="text-[11px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded tracking-wide"
                             >
-                                {{ item.code }}
+                                {{ item.size.name }}
                             </span>
                             <span
                                 v-if="item.unit"
@@ -269,13 +270,19 @@ const {
                             >Harga @</label
                         >
                         <div class="relative group/price">
-                            <input
+                            <InputRupiah
+                                v-model="item.selling_price"
+                                @input="recalcFromPrice(item)"
+                                @focus="$event.target.select()"
+                                class="w-full !py-1 !pl-2 !pr-1 text-xs font-bold text-gray-600 bg-transparent border border-gray-200 !rounded-md focus:ring-1 focus:ring-lime-500 dark:border-gray-600 dark:text-gray-300 tabular-nums"
+                            />
+                            <!-- <input
                                 type="number"
                                 v-model="item.selling_price"
                                 @input="recalcFromPrice(item)"
                                 class="w-full py-1 pl-2 pr-1 text-xs font-bold text-gray-600 bg-transparent border-none rounded focus:ring-1 focus:ring-lime-500 dark:text-gray-300 tabular-nums"
                                 @focus="$event.target.select()"
-                            />
+                            /> -->
                             <div
                                 class="absolute right-1 top-1.5 opacity-0 group-hover/price:opacity-100 transition-opacity"
                             >
@@ -336,8 +343,18 @@ const {
                             class="text-[9px] font-bold text-gray-400 uppercase mb-0.5 text-right mr-1"
                             >Subtotal</label
                         >
-
-                        <input
+                        <InputRupiah
+                            v-model="item.subtotal"
+                            @change="recalcFromSubtotal(item)"
+                            class="w-full !px-2 !py-1 text-xs font-black text-right transition-all border !rounded-md focus:ring-2 focus:ring-lime-500 tabular-nums"
+                            :class="[
+                                item.unit?.is_decimal
+                                    ? 'bg-lime-50 border-lime-200 text-lime-700 placeholder-lime-300 dark:bg-lime-900/20 dark:border-lime-800 dark:text-lime-400'
+                                    : 'bg-white border-gray-200 text-gray-800 focus:bg-yellow-50 focus:border-yellow-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white',
+                            ]"
+                            @focus="$event.target.select()"
+                        />
+                        <!-- <input
                             type="number"
                             v-model="item.subtotal"
                             @change="recalcFromSubtotal(item)"
@@ -348,7 +365,7 @@ const {
                                     : 'bg-white border-gray-200 text-gray-800 focus:bg-yellow-50 focus:border-yellow-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white',
                             ]"
                             @focus="$event.target.select()"
-                        />
+                        /> -->
 
                         <div
                             v-if="item.unit?.is_decimal"

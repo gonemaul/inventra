@@ -96,7 +96,7 @@ const defaultStagingState = {
     category: "",
     brand: "",
     type: "",
-    image_url: null,
+    image_url: "",
     current_stock: 0,
     quantity: 1,
     purchase_price: 0,
@@ -167,8 +167,6 @@ const fillStagingArea = (product, qty = 1, price = null) => {
         purchase_price: price !== null ? price : product.purchase_price || 0,
         restock_recommendation: suggestedQty,
     };
-    console.log(product);
-    console.log(stagingItem.value);
 };
 
 const resetStaging = () => {
@@ -202,7 +200,6 @@ const handleSaveStaging = () => {
         (item) => item.product_id === stagingItem.value.product_id
     );
     if (existingItem) {
-        console.log("update");
         // --- UPDATE ITEM DI CART ---
         updateCartItem({
             product_id: stagingItem.value.product_id,
@@ -211,8 +208,6 @@ const handleSaveStaging = () => {
         });
         toast.success("Item diperbarui.");
     } else {
-        console.log("baru");
-
         addToCart(
             stagingItem.value,
             stagingItem.value.quantity,

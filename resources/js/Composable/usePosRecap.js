@@ -9,6 +9,7 @@ export function usePosRecap(props) {
     // --- STATE ---
     const searchQuery = ref("");
     const selectedCategory = ref("all");
+    const selectedProductType = ref("all");
     const cart = ref([]);
 
     // Default Tanggal hari ini (YYYY-MM-DD)
@@ -90,6 +91,19 @@ export function usePosRecap(props) {
     };
 
     // --- SEARCH & FILTER ---
+    const currentProductType = computed(() => {
+        if (selectedCategory.value === "all") return [];
+
+        const category = props.categories.find(
+            (c) => c.id === selectedCategory.value
+        );
+        return category ? category.product_types : [];
+    });
+
+    watch(selectedCategory, () => {
+        selectedProductType.value = "all";
+    });
+
     const filteredProducts = computed(() => {
         let items = props.products || [];
 
@@ -97,6 +111,12 @@ export function usePosRecap(props) {
         if (selectedCategory.value !== "all") {
             items = items.filter(
                 (p) => p.category_id === selectedCategory.value
+            );
+        }
+        // Filter Product Type
+        if (selectedProductType.value !== "all") {
+            items = items.filter(
+                (p) => p.product_type_id === selectedProductType.value
             );
         }
 
@@ -130,7 +150,7 @@ export function usePosRecap(props) {
     // --- SUBMIT RECAP ---
     const form = useForm({
         input_type: "recap",
-        transaction_date: null, // Diisi saat submit
+        report_date: null, // Diisi saat submit
         items: [],
         total_revenue: 0,
         total_profit: 0,
@@ -154,7 +174,7 @@ export function usePosRecap(props) {
         if (hasInvalidQty) return toast.error("Ada produk dengan jumlah 0!");
 
         // Mapping Data ke Form
-        form.transaction_date = transactionDate.value;
+        form.report_date = transactionDate.value;
         form.items = cart.value.map((item) => ({
             product_id: item.id,
             quantity: item.quantity, // Frontend pakai 'qty', Controller harus mapping ke 'quantity' atau sebaliknya
@@ -174,7 +194,7 @@ export function usePosRecap(props) {
             onSuccess: () => {
                 cart.value = [];
                 localStorage.removeItem(STORAGE_KEY);
-                toast.success("Rekap Berhasil Disimpan!");
+                // toast.success("Rekap Berhasil Disimpan!");
             },
             onError: (err) => {
                 console.error(err);
@@ -187,6 +207,8 @@ export function usePosRecap(props) {
         // State
         searchQuery,
         selectedCategory,
+        selectedProductType,
+        currentProductType,
         cart,
         transactionDate,
         form, // Untuk loading state (form.processing)

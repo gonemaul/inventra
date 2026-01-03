@@ -1,42 +1,40 @@
 <script setup>
-import { Head, Link } from "@inertiajs/vue3";
-import { ref } from "vue";
+import { Head } from "@inertiajs/vue3";
+import { ref, watch, nextTick } from "vue";
 import { usePosRealtime } from "@/Composable/usePosRealtime";
 
-import ConfirmSubmit from "./ConfirmSubmit.vue";
-import ScannerBox from "./ScannerBox.vue";
-import BottomSheet from "@/Components/BottomSheet.vue";
 import { useToast } from "vue-toastification";
+import BottomSheet from "@/Components/BottomSheet.vue";
+import ConfirmSubmit from "./ConfirmSubmit.vue";
 import Cart from "./Cart.vue";
 import BarcodeScanner from "@/Components/BarcodeScanner.vue";
+import FilterProduct from "./FilterProduct.vue";
 
 const props = defineProps({
     categories: Array,
     customers: Array,
 });
-
 const pos = usePosRealtime(props);
 // --- PANGGIL COMPOSABLE ---
 const {
-    // 1. STATE FORM & DATA
+    //state
     form,
-    filteredProducts, // Ganti 'products' atau 'searchResults' dengan ini
-    isFetchingData, // Untuk indikator loading di search bar
-    // 2. SEARCH & FILTER
-    searchQuery, // v-model ke input cari barang
-    selectedCategory, // v-model ke dropdown kategori
-    loadMoreProducts, // Fungsi untuk infinite scroll
-    // Scanner
-    queryMember,
-    queryProduk,
-    // 4. CART ACTIONS
-    addItem,
+    filterState,
+    allProducts,
+    filteredProducts,
+    isFetchingData,
+    // computed
     grandTotal,
     changeAmount,
     isPaymentSufficient,
     hasInvalidQty,
-    submitTransaction,
+    // actions
+    addItem,
+    loadMoreProducts, // Fungsi untuk infinite scroll
+    queryProduk,
+    queryMember,
     // Utils
+    submitTransaction,
     rp,
 } = pos;
 
@@ -47,7 +45,21 @@ const showScanner = ref(false);
 const showConfirmModal = ref(false);
 const showQtyModal = ref(false);
 const scanType = ref("product"); //product atau member
+const productGridRef = ref(null);
 
+watch(
+    filterState,
+    async () => {
+        await nextTick();
+        if (productGridRef.value) {
+            productGridRef.value.scrollTo({
+                top: 0,
+                behavior: "smooth", // Opsional: Berikan efek gerak halus
+            });
+        }
+    },
+    { deep: true } // Wajib: agar mendeteksi perubahan properti dalam object (search/cat/sort)
+);
 // State untuk Item yang sedang diproses di Modal
 const currentItem = ref({
     id: null, // ID Produk (Database)
@@ -105,7 +117,7 @@ const openScanMember = () => {
 
 const handleResScan = async (res) => {
     showScanner.value = false;
-    alert("scan berhasil " + scanType.value + "|" + res);
+    alert("scan berhasil " + scanType.value + " | " + res);
     if (scanType.value == "product") {
         try {
             const productData = await queryProduk(res);
@@ -150,7 +162,9 @@ const confirmTransaction = (shouldPrint) => {
                     window.open(printUrl, "_blank", "width=300,height=600");
                 }, 50);
             } else if (shouldPrint && !printUrl) {
-                alert("Gagal mendapatkan URL Print dari server.");
+                toast.error("Gagal mendapatkan URL Print dari server.");
+            } else {
+                toast.success("Transaksi berhasil disimpan.");
             }
         },
     });
@@ -170,18 +184,6 @@ const getCartQty = (productId) => {
         @close="showConfirmModal = false"
         @confirmTransaction="confirmTransaction"
     />
-    <!-- <ScannerBox
-        :showScanner="showScanner"
-        :activeScannerType="activeScannerType"
-        @close="showScanner = false"
-        @stopScanner="stopScanner"
-    /> -->
-
-    <!-- <ScannerModeModal
-        :show="showScannerModal"
-        @close="showScannerModal = false"
-        @mode-selected="startScanner"
-    /> -->
     <BarcodeScanner
         v-if="showScanner"
         @result="handleResScan"
@@ -191,153 +193,73 @@ const getCartQty = (productId) => {
         class="flex flex-col lg:flex-row h-[100dvh] w-full bg-gray-100 dark:bg-gray-900 overflow-hidden font-sans transition-colors duration-300"
     >
         <div class="relative flex flex-col flex-1 h-full overflow-hidden">
+            <FilterProduct
+                :categories="categories"
+                :is-fetching="isFetchingData"
+                v-model:search="filterState.search"
+                v-model:category="filterState.category"
+                v-model:sub-category="filterState.subCategory"
+                v-model:sort="filterState.sort"
+                @scan="openScanProduk"
+            />
             <div
-                class="z-10 flex items-center gap-3 px-4 py-3 bg-white border-b shadow-sm shrink-0 dark:bg-gray-800 dark:border-gray-700"
-            >
-                <Link
-                    :href="route('dashboard')"
-                    class="p-2 rounded-lg bg-lime-50 dark:bg-gray-700 text-lime-700 dark:text-lime-400"
-                >
-                    <svg
-                        class="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                        ></path>
-                    </svg>
-                </Link>
-                <div class="relative flex-1">
-                    <input
-                        v-model="searchQuery"
-                        type="text"
-                        placeholder="Cari Nama / Kode..."
-                        class="w-full pl-9 pr-10 py-2.5 bg-gray-100 dark:bg-gray-900 border-none rounded-xl focus:ring-2 focus:ring-lime-500 text-sm dark:text-white transition-all shadow-inner"
-                    />
-                    <span class="absolute text-gray-400 left-3 top-3">🔍</span>
-                    <div
-                        v-if="isFetchingData"
-                        class="absolute right-11 top-3.5 flex items-center gap-2"
-                    >
-                        <span class="text-[10px] text-gray-400 italic"
-                            >Syncing...</span
-                        >
-                        <span class="relative flex w-2 h-2">
-                            <span
-                                class="absolute inline-flex w-full h-full rounded-full opacity-75 animate-ping bg-lime-400"
-                            ></span>
-                            <span
-                                class="relative inline-flex w-2 h-2 rounded-full bg-lime-500"
-                            ></span>
-                        </span>
-                    </div>
-                    <button
-                        @click="openScanProduk()"
-                        class="absolute right-1.5 top-1.5 p-1 bg-white dark:bg-gray-700 rounded-lg shadow-sm text-gray-600 dark:text-gray-200 hover:text-lime-600 hover:bg-lime-50 transition border border-gray-200 dark:border-gray-600"
-                        title="Scan Produk"
-                    >
-                        <svg
-                            class="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-                            ></path>
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-                            ></path>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div
-                class="px-4 py-2 overflow-x-auto bg-white border-b shadow-sm shrink-0 dark:bg-gray-800 dark:border-gray-700 whitespace-nowrap scrollbar-hide"
-            >
-                <button
-                    @click="selectedCategory = 'all'"
-                    :class="
-                        selectedCategory === 'all'
-                            ? 'bg-lime-500 text-white shadow-lime-500/40'
-                            : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
-                    "
-                    class="px-5 py-2 mr-2 text-xs font-bold transition-all rounded-full active:scale-95"
-                >
-                    Semua
-                </button>
-                <button
-                    v-for="cat in categories"
-                    :key="cat.id"
-                    @click="selectedCategory = cat.id"
-                    :class="
-                        selectedCategory === cat.id
-                            ? 'bg-lime-500 text-white shadow-lime-500/40'
-                            : 'bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600'
-                    "
-                    class="px-5 py-2 mr-2 text-xs font-bold transition-all rounded-full active:scale-95"
-                >
-                    {{ cat.name }}
-                </button>
-            </div>
-
-            <div
-                class="h-[calc(100vh-220px)] flex-1 p-4 overflow-y-auto bg-gray-100 custom-scroll pb-28 lg:pb-4 dark:bg-gray-900"
+                ref="productGridRef"
+                class="h-[calc(100vh-220px)] flex-1 p-4 overflow-y-auto bg-gray-100 custom-scroll scroll-smooth pb-28 lg:pb-4 dark:bg-gray-900"
                 @scroll="handleScroll"
             >
                 <div
-                    class="grid grid-cols-2 gap-3 pb-20 md:grid-cols-3 lg:grid-cols-4"
+                    class="grid grid-cols-2 gap-3 pb-10 md:grid-cols-3 lg:grid-cols-4"
                 >
                     <div
                         v-for="product in filteredProducts"
-                        :disabled="product.stock == 0"
                         :key="product.id"
+                        :disabled="product.stock == 0"
                         @click="addItem(product)"
-                        class="relative overflow-hidden transition-all bg-white border border-gray-200 shadow-sm cursor-pointer group dark:bg-gray-800 rounded-xl dark:border-gray-700 hover:shadow-md hover:border-lime-500 active:scale-95"
-                        :class="
+                        class="relative flex flex-col justify-between overflow-hidden transition-all duration-200 border shadow-sm cursor-pointer group rounded-xl active:scale-95"
+                        :class="[
+                            // Logic Background & Border (Light vs Dark)
+                            'bg-white dark:bg-gray-800',
                             getCartQty(product.id) > 0
-                                ? 'border-lime-500 shadow-md bg-lime-50 ring-1 ring-lime-500'
-                                : 'border-gray-200 shadow-sm bg-white hover:border-lime-300'
-                        "
+                                ? 'border-lime-500 ring-1 ring-lime-500 bg-lime-50/30 dark:bg-lime-900/10'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-lime-500 dark:hover:border-lime-500 hover:shadow-md',
+                        ]"
                     >
                         <div
-                            v-if="getCartQty(product.id) > 0"
-                            class="absolute z-10 flex items-center justify-center w-8 h-8 text-xs font-bold text-white border-2 border-white rounded-full shadow-lg bottom-1 right-1 bg-lime-600 animate-bounce-short"
+                            class="relative w-full overflow-hidden bg-gray-100 border-b border-gray-100 aspect-square dark:border-gray-700 dark:bg-gray-700"
                         >
-                            {{ getCartQty(product.id) }}x
-                        </div>
-                        <div
-                            class="relative w-full overflow-hidden bg-gray-100 aspect-square dark:bg-gray-700"
-                        >
+                            <div
+                                v-if="product.unit || product.size"
+                                class="absolute z-20 flex flex-col items-start gap-1 top-2 left-2"
+                            >
+                                <span
+                                    v-if="product.unit"
+                                    class="text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm backdrop-blur text-gray-700 bg-white/90 dark:text-gray-200 dark:bg-gray-900/80"
+                                >
+                                    {{ product.unit.name }}
+                                </span>
+                                <span
+                                    v-if="product.size"
+                                    class="text-[9px] font-bold text-white px-1.5 py-0.5 rounded shadow-sm backdrop-blur bg-gray-800/80 dark:bg-gray-600/80"
+                                >
+                                    {{ product.size.name }}
+                                </span>
+                            </div>
+
                             <img
-                                v-if="product.image_path"
+                                v-if="product.image_url"
                                 :src="product.image_url"
                                 loading="lazy"
-                                decoding="async"
+                                class="absolute inset-0 z-10 object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
                                 alt=""
-                                class="absolute inset-0 z-10 object-cover w-full h-full transition-opacity duration-500 opacity-0"
-                                onload="this.classList.remove('opacity-0')"
                                 onerror="this.style.display='none'"
                             />
 
                             <div
-                                class="flex flex-col items-center justify-center w-full h-full text-gray-500 bg-gray-300 dark:text-gray-700 dark:bg-gray-400"
+                                v-else
+                                class="flex items-center justify-center w-full h-full text-gray-400 dark:text-gray-600"
                             >
                                 <svg
-                                    class="w-10 h-10"
+                                    class="w-10 h-10 opacity-50"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
@@ -349,55 +271,112 @@ const getCartQty = (productId) => {
                                         d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                                     ></path>
                                 </svg>
-                                <span
-                                    class="text-[9px] font-bold mt-1 opacity-50"
-                                    >NO IMG</span
-                                >
                             </div>
 
                             <div
-                                v-if="product.unit"
-                                class="absolute z-10 top-2 right-2"
+                                v-if="product.stock <= 0"
+                                class="absolute inset-0 z-20 flex items-center justify-center bg-gray-900/60 backdrop-blur-[1px]"
                             >
                                 <span
-                                    class="bg-gray-900/70 backdrop-blur text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm"
+                                    class="px-2 py-1 text-xs font-bold text-white transform border-2 border-white rounded -rotate-12"
+                                    >KOSONG</span
                                 >
-                                    {{ product.unit.name }}
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col flex-1 p-3">
+                            <div class="mb-1">
+                                <span
+                                    class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide"
+                                >
+                                    {{ product.brand?.name || "No Brand" }}
                                 </span>
                             </div>
 
-                            <div class="absolute z-10 top-2 left-2">
-                                <span
-                                    v-if="product.stock == 0"
-                                    class="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm animate-pulse"
-                                >
-                                    HABIS
-                                </span>
-                                <span
-                                    v-if="
-                                        product.stock <= 5 && product.stock > 0
-                                    "
-                                    class="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm animate-pulse"
-                                >
-                                    Sisa {{ parseFloat(product.stock) }}
-                                </span>
-                                <span
-                                    v-if="product.stock > 5"
-                                    class="bg-gray-500 text-white text-[10px] font-bold px-2 py-1 rounded-lg shadow-sm"
-                                >
-                                    Stock {{ parseFloat(product.stock) }}
-                                </span>
-                            </div>
-
-                            <div
-                                v-if="product.stock > 0"
-                                class="absolute inset-0 z-20 flex items-center justify-center transition-opacity opacity-0 bg-lime-500/20 group-hover:opacity-100"
+                            <h3
+                                class="text-xs font-bold leading-snug text-gray-800 dark:text-gray-100 line-clamp-2 min-h-[2.5em] mb-2"
+                                :title="product.name"
                             >
+                                {{ product.name }}
+                            </h3>
+
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-1.5">
+                                    <div
+                                        class="w-1.5 h-1.5 rounded-full"
+                                        :class="
+                                            product.stock <= 5
+                                                ? 'bg-red-500 animate-pulse'
+                                                : 'bg-green-500 dark:bg-green-400'
+                                        "
+                                    ></div>
+                                    <span
+                                        class="text-[10px] font-medium"
+                                        :class="
+                                            product.stock <= 5
+                                                ? 'text-red-500 dark:text-red-400'
+                                                : 'text-gray-500 dark:text-gray-400'
+                                        "
+                                    >
+                                        {{
+                                            product.stock <= 5
+                                                ? `Sisa ${parseFloat(
+                                                      product.stock
+                                                  )}`
+                                                : `Stok ${parseFloat(
+                                                      product.stock
+                                                  )}`
+                                        }}
+                                    </span>
+                                </div>
+
                                 <div
-                                    class="p-2 text-white transition-transform duration-300 scale-0 rounded-full shadow-lg bg-lime-500 group-hover:scale-110"
+                                    class="flex items-center gap-0.5 text-[10px] text-gray-400 dark:text-gray-500"
                                 >
                                     <svg
-                                        class="w-6 h-6"
+                                        class="w-3 h-3"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                                        ></path>
+                                    </svg>
+                                    <span>{{ product.total_sold || 0 }}</span>
+                                </div>
+                            </div>
+
+                            <div
+                                class="flex items-center justify-between pt-2 mt-auto border-t border-gray-100 dark:border-gray-700"
+                            >
+                                <span
+                                    class="text-sm font-black text-lime-600 dark:text-lime-400"
+                                >
+                                    {{
+                                        rp(
+                                            product.selling_price ||
+                                                product.price
+                                        )
+                                    }}
+                                </span>
+
+                                <div
+                                    v-if="getCartQty(product.id) > 0"
+                                    class="flex items-center justify-center text-xs font-bold text-white bg-orange-500 rounded-full shadow-md w-7 h-7 animate-bounce-short"
+                                >
+                                    {{ getCartQty(product.id) }}
+                                </div>
+
+                                <div
+                                    v-else
+                                    class="p-1.5 rounded-lg border transition-colors text-lime-600 bg-lime-50 border-lime-100 dark:text-lime-400 dark:bg-lime-500/10 dark:border-lime-500/20 hover:bg-lime-500 hover:text-white hover:border-lime-500 dark:hover:bg-lime-500 dark:hover:text-white"
+                                >
+                                    <svg
+                                        class="w-4 h-4"
                                         fill="none"
                                         stroke="currentColor"
                                         viewBox="0 0 24 24"
@@ -407,56 +386,6 @@ const getCartQty = (productId) => {
                                             stroke-linejoin="round"
                                             stroke-width="2"
                                             d="M12 4v16m8-8H4"
-                                        ></path>
-                                    </svg>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div
-                            class="p-3 flex flex-col max-h-[150px] justify-between"
-                        >
-                            <div
-                                class="flex justify-between text-[10px] text-gray-500 font-medium truncate uppercase"
-                            >
-                                <span>{{ product.brand.name }}</span>
-                                <span>{{ product.size?.name || "-" }}</span>
-                            </div>
-                            <h3
-                                class="text-xs font-bold leading-snug text-gray-800 sm:text-sm dark:text-gray-100 line-clamp-2"
-                            >
-                                {{ product.name }}
-                            </h3>
-
-                            <div class="flex items-end justify-between mt-1">
-                                <div class="flex flex-col">
-                                    <span
-                                        class="text-[13px] sm:text-[15px] font-black text-lime-600 dark:text-lime-400 leading-none"
-                                    >
-                                        {{
-                                            rp(
-                                                product.selling_price ||
-                                                    product.price
-                                            )
-                                        }}
-                                    </span>
-                                </div>
-
-                                <div
-                                    v-if="product.stock > 0"
-                                    class="text-gray-300 transition-colors group-hover:text-lime-500"
-                                >
-                                    <svg
-                                        class="w-5 h-5"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
                                         ></path>
                                     </svg>
                                 </div>
@@ -560,7 +489,7 @@ const getCartQty = (productId) => {
                 <div
                     v-if="
                         filteredProducts.length > 0 &&
-                        filteredProducts.length % 20 === 0
+                        allProducts.length > filteredProducts.length
                     "
                     class="py-4 text-center text-[10px] text-gray-400"
                 >

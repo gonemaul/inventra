@@ -1,7 +1,7 @@
 <script setup>
 import Modal from "@/Components/Modal.vue";
-import { ref } from "vue";
-defineProps({
+import { watch, ref } from "vue";
+const props = defineProps({
     showConfirmModal: {
         type: Boolean,
         default: false,
@@ -20,6 +20,14 @@ const rp = (val) =>
     }).format(val);
 
 const processingTransaction = ref(null);
+watch(
+    () => props.showConfirmModal,
+    (newVal) => {
+        if (newVal) {
+            processingTransaction.value = null; // Reset ke 0 atau null
+        }
+    }
+);
 const handleClick = (type) => {
     processingTransaction.value = type;
     emit("confirmTransaction", type === "print");

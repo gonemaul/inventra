@@ -102,10 +102,13 @@ const isNew = computed(() => {
                         >#{{ inv.invoice_number }}</span
                     >
                     <p class="text-[10px] text-gray-400 mt-1">
-                        {{ formatDate(inv.invoice_date) }}
+                        Terbit : {{ formatDate(inv.invoice_date) }}
                     </p>
-                    <p class="text-[10px] text-red-400 mt-1 font-medium">
-                        {{ inv.due_date ? formatDate(inv.due_date) : "Tunai" }}
+                    <p class="text-[10px] text-gray-500 mt-1 font-medium">
+                        Jatuh Tempo :
+                        <span class="text-red-400">{{
+                            inv.due_date ? formatDate(inv.due_date) : "Tunai"
+                        }}</span>
                     </p>
                 </div>
                 <div class="text-right items-end gap-1.5">
@@ -201,6 +204,33 @@ const isNew = computed(() => {
                             />
                         </svg>
                     </button>
+                    <Link
+                        v-if="
+                            inv.status === 'validated' &&
+                            inv.payment_status !== 'paid' &&
+                            purchase.status === 'selesai'
+                        "
+                        :href="
+                            route('finance.show', {
+                                id: inv.id,
+                            })
+                        "
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 hover:border-blue-300 transition-all active:scale-95"
+                        ><svg
+                            class="w-3 h-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                            ></path>
+                        </svg>
+                        <span>Bayar</span>
+                    </Link>
                 </div>
 
                 <Link

@@ -98,7 +98,15 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 onerror="this.style.display='none'"
                 class="absolute inset-0 z-10 object-contain w-full h-full p-4 transition-transform duration-500 bg-white opacity-0 group-hover:scale-110 dark:bg-gray-900"
             />
-
+            <div
+                v-if="data.stock <= 0"
+                class="absolute inset-0 z-20 flex items-center justify-center bg-gray-900/60 backdrop-blur-[1px]"
+            >
+                <span
+                    class="px-2 py-1 text-sm font-bold text-white transform border-2 border-white rounded bg-red-600/90 -rotate-12"
+                    >KOSONG</span
+                >
+            </div>
             <div class="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
                 <span
                     v-if="isNewProduct"
@@ -122,12 +130,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                     >⚠️ Margin</span
                 >
                 <span
-                    v-if="data.stock == 0"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-gray-500 text-white rounded-md shadow-sm"
-                    >HABIS</span
-                >
-                <span
-                    v-else-if="isStockLow"
+                    v-else-if="isStockLow && data.stock > 0"
                     class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500 animate-pulse text-white rounded-md shadow-sm"
                     >🚨 Stok</span
                 >

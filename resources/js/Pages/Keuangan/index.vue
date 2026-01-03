@@ -18,7 +18,6 @@ const params = ref({
     refresh_key: 0,
 });
 
-console.log(props.stats);
 // STATE
 const { isActionLoading } = useActionLoading();
 const datatable = ref(null);

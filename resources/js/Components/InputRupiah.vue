@@ -1,24 +1,32 @@
 <script setup>
-import { ref, watch, useAttrs } from "vue";
+import { ref, watch, useAttrs, nextTick } from "vue";
 
-// 1. Matikan inheritAttrs otomatis agar kita bisa kontrol manual penempatan class-nya
 defineOptions({
     inheritAttrs: false,
 });
 
 const props = defineProps({
     modelValue: [Number, String],
+    // Tambahkan prop max agar bisa dibaca di script
+    max: {
+        type: [Number, String],
+        default: null,
+    },
 });
 
 const emit = defineEmits(["update:modelValue"]);
 const displayValue = ref("");
-
-// Ambil attributes sisa (placeholder, required, class, dll)
 const attrs = useAttrs();
 
-// --- LOGIC FORMATTING (Sama seperti sebelumnya) ---
+// --- FORMATTER ---
 const formatRupiah = (number) => {
-    if (number === "" || number === null || number === undefined) return "";
+    if (
+        number === "" ||
+        number === null ||
+        number === undefined ||
+        isNaN(number)
+    )
+        return "";
     return new Intl.NumberFormat("id-ID", {
         style: "currency",
         currency: "IDR",
@@ -27,19 +35,85 @@ const formatRupiah = (number) => {
     }).format(number);
 };
 
+// --- HANDLER INPUT (Logika Utama) ---
 const onInput = (event) => {
     let val = event.target.value;
+
+    // 1. Hapus semua karakter selain angka
     let cleanVal = val.replace(/[^0-9]/g, "");
+
+    // 2. Cegah angka 0 di depan (misal: 05000 -> 5000)
+    if (cleanVal.startsWith("0")) {
+        cleanVal = cleanVal.replace(/^0+/, "");
+    }
+
     let numberValue = cleanVal === "" ? null : parseInt(cleanVal);
 
-    if (cleanVal) {
-        displayValue.value = formatRupiah(numberValue);
+    // 3. LOGIKA MAX NUMBER
+    // Jika ada props max dan nilai melebihi max, paksa ke nilai max
+    if (
+        props.max &&
+        numberValue !== null &&
+        numberValue > parseInt(props.max)
+    ) {
+        numberValue = parseInt(props.max);
+    }
+
+    // 4. Update Tampilan & Emit
+    if (numberValue !== null) {
+        // Format ulang ke Rupiah
+        const formatted = formatRupiah(numberValue);
+
+        // Update ref displayValue
+        displayValue.value = formatted;
+
+        // Paksa update value di elemen input (penting jika user ketik cepat/paste)
+        if (event.target.value !== formatted) {
+            event.target.value = formatted;
+        }
     } else {
         displayValue.value = "";
     }
+
     emit("update:modelValue", numberValue);
 };
 
+// --- HANDLER KEYDOWN (Mencegah Huruf) ---
+const onKeydown = (event) => {
+    const allowedKeys = [
+        "Backspace",
+        "Delete",
+        "Tab",
+        "Escape",
+        "Enter",
+        "ArrowLeft",
+        "ArrowRight",
+        "ArrowUp",
+        "ArrowDown",
+        "Home",
+        "End",
+    ];
+
+    // Izinkan Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+    if (
+        (event.ctrlKey || event.metaKey) &&
+        ["a", "c", "v", "x"].includes(event.key.toLowerCase())
+    ) {
+        return;
+    }
+
+    // Izinkan tombol kontrol
+    if (allowedKeys.includes(event.key)) {
+        return;
+    }
+
+    // Cegah jika bukan angka (0-9)
+    if (!/^[0-9]$/.test(event.key)) {
+        event.preventDefault();
+    }
+};
+
+// --- WATCHER ---
 watch(
     () => props.modelValue,
     (newVal) => {
@@ -53,14 +127,19 @@ watch(
     <div class="relative w-full">
         <input
             type="text"
+            inputmode="numeric"
             :value="displayValue"
             @input="onInput"
+            @keydown="onKeydown"
             v-bind="$attrs"
             :class="[
-                // 1. CLASS DEFAULT (Style Dasar)
-                'w-full py-3 pl-4 pr-4 border-gray-300 rounded-lg shadow-sm focus:border-green-500 focus:ring-green-500 transition-all duration-200',
+                // 1. CLASS DEFAULT
+                'w-full py-3 pl-4 pr-4 border border-gray-300 rounded-lg shadow-sm focus:border-green-500 focus:ring-green-500 transition-all duration-200 placeholder-gray-400 text-gray-900',
 
-                // 2. CLASS CUSTOM (Timpa style default jika ada class dari parent)
+                // Align right biasanya lebih enak untuk input uang (opsional, hapus jika tidak suka)
+                'text-right',
+
+                // 2. CLASS CUSTOM DARI PARENT
                 attrs.class,
             ]"
         />

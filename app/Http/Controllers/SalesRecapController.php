@@ -48,7 +48,23 @@ class SalesRecapController extends Controller
     public function create()
     {
         return Inertia::render('Sale/form', [
-            'products' => Product::with('category')->where('stock', '>', 0)->orderBy('name')->get(),
+            'products' => Product::query()
+                ->select([
+                    'id',
+                    'code',
+                    'name',
+                    'product_type_id',
+                    'category_id',
+                    'brand_id',
+                    'selling_price', // atau price
+                    'stock',
+                    'image_path', // string pendek
+                    'unit_id',
+                    'size_id'
+                ])
+                ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name'])
+                ->orderBy('name')
+                ->get(),
             'categories' => $this->categoryService->getAll(),
         ]);
     }
@@ -244,6 +260,7 @@ class SalesRecapController extends Controller
                 'code',
                 'name',
                 'category_id',
+                'product_type_id',
                 'brand_id',
                 'selling_price', // atau price
                 'stock',
@@ -251,6 +268,7 @@ class SalesRecapController extends Controller
                 'unit_id',
                 'size_id'
             ])
+            ->withSum('saleItems as total_sold', 'quantity') // Hitung total terjual
             ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name']) // Eager load unit, ambil nama saja
             // ->where('stock', '>', 0) // Opsional: hanya yang ada stok
             ->orderBy('name')

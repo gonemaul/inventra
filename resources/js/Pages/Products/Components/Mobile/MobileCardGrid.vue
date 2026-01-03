@@ -58,19 +58,20 @@ const isStockLow = computed(() => {
                 <span class="text-[9px] font-bold">No Image</span>
             </div>
 
-            <div class="absolute z-20 flex flex-col gap-1 top-1 left-1">
+            <span
+                v-if="data.stock > 0"
+                class="bg-red-500 top-1 left-1 absolute z-20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
+            >
+                Stok {{ data.stock || 0 }}
+            </span>
+            <div
+                v-if="data.stock <= 0"
+                class="absolute inset-0 z-20 flex items-center justify-center bg-gray-900/60 backdrop-blur-[1px]"
+            >
                 <span
-                    v-if="data.stock == 0"
-                    class="bg-gray-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
+                    class="px-2 py-1 text-xs font-bold text-white transform border-2 border-white rounded bg-red-600/90 -rotate-12"
+                    >KOSONG</span
                 >
-                    Habis
-                </span>
-                <span
-                    v-else-if="isStockLow"
-                    class="bg-red-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
-                >
-                    Stok {{ data.stock || 0 }}
-                </span>
             </div>
             <div
                 class="absolute bottom-0 left-0 right-0 z-20 p-1 pt-4 bg-gradient-to-t from-black/60 to-transparent"
@@ -101,6 +102,7 @@ const isStockLow = computed(() => {
                 <div class="flex items-center justify-between mt-1">
                     <span class="text-[9px] text-gray-400">
                         {{ data.size?.name || "-" }} |
+                        {{ data.stock }}
                         {{ data.unit?.name || "-" }}
                     </span>
                     <span

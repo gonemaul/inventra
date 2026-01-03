@@ -13,6 +13,8 @@ const props = defineProps({
 const {
     searchQuery,
     selectedCategory,
+    selectedProductType,
+    currentProductType,
     cart,
     filteredProducts,
     totalRevenue,
@@ -31,6 +33,10 @@ const rp = (n) =>
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(n);
+const getItemQty = (productId) => {
+    const item = cart.value.find((i) => i.id === productId);
+    return item ? item.quantity : 0;
+};
 </script>
 
 <template>
@@ -66,33 +72,83 @@ const rp = (n) =>
                         </div>
                     </div>
 
-                    <div
-                        class="flex gap-2 pb-1 overflow-x-auto custom-scroll-x"
-                    >
-                        <button
-                            @click="selectedCategory = 'all'"
-                            :class="
-                                selectedCategory === 'all'
-                                    ? 'bg-lime-500 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                            "
-                            class="px-3 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-all"
+                    <div class="mb-4 space-y-2">
+                        <div
+                            class="flex gap-2 pb-1 overflow-x-auto custom-scroll-x"
                         >
-                            Semua
-                        </button>
-                        <button
-                            v-for="cat in categories"
-                            :key="cat.id"
-                            @click="selectedCategory = cat.id"
-                            :class="
-                                selectedCategory === cat.id
-                                    ? 'bg-lime-500 text-white'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
-                            "
-                            class="px-3 py-1 rounded-md text-[11px] font-bold whitespace-nowrap transition-all"
+                            <button
+                                @click="selectedCategory = 'all'"
+                                :class="
+                                    selectedCategory === 'all'
+                                        ? 'bg-lime-500 text-white shadow-md shadow-lime-500/20'
+                                        : 'bg-white border border-gray-200 text-gray-600 hover:border-lime-400'
+                                "
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95"
+                            >
+                                Semua
+                            </button>
+                            <button
+                                v-for="cat in categories"
+                                :key="cat.id"
+                                @click="selectedCategory = cat.id"
+                                :class="
+                                    selectedCategory === cat.id
+                                        ? 'bg-lime-500 text-white shadow-md shadow-lime-500/20'
+                                        : 'bg-white border border-gray-200 text-gray-600 hover:border-lime-400'
+                                "
+                                class="px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all active:scale-95"
+                            >
+                                {{ cat.name }}
+                            </button>
+                        </div>
+
+                        <Transition
+                            enter-active-class="transition duration-200 ease-out"
+                            enter-from-class="transform -translate-y-2 opacity-0"
+                            enter-to-class="transform translate-y-0 opacity-100"
+                            leave-active-class="transition duration-150 ease-in"
+                            leave-from-class="transform translate-y-0 opacity-100"
+                            leave-to-class="transform -translate-y-2 opacity-0"
                         >
-                            {{ cat.name }}
-                        </button>
+                            <div
+                                v-if="
+                                    selectedCategory !== 'all' &&
+                                    currentProductType.length > 0
+                                "
+                                class="flex gap-2 pb-1 pl-1 overflow-x-auto custom-scroll-x"
+                            >
+                                <button
+                                    @click="selectedProductType = 'all'"
+                                    :class="
+                                        selectedProductType === 'all'
+                                            ? 'bg-lime-100 text-lime-700 border border-lime-200'
+                                            : 'bg-gray-50 text-gray-500 border border-transparent hover:bg-gray-100'
+                                    "
+                                    class="px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all"
+                                >
+                                    Semua
+                                    {{
+                                        categories.find(
+                                            (c) => c.id === selectedCategory
+                                        )?.name
+                                    }}
+                                </button>
+
+                                <button
+                                    v-for="sub in currentProductType"
+                                    :key="sub.id"
+                                    @click="selectedProductType = sub.id"
+                                    :class="
+                                        selectedProductType === sub.id
+                                            ? 'bg-lime-100 text-lime-700 border border-lime-200'
+                                            : 'bg-gray-50 text-gray-500 border border-transparent hover:bg-gray-100'
+                                    "
+                                    class="px-2.5 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all"
+                                >
+                                    {{ sub.name }}
+                                </button>
+                            </div>
+                        </Transition>
                     </div>
                 </div>
 
@@ -111,21 +167,88 @@ const rp = (n) =>
                             v-for="product in filteredProducts"
                             :key="product.id"
                             @click="addToCart(product)"
-                            class="relative p-2 transition-all bg-white border border-gray-200 cursor-pointer dark:bg-gray-800 rounded-xl dark:border-gray-700 hover:border-lime-500 hover:shadow-md active:scale-95 group"
+                            class="relative flex flex-col justify-between p-2.5 transition-all bg-white border cursor-pointer dark:bg-gray-800 rounded-xl dark:border-gray-700 hover:shadow-lg hover:-translate-y-0.5 active:scale-95 group h-full"
+                            :class="
+                                product.stock === 0
+                                    ? 'opacity-50 cursor-not-allowed hover:border-red-400 hover:shadow-none hover:-translate-y-0 active:scale-100'
+                                    : 'border-gray-200 hover:border-lime-400'
+                            "
+                            ,
                         >
                             <div
-                                class="h-8 mb-1 text-xs font-bold leading-tight text-gray-700 dark:text-gray-200 line-clamp-2"
+                                v-if="getItemQty(product.id) > 0"
+                                class="absolute z-10 flex items-center justify-center w-6 h-6 text-xs font-bold text-white bg-orange-500 rounded-full shadow-md -top-2 -right-2 animate-bounce-in"
                             >
-                                {{ product.name }}
+                                {{ getItemQty(product.id) }}
                             </div>
-                            <div class="flex items-end justify-between">
-                                <div class="text-[10px] text-gray-400">
-                                    Stok: {{ product.stock }}
-                                </div>
+
+                            <div>
                                 <div
-                                    class="text-xs font-black text-lime-600 dark:text-lime-400"
+                                    class="h-8 mb-1.5 text-xs font-bold leading-tight text-gray-700 dark:text-gray-200 line-clamp-2 pr-2"
                                 >
-                                    {{ rp(product.selling_price) }}
+                                    {{ product.name }}
+                                </div>
+
+                                <div class="flex flex-wrap gap-1 mb-2">
+                                    <span
+                                        v-if="product.size"
+                                        class="px-1.5 py-0.5 text-[10px] font-medium text-gray-600 bg-gray-100 rounded dark:bg-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
+                                    >
+                                        {{ product.size?.name }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="flex items-end justify-between mt-auto">
+                                <div class="flex flex-col">
+                                    <span
+                                        class="text-[9px] text-gray-400 uppercase tracking-wider"
+                                        >Stok</span
+                                    >
+                                    <span
+                                        class="text-xs font-semibold"
+                                        :class="
+                                            product.stock <= 5
+                                                ? 'text-red-500'
+                                                : 'text-gray-600 dark:text-gray-300'
+                                        "
+                                    >
+                                        {{ product.stock }}
+                                        <span class="text-[10px]">{{
+                                            product.unit?.name
+                                        }}</span>
+                                    </span>
+                                </div>
+                                <div class="relative text-right">
+                                    <div
+                                        class="text-sm font-black transition-opacity duration-200 text-lime-600 dark:text-lime-400"
+                                        :class="
+                                            product.stock > 0
+                                                ? 'group-hover:opacity-0 group-hover:invisible'
+                                                : ''
+                                        "
+                                    >
+                                        {{ rp(product.selling_price) }}
+                                    </div>
+
+                                    <div
+                                        v-if="product.stock > 0"
+                                        class="absolute bottom-0 right-0 flex items-center invisible gap-1 text-xs font-bold transition-all duration-200 opacity-0 group-hover:visible group-hover:opacity-100 text-lime-600"
+                                    >
+                                        <span>+ Add</span>
+                                        <svg
+                                            xmlns="http://www.w3.org/2000/svg"
+                                            class="w-4 h-4"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                        >
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z"
+                                                clip-rule="evenodd"
+                                            />
+                                        </svg>
+                                    </div>
                                 </div>
                             </div>
                         </div>

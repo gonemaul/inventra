@@ -26,7 +26,7 @@ const selectedImageUrl = ref(null);
 const selectedtName = ref(null);
 const openImageModal = (path, name) => {
     selectedImageUrl.value = path;
-    selectedtName.value = name;
+    selectedtName.value = "Bukti Pembayaran : " + name;
     showImageModal.value = true;
 };
 
@@ -292,10 +292,10 @@ const showModal = ref(false);
 
                                 <div v-if="pay.proof_image" class="mt-2">
                                     <span
-                                        class="flex items-center gap-1 text-xs text-blue-500 hover:underline"
+                                        class="flex items-center gap-1 text-xs text-blue-500 cursor-pointer hover:underline"
                                         @click="
                                             openImageModal(
-                                                pay.proof_image,
+                                                pay.proof_image_url,
                                                 pay.payment_date
                                             )
                                         "

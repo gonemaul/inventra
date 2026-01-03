@@ -1,21 +1,23 @@
 <script setup>
 import { ref, watch, computed } from "vue";
 import axios from "axios";
-import Modal from "@/Components/Modal.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import BottomSheet from "@/Components/BottomSheet.vue";
 
 const props = defineProps({
     show: Boolean,
-    supplierId: [Number, String], // ID Supplier
+    supplierId: [Number, String],
 });
+
 const emit = defineEmits(["close", "add-items"]);
 
+// --- STATE ---
 const recommendations = ref([]);
 const loading = ref(false);
-const selectedItems = ref([]);
+const selectedItems = ref([]); // Local state untuk checkbox
 
+// --- HELPER ---
 const formatRupiah = (n) =>
     new Intl.NumberFormat("id-ID", {
         style: "currency",
@@ -23,55 +25,55 @@ const formatRupiah = (n) =>
         minimumFractionDigits: 0,
     }).format(n);
 
-// 1. FETCH DATA
+// --- FETCH DATA ---
 async function fetchRecommendations() {
     if (!props.supplierId) return;
+
     loading.value = true;
     try {
         const res = await axios.get(
             route("purchases.recommendations", props.supplierId)
         );
         recommendations.value = res.data;
-        // Default: Centang semua yang kritis
+
+        // Auto-Select Logic:
+        // Default centang item yang KRITIS (stok sedikit) agar User terbantu
         selectedItems.value = res.data
             .filter((i) => i.is_critical)
             .map((i) => i.product_id);
-        // Atau centang semua: selectedItems.value = res.data.map(i => i.product_id);
     } catch (e) {
         console.error("Gagal fetch rekomendasi:", e);
         recommendations.value = [];
+        selectedItems.value = [];
     } finally {
         loading.value = false;
     }
 }
 
+// --- WATCHERS ---
 watch(
     () => props.show,
     (isOpen) => {
-        if (isOpen) fetchRecommendations();
-        else recommendations.value = [];
+        if (isOpen) {
+            fetchRecommendations();
+        } else {
+            // Reset data saat tutup (diberi delay sedikit agar animasi close mulus)
+            setTimeout(() => {
+                recommendations.value = [];
+                selectedItems.value = [];
+            }, 300);
+        }
     }
 );
 
-function handleAdd() {
-    const itemsToAdd = recommendations.value
-        .filter((item) => selectedItems.value.includes(item.product_id))
-        .map((item) => ({
-            ...item,
-            quantity: item.quantity,
-            purchase_price: item.purchase_price,
-        }));
+// --- COMPUTED PROPERTIES ---
 
-    if (itemsToAdd.length === 0) return;
-    emit("add-items", itemsToAdd);
-    emit("close");
-}
-
+// 1. Cek status "Select All"
 const allChecked = computed({
     get() {
         return (
-            selectedItems.value.length === recommendations.value.length &&
-            recommendations.value.length > 0
+            recommendations.value.length > 0 &&
+            selectedItems.value.length === recommendations.value.length
         );
     },
     set(value) {
@@ -80,273 +82,343 @@ const allChecked = computed({
             : [];
     },
 });
+
+// 2. Hitung Total Estimasi Biaya (Untuk Footer Sticky)
+const totalSelectedCost = computed(() => {
+    return recommendations.value
+        .filter((item) => selectedItems.value.includes(item.product_id))
+        .reduce((sum, item) => sum + item.purchase_price * item.quantity, 0);
+});
+
+// --- ACTIONS ---
+
+// Toggle checkbox per item
+const toggleSelection = (id) => {
+    const index = selectedItems.value.indexOf(id);
+    if (index === -1) {
+        selectedItems.value.push(id);
+    } else {
+        selectedItems.value.splice(index, 1);
+    }
+};
+
+// Kirim data ke Parent Component (Form Pembelian)
+function handleAdd() {
+    // Filter hanya item yang dipilih
+    const itemsToAdd = recommendations.value
+        .filter((item) => selectedItems.value.includes(item.product_id))
+        .map((item) => ({
+            // Mapping sesuai struktur "cart" di halaman pembelian Anda
+            product_id: item.product_id,
+            code: item.code,
+            name: item.name,
+            unit: item.unit, // Pastikan backend mengirim object unit/size
+            size: item.size,
+
+            // Masukkan data transaksi
+            purchase_price: item.purchase_price,
+            quantity: item.quantity, // Qty rekomendasi sistem
+            subtotal: item.purchase_price * item.quantity,
+
+            // Info tambahan (opsional)
+            current_stock: item.current_stock,
+        }));
+
+    if (itemsToAdd.length === 0) return;
+
+    emit("add-items", itemsToAdd);
+    emit("close");
+}
 </script>
 
 <template>
-    <!-- <Modal :show="show" @close="$emit('close')" maxWidth="3xl"> -->
     <BottomSheet
         :show="show"
         @close="$emit('close')"
-        title="💡 Rekomendasi Restok Cerdas"
+        title="💡 Rekomendasi Restock Cerdas"
     >
-        <div class="px-6 py-3 bg-white dark:bg-gray-800">
-            <div class="items-start mb-4">
-                <!-- <div>
-                    <h2
-                        class="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-gray-100"
-                    >
-                        💡 Rekomendasi Restock Cerdas
-                    </h2>
-                </div> -->
-                <p class="mt-1 text-sm text-gray-500">
-                    Daftar barang dari Supplier ini yang perlu dibeli
-                    berdasarkan
-                    <span class="font-bold text-blue-500">Forecasting</span>
-                    dan
-                    <span class="font-bold text-red-500">Stok Minimum</span>.
-                </p>
-                <div
-                    class="px-3 py-1 text-xs font-bold text-blue-600 border border-blue-100 rounded-lg bg-blue-50"
-                >
-                    {{ recommendations.length }} Item Ditemukan
-                </div>
-            </div>
-
+        <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
             <div
-                v-if="loading"
-                class="flex flex-col items-center justify-center py-12 text-gray-500 animate-pulse"
+                class="px-6 py-4 bg-white border-b shadow-sm dark:bg-gray-800 dark:border-gray-700 shrink-0"
             >
                 <div
-                    class="w-8 h-8 mx-auto mb-2 border-b-2 rounded-full animate-spin border-lime-500"
-                ></div>
-                <span>Menganalisa Kebutuhan Stok...</span>
-            </div>
+                    class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+                >
+                    <div>
+                        <p class="text-sm text-gray-500 dark:text-gray-400">
+                            Sistem mendeteksi
+                            <strong class="text-gray-800 dark:text-gray-200"
+                                >{{ recommendations.length }} barang</strong
+                            >
+                            di bawah stok minimum atau diprediksi habis.
+                        </p>
+                    </div>
 
-            <div
-                v-else-if="recommendations.length === 0"
-                class="flex flex-col items-center py-12 text-center text-gray-500"
-            >
-                <div
-                    class="flex items-center justify-center w-12 h-12 mb-2 text-green-600 bg-green-100 rounded-full"
-                >
-                    <svg
-                        class="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M5 13l4 4L19 7"
-                        ></path>
-                    </svg>
-                </div>
-                <span class="font-medium text-gray-800 dark:text-white"
-                    >Stok Aman!</span
-                >
-                <span class="mt-1 text-sm"
-                    >Tidak ada barang yang perlu di-restock dari supplier
-                    ini.</span
-                >
-            </div>
-
-            <div
-                v-else
-                class="overflow-auto max-h-[60vh] border rounded-lg dark:border-gray-700"
-            >
-                <table
-                    class="min-w-full text-sm text-left divide-y divide-gray-200 dark:divide-gray-700"
-                >
-                    <thead
-                        class="sticky top-0 z-10 text-xs text-gray-700 uppercase shadow-sm bg-gray-50 dark:bg-gray-700 dark:text-gray-400"
-                    >
-                        <tr>
-                            <th
-                                class="w-10 px-4 py-3 bg-gray-50 dark:bg-gray-700"
-                            >
-                                <input
-                                    type="checkbox"
-                                    v-model="allChecked"
-                                    class="border-gray-300 rounded cursor-pointer text-lime-600 focus:ring-lime-500"
-                                />
-                            </th>
-                            <th
-                                class="w-1/3 px-4 py-3 bg-gray-50 dark:bg-gray-700"
-                            >
-                                Produk
-                            </th>
-                            <th
-                                class="w-1/2 px-4 py-3 bg-gray-50 dark:bg-gray-700"
-                            >
-                                Analisa / Alasan
-                            </th>
-                            <th
-                                class="px-4 py-3 text-center w-28 bg-gray-50 dark:bg-gray-700"
-                            >
-                                Stok
-                            </th>
-                            <th
-                                class="px-4 py-3 text-center w-28 bg-gray-50 dark:bg-gray-700"
-                            >
-                                Saran Qty
-                            </th>
-                            <th
-                                class="px-4 py-3 text-right bg-gray-50 dark:bg-gray-700"
-                            >
-                                Estimasi
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody
-                        class="bg-white divide-y divide-gray-200 dark:divide-gray-700 dark:bg-gray-800"
-                    >
-                        <tr
-                            v-for="item in recommendations"
-                            :key="item.product_id"
-                            class="transition cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50"
-                            :class="{
-                                'bg-red-50/30 dark:bg-red-900/10':
-                                    item.is_critical,
-                            }"
-                            @click="
-                                !selectedItems.includes(item.product_id)
-                                    ? selectedItems.push(item.product_id)
-                                    : selectedItems.splice(
-                                          selectedItems.indexOf(
-                                              item.product_id
-                                          ),
-                                          1
-                                      )
+                    <div class="flex items-center gap-2">
+                        <label
+                            class="flex items-center gap-2 px-3 py-1.5 text-xs font-bold transition-colors border rounded-lg cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+                            :class="
+                                allChecked
+                                    ? 'bg-lime-50 border-lime-200 text-lime-700'
+                                    : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300'
                             "
                         >
-                            <td class="px-4 py-3" @click.stop>
+                            <input
+                                type="checkbox"
+                                v-model="allChecked"
+                                class="w-4 h-4 border-gray-300 rounded text-lime-600 focus:ring-lime-500"
+                            />
+                            Pilih Semua ({{ recommendations.length }})
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                <div
+                    v-if="loading"
+                    class="flex flex-col items-center justify-center py-20 space-y-4"
+                >
+                    <div class="relative w-12 h-12">
+                        <div
+                            class="absolute w-full h-full border-4 rounded-full border-lime-200 opacity-30"
+                        ></div>
+                        <div
+                            class="absolute w-full h-full border-4 border-l-4 rounded-full border-lime-500 animate-spin border-t-transparent border-r-transparent border-b-transparent"
+                        ></div>
+                    </div>
+                    <span
+                        class="text-sm font-medium text-gray-500 animate-pulse"
+                        >Menganalisa data stok...</span
+                    >
+                </div>
+
+                <div
+                    v-else-if="recommendations.length === 0"
+                    class="flex flex-col items-center justify-center py-20 text-center"
+                >
+                    <div
+                        class="p-4 mb-4 bg-green-100 rounded-full dark:bg-green-900/30"
+                    >
+                        <svg
+                            class="w-10 h-10 text-green-600 dark:text-green-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                    </div>
+                    <h3
+                        class="text-lg font-bold text-gray-800 dark:text-gray-100"
+                    >
+                        Stok Aman!
+                    </h3>
+                    <p class="max-w-xs mt-1 text-sm text-gray-500">
+                        Tidak ada barang dari supplier ini yang perlu di-restock
+                        saat ini.
+                    </p>
+                </div>
+
+                <div v-else class="space-y-3">
+                    <div
+                        v-for="item in recommendations"
+                        :key="item.product_id"
+                        @click="toggleSelection(item.product_id)"
+                        class="relative flex flex-col gap-3 p-4 transition-all bg-white border rounded-xl cursor-pointer dark:bg-gray-800 group hover:shadow-md active:scale-[0.99]"
+                        :class="[
+                            selectedItems.includes(item.product_id)
+                                ? 'border-lime-500 ring-1 ring-lime-500 bg-lime-50/10'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-lime-300',
+                            item.is_critical
+                                ? 'border-l-4 border-l-red-500'
+                                : 'border-l-4 border-l-transparent',
+                        ]"
+                    >
+                        <div class="flex items-start gap-3">
+                            <div class="pt-1">
                                 <input
                                     type="checkbox"
                                     :value="item.product_id"
                                     v-model="selectedItems"
-                                    class="border-gray-300 rounded cursor-pointer text-lime-600 focus:ring-lime-500"
+                                    @click.stop
+                                    class="w-5 h-5 border-gray-300 rounded cursor-pointer text-lime-600 focus:ring-lime-500"
                                 />
-                            </td>
+                            </div>
 
-                            <td class="px-4 py-3 min-w-80%">
-                                <div class="flex items-center gap-3">
-                                    <!-- <div
-                                        class="flex-shrink-0 w-10 h-10 overflow-hidden bg-gray-100 border rounded"
-                                    >
-                                        <img
-                                            :src="item.image_url"
-                                            class="object-contain w-full h-full"
-                                        />
-                                    </div> -->
-                                    <p
-                                        class="font-bold text-gray-800 dark:text-gray-200 line-clamp-1"
-                                        :title="item.name"
-                                    >
-                                        {{ item.name }}
-                                    </p>
-                                    <!-- <div> -->
-                                    <!-- <div
-                                            class="flex items-center gap-1 text-xs text-gray-500"
-                                        >
-                                            <span
-                                                class="px-1 font-mono bg-gray-100 rounded"
-                                                >{{ item.code }}</span
-                                            >
-                                            <span>• {{ item.brand }}</span>
-                                        </div> -->
-                                    <!-- </div> -->
-                                </div>
-                            </td>
-
-                            <td class="px-4 py-3">
-                                <span
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold border shadow-sm"
-                                    :class="
-                                        item.is_critical
-                                            ? 'bg-red-100 text-red-700 border-red-200'
-                                            : 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                    "
+                            <div class="flex-1 min-w-0">
+                                <div
+                                    class="flex items-center justify-between mb-1"
                                 >
-                                    <span v-if="item.is_critical" class="mr-1"
-                                        >🚨</span
-                                    >
-                                    {{ item.reason }}
-                                </span>
-                            </td>
-
-                            <td class="px-4 py-3 text-center">
-                                <div class="flex flex-col items-center">
                                     <span
-                                        class="font-bold"
+                                        class="text-[10px] font-bold tracking-wider text-gray-400 uppercase truncate"
+                                    >
+                                        {{ item.brand || "Umum" }} • #{{
+                                            item.code
+                                        }}
+                                    </span>
+
+                                    <span
+                                        class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold border"
                                         :class="
-                                            item.current_stock <= item.min_stock
-                                                ? 'text-red-600'
-                                                : 'text-gray-700'
+                                            item.is_critical
+                                                ? 'bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-red-800'
+                                                : 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300'
                                         "
                                     >
-                                        {{ item.current_stock }}
+                                        {{ item.reason }}
                                     </span>
-                                    <span class="text-[10px] text-gray-400"
-                                        >Min: {{ item.min_stock }}</span
-                                    >
                                 </div>
-                            </td>
 
-                            <td class="px-4 py-3 text-center">
-                                <span
-                                    class="px-3 py-1 font-bold text-blue-700 border border-blue-200 rounded-lg shadow-sm bg-blue-50"
+                                <h4
+                                    class="mb-2 text-sm font-bold text-gray-800 dark:text-gray-100 line-clamp-1"
                                 >
-                                    {{ item.quantity }}
-                                </span>
-                            </td>
+                                    {{ item.name }}
+                                </h4>
 
-                            <td
-                                class="px-4 py-3 font-medium text-right text-gray-600 dark:text-gray-300"
+                                <div class="flex items-center gap-3">
+                                    <div class="flex-1">
+                                        <div
+                                            class="flex justify-between mb-1 text-[10px]"
+                                        >
+                                            <span class="text-gray-500"
+                                                >Stok:
+                                                <b
+                                                    :class="
+                                                        item.current_stock <=
+                                                        item.min_stock
+                                                            ? 'text-red-600'
+                                                            : 'text-gray-700'
+                                                    "
+                                                    >{{ item.current_stock }}</b
+                                                ></span
+                                            >
+                                            <span class="text-gray-400"
+                                                >Min: {{ item.min_stock }}</span
+                                            >
+                                        </div>
+                                        <div
+                                            class="w-full h-1.5 bg-gray-100 rounded-full dark:bg-gray-700 overflow-hidden"
+                                        >
+                                            <div
+                                                class="h-full transition-all duration-500 rounded-full"
+                                                :style="{
+                                                    width:
+                                                        Math.min(
+                                                            (item.current_stock /
+                                                                item.min_stock) *
+                                                                100,
+                                                            100
+                                                        ) + '%',
+                                                }"
+                                                :class="
+                                                    item.is_critical
+                                                        ? 'bg-red-500'
+                                                        : 'bg-yellow-400'
+                                                "
+                                            ></div>
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        class="w-px h-8 bg-gray-200 dark:bg-gray-700"
+                                    ></div>
+
+                                    <div
+                                        class="flex flex-col items-end min-w-[80px]"
+                                    >
+                                        <span class="text-[10px] text-gray-400"
+                                            >Saran Order</span
+                                        >
+                                        <span
+                                            class="text-lg font-black text-blue-600 dark:text-blue-400"
+                                        >
+                                            +{{ item.quantity }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div
+                            class="flex items-center justify-between pt-2 mt-1 border-t border-gray-100 border-dashed dark:border-gray-700"
+                        >
+                            <span class="text-[10px] text-gray-400"
+                                >Estimasi Biaya:</span
+                            >
+                            <span
+                                class="text-xs font-bold text-gray-700 dark:text-gray-300"
                             >
                                 {{
                                     formatRupiah(
                                         item.purchase_price * item.quantity
                                     )
                                 }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                            </span>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div
-                class="flex items-center justify-end gap-3 pt-4 mt-6 border-t dark:border-gray-700"
+                class="px-6 py-4 bg-white border-t shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:bg-gray-800 dark:border-gray-700 z-10 shrink-0"
             >
-                <p class="mr-auto text-sm text-gray-500">
-                    {{ selectedItems.length }} item dipilih
-                </p>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex flex-col">
+                        <span class="text-xs text-gray-500"
+                            >Total Estimasi ({{
+                                selectedItems.length
+                            }}
+                            item)</span
+                        >
+                        <span
+                            class="text-lg font-black text-lime-600 dark:text-lime-400"
+                        >
+                            {{ formatRupiah(totalSelectedCost) }}
+                        </span>
+                    </div>
+                </div>
 
-                <SecondaryButton @click="$emit('close')">Batal</SecondaryButton>
-
-                <PrimaryButton
-                    @click="handleAdd"
-                    :disabled="selectedItems.length === 0"
-                    class="flex items-center gap-2"
-                >
-                    <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
+                <div class="flex gap-3">
+                    <button
+                        @click="$emit('close')"
+                        class="px-4 py-2.5 text-sm font-bold text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 4v16m8-8H4"
-                        ></path>
-                    </svg>
-                    Masukkan ke Keranjang
-                </PrimaryButton>
+                        Batal
+                    </button>
+
+                    <button
+                        @click="handleAdd"
+                        :disabled="selectedItems.length === 0"
+                        class="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-white transition rounded-xl shadow-lg shadow-lime-500/30"
+                        :class="
+                            selectedItems.length > 0
+                                ? 'bg-lime-600 hover:bg-lime-700 active:scale-[0.98]'
+                                : 'bg-gray-300 cursor-not-allowed dark:bg-gray-700 text-gray-400 shadow-none'
+                        "
+                    >
+                        <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            ></path>
+                        </svg>
+                        <span>Tambahkan ke Keranjang</span>
+                    </button>
+                </div>
             </div>
         </div>
     </BottomSheet>
-    <!-- </Modal> -->
 </template>
