@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Product extends Model
 {
     use HasFactory, SoftDeletes;
-    protected $appends = ['image_url'];
+    protected $appends = ['image_url', 'current_margin', 'is_margin_low'];
     protected $casts = [
         'snapshot' => 'array', // Otomatis convert JSON ke Array
     ];
@@ -95,6 +95,21 @@ class Product extends Model
         }
     }
 
+    public function getCurrentMarginAttribute()
+    {
+        // Hindari error bagi nol
+        if ($this->selling_price <= 0) return 0;
+
+        // Rumus: ((Jual - Beli) / Jual) * 100
+        $margin = ($this->selling_price - $this->purchase_price) / $this->selling_price * 100;
+
+        return round($margin, 2); // Hasil misal: 15.5
+    }
+    public function getIsMarginLowAttribute()
+    {
+        // Bandingkan Aktual vs Target
+        return $this->current_margin < $this->target_margin_percent;
+    }
     /**
      * Fungsi Sakti untuk update data sambil menyimpan history (snapshot).
      * * @param array $newData Key-Value data baru yang akan diupdate

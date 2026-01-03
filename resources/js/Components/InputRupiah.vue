@@ -134,7 +134,7 @@ watch(
             v-bind="$attrs"
             :class="[
                 // 1. CLASS DEFAULT
-                'w-full py-3 pl-4 pr-4 border border-gray-300 rounded-lg shadow-sm focus:border-green-500 focus:ring-green-500 transition-all duration-200 placeholder-gray-400 text-gray-900',
+                'w-full py-3 pl-4 pr-4 border border-gray-300 rounded-lg shadow-sm focus:border-lime-500 focus:ring-lime-500 transition-all duration-200 placeholder-gray-400 text-gray-900',
 
                 // Align right biasanya lebih enak untuk input uang (opsional, hapus jika tidak suka)
                 'text-right',
