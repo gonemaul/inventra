@@ -215,15 +215,12 @@ const submit = () => {
                 <div class="text-right">
                     <span
                         class="text-[10px] text-gray-400 uppercase font-bold block mb-0.5"
-                        >Target Margin |
-                        {{ product.current_margin["percent"] }} % ({{
-                            formatRupiah(product.current_margin["nominal"])
-                        }})
+                        >Target Margin | {{ product.target_margin_percent }} %
                     </span>
                     <span
                         class="inline-block px-2 py-1 text-sm font-bold rounded"
                         :class="
-                            profitNominal < 0
+                            profitPercent < product.target_margin_percent
                                 ? 'bg-red-200 text-red-700'
                                 : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
                         "

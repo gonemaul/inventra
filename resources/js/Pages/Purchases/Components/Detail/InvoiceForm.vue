@@ -72,7 +72,6 @@ const submitInvoice = () => {
               invoice: props.editingInvoice.id,
           })
         : route("purchases.storeInvoice", props.purchaseId);
-    const method = isEditMode ? "post" : "post";
     isActionLoading.value = true;
     form.transform((data) => ({
         ...data,
@@ -169,7 +168,7 @@ function parseRupiah(value) {
                                 v-model="form.total_amount"
                                 placeholder="0"
                                 min="1"
-                                class="w-full py-3 pl-10 font-bold text-gray-800"
+                                class="w-full py-3 font-bold text-left text-gray-800"
                             />
                             <InputError :message="form.errors.total_amount" />
                         </div>
@@ -215,6 +214,7 @@ function parseRupiah(value) {
                             class="block mb-2 text-xs font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300"
                         >
                             Status Pembayaran
+                            <span class="text-red-500">*</span>
                         </label>
                         <div class="grid grid-cols-2 gap-2">
                             <label
@@ -258,6 +258,7 @@ function parseRupiah(value) {
                             class="block mb-2 text-xs font-bold tracking-wide text-gray-700 uppercase dark:text-gray-300"
                         >
                             Foto Nota Fisik
+                            <span class="text-red-500">*</span>
                         </label>
                         <div class="relative">
                             <input

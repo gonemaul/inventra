@@ -94,80 +94,6 @@ const restockSuggestion = computed(() => {
                 </div>
             </div>
         </div>
-
-        <!-- <div class="flex flex-col flex-1 p-3">
-            <div class="flex items-center gap-2 mb-1">
-                <span
-                    class="text-[10px] font-mono font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded dark:bg-gray-700 dark:text-gray-300"
-                >
-                    {{ item.code }}
-                </span>
-                <span
-                    class="text-[10px] text-gray-400 truncate dark:text-gray-500"
-                >
-                    {{ item.category?.name || "Umum" }}
-                </span>
-            </div>
-
-            <h3
-                class="text-xs font-bold text-gray-800 dark:text-gray-100 leading-tight mb-2 line-clamp-2 min-h-[2.5em] group-hover:text-lime-600 dark:group-hover:text-lime-400 transition-colors"
-            >
-                {{ item.name }}
-            </h3>
-
-            <div
-                class="flex items-center justify-between pt-2 mt-auto border-t border-gray-100 border-dashed dark:border-gray-700"
-            >
-                <div class="flex flex-col">
-                    <span class="text-[10px] text-gray-400 dark:text-gray-500"
-                        >Harga Beli</span
-                    >
-                    <span
-                        class="text-sm font-bold text-blue-600 dark:text-blue-400"
-                    >
-                        {{ formatRupiah(item.purchase_price) }}
-                    </span>
-                </div>
-
-                <button
-                    class="p-1.5 rounded-full transition-colors duration-200"
-                    :class="[
-                        isSelected
-                            ? 'bg-lime-500 text-white shadow-md'
-                            : 'bg-gray-100 text-gray-400 hover:bg-lime-500 hover:text-white dark:bg-gray-700 dark:text-gray-500 dark:hover:bg-lime-600 dark:hover:text-white',
-                    ]"
-                >
-                    <svg
-                        v-if="isSelected"
-                        class="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M5 13l4 4L19 7"
-                        />
-                    </svg>
-                    <svg
-                        v-else
-                        class="w-5 h-5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 4v16m8-8H4"
-                        />
-                    </svg>
-                </button>
-            </div>
-        </div> -->
         <div
             class="relative flex flex-col flex-1 p-3 overflow-hidden transition-all duration-200"
             :class="[
@@ -206,7 +132,7 @@ const restockSuggestion = computed(() => {
             </h3>
 
             <div class="flex flex-col gap-2 mb-3">
-                <div class="flex items-start">
+                <!-- <div class="flex items-start">
                     <span
                         v-if="item.size || item.unit"
                         class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border"
@@ -234,7 +160,7 @@ const restockSuggestion = computed(() => {
                         <span class="mx-1 opacity-40">/</span>
                         {{ item.unit?.name }}
                     </span>
-                </div>
+                </div> -->
 
                 <div class="flex flex-col gap-2 mb-3">
                     <div class="flex items-start">

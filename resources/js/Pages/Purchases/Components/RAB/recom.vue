@@ -227,6 +227,126 @@ function handleAdd() {
 
                 <div v-else class="space-y-3">
                     <div
+                        class="flex flex-col overflow-hidden bg-white border border-gray-200 shadow-sm dark:bg-gray-900 rounded-xl dark:border-gray-800"
+                    >
+                        <div
+                            v-for="item in recommendations"
+                            :key="item.product_id"
+                            @click="toggleSelection(item.product_id)"
+                            class="relative flex items-center gap-3 p-3 transition-colors border-b border-gray-100 cursor-pointer group last:border-0 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                            :class="[
+                                // Logic Background saat Selected
+                                selectedItems.includes(item.product_id)
+                                    ? 'bg-lime-50 dark:bg-lime-900/10'
+                                    : 'bg-white dark:bg-gray-900',
+                                // Logic Border Strip Kiri (Status Critical)
+                                item.is_critical
+                                    ? 'border-l-4 border-l-red-500 pl-2' // pl-2 karena border makan tempat
+                                    : 'border-l-4 border-l-transparent pl-2',
+                            ]"
+                        >
+                            <div class="shrink-0">
+                                <input
+                                    type="checkbox"
+                                    :value="item.product_id"
+                                    v-model="selectedItems"
+                                    @click.stop
+                                    class="w-5 h-5 border-gray-300 rounded cursor-pointer text-lime-600 focus:ring-lime-500"
+                                />
+                            </div>
+
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span
+                                        v-if="item.brand"
+                                        class="px-1.5 py-0.5 text-[9px] font-bold text-gray-500 bg-gray-100 rounded dark:bg-gray-800 dark:text-gray-400"
+                                    >
+                                        {{ item.brand }}
+                                    </span>
+                                    <h4
+                                        class="text-sm font-bold text-gray-800 truncate dark:text-gray-100"
+                                    >
+                                        {{ item.name }}
+                                    </h4>
+                                </div>
+
+                                <div
+                                    class="flex items-center gap-2 text-[10px] text-gray-400 mb-2"
+                                >
+                                    <span class="font-mono"
+                                        >#{{ item.code }}</span
+                                    >
+                                    <span>•</span>
+                                    <span
+                                        >{{ item.size }} / {{ item.unit }}</span
+                                    >
+
+                                    <span
+                                        v-if="item.is_critical"
+                                        class="ml-auto text-red-600 font-bold bg-red-50 px-1.5 rounded-sm"
+                                    >
+                                        {{ item.reason }}
+                                    </span>
+                                </div>
+
+                                <div class="flex items-center gap-2">
+                                    <div
+                                        class="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden dark:bg-gray-800"
+                                    >
+                                        <div
+                                            class="h-full rounded-full"
+                                            :class="
+                                                item.is_critical
+                                                    ? 'bg-red-500'
+                                                    : 'bg-yellow-400'
+                                            "
+                                            :style="{
+                                                width:
+                                                    Math.min(
+                                                        (item.current_stock /
+                                                            item.min_stock) *
+                                                            100,
+                                                        100
+                                                    ) + '%',
+                                            }"
+                                        ></div>
+                                    </div>
+                                    <span
+                                        class="text-[9px] text-gray-400 whitespace-nowrap"
+                                    >
+                                        {{ item.current_stock }} /
+                                        {{ item.min_stock }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div
+                                class="text-right pl-2 border-l border-dashed border-gray-200 dark:border-gray-700 min-w-[80px]"
+                            >
+                                <span
+                                    class="text-[9px] text-gray-400 uppercase font-medium"
+                                    >Order</span
+                                >
+
+                                <div
+                                    class="text-lg font-black leading-none text-blue-600 dark:text-blue-400 my-0.5"
+                                >
+                                    +{{ item.quantity }}
+                                </div>
+
+                                <div
+                                    class="text-[10px] text-gray-500 dark:text-gray-400 font-medium"
+                                >
+                                    {{
+                                        formatRupiah(
+                                            item.purchase_price * item.quantity
+                                        )
+                                    }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- <div
                         v-for="item in recommendations"
                         :key="item.product_id"
                         @click="toggleSelection(item.product_id)"
@@ -271,7 +391,7 @@ function handleAdd() {
                                                 : 'bg-yellow-50 text-yellow-700 border-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300'
                                         "
                                     >
-                                        {{ item.reason }}
+                                        {{ item.reason || "Stok Menipis" }}
                                     </span>
                                 </div>
 
@@ -280,8 +400,15 @@ function handleAdd() {
                                 >
                                     {{ item.name }}
                                 </h4>
+                                <span
+                                    class="text-[10px] font-bold tracking-wider text-gray-400 uppercase truncate"
+                                >
+                                    {{ item.size }} / {{ item.unit }}
+                                </span>
 
-                                <div class="flex items-center gap-3">
+                                <div
+                                    class="flex items-center gap-3 pt-2 border-t border-dashed"
+                                >
                                     <div class="flex-1">
                                         <div
                                             class="flex justify-between mb-1 text-[10px]"
@@ -361,7 +488,7 @@ function handleAdd() {
                                 }}
                             </span>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
 

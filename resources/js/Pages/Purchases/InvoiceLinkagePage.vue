@@ -379,10 +379,12 @@ import { Head, Link, useForm, router } from "@inertiajs/vue3";
 import { useToast } from "vue-toastification";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import { throttle } from "lodash";
+import ImageModal from "@/Components/ImageModal.vue";
 
 // Import Child Components
 import MobileChecking from "./Components/Checking/Mobile/MobileChecking.vue";
 import DesktopChecking from "./Components/Checking/Desktop/DesktopChecking.vue";
+import ActionLoader from "@/Components/ActionLoader.vue";
 
 // --- PROPS ---
 const props = defineProps({
@@ -396,6 +398,15 @@ const props = defineProps({
 const { isActionLoading } = useActionLoading();
 const toast = useToast();
 const isProcessing = ref(false);
+// Gambar Nota
+const showImageModal = ref(false);
+const selectedImageUrl = ref(null);
+const selectedInvoiceCode = ref(null);
+const openImageModal = (path, name) => {
+    selectedImageUrl.value = path;
+    selectedInvoiceCode.value = "Invoice-#" + name;
+    showImageModal.value = true;
+};
 
 // State responsive
 const isMobile = ref(window.innerWidth < 1024);
@@ -418,7 +429,7 @@ const isSearching = ref(false);
 // --- FORMS ---
 const linkForm = useForm({ ids: [], type: "link", newQty: 0, newPrice: 0 });
 const singleLinkForm = useForm({
-    product_id: [],
+    product_id: null,
     type: "create",
     newQty: 0,
     newPrice: 0,
@@ -476,35 +487,39 @@ const submitLinkage = (specificIds = null, newQty = 0, newPrice = 0) => {
     isActionLoading.value = true;
     isProcessing.value = true;
 
-    linkForm.post(
-        route("purchases.linkItems", {
-            purchase: props.purchase.id,
-            invoice: props.invoice.id,
-        }),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success(
-                    `${idsToProcess.length} item berhasil ditautkan.`
-                );
-                // Reset selection
-                selectedLinkItemIds.value = [];
-                // Refresh halaman
-                router.visit(window.location.href, {
-                    preserveScroll: true,
-                    preserveState: false,
-                });
-            },
-            onError: (err) => {
-                toast.error("Terjadi kesalahan pada server.");
-                console.error(err);
-            },
-            onFinish: () => {
-                isProcessing.value = false;
-                isActionLoading.value = false;
-            },
-        }
-    );
+    return new Promise((resolve, reject) => {
+        linkForm.post(
+            route("purchases.linkItems", {
+                purchase: props.purchase.id,
+                invoice: props.invoice.id,
+            }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success(
+                        `${idsToProcess.length} item berhasil ditautkan.`
+                    );
+                    // Reset selection
+                    selectedLinkItemIds.value = [];
+                    // Refresh halaman
+                    router.visit(window.location.href, {
+                        preserveScroll: true,
+                        preserveState: false,
+                    });
+                    resolve(true);
+                },
+                onError: (err) => {
+                    toast.error("Terjadi kesalahan pada server.");
+                    console.error(err);
+                    reject(err);
+                },
+                onFinish: () => {
+                    isProcessing.value = false;
+                    isActionLoading.value = false;
+                },
+            }
+        );
+    });
 };
 
 // 2. Submit Unlinkage (Bisa Bulk dari State, atau Single ID dari Argumen)
@@ -528,33 +543,49 @@ const submitUnlinkage = (specificIds = null) => {
     isActionLoading.value = true;
     isProcessing.value = true;
 
-    unlinkForm.put(
-        route("purchases.unlinkItems", {
-            purchase: props.purchase.id,
-            invoice: props.invoice.id,
-        }),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.warning(`${idsToProcess.length} item dilepaskan.`);
-                selectedUnlinkItemIds.value = [];
-                router.visit(window.location.href, {
-                    preserveScroll: true,
-                    preserveState: false,
-                });
-            },
-            onFinish: () => {
-                isProcessing.value = false;
-                isActionLoading.value = false;
-            },
-        }
-    );
+    return new Promise((resolve, reject) => {
+        unlinkForm.put(
+            route("purchases.unlinkItems", {
+                purchase: props.purchase.id,
+                invoice: props.invoice.id,
+            }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.warning(`${idsToProcess.length} item dilepaskan.`);
+                    selectedUnlinkItemIds.value = [];
+                    router.visit(window.location.href, {
+                        preserveScroll: true,
+                        preserveState: false,
+                    });
+                    resolve(true);
+                },
+                onError: (errors) => {
+                    // Beritahu promise jika gagal
+                    reject(errors);
+                },
+                onFinish: () => {
+                    isProcessing.value = false;
+                    isActionLoading.value = false;
+                },
+            }
+        );
+    });
 };
 
 // 3. Add New / Substitute Item (Link barang baru via search)
 const addNewSubstituteItem = (product) => {
     // Validasi lokal sederhana
-    const exists = linkedItems.value.some(
+    if (product && product.id) {
+        singleLinkForm.product_id = product.id;
+        singleLinkForm.newQty = product.newQty;
+        singleLinkForm.newPrice = product.newPrice;
+    } else {
+        toast.error("Pilih produk yang valid untuk ditambahkan.");
+        return;
+    }
+
+    const exists = props.linkedItems.some(
         (item) => item.product_id === product.id
     );
     if (exists) {
@@ -564,67 +595,122 @@ const addNewSubstituteItem = (product) => {
         return;
     }
 
-    singleLinkForm.product_id = [product.id];
-    singleLinkForm.newQty = [product.qty];
-    singleLinkForm.newPrice = [product.price];
     isActionLoading.value = true;
     isProcessing.value = true;
 
-    singleLinkForm.post(
-        route("purchases.linkItems", {
-            purchase: props.purchase.id,
-            invoice: props.invoice.id,
-        }),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success("Produk tambahan berhasil dimasukkan.");
-                router.visit(window.location.href, {
-                    preserveScroll: true,
-                    preserveState: false,
-                });
-            },
-            onFinish: () => {
-                isProcessing.value = false;
-                isActionLoading.value = false;
-                // Reset search di parent jika perlu
-                searchKeyword.value = "";
-                searchResults.value = [];
-            },
-        }
-    );
+    return new Promise((resolve, reject) => {
+        singleLinkForm.post(
+            route("purchases.linkItems", {
+                purchase: props.purchase.id,
+                invoice: props.invoice.id,
+            }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    toast.success("Produk tambahan berhasil dimasukkan.");
+                    router.visit(window.location.href, {
+                        preserveScroll: true,
+                        preserveState: false,
+                    });
+                    resolve(true);
+                },
+                onError: (error) => {
+                    toast.error(`Terdapat kesalahan : ${error}`);
+                    console.log(error);
+                    reject(error);
+                },
+                onFinish: () => {
+                    isProcessing.value = false;
+                    isActionLoading.value = false;
+                    // Reset search di parent jika perlu
+                    searchKeyword.value = "";
+                    searchResults.value = [];
+                },
+            }
+        );
+    });
 };
 
 // 4. Save Corrections (Simpan perubahan Qty/Harga)
-const saveCorrections = () => {
-    // Validasi input
-    if (editableLinkedItems.value.some((item) => item.quantity < 0)) {
-        toast.error("Qty tidak boleh minus.");
-        return;
+const saveCorrections = (product = null) => {
+    if (product) {
+        // Validasi Input Single
+        if (product.quantity < 0) {
+            toast.error("Qty tidak boleh minus.");
+            return Promise.reject("Validation Error");
+        }
+        if (product.purchase_price < 0) {
+            toast.error("Harga tidak boleh minus.");
+            return Promise.reject("Validation Error");
+        }
+
+        // Update State Lokal (Agar UI reaktif segera berubah sebelum request selesai)
+        const index = editableLinkedItems.value.findIndex(
+            (item) => item.id === product.id
+        );
+        if (index !== -1) {
+            editableLinkedItems.value[index].quantity = product.quantity;
+            editableLinkedItems.value[index].purchase_price =
+                product.purchase_price;
+        }
+        correctionForm.items = [product];
+    }
+    // 2. SKENARIO: UPDATE ALL (SAVE ALL CHANGES)
+    else {
+        // Validasi sederhana untuk memastikan tidak ada data minus di list
+        const hasInvalidData = editableLinkedItems.value.some(
+            (item) => item.quantity < 0 || item.purchase_price < 0
+        );
+
+        if (hasInvalidData) {
+            toast.error(
+                "Terdapat data Qty atau Harga yang minus. Cek kembali."
+            );
+            return Promise.reject("Validation Error");
+        }
+
+        // SET PAYLOAD: Kirim semua item
+        correctionForm.items = editableLinkedItems.value;
     }
 
-    correctionForm.items = editableLinkedItems.value;
+    // 3. EKSEKUSI REQUEST
     isActionLoading.value = true;
     isProcessing.value = true;
 
-    correctionForm.put(
-        route("purchases.updateLinkedItemDetails", {
-            purchase: props.purchase.id,
-            invoice: props.invoice.id,
-        }),
-        {
-            preserveScroll: true,
-            onSuccess: () => {
-                toast.success("Data berhasil diperbarui!");
-                // Reload props linkedItems saja
-                router.reload({ only: ["linkedItems"] });
-            },
-            onFinish: () => {
-                isProcessing.value = false;
-                isActionLoading.value = false;
-            },
-        }
-    );
+    return new Promise((resolve, reject) => {
+        correctionForm.put(
+            route("purchases.updateLinkedItemDetails", {
+                purchase: props.purchase.id,
+                invoice: props.invoice.id,
+            }),
+            {
+                preserveScroll: true,
+                onSuccess: () => {
+                    // Tampilkan pesan berbeda tergantung update single atau all
+                    const msg = product
+                        ? "Item berhasil diperbarui!"
+                        : "Semua data berhasil disimpan!";
+
+                    toast.success(msg);
+
+                    // Reload data 'linkedItems' agar sinkron dengan DB
+                    router.reload({ only: ["linkedItems"] });
+                    resolve(true);
+                },
+                onError: (errors) => {
+                    // Tampilkan error validasi dari backend jika ada
+                    if (errors.items) {
+                        toast.error(errors.items);
+                    }
+                    reject(errors);
+                },
+                onFinish: () => {
+                    isProcessing.value = false;
+                    isActionLoading.value = false;
+                },
+            }
+        );
+    });
 };
 
 // 5. Validate Invoice (Finalisasi)
@@ -715,10 +801,12 @@ const actions = {
     submitLinkage, // untuk link produk dari daftar purchase(tinggal link tanpa create baru)
     formatRupiah,
     formatTanggal,
+    openImageModal,
 };
 </script>
 
 <template>
+    <ActionLoader />
     <ImageModal
         :show="showImageModal"
         :imageUrl="selectedImageUrl"

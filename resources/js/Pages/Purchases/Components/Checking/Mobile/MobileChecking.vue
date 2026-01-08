@@ -3,13 +3,12 @@ import { defineAsyncComponent } from "vue";
 import { ref, computed } from "vue";
 import BottomSheet from "@/Components/BottomSheet.vue"; // Sesuaikan path komponen Anda
 import BarcodeScanner from "@/Components/BarcodeScanner.vue";
-// const BarcodeScanner = defineAsyncComponent(() =>
-//     import("@/Components/BarcodeScanner.vue")
-// );
 import UnlinkMobile from "./UnlinkMobile.vue";
 import LinkedMobile from "./LinkedMobile.vue";
 import SearchMobile from "./SearchMobile.vue";
 import HeaderMobile from "./HeaderMobile.vue";
+import InputRupiah from "@/Components/InputRupiah.vue";
+import { useActionLoading } from "@/Composable/useActionLoading";
 
 // --- PROPS DARI PARENT ---
 const props = defineProps({
@@ -22,6 +21,7 @@ const props = defineProps({
 });
 
 // --- STATE ---
+const { isActionLoading } = useActionLoading();
 const activeTab = ref("unlinked");
 const showScanner = ref(false); // Kontrol kamera
 const showScanModal = ref(false); // Kontrol modal verifikasi
@@ -79,7 +79,6 @@ const onSelectSearch = (product) => {
         // Jika ADA, arahkan ke logic Link
         onSelectUnlinked(match);
     } else {
-        console.log(product);
         // Jika TIDAK ADA, arahkan ke logic Create
         currentItem.value = {
             type: "create",
@@ -102,7 +101,18 @@ const onSelectSearch = (product) => {
 };
 // Dari List Sudah Masuk (Linked)
 const onSelectLinked = (item) => {
-    console.log(item);
+    if (props.purchase.status !== "checking") {
+        alert(
+            "Purchase Order ini sudah selesai diperiksa. Tidak dapat menambahkan atau mengedit item."
+        );
+        return;
+    }
+    if (props.invoice.status === "validated") {
+        alert(
+            "Invoice ini sudah divalidasi. Tidak dapat menambahkan atau mengedit item."
+        );
+        return;
+    }
     currentItem.value = {
         type: "edit",
         id: item.id,
@@ -120,37 +130,50 @@ const onSelectLinked = (item) => {
     showScanModal.value = true;
 };
 const handleMainSave = () => {
-    console.log(currentItem.value);
+    isActionLoading.value = true;
     if (currentItem.value.type === "link") processLink();
     else if (currentItem.value.type === "create") processCreate();
     else if (currentItem.value.type === "edit") processEdit();
 
-    // showScanModal.value = false;
+    showScanModal.value = false;
 };
 
 // A. TYPE = LINK (Barang Sisa PO)
-const processLink = () => {
+const processLink = async () => {
     const item = currentItem.value;
     // Rule: id = purchase_item_id
     // Kirim ID Purchase Item ke Parent
-    props.actions.submitLinkage(item.id, item.quantity, item.price);
+    try {
+        await props.actions.submitLinkage(item.id, item.quantity, item.price);
+    } catch (error) {
+        console.error("Gagal link", error);
+    } finally {
+        isActionLoading.value = false; // Set loading OFF (pasti jalan)
+    }
 };
 
 // B. TYPE = CREATE (Barang Baru)
-const processCreate = () => {
+const processCreate = async () => {
     // Rule: id = null, product_id = ada
     // Kirim Object Product ({ id: ... }) ke Parent
     const item = currentItem.value;
-    props.actions.addNewSubstituteItem({
-        id: item.product_id,
-        newQty: item.quantity,
-        newPrice: item.price,
-    });
+    try {
+        await props.actions.addNewSubstituteItem({
+            id: item.product_id,
+            newQty: item.quantity,
+            newPrice: item.price,
+        });
+    } catch (error) {
+        console.error("Gagal membuat", error);
+    } finally {
+        isActionLoading.value = false; // Set loading OFF (pasti jalan)
+    }
 };
 
 // C. TYPE = EDIT (Barang Sudah Masuk)
-const processEdit = () => {
+const processEdit = async () => {
     // Rule: id = pivot_id
+    const item = currentItem.value;
     // 1. Update data di props lokal (linkedItems) agar reaktif terbaca parent
     const target = props.linkedItems.find((i) => i.id === currentItem.value.id);
     if (target) {
@@ -158,14 +181,30 @@ const processEdit = () => {
         target.purchase_price = currentItem.value.price;
     }
     // 2. Panggil fungsi batch update parent
-    props.actions.saveCorrections();
+    try {
+        await props.actions.saveCorrections({
+            id: item.id,
+            quantity: item.quantity,
+            purchase_price: item.price,
+        });
+    } catch (error) {
+        console.error("Gagal edit", error);
+    } finally {
+        isActionLoading.value = false; // Set loading OFF (pasti jalan)
+    }
 };
 
 // D. Type Handle Unlink (Hapus Link)
-const handleUnlink = () => {
+const handleUnlink = async () => {
     if (confirm("Lepaskan item ini dari invoice?")) {
         // Panggil submitUnlinkage dengan ID Pivot
-        props.actions.submitUnlinkage(currentItem.value.id);
+        try {
+            await props.actions.submitUnlinkage(currentItem.value.id);
+        } catch (error) {
+            console.error("Gagal unlink", error);
+        } finally {
+            isActionLoading.value = false; // Set loading OFF (pasti jalan)
+        }
         showScanModal.value = false;
     }
 };
@@ -220,7 +259,7 @@ const calculatedTotal = computed(() => {
 // 2. Fungsi dipanggil SAAT user SELESAI ketik Total (Enter/Blur)
 const handleTotalChange = (event) => {
     // Ambil angka dari input
-    const newTotal = parseFloat(event.target.value) || 0;
+    const newTotal = parseFloat(event) || 0;
     const qty = currentItem.value.quantity || 0;
 
     // Cegah pembagian nol
@@ -238,7 +277,7 @@ const handleTotalChange = (event) => {
 
     // Paksa update tampilan input agar sinkron dengan hasil hitungan
     // (Misal user ketik 10.000 -> Harga 3.333 -> Total jadi 9.999)
-    event.target.value = calculatedTotal.value;
+    event = calculatedTotal.value;
 };
 
 // 2. Helper Warna Border Qty (Indikator Visual)
@@ -266,15 +305,15 @@ const adjustQty = (amount) => {
     <div
         class="relative min-h-screen font-sans bg-gray-50 dark:bg-gray-950 pb-28"
     >
-        <HeaderMobile
-            :purchase="purchase"
-            :invoice="invoice"
-            :linked-items="linkedItems"
-            :validateInvoice="actions.validateInvoice"
-        />
         <div
-            class="px-4 py-3 sticky top-[108px] z-20 bg-gray-50/95 dark:bg-gray-950/95 backdrop-blur-sm"
+            class="sticky top-0 z-20 px-4 py-3 space-y-3 bg-gray-50/95 dark:bg-gray-950/95 backdrop-blur-sm"
         >
+            <HeaderMobile
+                :purchase="purchase"
+                :invoice="invoice"
+                :linked-items="linkedItems"
+                :validateInvoice="actions.validateInvoice"
+            />
             <div class="flex p-1 bg-gray-200 rounded-lg dark:bg-gray-800">
                 <button
                     @click="activeTab = 'unlinked'"
@@ -370,227 +409,6 @@ const adjustQty = (amount) => {
             @close="showScanModal = false"
             title="Verifikasi Barang"
         >
-            <!-- <div class="space-y-5">
-                <div class="flex gap-4">
-                    <div
-                        class="flex items-center justify-center font-bold text-gray-400 bg-gray-100 border border-gray-200 rounded-lg w-14 h-14 dark:bg-gray-800 dark:border-gray-700 shrink-0"
-                    >
-                        {{ currentItem.name.substring(0, 2).toUpperCase() }}
-                    </div>
-                    <div class="flex-1">
-                        <span
-                            :class="[
-                                'text-[10px] px-2 py-0.5 rounded border font-bold uppercase inline-block mb-1',
-                                currentItem.is_po_match
-                                    ? 'bg-lime-50 text-lime-700 border-lime-200 dark:bg-lime-900/20 dark:text-lime-400'
-                                    : 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400',
-                            ]"
-                        >
-                            {{
-                                currentItem.is_po_match
-                                    ? "Sesuai Purchase Order"
-                                    : "Produk Tambahan / Baru"
-                            }}
-                        </span>
-                        <h3
-                            class="text-lg font-bold leading-tight text-gray-800 dark:text-white"
-                        >
-                            {{ currentItem.name }}
-                        </h3>
-                        <p class="text-xs text-gray-500">
-                            {{ currentItem.code }}
-                        </p>
-                    </div>
-                </div>
-
-                <div
-                    class="p-1 border border-gray-200 bg-gray-50 dark:bg-gray-800/50 rounded-xl dark:border-gray-700"
-                >
-                    <div
-                        class="grid grid-cols-2 text-center text-[10px] font-bold text-gray-400 border-b border-gray-200 dark:border-gray-700 pb-1 mb-2 tracking-wider"
-                    >
-                        <div>DATA PO</div>
-                        <div class="text-lime-600 dark:text-lime-400">
-                            INPUT FISIK
-                        </div>
-                    </div>
-
-                    <div class="grid items-center grid-cols-2 mb-4">
-                        <div
-                            class="text-center border-r border-gray-200 dark:border-gray-700"
-                        >
-                            <span
-                                v-if="currentItem.is_po_match"
-                                class="text-xl font-bold text-gray-400"
-                                >{{ currentItem.po_qty }}</span
-                            >
-                            <span v-else class="text-xl font-bold text-gray-300"
-                                >-</span
-                            >
-                            <span
-                                class="text-[10px] text-gray-400 block uppercase"
-                                >{{ currentItem.unit }}</span
-                            >
-                        </div>
-                        <div class="space-y-2 max-w-[75%]">
-                            <div class="flex items-center">
-                                <button
-                                    @click="adjustQty(-1)"
-                                    class="flex items-center justify-center w-10 h-12 transition bg-gray-100 border-l border-gray-200 dark:bg-gray-800 rounded-l-xl border-y dark:border-gray-700 active:bg-gray-200"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="w-4 h-4 text-gray-500"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fill-rule="evenodd"
-                                            d="M3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                                            clip-rule="evenodd"
-                                        />
-                                    </svg>
-                                </button>
-
-                                <input
-                                    v-model.number="currentItem.quantity"
-                                    type="number"
-                                    :class="[
-                                        'w-full h-12 text-center font-bold text-xl border-y border-x-0 focus:ring-0',
-                                        qtyStatusColor,
-                                    ]"
-                                />
-
-                                <button
-                                    @click="adjustQty(1)"
-                                    class="flex items-center justify-center w-10 h-12 transition bg-gray-100 border-r border-gray-200 dark:bg-gray-800 rounded-r-xl border-y dark:border-gray-700 active:bg-lime-100 active:border-lime-200 active:text-lime-600"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        class="w-4 h-4 text-gray-500"
-                                        viewBox="0 0 20 20"
-                                        fill="currentColor"
-                                    >
-                                        <path
-                                            fill-rule="evenodd"
-                                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                                            clip-rule="evenodd"
-                                        />
-                                    </svg>
-                                </button>
-                            </div>
-
-                            <p
-                                v-if="
-                                    currentItem.is_po_match &&
-                                    currentItem.quantity -
-                                        currentItem.po_qty !==
-                                        0
-                                "
-                                class="text-[10px] text-center font-medium"
-                                :class="
-                                    currentItem.quantity - currentItem.po_qty <
-                                    0
-                                        ? 'text-red-500'
-                                        : 'text-yellow-600'
-                                "
-                            >
-                                {{
-                                    currentItem.quantity - currentItem.po_qty >
-                                    0
-                                        ? "Lebih"
-                                        : "Kurang"
-                                }}
-                                {{
-                                    Math.abs(
-                                        currentItem.quantity -
-                                            currentItem.po_qty
-                                    )
-                                }}
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="grid items-center grid-cols-2 pb-2">
-                        <div
-                            class="px-1 text-center border-r border-gray-200 dark:border-gray-700"
-                        >
-                            <span
-                                v-if="currentItem.is_po_match"
-                                class="text-sm font-medium text-gray-500 dark:text-gray-400"
-                                >{{
-                                    actions.formatRupiah(currentItem.po_price)
-                                }}</span
-                            >
-                            <span
-                                v-else
-                                class="text-sm font-medium text-gray-300"
-                                >-</span
-                            >
-                            <span
-                                class="text-[9px] text-gray-400 block uppercase"
-                                >Harga Satuan</span
-                            >
-                        </div>
-                        <div class="space-y-2 max-w-[75%]">
-                            <div class="relative">
-                                <span
-                                    class="absolute text-xs font-bold text-gray-400 -translate-y-1/2 left-3 top-1/2"
-                                    >Rp</span
-                                >
-                                <input
-                                    v-model.number="currentItem.price"
-                                    type="number"
-                                    class="w-full h-12 pr-3 text-lg font-bold text-right bg-white border border-gray-200 pl-9 dark:bg-gray-900 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-lime-500"
-                                    placeholder="0"
-                                />
-                            </div>
-                            <p class="text-[10px] text-right text-gray-400">
-                                {{ actions.formatRupiah(currentItem.price) }}
-                            </p>
-                        </div>
-                    </div>
-                    <div
-                        class="flex items-center justify-between p-4 border border-gray-100 bg-gray-50 dark:bg-gray-800 rounded-xl dark:border-gray-700"
-                    >
-                        <div>
-                            <p
-                                class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"
-                            >
-                                Subtotal Item
-                            </p>
-                            <p class="text-xs text-gray-500 mt-0.5">
-                                {{ currentItem.quantity }} x
-                                {{ actions.formatRupiah(currentItem.price) }}
-                            </p>
-                        </div>
-                        <div class="flex-1 max-w-[180px]">
-                            <div class="relative">
-                                <span
-                                    class="absolute text-xs font-bold text-gray-400 -translate-y-1/2 left-3 top-1/2"
-                                    >Rp</span
-                                >
-
-                                <input
-                                    :value="calculatedTotal"
-                                    @change="handleTotalChange"
-                                    type="number"
-                                    class="w-full py-2 pr-3 text-xl font-black text-right text-gray-800 transition-all bg-white border border-gray-200 rounded-lg shadow-sm pl-9 dark:text-white dark:bg-gray-900 dark:border-gray-600 focus:ring-2 focus:ring-lime-500 focus:border-lime-500"
-                                    placeholder="0"
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <p
-                    v-if="currentItem.type !== 'edit'"
-                    class="text-[10px] text-gray-400 text-center italic"
-                >
-                    * Perubahan Qty/Harga untuk link baru akan disimpan. Anda
-                    bisa mengeditnya kembali di tab 'Sudah Masuk'.
-                </p>
-            </div> -->
             <div class="space-y-6">
                 <div
                     class="flex items-center gap-4 pb-4 border-b border-gray-100 dark:border-gray-800"
@@ -780,10 +598,10 @@ const adjustQty = (amount) => {
                                 >
                                     Rp
                                 </span>
-                                <input
+                                <InputRupiah
                                     v-model.number="currentItem.price"
-                                    type="number"
-                                    class="w-full h-10 pl-8 pr-3 text-base font-bold text-right transition-all bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                                    min="1"
+                                    class="w-full h-10 pr-3 text-base font-bold text-left transition-all bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
                                     placeholder="0"
                                 />
                             </div>
@@ -818,12 +636,12 @@ const adjustQty = (amount) => {
                             >
                                 Rp
                             </span>
-                            <input
-                                :value="calculatedTotal"
-                                @change="handleTotalChange"
-                                type="number"
-                                class="w-full py-2.5 pr-3 pl-9 text-lg font-black text-right text-gray-800 bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:text-white dark:bg-gray-900 dark:border-gray-600 transition-all"
+                            <InputRupiah
+                                :model-value="calculatedTotal"
+                                @update:model-value="handleTotalChange"
+                                class="w-full py-2.5 pr-3 text-lg font-black text-left text-gray-800 bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:text-white dark:bg-gray-900 dark:border-gray-600 transition-all"
                                 placeholder="0"
+                                min="0"
                             />
                         </div>
                     </div>

@@ -8,8 +8,7 @@ import InputError from "@/Components/InputError.vue";
 import Modal from "@/Components/Modal.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 
-// Menerima data sesi dari Controller (ProfileController)
-defineProps({
+const props = defineProps({
     sessions: Array,
 });
 
@@ -38,6 +37,7 @@ const closeModal = () => {
     confirmingLogout.value = false;
     form.reset();
 };
+console.log(props.sessions);
 </script>
 
 <template>

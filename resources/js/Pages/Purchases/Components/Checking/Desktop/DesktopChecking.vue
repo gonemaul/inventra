@@ -42,6 +42,13 @@ const emit = defineEmits([
 const pageMode = computed(() =>
     props.purchase.status === "checking" ? "edit" : "detail"
 );
+const isReadyToValidate = computed(() => {
+    // Balance 0 (toleransi floating point < 100 perak) DAN ada item yg discan
+    return (
+        Math.abs(props.invoice.total_amount - computedTotalNominal) < 100 &&
+        props.editableLinkedItems.length > 0
+    );
+});
 const computedTotalQty = computed(() => {
     // Menghitung total kuantitas dari semua item
     return props.editableLinkedItems.reduce((sum, item) => {
@@ -413,7 +420,7 @@ const localSearchKeyword = computed({
                             class="flex items-center justify-between gap-3 p-4 border-t border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800"
                         >
                             <button
-                                @click.prevent="actions.submitUnlinkage"
+                                @click.prevent="actions.submitUnlinkage()"
                                 :disabled="
                                     localSelectedUnlinkIds.length === 0 ||
                                     isProcessing
@@ -442,7 +449,11 @@ const localSearchKeyword = computed({
 
                             <div class="flex gap-2">
                                 <button
-                                    @click.prevent="actions.validateInvoice"
+                                    v-if="
+                                        isReadyToValidate &&
+                                        invoice.status !== 'validated'
+                                    "
+                                    @click.prevent="actions.validateInvoice()"
                                     :disabled="
                                         editableLinkedItems.length === 0 ||
                                         props.invoice.status === 'validated'

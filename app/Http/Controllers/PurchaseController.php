@@ -187,7 +187,9 @@ class PurchaseController extends Controller
         }
         try {
             $this->invoiceService->store($request->all(), $purchase);
-            $this->purchaseService->updateStatus($purchase->id, Purchase::STATUS_CHECKING);
+            if (Purchase::STATUS_RECEIVED) {
+                $this->purchaseService->updateStatus($purchase->id, Purchase::STATUS_CHECKING);
+            }
             return redirect()->route('purchases.checking', $purchase)
                 ->with('success', 'Nota berhasil diunggah. Silakan lakukan validasi item.');
         } catch (ValidationException $e) {
@@ -233,7 +235,7 @@ class PurchaseController extends Controller
         if ($invoice->status !== PurchaseInvoice::STATUS_VALIDATED) {
             $unlinkedItems = $purchase->items()
                 ->whereNull('purchase_invoice_id')
-                ->with('product:id,name,code,stock') // Load info produk master
+                ->with('product:id,name,code,stock,image_path') // Load info produk master
                 ->get();
         }
 
@@ -272,7 +274,6 @@ class PurchaseController extends Controller
             'ids.required_if' => 'Harap pilih item yang akan ditautkan.',
             'product_id.required_if' => 'Harap pilih produk master untuk ditambahkan.',
         ]);
-
         try {
             // 2. Panggil Service Logika Penautan & Perhitungan Harga
             $this->invoiceService->smartLinkProductsByProductId($invoice, $request->all());

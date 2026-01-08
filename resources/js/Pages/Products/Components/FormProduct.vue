@@ -197,7 +197,7 @@ const onScanResult = (decodedText) => {
                                     Upload Foto
                                 </p>
                                 <p class="text-[10px] text-gray-400 mt-1">
-                                    Max 1MB
+                                    Max 2MB
                                 </p>
                             </div>
                             <input
@@ -547,7 +547,7 @@ const onScanResult = (decodedText) => {
                                 v-model="form.target_margin_percent"
                                 :class="['w-full py-2 pr-7 text-sm']"
                                 id="target_margin_percent"
-                                type="text"
+                                type="number"
                                 @input="onMarginPercentChange"
                             />
                             <span

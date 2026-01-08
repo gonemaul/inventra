@@ -74,7 +74,7 @@ const navigation = [
         :class="[
             isSidebarOpen ? 'translate-x-0' : '-translate-x-full',
             isExtended ? 'w-64 p-6' : 'w-20 p-4',
-            'fixed top-0 left-0 overflow-auto z-[60] flex flex-col justify-between h-full transition-transform duration-200 ease-in-out transform shadow-2xl dark:bg-customBg-tableDark dark:text-customText-dark dark:border-borderc-dark bg-customBg-tableLight text-customText-light border-r border-borderc-light lg:translate-x-0',
+            'fixed top-0 left-0 inset-0 overflow-auto z-[60] flex flex-col justify-between h-full transition-transform duration-200 ease-in-out transform shadow-2xl dark:bg-customBg-tableDark dark:text-customText-dark dark:border-borderc-dark bg-customBg-tableLight text-customText-light border-r border-borderc-light lg:translate-x-0',
         ]"
     >
         <div class="flex items-center mb-6">

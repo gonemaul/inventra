@@ -249,12 +249,6 @@ const submitTransaction = () => {
 
     const options = {
         onSuccess: () => {
-            toast.success(
-                isEditMode.value
-                    ? "Transaksi berhasil diperbarui!"
-                    : "Transaksi berhasil disimpan!"
-            );
-
             if (!isEditMode.value) {
                 localStorage.removeItem(SUPPLIER_KEY);
             }

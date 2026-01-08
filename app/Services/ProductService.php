@@ -348,16 +348,11 @@ class ProductService
             }
         } else {
             // dd($data);
+            if ($imageFile) {
+                // Kirim path lama untuk dihapus
+                $data['image_path'] = $this->handleImageUpload($imageFile, $product->image_path);
+            }
             $product->update($data);
-        }
-        if ($imageFile) {
-            $imageValidator = Validator::make(['image' => $imageFile], [
-                'image' => 'nullable|image|mimes:jpeg,png,webp|max:20480'
-            ]);
-            if ($imageValidator->fails()) throw new ValidationException($imageValidator);
-
-            // Kirim path lama untuk dihapus
-            $data['image_path'] = $this->handleImageUpload($imageFile, $product->image_path);
         }
         return $product;
     }

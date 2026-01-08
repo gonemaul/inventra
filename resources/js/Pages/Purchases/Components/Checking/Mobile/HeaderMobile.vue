@@ -7,7 +7,6 @@ const props = defineProps({
     linkedItems: Object,
     validateInvoice: Object,
 });
-console.log(props.invoice);
 // Hitung Realisasi (Total item yang sudah discan/link)
 const totalScanned = computed(() => {
     return props.linkedItems.reduce((acc, item) => {
@@ -54,7 +53,7 @@ const formatTanggal = (date) =>
 </script>
 <template>
     <header
-        class="sticky top-0 z-30 bg-white border-b border-gray-100 shadow-lg dark:bg-gray-900 shadow-gray-200/50 dark:shadow-none dark:border-gray-800 rounded-b-3xl"
+        class="z-30 bg-white border-b border-gray-100 shadow-lg dark:bg-gray-900 shadow-gray-200/50 dark:shadow-none dark:border-gray-800 rounded-b-3xl"
     >
         <div class="px-5 pt-5 pb-6">
             <div class="flex items-start justify-between mb-3">
@@ -88,45 +87,69 @@ const formatTanggal = (date) =>
                                         : 'bg-gray-300 dark:bg-gray-700',
                                 ]"
                             ></span>
-
-                            <h1
-                                class="text-lg font-black tracking-tight text-gray-800 dark:text-white"
-                            >
-                                #{{ invoice.invoice_number }}
-                            </h1>
+                            <div class="space-y-0.5">
+                                <h1 class="text-sm font-bold leading-none">
+                                    {{ purchase.reference_no || "PO-####" }}
+                                </h1>
+                                <h1
+                                    class="text-xs font-black tracking-tight text-gray-800 dark:text-white"
+                                >
+                                    Invoice : #{{ invoice.invoice_number }} |
+                                    {{ formatTanggal(invoice.invoice_date) }}
+                                </h1>
+                                <!-- <span
+                                    class="text-[10px] text-gray-500 dark:text-gray-400"
+                                    >{{
+                                        formatTanggal(invoice.invoice_date)
+                                    }}</span
+                                > -->
+                            </div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-3 my-2">
                         <div
-                            class="flex items-center justify-center w-8 h-8 text-gray-500 bg-gray-100 rounded-lg dark:bg-gray-700 dark:text-gray-100"
+                            class="flex items-center justify-center w-10 h-10 text-indigo-600 border border-indigo-100 rounded-lg shrink-0 bg-indigo-50 dark:bg-indigo-900/30 dark:text-indigo-400 dark:border-indigo-800"
                         >
-                            <svg
-                                class="w-4 h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                                ></path>
-                            </svg>
+                            <span class="text-sm font-black uppercase">
+                                {{
+                                    (purchase.supplier?.name || "U").substring(
+                                        0,
+                                        1
+                                    )
+                                }}
+                            </span>
                         </div>
-                        <div>
+
+                        <div class="flex-1 min-w-0">
                             <p
-                                class="text-xs font-bold text-gray-800 dark:text-white"
+                                class="text-sm font-bold text-gray-800 truncate dark:text-gray-100"
                             >
-                                {{ purchase.supplier?.name || "Umum/Cash" }}
+                                {{
+                                    purchase.supplier?.name ||
+                                    "Supplier Umum/Cash"
+                                }}
                             </p>
-                            <p
-                                class="w-40 text-[10px] text-gray-500 truncate dark:text-gray-400"
+
+                            <div
+                                class="flex items-center gap-1.5 text-[11px] text-gray-500 dark:text-gray-400 mt-0.5"
                             >
-                                {{ purchase.supplier?.address || "-" }}
-                                |
-                                {{ purchase.supplier?.phone || "-" }}
-                            </p>
+                                <span class="truncate max-w-[120px]">
+                                    {{
+                                        purchase.supplier?.address ||
+                                        "Tanpa Alamat"
+                                    }}
+                                </span>
+
+                                <span class="text-gray-300 dark:text-gray-600"
+                                    >•</span
+                                >
+
+                                <span
+                                    class="font-mono text-gray-600 dark:text-gray-300 whitespace-nowrap"
+                                >
+                                    {{ purchase.supplier?.phone || "-" }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </div>

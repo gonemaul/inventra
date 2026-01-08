@@ -22,6 +22,12 @@ const openImageModal = (path, name) => {
     showImageModal.value = true;
 };
 
+const isDetail = computed(() => {
+    return (
+        props.purchase.status !== "diterima" &&
+        props.purchase.status !== "checking"
+    );
+});
 // Kolom yang disesuaikan untuk data PurchaseInvoice
 const columns = [
     {
@@ -138,9 +144,18 @@ const columns = [
                                 invoice: row.id,
                             })
                         "
-                        class="px-2 py-1 text-xs text-white bg-orange-500 rounded hover:bg-orange-600"
+                        :class="[
+                            'px-2 py-1 text-xs text-white  rounded ',
+                            isDetail || row.status == 'validated'
+                                ? 'bg-orange-500 hover:bg-orange-600'
+                                : 'bg-purple-500 hover:bg-purple-600',
+                        ]"
                     >
-                        Detail
+                        {{
+                            isDetail || row.status == "validated"
+                                ? "Detail"
+                                : "Checking"
+                        }}
                     </Link>
                     <button
                         v-if="canEditDelete"

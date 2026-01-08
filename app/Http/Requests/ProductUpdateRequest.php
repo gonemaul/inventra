@@ -45,7 +45,7 @@ class ProductUpdateRequest extends FormRequest
 
             $rules = array_merge($rules, [
                 // Identitas
-                'image'       => ['nullable', 'image', 'max:20480'], // Max 20MB
+                'image'       => ['nullable', 'image', 'max:20480', 'mimes:jpeg,png,webp'], // Max 20MB
                 'name'        => ['required', 'string', 'max:255'],
                 'code'        => ['required', 'string', 'max:50', Rule::unique('products')->ignore($productId)],
                 'status'      => ['required', Rule::in(Product::STATUSES)], // Hardcode atau Product::STATUSES

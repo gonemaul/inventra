@@ -326,13 +326,14 @@ class InvoiceService
      */
     public function updateItemDetails(array $itemsData, PurchaseInvoice $invoice)
     {
-        // Validasi array item
+        // 1. Validasi Input
         $validator = Validator::make(['items' => $itemsData], [
             'items' => 'required|array',
             'items.*.id' => 'required|exists:purchase_items,id',
-            'items.*.quantity' => 'required|integer|min:0', // Qty 0 untuk kasus item diganti
+            'items.*.quantity' => 'required|integer|min:0',
             'items.*.purchase_price' => 'required|numeric|min:0',
         ]);
+
         if ($validator->fails()) {
             throw new ValidationException($validator);
         }
@@ -341,20 +342,39 @@ class InvoiceService
             $updatedItems = [];
 
             foreach ($itemsData as $data) {
-                $item = PurchaseItem::find($data['id']);
-                if ($item) {
-                    // Kalkulasi ulang subtotal
-                    $subtotal = $data['quantity'] * $data['purchase_price'];
+                // --- PERBAIKAN DISINI ---
+                // Cari item TAPI pastikan item itu punya invoice ini
+                // Asumsi relasi di model PurchaseInvoice adalah 'items()' atau 'purchaseItems()'
 
-                    $item->update([
-                        'quantity' => $data['quantity'],
-                        'purchase_price' => $data['purchase_price'],
-                        'subtotal' => $subtotal,
-                    ]);
-                    $updatedItems[] = $item;
+                // Cara 1: Via Relation (Paling Aman)
+                $item = $invoice->items()->where('id', $data['id'])->first();
+                // Cara 2: Manual Check (Jika tidak hafal nama relasinya)
+                // $item = PurchaseItem::find($data['id']);
+
+                // Jika item tidak ketemu, ATAU item itu bukan milik invoice ini -> SKIP/ERROR
+                if (!$item || $item->purchase_invoice_id !== $invoice->id) {
+                    // Opsi A: Abaikan (Continue)
+                    // continue;
+
+                    // Opsi B: Throw Error (Biar ketahuan ada data aneh)
+                    throw new \Exception("Item ID {$data['id']} tidak milik invoice ini.");
                 }
+
+                // Hitung Subtotal
+                $subtotal = $data['quantity'] * $data['purchase_price'];
+
+                $item->update([
+                    'quantity' => $data['quantity'],
+                    'purchase_price' => $data['purchase_price'],
+                    'subtotal' => $subtotal,
+                ]);
+
+                $updatedItems[] = $item;
             }
+
+            // Hitung ulang total invoice setelah semua item beres
             $this->recalculateTotalAmount($invoice);
+
             return $updatedItems;
         });
     }
