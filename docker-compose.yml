@@ -6,11 +6,11 @@ services:
         restart: unless-stopped
         volumes:
             - redis-data:/data
-    cloudflared:
-        image: cloudflare/cloudflared:latest
-        container_name: cloudflared
-        restart: unless-stopped
-        command: tunnel run --token eyJhIjoiZWVmYzMyMTk4YTdkMWRjZTk0NDhhZWQ5ODQ5YTdjMDkiLCJ0IjoiNTY0NTI2NDQtODNlZS00ZWZjLTk0ZWItZWYzMTA0NDBkNjhjIiwicyI6Ik1XSmxOemxoTUdJdFpUVmhOeTAwTXprMkxUazBZemd0WlRJd1ltSXlORGN6TVRjMiJ9
+    # cloudflared:
+    #     image: cloudflare/cloudflared:latest
+    #     container_name: cloudflared
+    #     restart: unless-stopped
+    #     command: tunnel run --token eyJhIjoiZWVmYzMyMTk4YTdkMWRjZTk0NDhhZWQ5ODQ5YTdjMDkiLCJ0IjoiNTY0NTI2NDQtODNlZS00ZWZjLTk0ZWItZWYzMTA0NDBkNjhjIiwicyI6Ik1XSmxOemxoTUdJdFpUVmhOeTAwTXprMkxUazBZemd0WlRJd1ltSXlORGN6TVRjMiJ9
 
     #       environment:
     #          - TUNEL_TOKEN=eyJhIjoiZWVmYzMyMTk4YTdkMWRjZTk0NDhhZWQ5ODQ5YTdjMDkiLCJ0IjoiNTY0NTI2NDQtODNlZS00ZWZjLTk0ZWItZWYzMTA0NDBkNjhjIiwicyI6Ik1XSmxOemxoTUdJdFpUVmhOeTAwTXprMkxUazBZemd0WlRJd1ltSXlORGN6TVRjMiJ9
@@ -37,7 +37,7 @@ services:
             PHP_EXTENSION_GD: 1
             PHP_EXTENSION_ZIP: 1
             PHP_EXTENSION_INTL: 1
-            #            PHP_OPCACHE_ENABLE: 1
+            PHP_OPCACHE_ENABLE: 1
             MINIO_SERVER_URL: "https://cdn.srvhome"
             MINIO_BROWSER_REDIRECT_URL: "https://minio.srvhome"
         hostname: inventra
