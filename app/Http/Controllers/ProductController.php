@@ -139,7 +139,7 @@ class ProductController extends Controller
      */
     public function show(Product $product)
     {
-        $product->load(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType::id,name'])
+        $product->load(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name'])
             ->withTrashed(); // Handle jika produk soft deleted
         return Inertia::render('Products/detail', [
             'detail' => Inertia::defer(fn() => $this->productService->getProductDetails($product))
@@ -178,10 +178,10 @@ class ProductController extends Controller
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Request $request, $id)
+    public function destroy(Request $request, Product $product)
     {
         $isPermanent = $request->input('permanen', false);
-        $this->productService->delete($id, $request->all());
+        $this->productService->delete($product->id, $request->all());
 
         $message = $isPermanent
             ? 'Produk berhasil dihapus permanen!'
@@ -191,9 +191,9 @@ class ProductController extends Controller
         return Redirect::back()
             ->with('success', $message);
     }
-    public function restoreProduct($id)
+    public function restoreProduct(Product $product)
     {
-        $this->productService->restore($id);
+        $this->productService->restore($product->id);
 
         return Redirect::back()
             ->with('success', 'Produk berhasil dipulihkan!');

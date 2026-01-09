@@ -84,7 +84,7 @@ const monthlyGrowth = computed(() => {
 
             <Link
                 class="flex-1 min-w-0"
-                :href="route('products.show', data.id)"
+                :href="route('products.show', data.slug)"
             >
                 <div class="flex items-center gap-2 mb-1">
                     <span
@@ -341,7 +341,7 @@ const monthlyGrowth = computed(() => {
             </button>
 
             <Link
-                :href="route('products.edit', data.id)"
+                :href="route('products.edit', data.slug)"
                 class="flex items-center justify-center gap-2 py-3 text-sm font-bold text-yellow-700 transition bg-yellow-100 rounded-xl hover:bg-yellow-200"
             >
                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">

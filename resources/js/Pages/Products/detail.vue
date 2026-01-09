@@ -466,6 +466,9 @@ const maxChartValue = computed(() => {
                                                     {{ log.description }}
                                                 </p>
                                                 <p
+                                                    v-if="
+                                                        log.type !== 'initial'
+                                                    "
                                                     class="text-[10px] text-gray-400 flex items-center gap-1 mt-1"
                                                 >
                                                     <span

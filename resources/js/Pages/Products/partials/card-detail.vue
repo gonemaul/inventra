@@ -1,15 +1,36 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
 import { ref, computed } from "vue";
-import Delete from "./modalDelete.vue";
+import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 
 const props = defineProps({
     data: Object,
     dss: Object,
     price_trend: Object,
 });
-
-const showDelete = ref(false);
+const showConfirmModal = ref(null);
+const openDeleteModal = (product, isPermanent = false) => {
+    let config = {};
+    if (isPermanent) {
+        config = {
+            title: "Hapus Permanen Produk",
+            message: "Produk ini akan dihapus selamanya. Anda yakin menghapus",
+            itemName: product.name,
+            url: route("products.destroy", {
+                id: product.slug,
+                permanen: true,
+            }),
+        };
+    } else {
+        config = {
+            title: "Pindahkan ke Sampah",
+            message: "Anda yakin ingin memindahkan produk",
+            itemName: product.name,
+            url: route("products.destroy", { id: product.slug }),
+        };
+    }
+    showConfirmModal.value.open(config);
+};
 const formatRupiah = (val) =>
     new Intl.NumberFormat("id-ID", {
         style: "currency",
@@ -26,7 +47,7 @@ const isStockLow = computed(() => {
 </script>
 
 <template>
-    <Delete :show="showDelete" @close="showDelete = false" />
+    <DeleteConfirm ref="showConfirmModal" @success="" />
     <div
         class="flex flex-col overflow-hidden bg-white border-t border-l-4 shadow-md md:flex-row dark:bg-gray-800 rounded-xl border-lime-500"
     >
@@ -155,7 +176,7 @@ const isStockLow = computed(() => {
                         <span
                             class="text-gray-600 dark:text-gray-400 truncate max-w-[100px]"
                         >
-                            {{ data.product_type?.name }}
+                            {{ data.product_type?.name || "No Type" }}
                         </span>
                     </div>
                     <span
@@ -353,7 +374,7 @@ const isStockLow = computed(() => {
 
                 <div class="flex order-1 w-full gap-2 sm:w-auto sm:order-2">
                     <Link
-                        :href="route('products.edit', data.id)"
+                        :href="route('products.edit', data.slug)"
                         class="flex items-center justify-center flex-1 gap-2 px-5 py-2 text-sm font-bold text-white transition bg-yellow-500 rounded-lg shadow-sm sm:flex-none hover:bg-yellow-600"
                     >
                         <svg
@@ -370,7 +391,7 @@ const isStockLow = computed(() => {
                     </Link>
 
                     <button
-                        @click="showDelete = true"
+                        @click="openDeleteModal(data)"
                         class="flex items-center justify-center flex-1 gap-2 px-4 py-2 text-sm font-bold text-red-600 transition border border-red-100 rounded-lg sm:flex-none bg-red-50 hover:bg-red-100"
                     >
                         <svg

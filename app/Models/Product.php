@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 class Product extends Model
 {
     use HasFactory, SoftDeletes;
-    protected $appends = ['image_url', 'current_margin', 'is_margin_low'];
+    protected $appends = ['image_url', 'current_margin', 'is_margin_low', 'markup'];
     protected $casts = [
         'snapshot' => 'array', // Otomatis convert JSON ke Array
     ];
@@ -40,6 +40,19 @@ class Product extends Model
 
         'status',
         'snapshot'
+    ];
+
+    protected $hidden = [
+        'id',
+        'category_id',
+        'unit_id',
+        'size_id',
+        'supplier_id',
+        'brand_id',
+        'product_type_id',
+        'created_at',
+        'updated_at',
+        'image_path',
     ];
     const STATUS_ACTIVE = 'active'; // Produk yang dijual
     const STATUS_DRAFT = 'draft';
@@ -84,6 +97,12 @@ class Product extends Model
             }
         });
     }
+
+    public function getRouteKeyName()
+    {
+        return 'slug'; // URL akan mencari berdasarkan kolom 'code' bukan 'id'
+    }
+
     public function getImageUrlAttribute()
     {
         // Jika kolom image kosong, return null atau gambar placeholder
@@ -110,6 +129,24 @@ class Product extends Model
         return [
             'nominal' => $marginRp,
             'percent' => round($marginPercent, 2) // Hasil misal:
+        ];
+    }
+
+    public function getMarkupAttribute()
+    {
+        // Hindari error bagi nol
+        if ($this->purchase_price <= 0) return [
+            'nominal' => 0,
+            'percent' => 0
+        ];
+
+        $markupRp = $this->selling_price - $this->purchase_price;
+        // Rumus: ((Jual - Beli) / Beli) * 100
+        $markupPercent = $markupRp / $this->purchase_price * 100;
+
+        return [
+            'nominal' => $markupRp,
+            'percent' => round($markupPercent, 2) // Hasil misal:
         ];
     }
     public function getIsMarginLowAttribute()

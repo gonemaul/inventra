@@ -88,7 +88,7 @@ const openDeleteModal = (product, isPermanent = false) => {
             message: "Produk ini akan dihapus selamanya. Anda yakin menghapus",
             itemName: product.name,
             url: route("products.destroy", {
-                id: product.id,
+                id: product.slug,
                 permanen: true,
             }),
         };
@@ -97,7 +97,7 @@ const openDeleteModal = (product, isPermanent = false) => {
             title: "Pindahkan ke Sampah",
             message: "Anda yakin ingin memindahkan produk",
             itemName: product.name,
-            url: route("products.destroy", { id: product.id }),
+            url: route("products.destroy", { id: product.slug }),
         };
     }
     showConfirmModal.value.open(config);
@@ -106,7 +106,7 @@ const restoreProduct = (row) => {
     isActionLoading.value = true;
 
     router.put(
-        route("products.restoreProduct", { id: row.id }),
+        route("products.restoreProduct", { id: row.slug }),
         {},
         {
             preserveScroll: true,

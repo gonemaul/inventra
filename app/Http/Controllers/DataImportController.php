@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use App\Jobs\ProcessStockJob;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\Validator;
 use App\Exports\TemplateExport; // Kita buat nanti
 use App\Imports\CategoryImport; // Kita buat nanti
 use App\Imports\ProductImport;  // Kita buat nanti
@@ -17,7 +19,6 @@ class DataImportController extends Controller
         return match ($type) {
             'categories' => CategoryImport::class,
             'products'   => ProductImport::class,
-            // 'suppliers' => SupplierImport::class,
             default => null,
         };
     }
@@ -52,14 +53,27 @@ class DataImportController extends Controller
             'file' => 'required|mimes:xlsx,xls,csv'
         ]);
 
-        $importClass = $this->getImportClass($request->type);
-        if (!$importClass) return back()->withErrors('Tipe import belum didukung.');
-
         DB::beginTransaction();
+        $queueData = [];
         try {
-            Excel::import(new $importClass, $request->file('file'));
+            if ($request->type == 'products') {
+                // Panggil Private Function Khusus Produk
+                // Fungsi ini akan mengembalikan array data stok [id => qty]
+                $queueData = $this->handleProductImport($request);
+            } else {
+                // Import Biasa (Kategori, Unit, dll) pakai cara lama
+                $importClass = $this->getImportClass($request->type);
+                if (!$importClass) throw new \Exception('Tipe import tidak valid.');
+
+                Excel::import(new $importClass, $request->file('file'));
+            }
 
             DB::commit(); // Simpan jika sukses semua
+            if ($request->type === 'products' && !empty($queueData)) {
+                foreach (array_chunk($queueData, 100, true) as $chunk) {
+                    ProcessStockJob::dispatch($chunk);
+                }
+            }
             return back()->with('success', 'Data berhasil diimport 100%!');
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             DB::rollBack(); // Batalkan semua jika ada validasi baris gagal
@@ -76,5 +90,48 @@ class DataImportController extends Controller
             DB::rollBack(); // Batalkan jika ada error database/coding
             return back()->withErrors('Gagal Import: ' . $e->getMessage());
         }
+    }
+
+
+    private function handleProductImport(Request $request)
+    {
+        // 1. Inisialisasi Class Import (Construct jalan disini untuk load relasi)
+        $importer = new ProductImport();
+
+        // 2. Baca Excel jadi Array
+        $rows = Excel::toArray($importer, $request->file('file'))[0];
+
+        $stockPayload = []; // Untuk Queue
+
+        // 3. Looping Manual
+        foreach ($rows as $index => $row) {
+            // Skip baris kosong
+            if (!array_filter($row)) continue;
+            $rowNum = $index + 2; // Baris Excel (Header baris 1)
+
+            // A. VALIDASI MANUAL (Panggil rules dari class import)
+            $validator = Validator::make($row, $importer->rules());
+
+            if ($validator->fails()) {
+                // Lempar error biar ditangkap Catch di function store
+                // Ini akan mentrigger Rollback
+                throw new \Exception("Baris $rowNum: " . implode(', ', $validator->errors()->all()));
+            }
+
+            // B. KONVERSI DATA (Panggil function transform yg kita buat tadi)
+            // Disini proses "Nama Kategori" -> "ID Kategori" terjadi
+            $attributes = $importer->transform($row);
+
+
+            // D. SIMPAN KE DB
+            $product = \App\Models\Product::create($attributes);
+
+            // E. CATAT STOK AWAL (Untuk Queue)
+            // if ($attributes['stock'] > 0) {
+            $stockPayload[$product->id] = $attributes['stock'];
+            // }
+        }
+
+        return $stockPayload; // Balikin ke Store untuk diproses Queue
     }
 }

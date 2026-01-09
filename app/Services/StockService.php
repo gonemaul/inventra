@@ -36,7 +36,7 @@ class StockService
         $product = Product::findOrFail($productId);
 
         $stockBefore = $product->stock;
-        $stockAfter = $stockBefore + $qty;
+        $stockAfter = $qty;
 
         if ($type == StockMovement::TYPE_INITIAL) {
             $metrics = $this->financialAnalyzer->calculate($product);

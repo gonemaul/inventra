@@ -55,7 +55,7 @@ const grouped = computed(() => {
 });
 
 const openDetail = (id) => {
-    router.visit(route("products.show", id));
+    router.visit(route("products.show", slug));
 };
 </script>
 

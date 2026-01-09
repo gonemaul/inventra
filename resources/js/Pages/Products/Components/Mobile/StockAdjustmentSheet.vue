@@ -42,7 +42,7 @@ const adjustQty = (amount) => {
 
 const submit = () => {
     isActionLoading.value = true;
-    form.put(route("products.update", props.product?.id), {
+    form.put(route("products.update", props.product?.slug), {
         onSuccess: () => emit("success"),
         onFinish: () => (isActionLoading.value = false),
         preserveScroll: true,

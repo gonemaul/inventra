@@ -174,7 +174,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 </div>
 
                 <Link
-                    :href="route('products.show', data.id)"
+                    :href="route('products.show', data.slug)"
                     class="block mb-2 text-lg font-bold leading-tight text-gray-900 transition dark:text-white hover:text-lime-600 dark:hover:text-lime-600 line-clamp-2"
                     :title="data.full_name"
                 >
@@ -301,7 +301,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                             </button>
                             <Link
                                 v-if="!isTrashed"
-                                :href="route('products.edit', data.id)"
+                                :href="route('products.edit', data.slug)"
                                 class="p-2 text-yellow-600 transition bg-yellow-100 rounded-lg hover:bg-yellow-500 hover:text-white"
                             >
                                 <svg

@@ -156,11 +156,6 @@ class ProductService
      */
     public function getProductDetails(Product $product)
     {
-        // 2. Ambil Data Produk & Relasi
-        // $product = Product::with(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType::id,name'])
-        //     // ->withTrashed() // Handle jika produk soft deleted
-        //     ->findOrFail($id);
-
         $inventory = $this->calculator->calculateInventoryHealth($product);
         $financials = $this->calculator->calculateFinancialHealth($product);
         // 3. Ambil Insight DSS (Hasil Analisa)
@@ -223,7 +218,7 @@ class ProductService
     private function getStockHistory($id)
     {
         $movements = StockMovement::where('product_id', $id)
-            ->orderBy('created_at', 'desc') // Urut kronologis (Lama -> Baru)
+            ->orderBy('created_at', 'asc') // Urut kronologis (Baru -> Lama)
             ->limit(10)
             ->get();
         return $movements;

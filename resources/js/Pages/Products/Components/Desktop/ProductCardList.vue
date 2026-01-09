@@ -172,7 +172,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 </div>
 
                 <Link
-                    :href="route('products.show', data.id)"
+                    :href="route('products.show', data.slug)"
                     class="block mb-2 text-sm font-bold leading-snug text-gray-900 transition sm:text-base dark:text-white hover:text-lime-600 line-clamp-1"
                     :title="data.full_name"
                 >
@@ -343,7 +343,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                         <div class="flex items-center gap-1">
                             <Link
                                 v-if="!isTrashed"
-                                :href="route('products.edit', data.id)"
+                                :href="route('products.edit', data.slug)"
                                 class="p-1.5 text-yellow-700 hover:text-yellow-100 bg-yellow-100 hover:bg-yellow-300 border border-gray-200 rounded transition"
                             >
                                 <svg

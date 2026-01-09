@@ -11,15 +11,17 @@ use App\Models\Supplier;
 use App\Models\ProductType;
 use App\Models\StockMovement;
 use App\Services\StockService;
+use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Concerns\ToModel;
 use Maatwebsite\Excel\Concerns\SkipsEmptyRows;
+use Maatwebsite\Excel\Concerns\ToArray;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
 use Maatwebsite\Excel\Concerns\WithValidation;
 
-class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmptyRows
+class ProductImport implements ToArray, WithHeadingRow, WithValidation, SkipsEmptyRows
 {
     // Cache Memori (Key = Nama di Excel, Value = ID Database)
-    protected $stockService;
+    // protected $stockService;
     protected $categories;
     protected $units;
     protected $sizes;
@@ -27,9 +29,9 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
     protected $brands;
     protected $types;
 
-    public function __construct(StockService $stockService)
+    public function __construct()
     {
-        $this->stockService = $stockService;
+        // $this->stockService = app(StockService::class);;
         // Load semua data master ke RAM biar ngebut
         // Format: ['oli mesin' => 1, 'ban' => 2]
         // Kita lowercase semua biar tidak sensitif huruf besar/kecil
@@ -41,7 +43,12 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
         $this->types     = ProductType::pluck('id', 'name')->mapWithKeys(fn($id, $name) => [strtolower($name) => $id]);
     }
 
-    public function model(array $row)
+    public function array(array $array)
+    {
+        return $array;
+    }
+
+    public function transform(array $row)
     {
         // 1. NORMALISASI INPUT (Trim spasi & Lowercase)
         $catName   = strtolower(trim($row['kategori']));
@@ -65,7 +72,26 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
             $brandId,
             $sizeId
         );
-        $product = new Product([
+
+        $buyPrice  = (float) $row['harga_beli'];
+        $sellPrice = (float) $row['harga_jual'];
+
+        if (isset($row['margin_target']) && $row['margin_target'] !== '' && $row['margin_target'] !== null) {
+            // KONDISI A: User mengisi manual -> Pakai input user
+            $margin = (float) $row['margin_target'];
+        } else {
+            // KONDISI B: Kosong -> Hitung Otomatis
+            // Cegah error "Division by Zero" jika harga jual 0
+            if ($sellPrice > 0) {
+                // margin = ((harga_jual - harga_beli) / harga_jual) * 100
+                // markup = ((harga_jual - harga_beli) / harga_beli) * 100
+                $margin = (($sellPrice - $buyPrice) / $sellPrice) * 100;
+            } else {
+                $margin = 0;
+            }
+        }
+
+        return [
             'code'           => $row['kode_produk'] ?? $generatedCode,
             'name'           => $row['nama_produk'],
             'description'    => $row['deskripsi'] ?? null,
@@ -76,22 +102,29 @@ class ProductImport implements ToModel, WithHeadingRow, WithValidation, SkipsEmp
             'supplier_id'    => $supplierId,
             'brand_id'       => $brandId,
             'product_type_id'   => $typeId,
-            'size_id'           => $sizeId,
+            'size_id'           => $sizeId ?? null,
 
-            'purchase_price' => $row['harga_beli'],
-            'selling_price'  => $row['harga_jual'],
+            'purchase_price' => $buyPrice,
+            'selling_price'  => $sellPrice,
+            'target_margin_percent' => round($margin, 2),
             'stock'          => $row['stok_awal'] ?? 0,
             'min_stock'      => $row['min_stok'] ?? 0,
             'status'         => Product::STATUS_ACTIVE
-        ]);
-        $this->stockService->record(
-            productId: $product->id,
-            qty: $product->stock,
-            type: StockMovement::TYPE_INITIAL,
-            ref: 'INIT',
-            desc: 'Stok Awal Produk Baru'
-        );
-        return $product;
+        ];
+        // $this->stockService->record(
+        //     productId: $product->id,
+        //     qty: $product->stock,
+        //     type: StockMovement::TYPE_INITIAL,
+        //     ref: 'INIT',
+        //     desc: 'Stok Awal Import Produk Baru'
+        // );
+        //     return $product;
+        // } catch (\Exception $e) {
+        //     // Ini akan mencatat error di file storage/logs/laravel.log
+        //     Log::error('Gagal Import Baris: ' . json_encode($row));
+        //     Log::error('Penyebab: ' . $e->getMessage());
+        //     return null;
+        // }
     }
 
     public function rules(): array
