@@ -11,9 +11,6 @@ class Supplier extends Model
     protected $fillable = ['name', 'phone', 'address', 'status', 'type', 'description'];
 
     protected $hidden = [
-        'id',
-        'phone',
-        'address',
         'created_at',
         'updated_at'
     ];

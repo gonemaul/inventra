@@ -30,17 +30,17 @@ class Purchase extends Model
         'grand_total'
     ];
 
-    protected $hidden = [
-        'id',
-        'supplier_id',
-        'user_id',
-        'shipping_cost',
-        'other_costs',
-        'total_item_price',
-        'grand_total',
-        'created_at',
-        'updated_at',
-    ];
+    // protected $hidden = [
+    //     'id',
+    //     'supplier_id',
+    //     'user_id',
+    //     'shipping_cost',
+    //     'other_costs',
+    //     'total_item_price',
+    //     'grand_total',
+    //     'created_at',
+    //     'updated_at',
+    // ];
     const STATUS_DRAFT = 'draft';
     const STATUS_ORDERED = 'dipesan';    // User 'Pesan'
     const STATUS_SHIPPED = 'dikirim';    // User tandai 'Diantar'

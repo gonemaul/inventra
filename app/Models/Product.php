@@ -42,22 +42,22 @@ class Product extends Model
         'snapshot'
     ];
 
-    protected $hidden = [
-        'id',
-        'slug',
-        'category_id',
-        'unit_id',
-        'size_id',
-        'supplier_id',
-        'brand_id',
-        'product_type_id',
-        'created_at',
-        'updated_at',
-        'image_path',
-        'purchase_price',
-        'selling_price',
-        'target_margin_percent',
-    ];
+    // protected $hidden = [
+    //     'id',
+    //     'slug',
+    //     'category_id',
+    //     'unit_id',
+    //     'size_id',
+    //     'supplier_id',
+    //     'brand_id',
+    //     'product_type_id',
+    //     'created_at',
+    //     'updated_at',
+    //     'image_path',
+    //     'purchase_price',
+    //     'selling_price',
+    //     'target_margin_percent',
+    // ];
     const STATUS_ACTIVE = 'active'; // Produk yang dijual
     const STATUS_DRAFT = 'draft';
     const STATUSES = [

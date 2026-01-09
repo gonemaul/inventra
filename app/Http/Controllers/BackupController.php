@@ -8,10 +8,12 @@ use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\Process\Process;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\File;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class BackupController extends Controller
@@ -39,7 +41,7 @@ class BackupController extends Controller
             // Log::info("Backup Output: " . Artisan::output());
             Cache::forever('last_backup_info', [
                 'date'     => Carbon::now()->translatedFormat('d F Y, H:i:s'), // Format: 13 Desember 2025, 12:00:00
-                'user'     => auth()->user()->name ?? 'System' // Opsional: siapa yang merestore
+                'user'     => Auth::user()->name ?? 'System' // Opsional: siapa yang merestore
             ]);
             return back()->with('success', 'Backup database berhasil dibuat!');
         } catch (\Exception $e) {
@@ -78,7 +80,7 @@ class BackupController extends Controller
         $request->validate(['enabled' => 'required|boolean']);
 
         // Update di database settings
-        \App\Models\Setting::updateOrCreate(
+        Setting::updateOrCreate(
             ['key' => 'enable_auto_backup'],
             ['value' => $request->enabled ? 'true' : 'false']
         );
@@ -170,11 +172,18 @@ class BackupController extends Controller
             Cache::forever('last_restore_info', [
                 'filename' => $displayName,
                 'date'     => Carbon::now()->translatedFormat('d F Y, H:i:s'), // Format: 13 Desember 2025, 12:00:00
-                'user'     => auth()->user()->name ?? 'System' // Opsional: siapa yang merestore
+                'user'     => Auth::user()->name ?? 'System' // Opsional: siapa yang merestore
             ]);
-            // Setting::updateOrCreate(['key' => 'last_restore'], ['value' => now()]);
-            // Setting::updateOrCreate(['key' => 'last_restore_file'], ['value' => ]);
-            return back()->with('success', 'Database berhasil dipulihkan!');
+            $sessionDriver = config('session.driver');
+            if ($sessionDriver === 'file') {
+                $this->cleanSessionFiles();
+            } elseif ($sessionDriver === 'database') {
+                DB::table('sessions')->truncate();
+            }
+            Auth::guard('web')->logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+            return redirect('/login')->with('warning', 'Sistem telah di-restore. Silakan login kembali demi keamanan.');
         } catch (\Exception $e) {
             return back()->with('error', 'Gagal restore: ' . $e->getMessage());
         } finally {
@@ -279,5 +288,15 @@ class BackupController extends Controller
             if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) return false;
         }
         return rmdir($dir);
+    }
+    private function cleanSessionFiles()
+    {
+        $directory = storage_path('framework/sessions');
+        // Hapus semua file kecuali .gitignore
+        foreach (File::glob("{$directory}/*") as $file) {
+            if (!str_ends_with($file, '.gitignore')) {
+                File::delete($file);
+            }
+        }
     }
 }

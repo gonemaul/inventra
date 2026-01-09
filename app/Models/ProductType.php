@@ -11,8 +11,6 @@ class ProductType extends Model
     use SoftDeletes;
     protected $fillable = ['category_id', 'code', 'name', 'description'];
     protected $hidden = [
-        'id',
-        'category_id',
         'created_at',
         'updated_at'
     ];
