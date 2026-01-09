@@ -10,7 +10,12 @@ class Category extends Model
 {
     use SoftDeletes;
     protected $fillable = ['slug', 'code', 'name', 'description'];
-
+    protected $hidden = [
+        'id',
+        'slug',
+        'created_at',
+        'updated_at'
+    ];
     protected static function boot()
     {
         parent::boot();

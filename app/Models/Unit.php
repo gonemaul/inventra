@@ -9,4 +9,9 @@ class Unit extends Model
 {
     use SoftDeletes;
     protected $fillable = ['code', 'name', 'description', 'is_decimal'];
+    protected $hidden = [
+        'id',
+        'created_at',
+        'updated_at'
+    ];
 }

@@ -8,6 +8,7 @@ const props = defineProps({
     dss: Object,
     price_trend: Object,
 });
+console.log(props.data);
 const showConfirmModal = ref(null);
 const openDeleteModal = (product, isPermanent = false) => {
     let config = {};

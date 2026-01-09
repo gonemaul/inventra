@@ -10,6 +10,13 @@ class Supplier extends Model
     use SoftDeletes;
     protected $fillable = ['name', 'phone', 'address', 'status', 'type', 'description'];
 
+    protected $hidden = [
+        'id',
+        'phone',
+        'address',
+        'created_at',
+        'updated_at'
+    ];
     const STATUS_ACTIVE = 'active';
     const STATUS_INACTIVE = 'inactive';
     const STATUSES = [
