@@ -52,10 +52,10 @@ class ProductService
     public function get(array $params)
     {
         // Selalu ambil relasi (eager load) untuk efisiensi
-        $query = Product::with(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insights' => function ($q) {
+        $query = Product::with(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name,code', 'productType:id,name', 'insights' => function ($q) {
             // Ambil insight yang masih aktif (belum dibaca/diselesaikan)
             $q->where('is_read', false);
-        }]);
+        }])->withSum('saleItems as total_sold_all_time', 'quantity');
 
         // 1. SEARCH GLOBAL
         $query->when($paramSearch ?? null, function ($q, $search) {
@@ -97,7 +97,7 @@ class ProductService
         $sortField = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
 
-        $allowedSorts = ['name', 'selling_price', 'purchase_price', 'stock', 'created_at', 'code'];
+        $allowedSorts = ['name', 'selling_price', 'purchase_price', 'stock', 'created_at', 'code', 'total_sold_all_time'];
         if (in_array($sortField, $allowedSorts)) {
             $query->orderBy($sortField, $sortDirection);
         } else {
@@ -127,8 +127,7 @@ class ProductService
                 $query->whereHas('sale', function ($q) use ($startLastMonth, $endLastMonth) {
                     $q->whereBetween('transaction_date', [$startLastMonth, $endLastMonth]);
                 });
-            }], 'quantity')
-            ->withSum('saleItems as total_sold_all_time', 'quantity'); // 1. Total Selamanya
+            }], 'quantity'); // 1. Total Selamanya
 
 
         $products = $query->paginate($perPage)

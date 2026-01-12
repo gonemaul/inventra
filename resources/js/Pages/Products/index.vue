@@ -59,6 +59,40 @@ const updateScreenSize = () => {
     isMobile.value = window.innerWidth < 1024;
 };
 
+const BADGE_CONFIG = {
+    restock: {
+        label: "🚨 Stok",
+        class: "bg-red-500 animate-pulse",
+        priority: 1,
+    },
+    margin_alert: { label: "⚠️ Margin", class: "bg-yellow-400", priority: 2 },
+    dead_stock: { label: "🐢 Slow", class: "bg-gray-600", priority: 3 },
+    trend: {
+        label: "🔥 Trending",
+        class: "bg-purple-600 animate-pulse",
+        priority: 4,
+    },
+    new: { label: "✨ New", class: "bg-lime-500", priority: 5 },
+    high_margin: { label: "💰 Cuan", class: "bg-emerald-600", priority: 6 },
+    promo: { label: "% Promo", class: "bg-blue-500", priority: 7 },
+};
+const productsWithBadges = computed(() => {
+    console.log(props.products);
+    return props.products.data.map((product) => {
+        // Proses badge untuk setiap produk
+        const active_badges = (product.insights || [])
+            .map((insight) => ({
+                ...BADGE_CONFIG[insight.type],
+                type: insight.type,
+            }))
+            .filter((badge) => badge.label)
+            .sort((a, b) => a.priority - b.priority)
+            .slice(0, 2); // Opsi B: Ambil 2 saja
+
+        // Return produk yang sudah ditempeli badge hasil olahan
+        return { ...product, active_badges };
+    });
+});
 const openOpsiSheet = (mode, item = null) => {
     modalMode.value = mode;
     if (item != null) {
@@ -280,7 +314,7 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                 >
                     <MobileCardGrid
                         v-if="isMobile"
-                        v-for="product in products.data"
+                        v-for="product in productsWithBadges"
                         :key="'mobile' + product.id"
                         :data="product"
                         @click="openOpsiSheet('detail', product)"
@@ -288,7 +322,7 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                     />
                     <ProductCardGrid
                         v-else
-                        v-for="product in products.data"
+                        v-for="product in productsWithBadges"
                         :key="'desktop' + product.id"
                         :data="product"
                         @delete="openDeleteModal(product)"
@@ -304,7 +338,7 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                     class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-3"
                 >
                     <ProductCardList
-                        v-for="product in products.data"
+                        v-for="product in productsWithBadges"
                         :is-trash-view="isTrashView"
                         :key="product.id"
                         :data="product"
@@ -315,7 +349,7 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                     />
                 </div>
                 <div v-else-if="viewMode === 'kanban'">
-                    <ProductKanbanBoard :products="products.data" />
+                    <ProductKanbanBoard :products="productsWithBadges" />
                 </div>
             </div>
             <div v-else class="mt-8">

@@ -35,6 +35,12 @@ const monthlyGrowth = computed(() => {
         direction: diff > 0 ? "up" : diff < 0 ? "down" : "neutral",
     };
 });
+
+const icons = {
+    up: `<svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`,
+    down: `<svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>`,
+    alert: `<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`,
+};
 </script>
 
 <template>
@@ -60,7 +66,7 @@ const monthlyGrowth = computed(() => {
                     decoding="async"
                     onerror="this.style.display='none'"
                     onload="this.classList.remove('opacity-0')"
-                    class="absolute inset-0 z-10 object-cover w-full h-full opacity-0"
+                    class="absolute inset-0 z-10 object-cover w-full h-full bg-white opacity-0 dark:bg-gray-900"
                 />
                 <div
                     class="absolute inset-0 z-0 flex flex-col items-center justify-center w-full h-full text-gray-300"
@@ -109,140 +115,108 @@ const monthlyGrowth = computed(() => {
         <div
             class="flex-1 px-2 py-4 space-y-5 overflow-y-auto custom-scrollbar"
         >
-            <div class="grid grid-cols-4 gap-2">
+            <div class="grid grid-cols-3 gap-2 px-1">
                 <div
-                    class="p-2 text-center border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700"
+                    :class="[
+                        'flex flex-col items-center justify-center p-2 rounded-2xl border transition-all',
+                        data.stock <= 5
+                            ? 'bg-red-50 border-red-100 dark:bg-red-900/20 dark:border-red-800'
+                            : 'bg-gray-50 border-gray-100 dark:bg-gray-800 dark:border-gray-700',
+                    ]"
                 >
-                    <div class="text-[10px] text-gray-400 uppercase">Stok</div>
+                    <span
+                        class="text-[9px] uppercase tracking-tighter text-gray-400 font-bold"
+                        >Stok</span
+                    >
                     <div
-                        class="text-lg font-bold text-gray-800 dark:text-white"
+                        :class="[
+                            'text-xl font-black',
+                            data.stock <= 5
+                                ? 'text-red-600'
+                                : 'text-gray-800 dark:text-white',
+                        ]"
                     >
                         {{ data.stock }}
                     </div>
-                </div>
-                <div
-                    class="flex flex-col justify-between col-span-2 p-2 text-center border border-gray-100 rounded-lg bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700"
-                >
-                    <div
-                        class="text-[10px] text-gray-400 uppercase font-medium"
+                    <span
+                        v-if="data.stock <= 5"
+                        class="text-[8px] font-bold text-red-500 animate-pulse"
+                        >Low!</span
                     >
-                        Terjual (Total)
-                    </div>
+                </div>
 
+                <div
+                    class="flex flex-col justify-center p-2 text-center border border-blue-100 bg-blue-50/50 dark:bg-blue-900/10 dark:border-blue-800 rounded-2xl"
+                >
+                    <span
+                        class="text-[9px] uppercase tracking-tighter text-blue-400 font-bold leading-none mb-1"
+                        >Terjual</span
+                    >
                     <div
-                        class="my-1 text-lg font-black leading-none text-gray-800 dark:text-white"
+                        class="text-xl font-black text-blue-700 dark:text-blue-300"
                     >
                         {{ data.total_sold_all_time || 0 }}
                     </div>
 
-                    <div
-                        class="flex flex-col items-center justify-center gap-1 mt-1"
-                    >
+                    <div class="flex items-center justify-center mt-1">
                         <div
-                            v-if="monthlyGrowth.direction == 'up'"
-                            class="flex items-center gap-1.5"
+                            v-if="monthlyGrowth.direction"
+                            :class="[
+                                'flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-black',
+                                monthlyGrowth.direction === 'up'
+                                    ? 'bg-green-500 text-white'
+                                    : 'bg-red-500 text-white',
+                            ]"
                         >
-                            <div
-                                class="flex items-center gap-0.5 text-[10px] font-bold text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400 px-1.5 py-0.5 rounded-full"
-                            >
-                                <svg
-                                    class="w-3 h-3"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                                    />
-                                </svg>
-                                <span>+{{ monthlyGrowth.percent }}%</span>
-                            </div>
-                            <div
-                                class="text-[9px] text-gray-500 dark:text-gray-400 font-medium"
-                            >
-                                {{ data.qty_this_month }}
-                                <span class="text-gray-300">vs</span>
-                                {{ data.qty_last_month }}
-                            </div>
+                            <span
+                                v-html="
+                                    monthlyGrowth.direction === 'up'
+                                        ? icons.up
+                                        : icons.down
+                                "
+                            ></span>
+                            {{ monthlyGrowth.percent }}%
                         </div>
-
-                        <div
-                            v-else-if="monthlyGrowth.direction == 'down'"
-                            class="flex items-center gap-1.5"
+                        <span
+                            v-else
+                            class="text-[9px] text-gray-400 font-medium italic"
+                            >Stabil</span
                         >
-                            <div
-                                class="flex items-center gap-0.5 text-[10px] font-bold text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400 px-1.5 py-0.5 rounded-full"
-                            >
-                                <svg
-                                    class="w-3 h-3"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
-                                    />
-                                </svg>
-                                <span>-{{ monthlyGrowth.percent }}%</span>
-                            </div>
-                            <div
-                                class="text-[9px] text-gray-500 dark:text-gray-400 font-medium"
-                            >
-                                {{ data.qty_this_month }}
-                                <span class="text-gray-300">vs</span>
-                                {{ data.qty_last_month }}
-                            </div>
-                        </div>
-
-                        <div
-                            v-else-if="data.total_sold_all_time > 0"
-                            class="flex flex-col items-center"
-                        >
-                            <div class="text-[10px] font-medium text-gray-400">
-                                Stabil
-                                {{
-                                    data.qty_this_month > 0
-                                        ? "(" + data.qty_this_month + ")"
-                                        : ""
-                                }}
-                            </div>
-                            <div
-                                v-if="data.qty_last_month > 0"
-                                class="text-[9px] text-gray-400"
-                            >
-                                vs
-                                {{ data.qty_last_month }}
-                                bulan lalu
-                            </div>
-                        </div>
-                        <div v-else class="flex flex-col items-center">
-                            <div class="text-[10px] font-medium text-gray-400">
-                                Belum terjual
-                            </div>
-                        </div>
                     </div>
                 </div>
+
                 <div
                     :class="[
-                        'p-2 text-center border  rounded-lg ',
+                        'flex flex-col items-center justify-center p-2 rounded-2xl border transition-all',
                         data.is_margin_low
-                            ? 'border-red-100 bg-red-50 dark:bg-red-900/20 dark:border-red-800 text-red-600 dark:text-red-400'
-                            : 'border-blue-100 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800 text-blue-600 dark:text-blue-400',
+                            ? 'bg-orange-50 border-orange-100 dark:bg-orange-900/20 dark:border-orange-800 text-orange-700'
+                            : 'bg-emerald-50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800 text-emerald-700',
                     ]"
                 >
-                    <div class="text-[10px] uppercase">Profit</div>
-                    <div class="flex flex-col items-center text-sm font-bold">
-                        <span> {{ data.current_margin["percent"] }}% </span>
-                        <span class="!text-[10px] mt-1">
-                            {{ formatRupiah(data.current_margin["nominal"]) }}
-                        </span>
+                    <span
+                        class="text-[9px] uppercase tracking-tighter opacity-60 font-bold"
+                        >Margin</span
+                    >
+                    <div class="text-lg font-black leading-none">
+                        {{ data.current_margin["percent"] }}%
                     </div>
+                    <div
+                        class="text-[8px] font-bold mt-1 px-1.5 py-0.5 rounded-md bg-white/50 dark:bg-black/20"
+                    >
+                        Target {{ data.target_margin_percent }}%
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="mt-3 px-2 flex items-center justify-between text-[10px] text-gray-400 font-medium"
+            >
+                <div class="flex items-center gap-1">
+                    <div class="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                    Bulan ini: <b>{{ data.qty_this_month }} pcs</b>
+                </div>
+                <div class="flex items-center gap-1">
+                    Lalu: <b>{{ data.qty_last_month ?? "0" }} pcs</b>
                 </div>
             </div>
 

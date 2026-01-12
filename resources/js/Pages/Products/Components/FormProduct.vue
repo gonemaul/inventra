@@ -40,8 +40,9 @@ const form = useForm({
     selling_price: props.product?.selling_price || 0,
     stock: props.product?.stock || 0,
     min_stock: props.product?.min_stock || 0,
-    target_margin_percent: props.product?.target_margin_percent || 20,
+    target_margin_percent: props.product?.target_margin_percent || 10,
     margin_nominal: 0,
+    markup: 0,
 
     // File (image akan berisi file baru, image_path untuk preview)
     image: null,
@@ -50,67 +51,60 @@ const imagePreview = ref(props.product?.image_url ?? null);
 
 onMounted(async () => {
     const buy = parseFloat(form.purchase_price) || 0;
-    const percent = parseFloat(form.target_margin_percent) || 0;
-    const nominal = buy * (percent / 100);
-    form.margin_nominal = Math.round(nominal);
+    const sell = parseFloat(form.selling_price) || 0;
+    const nominal = sell - buy;
+    form.margin_nominal = Math.ceil(nominal);
 });
 
 const onPurchaseChange = () => {
     const buy = parseFloat(form.purchase_price) || 0;
     const percent = parseFloat(form.target_margin_percent) || 0;
 
-    // Hitung Nominal dari %
-    const nominal = buy * (percent / 100);
-    form.margin_nominal = Math.round(nominal);
-
-    // Hitung Harga Jual
-    form.selling_price = Math.round(buy + nominal);
+    if (percent < 100) {
+        // RUMUS MARGIN: Harga Jual agar dapet margin X persen
+        const sell = buy / (1 - percent / 100);
+        form.margin_nominal = Math.ceil(sell - buy);
+        if (props.mode == "create") {
+            form.selling_price = Math.round(sell);
+        }
+    }
 };
 
 const onSellingChange = () => {
     const buy = parseFloat(form.purchase_price) || 0;
     const sell = parseFloat(form.selling_price) || 0;
 
-    // Hitung Nominal (Selisih)
     const nominal = sell - buy;
     form.margin_nominal = nominal;
 
     // Hitung Persen
     if (buy > 0) {
         form.target_margin_percent = parseFloat(
-            ((nominal / buy) * 100).toFixed(2)
+            ((nominal / sell) * 100).toFixed(2)
         );
+        form.markup = parseFloat(((nominal / buy) * 100).toFixed(2));
     } else {
         form.target_margin_percent = 100; // Default jika harga beli 0
     }
 };
 
 const onMarginPercentChange = () => {
-    const buy = parseFloat(form.purchase_price) || 0;
-    const percent = parseFloat(form.target_margin_percent) || 0;
-
-    // Hitung Nominal
-    const nominal = buy * (percent / 100);
-    form.margin_nominal = Math.round(nominal);
-
-    // Update Harga Jual
-    if (props.mode == "create") {
-        form.selling_price = Math.round(buy + nominal);
-    }
+    onPurchaseChange();
 };
 
 const onMarginNominalChange = () => {
     const buy = parseFloat(form.purchase_price) || 0;
     const nominal = parseFloat(form.margin_nominal) || 0;
 
-    // Update Harga Jual
-    form.selling_price = Math.round(buy + nominal);
+    const sell = buy + nominal;
+    form.selling_price = Math.round(sell);
 
     // Hitung Persen
-    if (buy > 0) {
+    if (sell > 0) {
         form.target_margin_percent = parseFloat(
-            ((nominal / buy) * 100).toFixed(2)
+            ((nominal / sell) * 100).toFixed(2)
         );
+        form.markup = parseFloat(((nominal / buy) * 100).toFixed(2));
     }
 };
 
@@ -133,7 +127,7 @@ const submitForm = () => {
         form.transform((data) => ({
             ...data,
             _method: "put",
-        })).post(route("products.update", { product: props.product.id }), {
+        })).post(route("products.update", { product: props.product.slug }), {
             onFinish: () => (isActionLoading.value = false),
         });
     }
@@ -548,6 +542,7 @@ const onScanResult = (decodedText) => {
                                 :class="['w-full py-2 pr-7 text-sm']"
                                 id="target_margin_percent"
                                 type="number"
+                                step="any"
                                 @input="onMarginPercentChange"
                             />
                             <span
@@ -555,6 +550,11 @@ const onScanResult = (decodedText) => {
                                 >%</span
                             >
                         </div>
+                        <p
+                            class="text-[12px] ml-3 text-gray-400 mt-1 text-left"
+                        >
+                            Setara Markup: {{ form.markup }}%
+                        </p>
                     </div>
 
                     <div>

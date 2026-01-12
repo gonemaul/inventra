@@ -24,21 +24,15 @@ const isStockLow = computed(() => {
         :class="data.stock == 0 ? 'animate-pulse shadow-lg shadow-red-400' : ''"
         class="flex flex-col h-full overflow-hidden transition-transform duration-200 bg-white border border-gray-100 rounded-lg shadow-sm cursor-pointer dark:bg-gray-800 dark:border-gray-700 active:scale-95"
     >
-        <div class="relative w-full aspect-square bg-gray-50 dark:bg-gray-900">
-            <img
-                @click="
-                    emit('imageClick', {
-                        path: data.image_url,
-                        name: data.name,
-                    })
-                "
-                :src="data.image_url"
-                loading="lazy"
-                decoding="async"
-                class="absolute inset-0 z-10 object-cover w-full h-full opacity-0"
-                onerror="this.style.display='none'"
-                onload="this.classList.remove('opacity-0')"
-            />
+        <div
+            @click="
+                emit('imageClick', {
+                    path: data.image_url,
+                    name: data.name,
+                })
+            "
+            class="relative w-full aspect-square bg-gray-50 dark:bg-gray-900"
+        >
             <div
                 class="absolute inset-0 z-0 flex flex-col items-center justify-center w-full h-full text-gray-300"
             >
@@ -57,13 +51,32 @@ const isStockLow = computed(() => {
                 </svg>
                 <span class="text-[9px] font-bold">No Image</span>
             </div>
-
-            <span
+            <img
+                :src="data.image_url"
+                loading="lazy"
+                decoding="async"
+                class="absolute inset-0 z-10 object-cover w-full h-full bg-white opacity-0 dark:bg-gray-900"
+                onerror="this.style.display='none'"
+                onload="this.classList.remove('opacity-0')"
+            />
+            <div class="absolute left-0 z-10 flex flex-col gap-1 top-1">
+                <span
+                    v-for="badge in data.active_badges"
+                    :key="badge.type"
+                    :class="[
+                        'px-1 py-1 text-[9px] font-bold uppercase tracking-wider text-white rounded-r-md shadow-sm',
+                        badge.class,
+                    ]"
+                >
+                    {{ badge.label }}
+                </span>
+            </div>
+            <!-- <span
                 v-if="data.stock > 0"
                 class="bg-red-500 top-1 left-1 absolute z-20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-sm"
             >
                 Stok {{ data.stock || 0 }}
-            </span>
+            </span> -->
             <div
                 v-if="data.stock <= 0"
                 class="absolute inset-0 z-20 flex items-center justify-center bg-gray-900/60 backdrop-blur-[1px]"
@@ -86,8 +99,47 @@ const isStockLow = computed(() => {
             @click="emit('click', data)"
             class="flex flex-col flex-1 gap-1 p-2"
         >
-            <div class="text-[9px] text-gray-400 truncate uppercase">
-                {{ data.brand?.name || "-" }}
+            <!-- <div class="text-[9px] text-gray-400 truncate uppercase">
+                {{
+                    data.brand?.name +
+                    " | " +
+                    data.category?.name +
+                    " | " +
+                    data.product_type?.name
+                }}
+            </div> -->
+            <div
+                class="flex items-center gap-1.5 text-[9px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 overflow-hidden"
+            >
+                <span
+                    class="text-lime-600 dark:text-gray-200 truncate max-w-[80px]"
+                >
+                    {{ data.brand?.name || "No Brand" }}
+                </span>
+
+                <svg
+                    class="flex-shrink-0 w-2 h-2 text-gray-300"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                >
+                    <path
+                        d="M9 18l6-6-6-6"
+                        stroke-width="3"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    />
+                </svg>
+
+                <span class="truncate max-w-[80px]">
+                    {{ data.category?.name }}
+                </span>
+
+                <span v-if="data.product_type" class="text-gray-300">/</span>
+
+                <span v-if="data.product_type" class="truncate opacity-70">
+                    {{ data.product_type?.name }}
+                </span>
             </div>
             <h3
                 class="text-xs font-medium leading-snug text-gray-800 dark:text-gray-100 line-clamp-2"
@@ -101,8 +153,7 @@ const isStockLow = computed(() => {
                 </div>
                 <div class="flex items-center justify-between mt-1">
                     <span class="text-[9px] text-gray-400">
-                        {{ data.size?.name || "-" }} |
-                        {{ data.stock }}
+                        {{ data.size?.name || "-" }} | {{ data.stock }}
                         {{ data.unit?.name || "-" }}
                     </span>
                     <span

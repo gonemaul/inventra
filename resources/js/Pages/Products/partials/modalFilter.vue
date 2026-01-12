@@ -19,6 +19,7 @@ const sortOptions = [
     { value: "stock", label: "Jumlah Stok" },
     { value: "selling_price", label: "Harga Jual" },
     { value: "purchase_price", label: "Harga Beli" },
+    { value: "total_sold_all_time", label: "Terjual" },
 ];
 
 // --- INIT FORM ---
@@ -317,8 +318,8 @@ const formatRupiah = (value) => {
                 >
                     Rentang Nilai
                 </h3>
-                <div class="grid grid-cols-1 gap-6 md:grid-cols-3">
-                    <div>
+                <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <div class="col-span-2">
                         <label
                             class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
                             >Jumlah Stok</label

@@ -25,9 +25,6 @@ const formatRupiah = (num) => {
         minimumFractionDigits: 0,
     }).format(num || 0);
 };
-function parseRupiah(value) {
-    return parseInt(String(value).replace(/[^0-9]/g, "")) || 0;
-}
 
 // Computed: Hitung Profit (Selisih)
 const profitNominal = computed(() => {
@@ -81,7 +78,7 @@ const submit = () => {
                         decoding="async"
                         onerror="this.style.display='none'"
                         onload="this.classList.remove('opacity-0')"
-                        class="absolute inset-0 z-10 object-cover w-full h-full opacity-0"
+                        class="absolute inset-0 z-10 object-cover w-full h-full bg-white opacity-0 dark:bg-gray-900"
                     />
                     <div
                         class="absolute inset-0 z-0 w-full h-full flex items-center justify-center text-[10px] text-gray-400"
@@ -99,12 +96,51 @@ const submit = () => {
                     </div>
 
                     <div
-                        class="text-[10px] font-medium text-gray-500 dark:text-gray-400 mb-1"
+                        class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[10px] leading-tight mb-2"
                     >
-                        {{ product.category?.name }}
-                        <span v-if="product.product_type">
-                            | {{ product.product_type?.name }}</span
+                        <div class="flex items-center gap-1">
+                            <svg
+                                class="w-1 h-1 fill-blue-500"
+                                viewBox="0 0 6 6"
+                            >
+                                <circle cx="3" cy="3" r="3" />
+                            </svg>
+                            <span
+                                class="font-bold tracking-tight text-blue-600 uppercase dark:text-blue-400"
+                            >
+                                {{ product.category?.name }}
+                            </span>
+                            <span
+                                v-if="product.product_type"
+                                class="text-gray-300 dark:text-gray-600"
+                                >•</span
+                            >
+                            <span
+                                v-if="product.product_type"
+                                class="text-gray-500 dark:text-gray-400"
+                            >
+                                {{ product.product_type?.name }}
+                            </span>
+                        </div>
+
+                        <span class="text-gray-300 dark:text-gray-600">|</span>
+
+                        <div
+                            class="flex items-center gap-1 text-gray-500 dark:text-gray-400"
                         >
+                            <span class="font-medium">Size:</span>
+                            <span
+                                class="font-bold text-gray-700 dark:text-gray-200"
+                            >
+                                {{ product.size?.name }}
+                            </span>
+                            <span class="opacity-40">/</span>
+                            <span
+                                class="text-[9px] px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-300"
+                            >
+                                {{ product.unit?.name }}
+                            </span>
+                        </div>
                     </div>
 
                     <h2
@@ -164,7 +200,7 @@ const submit = () => {
             <div>
                 <label
                     class="text-[10px] text-gray-400 font-bold uppercase mb-2 block"
-                    >Set Profit Cepat (%) | Markup</label
+                    >Set Markup Cepat (%)</label
                 >
                 <div class="flex gap-2 pb-2 overflow-x-auto no-scrollbar">
                     <button

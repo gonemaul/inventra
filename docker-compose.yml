@@ -37,7 +37,7 @@ services:
             PHP_EXTENSION_GD: 1
             PHP_EXTENSION_ZIP: 1
             PHP_EXTENSION_INTL: 1
-            PHP_OPCACHE_ENABLE: 1
+            #PHP_OPCACHE_ENABLE: 1
             MINIO_SERVER_URL: "https://cdn.srvhome"
             MINIO_BROWSER_REDIRECT_URL: "https://minio.srvhome"
         hostname: inventra

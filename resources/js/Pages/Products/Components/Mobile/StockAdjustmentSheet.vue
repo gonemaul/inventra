@@ -69,7 +69,7 @@ const submit = () => {
                         decoding="async"
                         onerror="this.style.display='none'"
                         onload="this.classList.remove('opacity-0')"
-                        class="absolute inset-0 z-10 object-cover w-full h-full opacity-0"
+                        class="absolute inset-0 z-10 object-cover w-full h-full bg-white opacity-0 dark:bg-gray-900"
                     />
                     <div
                         class="absolute inset-0 z-0 w-full h-full flex items-center justify-center text-[10px] text-gray-400"
@@ -93,6 +93,7 @@ const submit = () => {
                         <span v-if="product.product_type">
                             | {{ product.product_type?.name }}</span
                         >
+                        | Size {{ product.size?.name }}
                     </div>
                     <h2
                         class="text-sm font-bold leading-snug text-gray-900 dark:text-white line-clamp-2"
@@ -102,8 +103,13 @@ const submit = () => {
                     <div
                         class="text-lg font-black text-lime-600 dark:text-lime-400"
                     >
-                        <span class="text-[11px]">Stock Awal : </span>
+                        <span class="text-[11px] text-gray-500"
+                            >Stock Awal :
+                        </span>
                         {{ product.stock }}
+                        <span class="text-[12px]">{{
+                            product.unit?.name
+                        }}</span>
                     </div>
                 </div>
             </div>

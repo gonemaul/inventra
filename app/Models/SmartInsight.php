@@ -31,6 +31,7 @@ class SmartInsight extends Model
     public const TYPE_MARGIN = 'margin_alert';
     public const TYPE_TREND = 'trend';
     public const TYPE_NEW = 'new';
+    // type dss notif
     public const TYPE_DAILY_STRATEGY = 'daily_strategy';
     public const TYPE_DAILY_RESTOCK = 'daily_restock_plan';
     public const TYPE_WEEKLY_DSS_DEADSTOCK = 'weekly_dss_deadstock';

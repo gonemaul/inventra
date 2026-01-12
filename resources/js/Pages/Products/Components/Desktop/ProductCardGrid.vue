@@ -24,22 +24,9 @@ const formatRupiah = (val) =>
         minimumFractionDigits: 0,
     }).format(val);
 
-// Logic DSS
-const isTrending = computed(() =>
-    props.data.insights?.some((i) => i.type === "trend")
-);
-const isDeadStock = computed(() =>
-    props.data.insights?.some((i) => i.type === "dead_stock")
-);
-const isMarginLow = computed(() =>
-    props.data.insights?.some((i) => i.type === "margin_alert")
-);
-const isStockLow = computed(() => {
-    const hasInsight = props.data.insights?.some((i) => i.type === "restock");
-    return hasInsight;
-});
-
+console.log(props.data);
 const isTrashed = computed(() => props.data.deleted_at !== null);
+console.log(props.data);
 </script>
 <template>
     <div
@@ -98,49 +85,20 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                     >KOSONG</span
                 >
             </div>
-            <div class="absolute top-3 left-3 flex flex-col gap-1.5 z-10">
+            <div class="absolute left-0 z-10 flex flex-col gap-1 top-1">
                 <span
-                    v-if="isNewProduct"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-lime-500 text-white rounded-md shadow-sm"
+                    v-for="badge in data.active_badges"
+                    :key="badge.type"
+                    :class="[
+                        'px-2 py-1 text-[10px]  font-bold uppercase tracking-wider text-white rounded-r-md shadow-sm',
+                        badge.class,
+                    ]"
                 >
-                    ✨ New
-                </span>
-                <span
-                    v-if="isTrending"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-purple-600 text-white rounded-md shadow-sm animate-pulse"
-                    >🔥 Trending</span
-                >
-                <span
-                    v-if="isDeadStock"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-gray-600 text-white rounded-md shadow-sm"
-                    >🐢 Slow</span
-                >
-                <span
-                    v-if="isMarginLow"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-yellow-400 text-white rounded-md shadow-sm"
-                    >⚠️ Margin</span
-                >
-                <span
-                    v-else-if="isStockLow && data.stock > 0"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-red-500 animate-pulse text-white rounded-md shadow-sm"
-                    >🚨 Stok</span
-                >
-                <span
-                    v-if="hasDiscount"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-blue-500 text-white rounded-md shadow-sm"
-                >
-                    % Promo
-                </span>
-
-                <span
-                    v-if="hasHighMargin"
-                    class="px-2 py-1 text-[10px] font-bold uppercase tracking-wider bg-emerald-600 text-white rounded-md shadow-sm flex items-center gap-1"
-                >
-                    💰 Cuan
+                    {{ badge.label }}
                 </span>
             </div>
             <span
-                class="absolute z-20 bottom-1 left-1 px-2 py-1 text-[9px] font-bold uppercase tracking-wider bg-cyan-500 text-white rounded-md shadow-sm"
+                class="absolute z-20 bottom-0 left-0 px-2 py-1 text-[9px] font-bold uppercase tracking-wider bg-cyan-500 text-white rounded-r-md shadow-sm"
                 >{{ data.supplier.name }}</span
             >
 
@@ -164,7 +122,11 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                 >
                     <span
                         class="truncate bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-600 text-gray-500 dark:text-gray-100"
-                        >{{ data.brand?.name }}</span
+                        >{{
+                            data.brand?.name.length > 10
+                                ? data.brand?.code
+                                : data.brand?.name
+                        }}</span
                     >
                     <span
                         class="truncate bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-600 dark:text-gray-100 text-[9px] text-gray-600"
@@ -206,14 +168,16 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
                         >Harga Jual</span
                     >
                     <span
+                        :title="
+                            'Target Margin ' + data.target_margin_percent + '%'
+                        "
                         :class="[
                             'text-[10px] font-bold px-1.5 py-0.5 rounded',
                             data.is_margin_low
                                 ? 'bg-red-100 text-red-700'
                                 : 'bg-green-100 text-green-700',
                         ]"
-                    >
-                        +{{ data.current_margin["percent"] }}%
+                        >Margin +{{ data.current_margin["percent"] }}%
                     </span>
                 </div>
 
