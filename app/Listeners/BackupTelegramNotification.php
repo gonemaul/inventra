@@ -4,10 +4,9 @@ namespace App\Listeners;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
-use Spatie\Backup\Events\BackupWasSuccessful;
 use Spatie\Backup\Events\BackupHasFailed;
+use Spatie\Backup\Events\BackupWasSuccessful;
 use Spatie\Backup\Events\CleanupWasSuccessful;
-use Spatie\Backup\Events\CleanupHasFailed;
 
 class BackupTelegramNotification
 {
@@ -17,7 +16,7 @@ class BackupTelegramNotification
         $token = config('services.telegram.bot_token');
         $chatId = config('services.telegram.chat_id');
 
-        if (!$token || !$chatId) {
+        if (! $token || ! $chatId) {
             return; // Jangan jalan kalau belum disetting
         }
 
@@ -33,11 +32,11 @@ class BackupTelegramNotification
             $size = $newestBackup ? $this->formatSize($newestBackup->sizeInBytes()) : 'Unknown';
             $appName = env('APP_NAME', 'Inventra POS');
 
-            $message = "✅ *BACKUP SUKSES!* \n\n" .
-                "📱 *App:* {$appName}\n" .
-                "💾 *Disk:* " . strtoupper($diskName) . "\n" .
-                "📦 *Size:* {$size}\n" .
-                "⏰ *Time:* " . now()->format('d M Y H:i');
+            $message = "✅ *BACKUP SUKSES!* \n\n".
+                "📱 *App:* {$appName}\n".
+                '💾 *Disk:* '.strtoupper($diskName)."\n".
+                "📦 *Size:* {$size}\n".
+                '⏰ *Time:* '.now()->format('d M Y H:i');
         }
 
         // 2. JIKA BACKUP GAGAL
@@ -45,10 +44,10 @@ class BackupTelegramNotification
             $error = $event->exception->getMessage();
             $appName = env('APP_NAME', 'Inventra POS');
 
-            $message = "❌ *BACKUP GAGAL!* ⚠️ \n\n" .
-                "📱 *App:* {$appName}\n" .
-                "💀 *Error:* `{$error}`\n" .
-                "⏰ *Time:* " . now()->format('d M Y H:i');
+            $message = "❌ *BACKUP GAGAL!* ⚠️ \n\n".
+                "📱 *App:* {$appName}\n".
+                "💀 *Error:* `{$error}`\n".
+                '⏰ *Time:* '.now()->format('d M Y H:i');
         }
 
         // 3. JIKA CLEANUP (BERSIH-BERSIH) SUKSES
@@ -66,7 +65,7 @@ class BackupTelegramNotification
                     'parse_mode' => 'Markdown', // Agar bisa bold/italic
                 ]);
             } catch (\Exception $e) {
-                Log::error("Gagal kirim notif Telegram: " . $e->getMessage());
+                Log::error('Gagal kirim notif Telegram: '.$e->getMessage());
             }
         }
     }
@@ -75,7 +74,10 @@ class BackupTelegramNotification
     private function formatSize($bytes)
     {
         $units = ['B', 'KB', 'MB', 'GB'];
-        for ($i = 0; $bytes > 1024; $i++) $bytes /= 1024;
-        return round($bytes, 2) . ' ' . $units[$i];
+        for ($i = 0; $bytes > 1024; $i++) {
+            $bytes /= 1024;
+        }
+
+        return round($bytes, 2).' '.$units[$i];
     }
 }

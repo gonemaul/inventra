@@ -3,8 +3,8 @@
 namespace App\Services;
 
 use App\Models\Unit;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class UnitService
@@ -14,10 +14,12 @@ class UnitService
         // Ambil ID dan Nama, urutkan berdasarkan Nama
         return Unit::orderBy('name')->get(['id', 'name']);
     }
+
     public function getCount()
     {
         return Unit::count();
     }
+
     public function get(array $params)
     {
         $query = Unit::query();
@@ -26,7 +28,7 @@ class UnitService
         }
 
         if (isset($params['search']) && $params['search']) {
-            $query->where('name', 'like', '%' . $params['search'] . '%');
+            $query->where('name', 'like', '%'.$params['search'].'%');
         }
         $sortBy = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
@@ -37,13 +39,14 @@ class UnitService
             ->paginate($perPage)
             ->withQueryString();
     }
+
     public function create(array $data)
     {
         $validator = Validator::make($data, [
             'code' => 'required|string|max:20|unique:units,code', // 'unique' di tabel 'units', kolom 'code'
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
-            'is_decimal' => 'boolean'
+            'is_decimal' => 'boolean',
         ]);
 
         if ($validator->fails()) {
@@ -52,6 +55,7 @@ class UnitService
 
         return Unit::create($validator->validated());
     }
+
     public function update($id, array $data)
     {
         // 1. Temukan data, jika tidak ada akan error (findOrFail)
@@ -64,7 +68,7 @@ class UnitService
                 'string',
                 'max:20',
                 // Aturan 'unique' yang mengabaikan ID saat ini
-                Rule::unique('units')->ignore($Unit->id)
+                Rule::unique('units')->ignore($Unit->id),
             ],
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',

@@ -8,9 +8,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class Unit extends Model
 {
     use SoftDeletes;
+
     protected $fillable = ['code', 'name', 'description', 'is_decimal'];
+
     protected $hidden = [
         'created_at',
-        'updated_at'
+        'updated_at',
     ];
 }

@@ -2,24 +2,25 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
 use App\Models\Purchase;
-use Illuminate\Http\Request;
-use App\Services\ImageService;
 use App\Models\PurchaseInvoice;
 use App\Models\PurchasePayment;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
+use App\Services\ImageService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class PaymentController extends Controller
 {
     protected $imageService;
+
     public function __construct(ImageService $imageService)
     {
         $this->imageService = $imageService;
     }
+
     private function stats()
     {
         $today = now()->format('Y-m-d');
@@ -54,7 +55,7 @@ class PaymentController extends Controller
         if ($statsData->count_overdue > 0) {
             $alerts[] = [
                 'type' => 'danger', // Merah
-                'message' => "Perhatian! Ada {$statsData->count_overdue} nota yang sudah melewati jatuh tempo."
+                'message' => "Perhatian! Ada {$statsData->count_overdue} nota yang sudah melewati jatuh tempo.",
             ];
         }
 
@@ -62,7 +63,7 @@ class PaymentController extends Controller
         if ($statsData->count_approaching > 0) {
             $alerts[] = [
                 'type' => 'warning', // Kuning
-                'message' => "Siapkan dana! {$statsData->count_approaching} nota akan jatuh tempo dalam 3 hari ke depan."
+                'message' => "Siapkan dana! {$statsData->count_approaching} nota akan jatuh tempo dalam 3 hari ke depan.",
             ];
         }
 
@@ -79,10 +80,12 @@ class PaymentController extends Controller
                 'overdue' => $statsData->count_overdue,
             ],
             'last_payment' => $lastPaymentDate, // Bisa null jika belum ada pembayaran sama sekali
-            'alerts' => $alerts
+            'alerts' => $alerts,
         ];
+
         return $stats;
     }
+
     public function index()
     {
         $query = PurchaseInvoice::with(['purchase.supplier'])
@@ -98,9 +101,10 @@ class PaymentController extends Controller
 
         return Inertia::render('Keuangan/index', [
             'stats' => $this->stats(),
-            'invoices' => $invoices
+            'invoices' => $invoices,
         ]);
     }
+
     public function show($id)
     {
         // Halaman Detail & Bayar
@@ -115,9 +119,10 @@ class PaymentController extends Controller
 
         return Inertia::render('Keuangan/detail', [
             'paymentMethods' => PurchasePayment::PAYMENT_METHODS,
-            'invoice' => $invoice
+            'invoice' => $invoice,
         ]);
     }
+
     public function store(Request $request, $invoiceId)
     {
 
@@ -169,9 +174,10 @@ class PaymentController extends Controller
                     'paid_at' => $isPaidOff ? now() : null,
                 ]);
             });
+
             return back()->with('success', 'Pembayaran berhasil dicatat.');
         } catch (\Exception $e) {
-            return back()->withErrors('Terjadi kesalahan saat menyimpan pembayaran: ' . $e->getMessage());
+            return back()->withErrors('Terjadi kesalahan saat menyimpan pembayaran: '.$e->getMessage());
         }
     }
 }

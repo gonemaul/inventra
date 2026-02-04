@@ -4,25 +4,28 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\Purchase;
-use Illuminate\Support\Str;
 use App\Models\PurchaseItem;
 use App\Models\SmartInsight;
 use App\Models\StockMovement;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
-use App\Models\PurchaseInvoice; // Diperlukan jika ada logika invoice di service
+
+// Diperlukan jika ada logika invoice di service
 
 class PurchaseService
 {
     protected $stockService;
+
     protected $telegramService;
+
     public function __construct(StockService $stockService, TelegramService $telegramService)
     {
         $this->stockService = $stockService;
         $this->telegramService = $telegramService;
     }
+
     /**
      * Mengambil data transaksi pembelian untuk halaman index (Index.vue).
      */
@@ -46,18 +49,17 @@ class PurchaseService
             });
         });
         // 3. Filter Status & Supplier (Simple Where)
-        $query->when($params['status'] ?? null, fn($q, $status) => $q->where('status', $status));
-        $query->when($params['supplier_id'] ?? null, fn($q, $id) => $q->where('supplier_id', $id));
-        $query->when($params['user_id'] ?? null, fn($q, $id) => $q->where('user_id', $id));
+        $query->when($params['status'] ?? null, fn ($q, $status) => $q->where('status', $status));
+        $query->when($params['supplier_id'] ?? null, fn ($q, $id) => $q->where('supplier_id', $id));
+        $query->when($params['user_id'] ?? null, fn ($q, $id) => $q->where('user_id', $id));
 
         // 4. Filter Tanggal (Date Range)
-        $query->when($params['min_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '>=', $date))
-            ->when($params['max_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '<=', $date));
+        $query->when($params['min_date'] ?? null, fn ($q, $date) => $q->where('transaction_date', '>=', $date))
+            ->when($params['max_date'] ?? null, fn ($q, $date) => $q->where('transaction_date', '<=', $date));
 
         // 5. Filter Rentang Total (Having Aggregates)
-        $query->when($params['min_total'] ?? null, fn($q, $total) => $q->where('grand_total', '>=', $total))
-            ->when($params['max_total'] ?? null, fn($q, $total) => $q->where('grand_total', '<=', $total));
-
+        $query->when($params['min_total'] ?? null, fn ($q, $total) => $q->where('grand_total', '>=', $total))
+            ->when($params['max_total'] ?? null, fn ($q, $total) => $q->where('grand_total', '<=', $total));
 
         // --- SORTING & PAGINASI ---
         $sortBy = $params['sort'] ?? 'transaction_date';
@@ -73,8 +75,9 @@ class PurchaseService
     /**
      * Membuat Transaksi Induk (Purchase) DAN Item-nya (PurchaseItem).
      *
-     * @param array $data (Data Header + array 'items' nested)
+     * @param  array  $data  (Data Header + array 'items' nested)
      * @return Purchase
+     *
      * @throws ValidationException
      */
     public function create(array $data)
@@ -122,6 +125,7 @@ class PurchaseService
             }
 
             $purchase->update(['total_item_price' => $grandTotal, 'grand_total' => $grandTotal]);
+
             return $purchase;
         });
     }
@@ -144,7 +148,7 @@ class PurchaseService
 
         // CASE 3: Status LAIN (Received/Paid) -> Tolak
         throw ValidationException::withMessages([
-            'status' => 'Transaksi yang sudah Diterima/Lunas tidak dapat diedit.'
+            'status' => 'Transaksi yang sudah Diterima/Lunas tidak dapat diedit.',
         ]);
     }
 
@@ -171,7 +175,7 @@ class PurchaseService
 
             // 3. Handle DELETE (Item yang ada di DB tapi tidak ada di Input)
             foreach ($existingItems as $existingItem) {
-                if (!in_array($existingItem->id, $inputIds)) {
+                if (! in_array($existingItem->id, $inputIds)) {
                     $existingItem->delete();
                 }
             }
@@ -189,13 +193,14 @@ class PurchaseService
                     $existingItem->update([
                         'quantity' => $item['quantity'],
                         'purchase_price' => $item['purchase_price'],
-                        'subtotal' => $subtotal
+                        'subtotal' => $subtotal,
                     ]);
                 } else {
                     $this->createItems($purchase, $item, $subtotal);
                 }
             }
             $purchase->update(['total_item_price' => $grandTotal, 'grand_total' => $grandTotal]);
+
             return $purchase;
         });
     }
@@ -223,7 +228,7 @@ class PurchaseService
 
             foreach ($existingItems as $existing) {
                 // Jika ID item lama tidak ditemukan di array input, berarti user mencoba menghapusnya -> TOLAK
-                if (!in_array($existing->id, $inputIds)) {
+                if (! in_array($existing->id, $inputIds)) {
                     throw ValidationException::withMessages(['items' => "Item '{$existing->product->name}' tidak boleh dihapus karena sudah dipesan. Silakan edit Qty jika perlu revisi."]);
                 }
             }
@@ -245,7 +250,7 @@ class PurchaseService
                         $existingItem->update([
                             'quantity' => $item['quantity'],
                             'purchase_price' => $item['purchase_price'],
-                            'total_price' => $subtotal
+                            'total_price' => $subtotal,
                         ]);
                     }
                 } else {
@@ -266,7 +271,7 @@ class PurchaseService
                 'other_costs' => $other,
                 'total_item_price' => $grandTotalItemPrice,
                 'grand_total' => $grandTotalItemPrice + $shipping + $other,
-                'notes' => $data['notes'] ?? $purchase->notes
+                'notes' => $data['notes'] ?? $purchase->notes,
             ]);
 
             return $purchase;
@@ -289,7 +294,7 @@ class PurchaseService
                 'selling_price' => $product->selling_price,
                 'stock' => $product->stock,
                 'quantity' => $item['quantity'],
-                'image_url' => $product->image_url
+                'image_url' => $product->image_url,
             ];
             $purchase->items()->create([
                 'product_id' => $item['product_id'],
@@ -302,7 +307,6 @@ class PurchaseService
         });
     }
 
-
     /**
      * Update Status Transaksi Operasional (Digunakan di Index/Aksi Cepat).
      */
@@ -312,7 +316,7 @@ class PurchaseService
         $oldStatus = $purchase->status;
 
         // 1. Validasi Transisi Status (Guard)
-        if (!in_array($newStatus, Purchase::STATUSES)) {
+        if (! in_array($newStatus, Purchase::STATUSES)) {
             throw new \InvalidArgumentException('Status tidak valid.');
         }
 
@@ -329,8 +333,10 @@ class PurchaseService
             Purchase::STATUS_COMPLETED => [],
             Purchase::STATUS_CANCELLED => [],
         ];
-        if (!isset($allowedTransitions[$oldStatus]) || !in_array($newStatus, $allowedTransitions[$oldStatus])) {
-            if ($oldStatus === $newStatus) return $purchase; // Lewati jika status sama
+        if (! isset($allowedTransitions[$oldStatus]) || ! in_array($newStatus, $allowedTransitions[$oldStatus])) {
+            if ($oldStatus === $newStatus) {
+                return $purchase;
+            } // Lewati jika status sama
             throw new \Exception("Transisi status dari '{$oldStatus}' ke '{$newStatus}' tidak diizinkan.");
         }
 
@@ -351,7 +357,7 @@ class PurchaseService
             // $this->updateProductStockAndHpp($purchase);
 
             // Untuk saat ini, kita tambahkan note sebagai placeholder
-            $purchase->notes = ($purchase->notes ?? '') . "\n[SYSTEM] Transaction completed at " . now();
+            $purchase->notes = ($purchase->notes ?? '')."\n[SYSTEM] Transaction completed at ".now();
         }
 
         // 4. Update Status dan Simpan
@@ -415,7 +421,7 @@ class PurchaseService
                 'size' => $item->size->name ?? '-',
                 'category' => $item->category->name ?? '-',
                 'brand' => $item->brand->name ?? '-',
-                'image_path' => $item->image_path
+                'image_path' => $item->image_path,
             ];
         });
 
@@ -433,7 +439,7 @@ class PurchaseService
         $dateCode = date('ym');
 
         // 2. Format Supplier ID (Padding 3 digit: ID 13 jadi '013')
-        $supplierCode = 'S-' . str_pad((string)$supplierId, 3, '0', STR_PAD_LEFT);
+        $supplierCode = 'S-'.str_pad((string) $supplierId, 3, '0', STR_PAD_LEFT);
 
         // 3. Susun Prefix Dasar: "PO/2411/S-013/"
         // Kita mencari urutan KHUSUS untuk Supplier ini di Bulan ini.
@@ -442,7 +448,7 @@ class PurchaseService
         // 4. Cari Transaksi Terakhir (Termasuk yang dihapus/soft delete)
         $lastRecord = Purchase::query()
             ->select('reference_no')
-            ->where('reference_no', 'like', $prefix . '%')
+            ->where('reference_no', 'like', $prefix.'%')
             ->when(method_exists(Purchase::class, 'bootSoftDeletes'), function ($q) {
                 $q->withTrashed(); // PENTING: Cek tong sampah agar urutan tidak bentrok
             })
@@ -459,19 +465,19 @@ class PurchaseService
             $lastSeq = end($parts); // Ambil bagian paling belakang (005)
 
             if (is_numeric($lastSeq)) {
-                $sequence = (int)$lastSeq + 1;
+                $sequence = (int) $lastSeq + 1;
             }
         }
 
         // 6. Gabungkan Hasil Akhir
         // Hasil: PO/2411/S-013/001 (Padding urutan 3 digit)
-        return $prefix . str_pad((string)$sequence, 3, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 
     /**
      * Menyelesaikan transaksi pembelian, update stok, dan hitung HPP Final.
-     * @param Purchase $purchase
-     * @param array $extraCosts ['shipping_cost' => 0, 'other_costs' => 0]
+     *
+     * @param  array  $extraCosts  ['shipping_cost' => 0, 'other_costs' => 0]
      */
     public function finalizeTransaction(Purchase $purchase, array $extraCosts)
     {
@@ -484,13 +490,13 @@ class PurchaseService
 
         // 2. Cek Keberadaan Invoice
         if ($purchase->invoices()->count() === 0) {
-            throw new \Exception("Transaksi harus memiliki minimal 1 nota (invoice) yang terupload.");
+            throw new \Exception('Transaksi harus memiliki minimal 1 nota (invoice) yang terupload.');
         }
 
         // 4. Cek Total Qty
         $totalQtyReceived = $purchase->items()->sum('quantity');
         if ($totalQtyReceived <= 0) {
-            throw new \Exception("Tidak ada barang yang diterima (Total Qty 0). Transaksi tidak dapat diproses sebagai pembelian stok.");
+            throw new \Exception('Tidak ada barang yang diterima (Total Qty 0). Transaksi tidak dapat diproses sebagai pembelian stok.');
         }
 
         // --- LAYER 2: KALKULASI BIAYA ---
@@ -532,8 +538,9 @@ class PurchaseService
                         'rejected_qty' => 0,
                         'subtotal' => 0,
                         'item_status' => 'cancelled',
-                        'note' => 'Batal (Unlinked)'
+                        'note' => 'Batal (Unlinked)',
                     ]);
+
                     continue;
                 }
 
@@ -556,7 +563,7 @@ class PurchaseService
                 $finalHpp = $item->purchase_price + $costPerUnitAllocation;
 
                 $item->update([
-                    'subtotal' => $netQty * $finalHpp
+                    'subtotal' => $netQty * $finalHpp,
                 ]);
 
                 // Update Master Data Produk (Harga Beli Baru)
@@ -570,7 +577,7 @@ class PurchaseService
                     qty: $netQty,
                     type: StockMovement::TYPE_PURCHASE,
                     ref: $purchase->reference_no, // Referensi PO / Invoice Supplier
-                    desc: 'Pembelian Stok' . ($item->rejected_qty > 0 ? " (Retur {$item->rejected_qty})" : "")
+                    desc: 'Pembelian Stok'.($item->rejected_qty > 0 ? " (Retur {$item->rejected_qty})" : '')
                 );
                 if ($product) {
                     $product->updateWithSnapshot([
@@ -584,10 +591,10 @@ class PurchaseService
 
                 // Jika Margin < 10% (Bahaya) atau Negatif (Rugi)
                 if ($product->is_margin_low) {
-                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp " . number_format($newCost) . "\nJual: Rp " . number_format($currentSelling) . "\nMargin: <b>" . $product->current['percent'] . "%</b> (Tipis!)";
+                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp ".number_format($newCost)."\nJual: Rp ".number_format($currentSelling)."\nMargin: <b>".$product->current['percent'].'%</b> (Tipis!)';
                 }
             }
-            if (!empty($marginAlerts)) {
+            if (! empty($marginAlerts)) {
                 $msg = "🚨 <b>MARGIN GUARDIAN ALERT!</b>\n";
                 $msg .= "Ada kenaikan harga modal di pembelian {$purchase->reference_no}, segera update harga jual!\n\n";
                 $msg .= implode("\n\n", $marginAlerts);

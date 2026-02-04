@@ -50,7 +50,6 @@ Schedule::command('report:financial')->dailyAt('12:30');
 // (Hitung final omzet hari ini)
 Schedule::command('report:closing')->dailyAt('21:00');
 
-
 // === 2. ANALISA & PERSIAPAN (Generator) ===
 
 // Malam (21:30): Analisa Berat

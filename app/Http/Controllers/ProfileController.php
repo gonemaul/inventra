@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\ProfileUpdateRequest;
 use Carbon\Carbon;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redirect;
 use Inertia\Inertia;
 use Inertia\Response;
 use Jenssegers\Agent\Agent;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Facades\Redirect;
-use App\Http\Requests\ProfileUpdateRequest;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 class ProfileController extends Controller
 {
@@ -80,7 +80,7 @@ class ProfileController extends Controller
                 ->orderBy('last_activity', 'desc')
                 ->get()
         )->map(function ($session) use ($request) {
-            $agent = new Agent(); // Perlu: composer require jenssegers/agent
+            $agent = new Agent; // Perlu: composer require jenssegers/agent
             $agent->setUserAgent($session->user_agent);
 
             return (object) [

@@ -2,15 +2,15 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
-use App\Models\Sale;
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\SmartInsight;
 use App\Models\PurchaseInvoice;
-use Illuminate\Support\Facades\DB;
+use App\Models\Sale;
+use App\Models\SmartInsight;
 use App\Services\Analysis\ProductDSSCalculator;
-use App\Models\SalesRecap; // Pastikan model ini sesuai dengan model Penjualan Anda
+use Illuminate\Support\Facades\DB;
+
+// Pastikan model ini sesuai dengan model Penjualan Anda
 
 class InsightService
 {
@@ -20,6 +20,7 @@ class InsightService
     {
         $this->calculator = $calculator;
     }
+
     /**
      * =========================================================================
      * 1. MASTER BATCH (UNTUK CRONJOB / JADWAL HARIAN)
@@ -57,7 +58,9 @@ class InsightService
     public function calculateShopHealth()
     {
         $totalProducts = Product::count();
-        if ($totalProducts == 0) return 100;
+        if ($totalProducts == 0) {
+            return 100;
+        }
 
         // Gunakan Konstanta disini
         $criticalStockCount = SmartInsight::where('type', SmartInsight::TYPE_RESTOCK)
@@ -73,7 +76,6 @@ class InsightService
 
         $financeHealth = max(0, 100 - ($overdueDebts * 10));
         $totalScore = round(($stockHealth + $financeHealth) / 2);
-
 
         $status = 'Sehat Walafiat';
         $color = 'text-green-600';
@@ -92,8 +94,8 @@ class InsightService
             'color' => $color,
             'details' => [
                 'stock_score' => $stockHealth,
-                'finance_score' => $financeHealth
-            ]
+                'finance_score' => $financeHealth,
+            ],
         ];
     }
 
@@ -122,8 +124,8 @@ class InsightService
             'balance' => $balance,
             'status' => $balance >= 0 ? 'safe' : 'danger',
             'message' => $balance >= 0
-                ? "Aman. Surplus sekitar " . number_format($balance, 0, ',', '.')
-                : "AWAS! Defisit " . number_format(abs($balance), 0, ',', '.') . ". Siapkan dana talangan."
+                ? 'Aman. Surplus sekitar '.number_format($balance, 0, ',', '.')
+                : 'AWAS! Defisit '.number_format(abs($balance), 0, ',', '.').'. Siapkan dana talangan.',
         ];
     }
 
@@ -143,14 +145,14 @@ class InsightService
                 $metrics = $this->calculator->calculateInventoryHealth($product);
                 if ($metrics['status'] === SmartInsight::SEVERITY_CRITICAL || $metrics['status'] === SmartInsight::SEVERITY_WARNING) {
                     $data = [
-                        'product_id'    => $product->id,
-                        'name'          => $product->name,
+                        'product_id' => $product->id,
+                        'name' => $product->name,
                         'current_stock' => $metrics['current_stock'],
                         'suggested_qty' => $metrics['suggested_qty'],
-                        'buy_price'     => $product->purchase_price,
+                        'buy_price' => $product->purchase_price,
                         'estimasi_biaya' => $metrics['suggested_qty'] * $product->purchase_price,
-                        'days_left'     => $metrics['days_left'],
-                        'status'        => $metrics['status']
+                        'days_left' => $metrics['days_left'],
+                        'status' => $metrics['status'],
                     ];
                     $results[] = $data;
                 }
@@ -159,6 +161,7 @@ class InsightService
                 }
             }
         });
+
         return $results;
     }
 
@@ -176,6 +179,7 @@ class InsightService
                 }
             }
         });
+
         return $results;
     }
 
@@ -193,6 +197,7 @@ class InsightService
                 }
             }
         });
+
         return $results;
     }
 
@@ -210,9 +215,9 @@ class InsightService
                 }
             }
         });
+
         return $results;
     }
-
 
     public function analyzeNewProducts($saveToDb = false)
     {
@@ -228,6 +233,7 @@ class InsightService
                 }
             }
         });
+
         return $results;
     }
 
@@ -246,8 +252,10 @@ class InsightService
                 }
             }
         });
+
         return $results;
     }
+
     /**
      * =========================================================================
      * 3. PRIVATE PROCESSORS (LOGIC PENYIMPANAN DB)
@@ -263,11 +271,11 @@ class InsightService
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_RESTOCK], // TYPE RESTOCK
                 [
                     'severity' => $metrics['status'], // Ini sudah return 'critical' atau 'warning' dari calculator
-                    'title'    => 'Perlu Restock: ' . $product->name,
-                    'message'  => $metrics['message'],
-                    'payload'  => $metrics,
-                    'action_url' => '/purchases/create?product_id=' . $product->id,
-                    'updated_at' => now()
+                    'title' => 'Perlu Restock: '.$product->name,
+                    'message' => $metrics['message'],
+                    'payload' => $metrics,
+                    'action_url' => '/purchases/create?product_id='.$product->id,
+                    'updated_at' => now(),
                 ]
             );
         } else {
@@ -284,11 +292,11 @@ class InsightService
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_DEAD_STOCK], // TYPE DEAD STOCK
                 [
                     'severity' => SmartInsight::SEVERITY_WARNING, // HARDCODED CONSTANT
-                    'title'    => 'Barang Mati: ' . $product->name,
-                    'message'  => "Tidak laku {$metrics['days_inactive']} hari. Uang mandek Rp {$frozenRp}",
-                    'payload'  => $metrics,
-                    'action_url' => '/products/' . $product->id,
-                    'updated_at' => now()
+                    'title' => 'Barang Mati: '.$product->name,
+                    'message' => "Tidak laku {$metrics['days_inactive']} hari. Uang mandek Rp {$frozenRp}",
+                    'payload' => $metrics,
+                    'action_url' => '/products/'.$product->id,
+                    'updated_at' => now(),
                 ]
             );
         } else {
@@ -300,17 +308,17 @@ class InsightService
     {
         if ($metrics['margin']['is_critical']) {
             $currentMargin = round($metrics['margin']['percent'], 2);
-            $targetMargin  = $product->target_margin_percent;
+            $targetMargin = $product->target_margin_percent;
             $beli = number_format($product->purchase_price, 0, ',', '.');
             SmartInsight::updateOrCreate(
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_MARGIN], // TYPE MARGIN
                 [
                     'severity' => SmartInsight::SEVERITY_WARNING, // HARDCODED CONSTANT
-                    'title'    => 'Margin Menipis: ' . $product->name,
-                    'message'  => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
-                    'payload'  => $metrics['margin'],
-                    'action_url' => '/products/' . $product->id . '/edit',
-                    'updated_at' => now()
+                    'title' => 'Margin Menipis: '.$product->name,
+                    'message' => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
+                    'payload' => $metrics['margin'],
+                    'action_url' => '/products/'.$product->id.'/edit',
+                    'updated_at' => now(),
                 ]
             );
         } else {
@@ -325,11 +333,11 @@ class InsightService
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_HIGH_MARGIN], // TYPE HIGH MARGIN
                 [
                     'severity' => SmartInsight::SEVERITY_INFO, // HARDCODED CONSTANT (Info positif)
-                    'title'    => 'Produk High Margin: ' . $product->name,
-                    'message'  => "Profit tebal ({$metrics['margin']['percent']}%). Prioritaskan stok agar tidak kosong.",
-                    'payload'  => $metrics['margin'],
-                    'action_url' => '/products/' . $product->id,
-                    'updated_at' => now()
+                    'title' => 'Produk High Margin: '.$product->name,
+                    'message' => "Profit tebal ({$metrics['margin']['percent']}%). Prioritaskan stok agar tidak kosong.",
+                    'payload' => $metrics['margin'],
+                    'action_url' => '/products/'.$product->id,
+                    'updated_at' => now(),
                 ]
             );
         } else {
@@ -344,11 +352,11 @@ class InsightService
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_NEW], // TYPE NEW (Sesuai konstanta Anda)
                 [
                     'severity' => SmartInsight::SEVERITY_INFO, // HARDCODED CONSTANT
-                    'title'    => 'Produk Baru: ' . $product->name,
-                    'message'  => "Produk baru ditambahkan {$metrics['lifecycle']['days_active']} hari lalu.",
-                    'payload'  => $metrics['lifecycle'],
-                    'action_url' => '/products/' . $product->id,
-                    'updated_at' => now()
+                    'title' => 'Produk Baru: '.$product->name,
+                    'message' => "Produk baru ditambahkan {$metrics['lifecycle']['days_active']} hari lalu.",
+                    'payload' => $metrics['lifecycle'],
+                    'action_url' => '/products/'.$product->id,
+                    'updated_at' => now(),
                 ]
             );
         } else {
@@ -366,10 +374,10 @@ class InsightService
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_TREND], // TYPE TREND
                 [
                     'severity' => SmartInsight::SEVERITY_INFO, // Gunakan INFO untuk kabar baik (Success biasanya tidak ada di konstanta standar)
-                    'title'    => 'Lagi Laris: ' . $product->name,
-                    'message'  => "Penjualan naik {$salesTrend['growth_percent']}% bulan ini.",
-                    'payload'  => $salesTrend,
-                    'updated_at' => now()
+                    'title' => 'Lagi Laris: '.$product->name,
+                    'message' => "Penjualan naik {$salesTrend['growth_percent']}% bulan ini.",
+                    'payload' => $salesTrend,
+                    'updated_at' => now(),
                 ]
             );
         } else {

@@ -2,18 +2,17 @@
 
 namespace App\Console\Commands;
 
-use Carbon\Carbon;
-use App\Models\Insight;
-use App\Models\SmartInsight;
 use App\Models\PurchaseInvoice;
 use App\Models\Sale;
-use Illuminate\Console\Command;
+use App\Models\SmartInsight;
 use App\Services\TelegramService;
-use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
+use Illuminate\Console\Command;
 
 class SendMorningReport extends Command
 {
     protected $signature = 'report:morning';
+
     protected $description = 'Mengirim laporan pagi dari tabel insight';
 
     public function handle()
@@ -54,7 +53,7 @@ class SendMorningReport extends Command
         // ==========================================
 
         $message = "☀️ <b>MORNING BRIEFING</b>\n";
-        $message .= "🗓 " . now()->isoFormat('dddd, D MMMM Y') . "\n\n";
+        $message .= '🗓 '.now()->isoFormat('dddd, D MMMM Y')."\n\n";
         $message .= "------------------------------------------------------------\n\n";
         // ------------------------------------------
         // BLOK 1: PERHATIAN KHUSUS (MERAH)
@@ -64,7 +63,7 @@ class SendMorningReport extends Command
         $priceAlertMsg = null;
 
         // Cek Price Alert dari Payload Strategy
-        if ($stratData && !empty($stratData['price_trend']['has_alert']) && $stratData['price_trend']['has_alert'] === true) {
+        if ($stratData && ! empty($stratData['price_trend']['has_alert']) && $stratData['price_trend']['has_alert'] === true) {
             $priceAlertMsg = $stratData['price_trend']['message'] ?? 'Perubahan harga terdeteksi.';
         }
 
@@ -78,9 +77,13 @@ class SendMorningReport extends Command
                     $diff = round(now()->diffInDays(Carbon::parse($inv->due_date), false));
 
                     // Logic Label Waktu
-                    if ($diff < 0) $label = "🔥 LEWAT JATUH TEMPO";
-                    elseif ($diff == 0) $label = "🚨 HARI INI";
-                    else $label = "⏳ H-{$diff}";
+                    if ($diff < 0) {
+                        $label = '🔥 LEWAT JATUH TEMPO';
+                    } elseif ($diff == 0) {
+                        $label = '🚨 HARI INI';
+                    } else {
+                        $label = "⏳ H-{$diff}";
+                    }
 
                     $sisa = number_format($inv->total_amount - $inv->amount_paid, 0, ',', '.');
                     $supplierName = $inv->purchase->supplier->name ?? 'Supplier'; // Asumsi relasi ada
@@ -112,7 +115,7 @@ class SendMorningReport extends Command
             // Limit 5 item
             $items = array_slice($p['items'], 0, 5);
             foreach ($items as $item) {
-                $msgEst = number_format(($item['est'] ?? 0) / 1000, 0) . "rb"; // "150rb"
+                $msgEst = number_format(($item['est'] ?? 0) / 1000, 0).'rb'; // "150rb"
                 $message .= "• <b>{$item['name']}</b> (Sisa {$item['current_stock']}) - Est: {$msgEst}\n";
             }
 
@@ -136,8 +139,8 @@ class SendMorningReport extends Command
             $message .= "🎯 <b>STRATEGI FOKUS (HIGH MARGIN)</b>\n";
 
             $itemName = $stratData['product_snapshot']['name'] ?? 'Unknown';
-            $cuanRp   = number_format($stratData['margin']['rp'] ?? 0, 0, ',', '.');
-            $persen   = $stratData['margin']['percent'] ?? 0;
+            $cuanRp = number_format($stratData['margin']['rp'] ?? 0, 0, ',', '.');
+            $persen = $stratData['margin']['percent'] ?? 0;
 
             $message .= "🔥 <b>{$itemName}</b>\n";
             $message .= "   Potensi Cuan: <b>Rp {$cuanRp} ({$persen}%)</b>\n";
@@ -173,9 +176,9 @@ class SendMorningReport extends Command
                 ->whereYear('created_at', $lastMonth->year)
                 ->count();
 
-            $msgBulanan = "🗓 <b>REKAP BULANAN (" . $lastMonth->isoFormat('MMMM Y') . ")</b>\n";
-            $msgBulanan .= "Total Omzet: <b>Rp " . number_format($omzetBulanLalu, 0, ',', '.') . "</b>\n";
-            $msgBulanan .= "Total Profit: <b>Rp " . number_format($profitBulanLalu, 0, ',', '.') . "</b>\n";
+            $msgBulanan = '🗓 <b>REKAP BULANAN ('.$lastMonth->isoFormat('MMMM Y').")</b>\n";
+            $msgBulanan .= 'Total Omzet: <b>Rp '.number_format($omzetBulanLalu, 0, ',', '.')."</b>\n";
+            $msgBulanan .= 'Total Profit: <b>Rp '.number_format($profitBulanLalu, 0, ',', '.')."</b>\n";
             $msgBulanan .= "Total Transaksi: {$totalTrx} struk\n";
             $msgBulanan .= "<i>Performance review bulan baru dimulai!</i> 🚀\n\n";
 

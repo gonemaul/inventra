@@ -12,6 +12,6 @@ class Customer extends Model
         'phone',
         'address',
         'points',
-        'is_active'
+        'is_active',
     ];
 }

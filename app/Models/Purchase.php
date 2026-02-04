@@ -2,19 +2,16 @@
 
 namespace App\Models;
 
-use App\Models\User;
-use App\Models\Supplier;
-use App\Models\PurchaseItem;
-use App\Models\PurchaseInvoice;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Purchase extends Model
 {
     use HasFactory, SoftDeletes;
+
     protected $fillable = [
         'supplier_id',
         'user_id',
@@ -27,7 +24,7 @@ class Purchase extends Model
         'supplier_reference',
         'notes',
         'total_item_price',
-        'grand_total'
+        'grand_total',
     ];
 
     // protected $hidden = [
@@ -42,12 +39,19 @@ class Purchase extends Model
     //     'updated_at',
     // ];
     const STATUS_DRAFT = 'draft';
+
     const STATUS_ORDERED = 'dipesan';    // User 'Pesan'
+
     const STATUS_SHIPPED = 'dikirim';    // User tandai 'Diantar'
+
     const STATUS_RECEIVED = 'diterima';  // User tandai 'Sampai', siap 'Dicek'
+
     const STATUS_CHECKING = 'checking';
+
     const STATUS_COMPLETED = 'selesai';  // User tandai 'Valid, update data'
+
     const STATUS_CANCELLED = 'dibatalkan'; // (Status tambahan)
+
     const STATUSES = [
         self::STATUS_DRAFT,
         self::STATUS_ORDERED,

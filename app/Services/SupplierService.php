@@ -3,10 +3,10 @@
 namespace App\Services;
 
 use App\Models\Supplier;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Service untuk mengelola logika bisnis Supplier.
@@ -18,10 +18,10 @@ class SupplierService
         // Ambil ID dan Nama, urutkan berdasarkan Nama
         return Supplier::where('status', Supplier::STATUS_ACTIVE)->orderBy('name')->get(['id', 'name']);
     }
+
     /**
      * Mengambil data supplier untuk datatable (server-side).
      *
-     * @param array $params
      * @return \Illuminate\Pagination\LengthAwarePaginator
      */
     public function get(array $params)
@@ -37,9 +37,9 @@ class SupplierService
         if (isset($params['search']) && $params['search']) {
             $search = $params['search'];
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                    ->orWhere('contact_person', 'like', '%' . $search . '%')
-                    ->orWhere('phone', 'like', '%' . $search . '%');
+                $q->where('name', 'like', '%'.$search.'%')
+                    ->orWhere('contact_person', 'like', '%'.$search.'%')
+                    ->orWhere('phone', 'like', '%'.$search.'%');
             });
         }
 
@@ -67,8 +67,8 @@ class SupplierService
     /**
      * Validasi dan simpan supplier baru.
      *
-     * @param array $data
      * @return Supplier
+     *
      * @throws ValidationException
      */
     public function create(array $data)
@@ -93,9 +93,9 @@ class SupplierService
     /**
      * Validasi dan perbarui supplier yang ada.
      *
-     * @param int|string $id
-     * @param array $data
+     * @param  int|string  $id
      * @return Supplier
+     *
      * @throws ValidationException|ModelNotFoundException
      */
     public function update($id, array $data)
@@ -104,7 +104,7 @@ class SupplierService
 
         // Aturan validasi (abaikan unik untuk dirinya sendiri)
         $validator = Validator::make($data, [
-            'name' => 'required|string|max:255|unique:suppliers,name,' . $id,
+            'name' => 'required|string|max:255|unique:suppliers,name,'.$id,
             'phone' => 'required|string|max:20',
             'address' => 'required|string|max:200',
             'status' => ['required', Rule::in(Supplier::STATUSES)],
@@ -120,12 +120,13 @@ class SupplierService
 
         return $supplier;
     }
+
     /**
      * Hapus supplier (Soft Delete atau Force Delete).
      *
-     * @param int|string $id
-     * @param array $params
+     * @param  int|string  $id
      * @return bool
+     *
      * @throws ModelNotFoundException
      */
     public function delete($id, array $params = [])
@@ -139,6 +140,7 @@ class SupplierService
         } else {
             // Soft delete
             $supplier->update(['status' => Supplier::STATUS_INACTIVE]);
+
             return $supplier->delete();
         }
     }
@@ -146,8 +148,9 @@ class SupplierService
     /**
      * Pulihkan supplier dari soft delete.
      *
-     * @param int|string $id
+     * @param  int|string  $id
      * @return bool
+     *
      * @throws ModelNotFoundException
      */
     public function restore($id)
@@ -155,6 +158,7 @@ class SupplierService
         // Cari HANYA di data sampah
         $supplier = Supplier::onlyTrashed()->findOrFail($id);
         $supplier->update(['status' => Supplier::STATUS_ACTIVE]);
+
         return $supplier->restore();
     }
 }

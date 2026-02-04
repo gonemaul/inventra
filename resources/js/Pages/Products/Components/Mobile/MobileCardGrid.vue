@@ -99,22 +99,17 @@ const isStockLow = computed(() => {
             @click="emit('click', data)"
             class="flex flex-col flex-1 gap-1 p-2"
         >
-            <!-- <div class="text-[9px] text-gray-400 truncate uppercase">
-                {{
-                    data.brand?.name +
-                    " | " +
-                    data.category?.name +
-                    " | " +
-                    data.product_type?.name
-                }}
-            </div> -->
             <div
                 class="flex items-center gap-1.5 text-[9px] uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 overflow-hidden"
             >
                 <span
                     class="text-lime-600 dark:text-gray-200 truncate max-w-[80px]"
                 >
-                    {{ data.brand?.name || "No Brand" }}
+                    {{
+                        data.brand?.name.length > 2
+                            ? data.brand?.code
+                            : data.brand?.name
+                    }}
                 </span>
 
                 <svg

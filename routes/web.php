@@ -1,21 +1,20 @@
 <?php
 
-use Inertia\Inertia;
-use App\Services\InsightService;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Route;
-use Illuminate\Foundation\Application;
 use App\Http\Controllers\BackupController;
-use App\Http\Controllers\ReportController;
+use App\Http\Controllers\DataExportController;
+use App\Http\Controllers\DataImportController;
+use App\Http\Controllers\OtherBrowserSessionsController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
-use App\Http\Controllers\DataExportController;
-use App\Http\Controllers\DataImportController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SalesRecapController;
 use App\Http\Controllers\ShopSettingController;
 use App\Services\Analysis\ProductDSSCalculator;
-use App\Http\Controllers\OtherBrowserSessionsController;
+use App\Services\InsightService;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
+use Inertia\Inertia;
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -30,7 +29,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // Jalankan Analisa
         $service->runScheduledAnalysis();
 
-        return "Analisa DSS Selesai! Cek tabel smart_insights di database.";
+        return 'Analisa DSS Selesai! Cek tabel smart_insights di database.';
     })->name('test.dss');
     Route::controller(\App\Http\Controllers\DashboardController::class)->group(function () {
         Route::get('/dashboard', 'index')->name('dashboard');
@@ -45,7 +44,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('purchases', PurchaseController::class)->except([
         'show',
         'edit',
-        'update' // Kita akan buat rute ini manual/spesifik nanti
+        'update', // Kita akan buat rute ini manual/spesifik nanti
     ]);
     Route::controller(PurchaseController::class)->group(function () {
         // =============== RUTE PURCHASE =====================
@@ -79,9 +78,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::put('{invoice}/update-linked-item-details', [PurchaseController::class, 'updateLinkedItemDetails'])
                 ->name('purchases.updateLinkedItemDetails');
             // MEMPERBARUI INVOICE
-            Route::put('invoices/{invoice}',  'updateInvoice')->name('purchases.updateInvoice');
+            Route::put('invoices/{invoice}', 'updateInvoice')->name('purchases.updateInvoice');
             // MENGHAPUS INVOCIE
-            Route::delete('invoices/{invoice}',  'destroyInvoice')->name('purchases.destroyInvoice');
+            Route::delete('invoices/{invoice}', 'destroyInvoice')->name('purchases.destroyInvoice');
             // VALIDASI INVOICE
             Route::put('invoices/{invoice}/validate', 'validateInvoice')->name('purchases.validateInvoice');
         });
@@ -103,7 +102,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         //     ->name('sales.search-product');
         Route::get('/sales/pos', 'posIndex')->name('sales.pos');
         Route::post('/sales/pos/store', 'store')->name('sales.pos.store');
-        Route::get('/sales/{sale}/print',  'print')->name('sales.print');
+        Route::get('/sales/{sale}/print', 'print')->name('sales.print');
         Route::get('/sales/api/product-lite', 'getAllProductsLite')->name('sales.products.lite');
     });
 
@@ -119,7 +118,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/', 'index')->name('index');
         // PILAR 1 INVENTORY
         Route::get('/stock-card', 'stockCard')->name('stock-card');
-        Route::get('/stock-value',  'stockValue')->name('stock-value');
+        Route::get('/stock-value', 'stockValue')->name('stock-value');
         Route::get('/dead-stock', 'deadStock')->name('dead-stock');
         // PILAR 2 SALES
         Route::get('/sales-revenue', [ReportController::class, 'salesRevenue'])->name('sales-revenue');
@@ -134,14 +133,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cash-flow', [ReportController::class, 'cashFlow'])->name('cash-flow');
     });
 
-    Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);;
+    Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);
     Route::resource('sales', SalesRecapController::class);
     // Route::resource('reports',  \App\Http\Controllers\ReportController::class);
 
     // Setting Route DATA MASTER
     Route::controller(\App\Http\Controllers\SettingController::class)->group(function () {
         Route::get('settings', 'index')->name('settings');
-        Route::prefix('settings')->name("api.settings.")->group(function () {
+        Route::prefix('settings')->name('api.settings.')->group(function () {
             // CRUD API Category Settings
             Route::get('category', 'getCategories')->name('getCategory');
             Route::post('category', 'storeCategory')->name('storeCategory');
@@ -207,7 +206,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 });
 
-
 Route::get('/user', function () {
     return Inertia::render('user');
 })->middleware(['auth', 'verified'])->name('user');
@@ -224,8 +222,8 @@ Route::get('/test-telegram', function () {
     $token = config('services.telegram.bot_token');
     $chatId = config('services.telegram.chat_id');
 
-    if (!$token || !$chatId) {
-        return "ERROR: Token atau Chat ID belum terbaca di .env";
+    if (! $token || ! $chatId) {
+        return 'ERROR: Token atau Chat ID belum terbaca di .env';
     }
 
     try {
@@ -236,8 +234,8 @@ Route::get('/test-telegram', function () {
 
         return $response->json();
     } catch (\Exception $e) {
-        return "ERROR: " . $e->getMessage();
+        return 'ERROR: '.$e->getMessage();
     }
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';

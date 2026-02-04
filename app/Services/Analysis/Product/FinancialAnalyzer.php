@@ -4,7 +4,6 @@ namespace App\Services\Analysis\Product;
 
 use App\Models\Product;
 use App\Models\SaleItem;
-use Carbon\Carbon;
 
 class FinancialAnalyzer
 {
@@ -33,14 +32,14 @@ class FinancialAnalyzer
         $contribution = $this->analyzeProfitContribution($product, $salesTrend['qty_this_month']);
 
         return [
-            'margin'        => $marginMetrics,
-            'lifecycle'     => $lifecycle,
-            'price_trend'   => $priceTrend,
-            'sales_trend'   => $salesTrend,
-            'contribution'  => $contribution,
+            'margin' => $marginMetrics,
+            'lifecycle' => $lifecycle,
+            'price_trend' => $priceTrend,
+            'sales_trend' => $salesTrend,
+            'contribution' => $contribution,
 
             // Kesimpulan Singkat untuk UI
-            'financial_status' => $this->determineFinancialStatus($marginMetrics, $priceTrend, $salesTrend)
+            'financial_status' => $this->determineFinancialStatus($marginMetrics, $priceTrend, $salesTrend),
         ];
     }
 
@@ -61,11 +60,11 @@ class FinancialAnalyzer
         $isHighMargin = ($marginPercent > ($product->target_margin_percent + 15)); // Lebih dari 30% di atas target
 
         return [
-            'rp'          => $marginRp,
-            'percent'     => $marginPercent,
+            'rp' => $marginRp,
+            'percent' => $marginPercent,
             'is_critical' => $isCritical,
             'is_high_margin' => $isHighMargin,
-            'message'     => $isCritical ? "Profit Tipis" : ($isHighMargin ? "Profit Tebal" : "Normal")
+            'message' => $isCritical ? 'Profit Tipis' : ($isHighMargin ? 'Profit Tebal' : 'Normal'),
         ];
     }
 
@@ -84,9 +83,10 @@ class FinancialAnalyzer
 
         return [
             'is_new_product' => $isNew,
-            'days_active'    => round($daysSinceCreated)
+            'days_active' => round($daysSinceCreated),
         ];
     }
+
     /**
      * =========================================================================
      * PRIVATE 3: PRICE TREND (Detektif Harga Modal)
@@ -113,18 +113,18 @@ class FinancialAnalyzer
             // Cek apakah harga jual juga dinaikkan?
             // (Logikanya kita harus cek harga jual snapshot vs current juga,
             // tapi disini kita asumsikan warning dulu ke user).
-            $alertMessage = "Harga Modal NAIK Rp " . number_format($diff) . ". Cek harga jual!";
+            $alertMessage = 'Harga Modal NAIK Rp '.number_format($diff).'. Cek harga jual!';
         } elseif ($diff < 0) {
             $trendDirection = 'down'; // BAGUS: Modal Turun (Diskon supplier)
-            $alertMessage = "Modal turun. Kesempatan margin lebih besar.";
+            $alertMessage = 'Modal turun. Kesempatan margin lebih besar.';
         }
 
         return [
-            'direction'   => $trendDirection,
-            'diff_rp'     => abs($diff),
-            'old_price'   => $lastBuy,
-            'has_alert'   => ($trendDirection === 'up'), // Alert jika modal naik
-            'message'     => $alertMessage
+            'direction' => $trendDirection,
+            'diff_rp' => abs($diff),
+            'old_price' => $lastBuy,
+            'has_alert' => ($trendDirection === 'up'), // Alert jika modal naik
+            'message' => $alertMessage,
         ];
     }
 
@@ -194,8 +194,8 @@ class FinancialAnalyzer
             'qty_this_month' => $qtyThisMonth,
             'qty_last_month' => $qtyLastMonth,
             'growth_percent' => round($growthPercent, 1),
-            'is_trending'    => $isTrending,
-            'is_declining'   => $isDeclining
+            'is_trending' => $isTrending,
+            'is_declining' => $isDeclining,
         ];
     }
 
@@ -225,8 +225,8 @@ class FinancialAnalyzer
 
         return [
             'total_profit' => $totalGrossProfit,
-            'class'        => $class, // A, B, atau C
-            'message'      => ($class === 'A') ? "Produk Sultan! (Profit > 1 Juta)" : ""
+            'class' => $class, // A, B, atau C
+            'message' => ($class === 'A') ? 'Produk Sultan! (Profit > 1 Juta)' : '',
         ];
     }
 
@@ -235,9 +235,16 @@ class FinancialAnalyzer
      */
     private function determineFinancialStatus($margin, $price, $sales): string
     {
-        if ($margin['is_critical']) return 'danger'; // Prioritas 1: Profit tipis
-        if ($price['has_alert']) return 'warning';   // Prioritas 2: Modal naik
-        if ($sales['is_trending']) return 'success'; // Prioritas 3: Lagi laris
+        if ($margin['is_critical']) {
+            return 'danger';
+        } // Prioritas 1: Profit tipis
+        if ($price['has_alert']) {
+            return 'warning';
+        }   // Prioritas 2: Modal naik
+        if ($sales['is_trending']) {
+            return 'success';
+        } // Prioritas 3: Lagi laris
+
         return 'neutral';
     }
 }

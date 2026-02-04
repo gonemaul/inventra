@@ -2,14 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Exports\TemplateExport;
+use App\Imports\CategoryImport;
+use App\Imports\ProductImport;
 use App\Jobs\ProcessStockJob;
-use Illuminate\Support\Facades\DB;
-use Maatwebsite\Excel\Facades\Excel;
-use Illuminate\Support\Facades\Validator;
-use App\Exports\TemplateExport; // Kita buat nanti
-use App\Imports\CategoryImport; // Kita buat nanti
-use App\Imports\ProductImport;  // Kita buat nanti
+use App\Models\Product;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB; // Kita buat nanti
+use Illuminate\Support\Facades\Validator; // Kita buat nanti
+use Maatwebsite\Excel\Facades\Excel;  // Kita buat nanti
 
 class DataImportController extends Controller
 {
@@ -18,7 +19,7 @@ class DataImportController extends Controller
     {
         return match ($type) {
             'categories' => CategoryImport::class,
-            'products'   => ProductImport::class,
+            'products' => ProductImport::class,
             default => null,
         };
     }
@@ -27,8 +28,8 @@ class DataImportController extends Controller
     protected function getTemplateHeaders($type)
     {
         return match ($type) {
-            'categories' => ['Kode Kategori', 'Nama Kategori', "Deskripsi"],
-            'products'   => ['Kode Produk', 'Nama Produk', 'Deskripsi', 'Kategori', 'Type Produk', 'Satuan', 'Ukuran', 'Supplier', 'Merk', 'Harga Beli', 'Harga Jual', 'Stok Awal', 'Min Stok'],
+            'categories' => ['Kode Kategori', 'Nama Kategori', 'Deskripsi'],
+            'products' => ['Kode Produk', 'Nama Produk', 'Deskripsi', 'Kategori', 'Type Produk', 'Satuan', 'Ukuran', 'Supplier', 'Merk', 'Harga Beli', 'Harga Jual', 'Stok Awal', 'Min Stok'],
             default => [],
         };
     }
@@ -39,7 +40,9 @@ class DataImportController extends Controller
         $type = $request->input('type');
         $headers = $this->getTemplateHeaders($type);
 
-        if (empty($headers)) return back()->withErrors('Tipe data tidak valid.');
+        if (empty($headers)) {
+            return back()->withErrors('Tipe data tidak valid.');
+        }
 
         // Download Excel kosong hanya dengan header
         return Excel::download(new TemplateExport($headers), "Template_Import_{$type}.xlsx");
@@ -50,7 +53,7 @@ class DataImportController extends Controller
     {
         $request->validate([
             'type' => 'required|string',
-            'file' => 'required|mimes:xlsx,xls,csv'
+            'file' => 'required|mimes:xlsx,xls,csv',
         ]);
 
         DB::beginTransaction();
@@ -63,17 +66,20 @@ class DataImportController extends Controller
             } else {
                 // Import Biasa (Kategori, Unit, dll) pakai cara lama
                 $importClass = $this->getImportClass($request->type);
-                if (!$importClass) throw new \Exception('Tipe import tidak valid.');
+                if (! $importClass) {
+                    throw new \Exception('Tipe import tidak valid.');
+                }
 
                 Excel::import(new $importClass, $request->file('file'));
             }
 
             DB::commit(); // Simpan jika sukses semua
-            if ($request->type === 'products' && !empty($queueData)) {
+            if ($request->type === 'products' && ! empty($queueData)) {
                 foreach (array_chunk($queueData, 100, true) as $chunk) {
                     ProcessStockJob::dispatch($chunk);
                 }
             }
+
             return back()->with('success', 'Data berhasil diimport 100%!');
         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
             DB::rollBack(); // Batalkan semua jika ada validasi baris gagal
@@ -82,21 +88,21 @@ class DataImportController extends Controller
             $failures = $e->failures();
             $messages = [];
             foreach ($failures as $failure) {
-                $messages[] = "Baris " . $failure->row() . ": " . implode(', ', $failure->errors());
+                $messages[] = 'Baris '.$failure->row().': '.implode(', ', $failure->errors());
             }
 
             return back()->withErrors(['import_errors' => $messages]);
         } catch (\Exception $e) {
             DB::rollBack(); // Batalkan jika ada error database/coding
-            return back()->withErrors('Gagal Import: ' . $e->getMessage());
+
+            return back()->withErrors('Gagal Import: '.$e->getMessage());
         }
     }
-
 
     private function handleProductImport(Request $request)
     {
         // 1. Inisialisasi Class Import (Construct jalan disini untuk load relasi)
-        $importer = new ProductImport();
+        $importer = new ProductImport;
 
         // 2. Baca Excel jadi Array
         $rows = Excel::toArray($importer, $request->file('file'))[0];
@@ -106,7 +112,9 @@ class DataImportController extends Controller
         // 3. Looping Manual
         foreach ($rows as $index => $row) {
             // Skip baris kosong
-            if (!array_filter($row)) continue;
+            if (! array_filter($row)) {
+                continue;
+            }
             $rowNum = $index + 2; // Baris Excel (Header baris 1)
 
             // A. VALIDASI MANUAL (Panggil rules dari class import)
@@ -115,16 +123,23 @@ class DataImportController extends Controller
             if ($validator->fails()) {
                 // Lempar error biar ditangkap Catch di function store
                 // Ini akan mentrigger Rollback
-                throw new \Exception("Baris $rowNum: " . implode(', ', $validator->errors()->all()));
+                throw new \Exception("Baris $rowNum: ".implode(', ', $validator->errors()->all()));
             }
 
             // B. KONVERSI DATA (Panggil function transform yg kita buat tadi)
             // Disini proses "Nama Kategori" -> "ID Kategori" terjadi
             $attributes = $importer->transform($row);
 
-
             // D. SIMPAN KE DB
-            $product = \App\Models\Product::create($attributes);
+            $available = Product::where('name', $attributes['name'])
+                ->Where('category_id', $attributes['category_id'])
+                ->Where('brand_id', $attributes['brand_id'])
+                ->Where('supplier_id', $attributes['supplier_id'])->first();
+            if ($available) {
+                continue;
+            } else {
+                $product = Product::create($attributes);
+            }
 
             // E. CATAT STOK AWAL (Untuk Queue)
             // if ($attributes['stock'] > 0) {

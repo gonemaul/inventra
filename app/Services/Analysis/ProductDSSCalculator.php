@@ -2,19 +2,20 @@
 
 namespace App\Services\Analysis;
 
-use Carbon\Carbon;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\SmartInsight;
-use App\Services\TelegramService;
-use Illuminate\Support\Facades\Cache;
 use App\Services\Analysis\Product\FinancialAnalyzer;
 use App\Services\Analysis\Product\InventoryAnalyzer;
+use App\Services\TelegramService;
+use Illuminate\Support\Facades\Cache;
 
 class ProductDSSCalculator
 {
     protected $inventoryAnalyzer;
+
     protected $financialAnalyzer;
+
     public function __construct(InventoryAnalyzer $inventoryAnalyzer, FinancialAnalyzer $financialAnalyzer)
     {
         $this->inventoryAnalyzer = $inventoryAnalyzer;
@@ -36,6 +37,7 @@ class ProductDSSCalculator
             'financial' => $this->calculateFinancialHealth($product),
         ];
     }
+
     /**
      * LOGIC 1: INVENTORY & STOCK HEALTH
      * (Forecasting, Restock Suggestion, Dead Stock)
@@ -65,12 +67,12 @@ class ProductDSSCalculator
 
         // Hitung Qty Bulan Ini
         $qtyThisMonth = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', $thisMonthStart))
+            ->whereHas('sale', fn ($q) => $q->where('transaction_date', '>=', $thisMonthStart))
             ->sum('quantity');
 
         // Hitung Qty Bulan Lalu
         $qtyLastMonth = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$lastMonthStart, $thisMonthStart]))
+            ->whereHas('sale', fn ($q) => $q->whereBetween('transaction_date', [$lastMonthStart, $thisMonthStart]))
             ->sum('quantity');
 
         $isTrending = false;
@@ -92,7 +94,7 @@ class ProductDSSCalculator
             'growth_percent' => $growth,
             'qty_now' => $qtyThisMonth,
             'qty_prev' => $qtyLastMonth,
-            'message' => $message
+            'message' => $message,
         ];
     }
 
@@ -102,17 +104,17 @@ class ProductDSSCalculator
      */
     public function sendMarginAlert($product)
     {
-        $cacheKey = 'notif_margin_low_' . $product->id;
+        $cacheKey = 'notif_margin_low_'.$product->id;
 
-        if (!Cache::has($cacheKey)) {
+        if (! Cache::has($cacheKey)) {
 
             // --- A. FORMAT PESAN TELEGRAM (Update Margin Focus) ---
-            $msg  = "⚠️ <b>ALERT: PROFIT MARGIN RENDAH!</b>\n\n";
+            $msg = "⚠️ <b>ALERT: PROFIT MARGIN RENDAH!</b>\n\n";
             $msg .= "📦 <b>{$product->name}</b>\n";
 
             // Baris 1: Margin Aktual vs Target (Highlight Merah/Alert secara visual)
             $currentMargin = $product->current_margin['percent'];
-            $targetMargin  = $product->target_margin_percent;
+            $targetMargin = $product->target_margin_percent;
             $msg .= "🔻 Margin Saat Ini: <b>{$currentMargin}%</b>\n";
             $msg .= "🎯 Target Margin: <b>{$targetMargin}%</b>\n\n";
 
@@ -124,7 +126,7 @@ class ProductDSSCalculator
             $msg .= "└ Jual : Rp {$jual}\n\n";
 
             // Baris 3: Action
-            $msg .= "👉 <i>Disarankan untuk melakukan Penyesuaian Harga (Adj Price) segera.</i>";
+            $msg .= '👉 <i>Disarankan untuk melakukan Penyesuaian Harga (Adj Price) segera.</i>';
 
             // B. Kirim Telegram Langsung
             TelegramService::send($msg);
@@ -133,16 +135,16 @@ class ProductDSSCalculator
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_MARGIN], // TYPE MARGIN
                 [
                     'severity' => SmartInsight::SEVERITY_WARNING, // HARDCODED CONSTANT
-                    'title'    => 'Margin Menipis: ' . $product->name,
-                    'message'  => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
-                    'payload'  => [
+                    'title' => 'Margin Menipis: '.$product->name,
+                    'message' => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
+                    'payload' => [
                         'purchase_price' => $product->purchase_price,
-                        'selling_price'  => $product->selling_price,
-                        'current_margin' => $product->current_margin
+                        'selling_price' => $product->selling_price,
+                        'current_margin' => $product->current_margin,
                     ],
-                    'action_url' => '/products/' . $product->id . '/edit',
+                    'action_url' => '/products/'.$product->id.'/edit',
                     'updated_at' => now(),
-                    'is_read'     => false,
+                    'is_read' => false,
                     'is_notified' => true,
                 ]
             );

@@ -553,7 +553,7 @@
     ]
   },
   "resources/js/Pages/Products/Components/Mobile/MobileCardGrid.vue": {
-    "file": "assets/MobileCardGrid-BazP4oCe.js",
+    "file": "assets/MobileCardGrid-B8sv7yGa.js",
     "name": "MobileCardGrid",
     "src": "resources/js/Pages/Products/Components/Mobile/MobileCardGrid.vue",
     "isDynamicEntry": true,
@@ -668,7 +668,7 @@
     ]
   },
   "resources/js/Pages/Products/index.vue": {
-    "file": "assets/index-BwrnXkFv.js",
+    "file": "assets/index-DXc0HNMG.js",
     "name": "index",
     "src": "resources/js/Pages/Products/index.vue",
     "isDynamicEntry": true,
@@ -1253,7 +1253,7 @@
     ]
   },
   "resources/js/Pages/Purchases/PurchaseDetail.vue": {
-    "file": "assets/PurchaseDetail-BYgmFOkT.js",
+    "file": "assets/PurchaseDetail-BDD70Bub.js",
     "name": "PurchaseDetail",
     "src": "resources/js/Pages/Purchases/PurchaseDetail.vue",
     "isDynamicEntry": true,
@@ -1285,7 +1285,7 @@
     ]
   },
   "resources/js/Pages/Purchases/create.vue": {
-    "file": "assets/create-DjVG7sJg.js",
+    "file": "assets/create-BZKewMEi.js",
     "name": "create",
     "src": "resources/js/Pages/Purchases/create.vue",
     "isDynamicEntry": true,
@@ -2003,7 +2003,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-fo6v59pF.js",
+    "file": "assets/app-715l2swD.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,

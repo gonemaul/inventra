@@ -2,19 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use ZipArchive;
-use Carbon\Carbon;
 use App\Models\Setting;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Symfony\Component\Process\Process;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\Process\Exception\ProcessFailedException;
+use Symfony\Component\Process\Process;
+use ZipArchive;
 
 class BackupController extends Controller
 {
@@ -23,7 +23,8 @@ class BackupController extends Controller
     protected function getBackupPath($fileName = '')
     {
         $name = config('backup.backup.name');
-        return $name . '/' . $fileName;
+
+        return $name.'/'.$fileName;
     }
 
     // 1. ACTION: BUAT BACKUP BARU
@@ -35,17 +36,18 @@ class BackupController extends Controller
             Artisan::call('backup:run --only-db');
             $output = Artisan::output();
             if (str_contains(strtolower($output), 'failed')) {
-                dd("BACKUP GAGAL: " . $output); // Matikan proses dan tampilkan error di layar
+                dd('BACKUP GAGAL: '.$output); // Matikan proses dan tampilkan error di layar
             }
             //     // Log output artisan untuk debugging jika perlu
             // Log::info("Backup Output: " . Artisan::output());
             Cache::forever('last_backup_info', [
-                'date'     => Carbon::now()->translatedFormat('d F Y, H:i:s'), // Format: 13 Desember 2025, 12:00:00
-                'user'     => Auth::user()->name ?? 'System' // Opsional: siapa yang merestore
+                'date' => Carbon::now()->translatedFormat('d F Y, H:i:s'), // Format: 13 Desember 2025, 12:00:00
+                'user' => Auth::user()->name ?? 'System', // Opsional: siapa yang merestore
             ]);
+
             return back()->with('success', 'Backup database berhasil dibuat!');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal membuat backup: ' . $e->getMessage());
+            return back()->with('error', 'Gagal membuat backup: '.$e->getMessage());
         }
     }
 
@@ -57,6 +59,7 @@ class BackupController extends Controller
         if (Storage::disk('public')->exists($path)) {
             return Storage::disk('public')->download($path);
         }
+
         return back()->with('error', 'File tidak ditemukan.');
     }
 
@@ -67,6 +70,7 @@ class BackupController extends Controller
 
         if (Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
+
             return back()->with('success', 'File backup berhasil dihapus.');
         }
 
@@ -86,6 +90,7 @@ class BackupController extends Controller
         );
 
         $status = $request->enabled ? 'diaktifkan' : 'dimatikan';
+
         return back()->with('success', "Jadwal backup otomatis berhasil {$status}.");
     }
 
@@ -95,7 +100,7 @@ class BackupController extends Controller
         $path = $this->getBackupPath($fileName); // public/Inventra/namafile.zip
         $fullPath = Storage::disk('public')->path($path); // C:\laragon\...\storage\app\public\Inventra\...
 
-        if (!file_exists($fullPath)) {
+        if (! file_exists($fullPath)) {
             return back()->with('error', 'File backup tidak ditemukan di server.');
         }
 
@@ -106,13 +111,13 @@ class BackupController extends Controller
     public function uploadRestore(Request $request)
     {
         $request->validate([
-            'backup_file' => 'required|file|mimes:zip'
+            'backup_file' => 'required|file|mimes:zip',
         ]);
 
         $file = $request->file('backup_file');
         $originalName = $file->getClientOriginalName();
         // Gunakan nama unik agar tidak bentrok kalau ada 2 admin upload barengan
-        $fileName = 'restore_temp_' . time() . '.zip';
+        $fileName = 'restore_temp_'.time().'.zip';
 
         // 1. Simpan ke Public Disk
         $tempPath = Storage::disk('public')->putFileAs('temp', $file, $fileName);
@@ -123,11 +128,11 @@ class BackupController extends Controller
 
         try {
             // 2. Proses Restore
-            $result = $this->processRestore($fullPath, $originalName . ' (Uploaded)');
+            $result = $this->processRestore($fullPath, $originalName.' (Uploaded)');
 
             return $result;
         } catch (\Exception $e) {
-            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem: '.$e->getMessage());
         } finally {
             // 3. Hapus file temp (WAJIB PAKAI DISK PUBLIC)
             // Menggunakan finally agar sukses/gagal file tetap dihapus
@@ -141,7 +146,7 @@ class BackupController extends Controller
     {
         // A. PERSIAPAN FOLDER EKSTRAK
         // Gunakan folder unik untuk setiap proses agar tidak tercampur
-        $extractDirName = 'temp/restore_' . time();
+        $extractDirName = 'temp/restore_'.time();
         $extractPath = Storage::path($extractDirName); // Path absolut sistem
 
         // Pastikan folder bersih dari awal
@@ -153,7 +158,7 @@ class BackupController extends Controller
         try {
             // B. EKSTRAK ZIP
             $zip = new ZipArchive;
-            if ($zip->open($zipPath) !== TRUE) {
+            if ($zip->open($zipPath) !== true) {
                 return back()->with('error', 'Gagal membuka file ZIP. File mungkin korup.');
             }
 
@@ -163,7 +168,7 @@ class BackupController extends Controller
             // C. CARI FILE .SQL
             $sqlFile = $this->findSqlFile($extractPath);
 
-            if (!$sqlFile) {
+            if (! $sqlFile) {
                 return back()->with('error', 'File SQL tidak ditemukan dalam backup ini.');
             }
 
@@ -171,8 +176,8 @@ class BackupController extends Controller
             $this->executeSystemRestore($sqlFile);
             Cache::forever('last_restore_info', [
                 'filename' => $displayName,
-                'date'     => Carbon::now()->translatedFormat('d F Y, H:i:s'), // Format: 13 Desember 2025, 12:00:00
-                'user'     => Auth::user()->name ?? 'System' // Opsional: siapa yang merestore
+                'date' => Carbon::now()->translatedFormat('d F Y, H:i:s'), // Format: 13 Desember 2025, 12:00:00
+                'user' => Auth::user()->name ?? 'System', // Opsional: siapa yang merestore
             ]);
             $sessionDriver = config('session.driver');
             if ($sessionDriver === 'file') {
@@ -183,9 +188,10 @@ class BackupController extends Controller
             Auth::guard('web')->logout();
             request()->session()->invalidate();
             request()->session()->regenerateToken();
+
             return redirect('/login')->with('warning', 'Sistem telah di-restore. Silakan login kembali demi keamanan.');
         } catch (\Exception $e) {
-            return back()->with('error', 'Gagal restore: ' . $e->getMessage());
+            return back()->with('error', 'Gagal restore: '.$e->getMessage());
         } finally {
             // E. BERSIHKAN FOLDER HASIL EKSTRAK (PENTING)
             // Hapus folder temp ekstrak baik sukses maupun gagal
@@ -210,7 +216,7 @@ class BackupController extends Controller
             Artisan::call('db:wipe', ['--force' => true]);
             // ... Logic MySQL (biarkan atau copy dari sebelumnya) ...
             $binaryPath = env('DB_DUMP_BINARY_PATH', '');
-            $binary = $binaryPath ? $binaryPath . 'mysql' : 'mysql';
+            $binary = $binaryPath ? $binaryPath.'mysql' : 'mysql';
 
             $command = sprintf(
                 '"%s" --user="%s" --password="%s" --host="%s" --port="%s" "%s" < "%s"',
@@ -227,7 +233,7 @@ class BackupController extends Controller
             // 1. Path sqlite3.exe (D:/.../bin/sqlite3.exe)
             $binaryPath = env('DB_DUMP_BINARY_PATH');
             $exe = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN' ? 'sqlite3.exe' : 'sqlite3';
-            $binary = $binaryPath . $exe;
+            $binary = $binaryPath.$exe;
 
             // 2. Path Database Tujuan (D:/.../database.sqlite)
             $databasePath = $dbConfig['database'];
@@ -261,7 +267,7 @@ class BackupController extends Controller
         $process->setTimeout(null);
         $process->run();
 
-        if (!$process->isSuccessful()) {
+        if (! $process->isSuccessful()) {
             throw new ProcessFailedException($process);
         }
     }
@@ -275,26 +281,37 @@ class BackupController extends Controller
                 return $file->getRealPath();
             }
         }
+
         return null;
     }
 
     // Helper: Hapus folder
     private function deleteDirectory($dir)
     {
-        if (!file_exists($dir)) return true;
-        if (!is_dir($dir)) return unlink($dir);
-        foreach (scandir($dir) as $item) {
-            if ($item == '.' || $item == '..') continue;
-            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) return false;
+        if (! file_exists($dir)) {
+            return true;
         }
+        if (! is_dir($dir)) {
+            return unlink($dir);
+        }
+        foreach (scandir($dir) as $item) {
+            if ($item == '.' || $item == '..') {
+                continue;
+            }
+            if (! $this->deleteDirectory($dir.DIRECTORY_SEPARATOR.$item)) {
+                return false;
+            }
+        }
+
         return rmdir($dir);
     }
+
     private function cleanSessionFiles()
     {
         $directory = storage_path('framework/sessions');
         // Hapus semua file kecuali .gitignore
         foreach (File::glob("{$directory}/*") as $file) {
-            if (!str_ends_with($file, '.gitignore')) {
+            if (! str_ends_with($file, '.gitignore')) {
                 File::delete($file);
             }
         }

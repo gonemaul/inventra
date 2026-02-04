@@ -2,33 +2,36 @@
 
 namespace App\Http\Controllers;
 
-use Inertia\Inertia;
+use App\Http\Requests\ProductUpdateRequest;
 use App\Models\Product;
-use App\Models\SaleItem;
-use App\Models\PurchaseItem;
-use App\Models\SmartInsight;
-use Illuminate\Http\Request;
-use App\Services\SizeService;
-use App\Services\TypeService;
-use App\Services\UnitService;
 use App\Services\BrandService;
+use App\Services\CategoryService;
 use App\Services\InsightService;
 use App\Services\ProductService;
-use App\Services\CategoryService;
+use App\Services\SizeService;
 use App\Services\SupplierService;
-use Illuminate\Support\Facades\DB;
+use App\Services\TypeService;
+use App\Services\UnitService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
-use App\Http\Requests\ProductUpdateRequest;
+use Inertia\Inertia;
 
 class ProductController extends Controller
 {
     protected $productService;
+
     protected $categoryService;
+
     protected $unitService;
+
     protected $sizeService;
+
     protected $supplierService;
+
     protected $brandService;
+
     protected $typeService;
+
     protected $insightService;
 
     // 3. Inject semua service di constructor
@@ -51,6 +54,7 @@ class ProductController extends Controller
         $this->typeService = $typeService;
         $this->insightService = $insightService;
     }
+
     private function getDropdownData(): array
     {
         return [
@@ -63,23 +67,24 @@ class ProductController extends Controller
             'productStatuses' => Product::STATUSES,
         ];
     }
+
     public function searchProducts(Request $request)
     {
         $keyword = $request->input('q'); // misal frontend kirim parameter ?q=nama_produk
         $limit = $request->input('limit', 20); // Default ambil 20 item saja agar ringan
 
         $query = Product::query()
-            ->with('category:id,name', 'unit:id,name', "size:id,name", 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insight', 'movements');
+            ->with('category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insight', 'movements');
 
         if ($keyword) {
             $query->where(function ($q) use ($keyword) {
                 $q->where('name', 'LIKE', "%{$keyword}%")
                     ->orWhere('code', 'LIKE', "%{$keyword}%")
                     ->orWhere('slug', 'LIKE', "%{$keyword}%")
-                    ->orWhereHas('productType', fn($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
-                    ->orWhereHas('supplier', fn($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
-                    ->orWhereHas('brand', fn($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
-                    ->orWhereHas('size', fn($s) => $s->where('name', 'LIKE', "%{$keyword}%"));
+                    ->orWhereHas('productType', fn ($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
+                    ->orWhereHas('supplier', fn ($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
+                    ->orWhereHas('brand', fn ($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
+                    ->orWhereHas('size', fn ($s) => $s->where('name', 'LIKE', "%{$keyword}%"));
             });
         }
 
@@ -96,8 +101,10 @@ class ProductController extends Controller
             'product_type_id',
             'inventory_type',
         ]);
+
         return response()->json($products);
     }
+
     /**
      * Display a listing of the resource.
      */
@@ -107,8 +114,8 @@ class ProductController extends Controller
             'products' => $this->productService->get($request->all()),
             'filters' => $request->all(),
             'dropdowns' => Inertia::defer(
-                fn() => $this->getDropdownData()
-            )
+                fn () => $this->getDropdownData()
+            ),
         ]);
     }
 
@@ -119,7 +126,7 @@ class ProductController extends Controller
     {
         return Inertia::render('Products/create', [
             // 'dropdowns' => $this->getDropdownData()
-            'dropdowns' => Inertia::defer(fn() => $this->getDropdownData())
+            'dropdowns' => Inertia::defer(fn () => $this->getDropdownData()),
         ]);
     }
 
@@ -141,8 +148,9 @@ class ProductController extends Controller
     {
         $product->load(['category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name'])
             ->withTrashed(); // Handle jika produk soft deleted
+
         return Inertia::render('Products/detail', [
-            'detail' => Inertia::defer(fn() => $this->productService->getProductDetails($product))
+            'detail' => Inertia::defer(fn () => $this->productService->getProductDetails($product)),
         ]);
     }
 
@@ -153,11 +161,11 @@ class ProductController extends Controller
     {
         return Inertia::render('Products/edit', [
             'product' => Inertia::defer(
-                fn() => $product
+                fn () => $product
             ), // Kirim data produk yang ada
             'dropdowns' => Inertia::defer(
-                fn() => $this->getDropdownData()
-            ) // Kirim data dropdown
+                fn () => $this->getDropdownData()
+            ), // Kirim data dropdown
         ]);
     }
 
@@ -191,6 +199,7 @@ class ProductController extends Controller
         return Redirect::back()
             ->with('success', $message);
     }
+
     public function restoreProduct(Product $product)
     {
         $this->productService->restore($product->id);

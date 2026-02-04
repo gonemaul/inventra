@@ -2,15 +2,13 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use App\Models\Category;
-use App\Models\Unit;
-use App\Models\Size;
-use App\Models\Supplier; // (Opsional, jika Anda ingin menautkan supplier)
 use App\Models\Product;
+// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
+use App\Models\Size;
+use App\Models\Supplier;
+use App\Models\User;
+use Illuminate\Database\Seeder; // (Opsional, jika Anda ingin menautkan supplier)
+use Illuminate\Support\Facades\DB;
 
 class DatabaseSeeder extends Seeder
 {

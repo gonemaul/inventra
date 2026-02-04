@@ -2,29 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use Inertia\Inertia;
 use App\Models\Category;
-use Illuminate\Http\Request;
-use App\Services\SizeService;
-use App\Services\TypeService;
-use App\Services\UnitService;
 use App\Services\BrandService;
 use App\Services\CategoryService;
-
+use App\Services\SizeService;
 use App\Services\SupplierService;
+use App\Services\TypeService;
+use App\Services\UnitService;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Redirect;
-
+use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 
 class SettingController extends Controller
 {
     protected $categoryService;
+
     protected $typeService;
+
     protected $unitService;
+
     protected $sizeService;
+
     protected $brandService;
+
     protected $supplierService;
 
     public function __construct(
@@ -46,9 +49,13 @@ class SettingController extends Controller
     private function formatSize($bytes)
     {
         $units = ['B', 'KB', 'MB', 'GB'];
-        for ($i = 0; $bytes > 1024; $i++) $bytes /= 1024;
-        return round($bytes, 2) . ' ' . $units[$i];
+        for ($i = 0; $bytes > 1024; $i++) {
+            $bytes /= 1024;
+        }
+
+        return round($bytes, 2).' '.$units[$i];
     }
+
     public function index()
     {
         $appName = config('backup.backup.name');
@@ -63,13 +70,13 @@ class SettingController extends Controller
                     'name' => basename($file),
                     'size' => $this->formatSize($disk->size($file)), // Pastikan ada helper formatSize
                     'date' => Carbon::createFromTimestamp($disk->lastModified($file))->diffForHumans(),
-                    'timestamp' => $disk->lastModified($file) // Untuk sorting
+                    'timestamp' => $disk->lastModified($file), // Untuk sorting
                 ];
             }
         }
 
         // Urutkan terbaru
-        usort($backups, fn($a, $b) => $b['timestamp'] <=> $a['timestamp']);
+        usort($backups, fn ($a, $b) => $b['timestamp'] <=> $a['timestamp']);
 
         $lastRestore = Cache::get('last_restore_info') ?? [];
         $lastBackup = Cache::get('last_backup_info') ?? [];
@@ -77,6 +84,7 @@ class SettingController extends Controller
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
         // $logoUrl = isset($settings['shop_logo']) ? Storage::disk('s3')->url($this->$settings['shop_logo']) : null;
         $settings['shop_logo'] = isset($settings['shop_logo']) ? Storage::disk('s3')->url($settings['shop_logo']) : null;
+
         return Inertia::render('Settings/index', [
             'categoryCount' => $this->categoryService->getCount(),
             'unitCount' => $this->unitService->getCount(),
@@ -99,6 +107,7 @@ class SettingController extends Controller
     {
         if (request()->ajax()) {
             $categories = $this->categoryService->get(request()->all());
+
             return $categories;
         }
     }
@@ -134,6 +143,7 @@ class SettingController extends Controller
         $message = $isPermanent
             ? 'Kategori berhasil dihapus permanen!'
             : 'Kategori berhasil dipindahkan ke sampah!';
+
         return Redirect::route('settings')
             ->with('success', $message);
     }
@@ -151,6 +161,7 @@ class SettingController extends Controller
     {
         if (request()->ajax()) {
             $type = $this->typeService->get(request()->all());
+
             return $type;
         }
     }
@@ -186,6 +197,7 @@ class SettingController extends Controller
         $message = $isPermanent
             ? 'Tipe Produk berhasil dihapus permanen!'
             : 'Tipe Produk berhasil dipindahkan ke sampah!';
+
         return Redirect::route('settings')
             ->with('success', $message);
     }
@@ -203,6 +215,7 @@ class SettingController extends Controller
     {
         if (request()->ajax()) {
             $units = $this->unitService->get(request()->all());
+
             return $units;
         }
     }
@@ -214,6 +227,7 @@ class SettingController extends Controller
         return Redirect::route('settings')
             ->with('success', 'Satuan berhasil ditambahkan!');
     }
+
     public function updateUnit(Request $request, $id)
     {
         try {
@@ -237,6 +251,7 @@ class SettingController extends Controller
         $message = $isPermanent
             ? 'Satuan berhasil dihapus permanen!'
             : 'Satuan berhasil dipindahkan ke sampah!';
+
         return Redirect::route('settings')
             ->with('success', $message);
     }
@@ -254,6 +269,7 @@ class SettingController extends Controller
     {
         if (request()->ajax()) {
             $sizes = $this->sizeService->get(request()->all());
+
             return $sizes;
         }
     }
@@ -265,6 +281,7 @@ class SettingController extends Controller
         return Redirect::route('settings')
             ->with('success', 'Ukuran berhasil ditambahkan!');
     }
+
     public function updateSize(Request $request, $id)
     {
         try {
@@ -288,6 +305,7 @@ class SettingController extends Controller
         $message = $isPermanent
             ? 'Ukuran berhasil dihapus permanen!'
             : 'Ukuran berhasil dipindahkan ke sampah!';
+
         return Redirect::route('settings')
             ->with('success', $message);
     }
@@ -305,6 +323,7 @@ class SettingController extends Controller
     {
         if (request()->ajax()) {
             $brands = $this->brandService->get(request()->all());
+
             return $brands;
         }
     }
@@ -340,6 +359,7 @@ class SettingController extends Controller
         $message = $isPermanent
             ? 'Merk berhasil dihapus permanen!'
             : 'Merk berhasil dipindahkan ke sampah!';
+
         return Redirect::route('settings')
             ->with('success', $message);
     }
@@ -352,12 +372,12 @@ class SettingController extends Controller
             ->with('success', 'Merk berhasil dipulihkan!');
     }
 
-
     // ================== Supplier Methods ==================
     public function getSupplier()
     {
         if (request()->ajax()) {
             $sizes = $this->supplierService->get(request()->all());
+
             return $sizes;
         }
     }
@@ -369,6 +389,7 @@ class SettingController extends Controller
         return Redirect::route('settings')
             ->with('success', 'Supplier berhasil ditambahkan!');
     }
+
     public function updateSupplier(Request $request, $id)
     {
         try {
@@ -392,6 +413,7 @@ class SettingController extends Controller
         $message = $isPermanent
             ? 'Supplier berhasil dihapus permanen!'
             : 'Supplier berhasil dipindahkan ke sampah!';
+
         return Redirect::route('settings')
             ->with('success', $message);
     }

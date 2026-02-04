@@ -2,20 +2,23 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Str;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class Product extends Model
 {
     use HasFactory, SoftDeletes;
+
     protected $appends = ['image_url', 'current_margin', 'is_margin_low', 'markup'];
+
     protected $casts = [
         'snapshot' => 'array', // Otomatis convert JSON ke Array
     ];
+
     protected $fillable = [
         'category_id',
         'unit_id',
@@ -39,7 +42,7 @@ class Product extends Model
         'target_margin_percent',
 
         'status',
-        'snapshot'
+        'snapshot',
     ];
 
     // protected $hidden = [
@@ -59,21 +62,29 @@ class Product extends Model
     //     'target_margin_percent',
     // ];
     const STATUS_ACTIVE = 'active'; // Produk yang dijual
+
     const STATUS_DRAFT = 'draft';
+
     const STATUSES = [
         self::STATUS_ACTIVE,
         self::STATUS_DRAFT,
     ];
+
     const INVENTORY_TYPE_FAST = 'FAST';
+
     const INVENTORY_TYPE_SLOW = 'SLOW';
+
     const INVENTORY_TYPE_SEASONAL = 'SEASONAL';
+
     const INVENTORY_TYPE_DEAD = 'DEAD';
+
     const INVENTORIES = [
         self::INVENTORY_TYPE_FAST,
         self::INVENTORY_TYPE_SLOW,
         self::INVENTORY_TYPE_SEASONAL,
-        self::INVENTORY_TYPE_DEAD
+        self::INVENTORY_TYPE_DEAD,
     ];
+
     protected static function boot()
     {
         parent::boot();
@@ -81,7 +92,7 @@ class Product extends Model
         static::creating(function ($product) {
             // Jika slug belum diisi atau produk baru dibuat
             if (empty($product->slug) || $product->isDirty('name')) {
-                $product->slug = Str::slug($product->name . ' ' . $product->code);
+                $product->slug = Str::slug($product->name.' '.$product->code);
             }
 
             $originalSlug = $product->slug;
@@ -89,10 +100,11 @@ class Product extends Model
 
             // Loop untuk cek apakah slug sudah ada di database
             while (static::withTrashed()->where('slug', $product->slug)->exists()) {
-                $product->slug = $originalSlug . '-' . $count++;
+                $product->slug = $originalSlug.'-'.$count++;
             }
         });
     }
+
     protected static function booted(): void
     {
         static::forceDeleting(function (Product $product) {
@@ -121,10 +133,12 @@ class Product extends Model
     public function getCurrentMarginAttribute()
     {
         // Hindari error bagi nol
-        if ($this->selling_price <= 0) return [
-            'nominal' => 0,
-            'percent' => 0
-        ];
+        if ($this->selling_price <= 0) {
+            return [
+                'nominal' => 0,
+                'percent' => 0,
+            ];
+        }
 
         $marginRp = $this->selling_price - $this->purchase_price;
         // Rumus: ((Jual - Beli) / Jual) * 100
@@ -132,17 +146,19 @@ class Product extends Model
 
         return [
             'nominal' => $marginRp,
-            'percent' => round($marginPercent, 2) // Hasil misal:
+            'percent' => round($marginPercent, 2), // Hasil misal:
         ];
     }
 
     public function getMarkupAttribute()
     {
         // Hindari error bagi nol
-        if ($this->purchase_price <= 0) return [
-            'nominal' => 0,
-            'percent' => 0
-        ];
+        if ($this->purchase_price <= 0) {
+            return [
+                'nominal' => 0,
+                'percent' => 0,
+            ];
+        }
 
         $markupRp = $this->selling_price - $this->purchase_price;
         // Rumus: ((Jual - Beli) / Beli) * 100
@@ -150,17 +166,20 @@ class Product extends Model
 
         return [
             'nominal' => $markupRp,
-            'percent' => round($markupPercent, 2) // Hasil misal:
+            'percent' => round($markupPercent, 2), // Hasil misal:
         ];
     }
+
     public function getIsMarginLowAttribute()
     {
         return $this->current_margin['percent'] < $this->target_margin_percent;
     }
+
     /**
      * Fungsi Sakti untuk update data sambil menyimpan history (snapshot).
+     *
      * * @param array $newData Key-Value data baru yang akan diupdate
-     * @param string|null $reason Alasan update (misal: 'purchase', 'correction', 'repricing')
+     * @param  string|null  $reason  Alasan update (misal: 'purchase', 'correction', 'repricing')
      */
     public function updateWithSnapshot(array $newData, string $reason = 'update')
     {
@@ -171,8 +190,9 @@ class Product extends Model
             (isset($newData['selling_price']) && $newData['selling_price'] != $this->selling_price);
 
         // Jika tidak ada perubahan penting, langsung update biasa
-        if (!$isPriceChanged) {
+        if (! $isPriceChanged) {
             $this->update($newData);
+
             return;
         }
 
@@ -180,14 +200,14 @@ class Product extends Model
         // Data ini adalah data "SEBELUM" update
         $currentSnapshot = [
             'purchase_price' => $this->purchase_price,
-            'selling_price'  => $this->selling_price,
-            'stock'          => $this->stock,
+            'selling_price' => $this->selling_price,
+            'stock' => $this->stock,
             'margin_percent' => $this->current_margin['percent'], // (Kita buat accessornya dibawah)
-            'supplier_id'    => $this->supplier_id, // Pantau jika ganti supplier
+            'supplier_id' => $this->supplier_id, // Pantau jika ganti supplier
 
             // Metadata tambahan
-            'recorded_at'    => now()->toDateTimeString(),
-            'reason'         => $reason,
+            'recorded_at' => now()->toDateTimeString(),
+            'reason' => $reason,
         ];
 
         // 3. Simpan ke kolom snapshot
@@ -199,9 +219,10 @@ class Product extends Model
 
     /**
      * Summary of lastSale
+     *
      * @return \Illuminate\Database\Eloquent\Relations\HasOne<StockMovement, Product>
-     * Dipakai di report dead stock
-     * Mengambil 1 data movement tipe 'sale' yang paling baru
+     *                                                                                Dipakai di report dead stock
+     *                                                                                Mengambil 1 data movement tipe 'sale' yang paling baru
      */
     public function lastSale()
     {
@@ -219,22 +240,27 @@ class Product extends Model
     {
         return $this->hasMany(SmartInsight::class);
     }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
     }
+
     public function unit(): BelongsTo
     {
         return $this->belongsTo(Unit::class);
     }
+
     public function size(): BelongsTo
     {
         return $this->belongsTo(Size::class);
     }
+
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);
     }
+
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);

@@ -9,9 +9,6 @@ use Maatwebsite\Excel\Concerns\WithValidation; // Validasi Baris
 
 class CategoryImport implements ToModel, WithHeadingRow, WithValidation
 {
-    /**
-     * @param array $row
-     */
     public function model(array $row)
     {
         return new Category([

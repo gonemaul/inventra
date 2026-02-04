@@ -4,8 +4,8 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\PurchaseItem;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -14,10 +14,12 @@ use Illuminate\Validation\ValidationException;
 class InvoiceService
 {
     protected $imageService;
+
     public function __construct(ImageService $imageService)
     {
         $this->imageService = $imageService;
     }
+
     /**
      * Menyimpan dan Mengunggah Nota Baru.
      */
@@ -28,7 +30,7 @@ class InvoiceService
             'invoice_date' => 'required|date',
             'due_date' => 'nullable|date|after_or_equal:invoice_date',
             'total_amount' => 'required|numeric|min:0',
-            'payment_status' => 'required|in:' . implode(',', PurchaseInvoice::PAYMENT_STATUSES),
+            'payment_status' => 'required|in:'.implode(',', PurchaseInvoice::PAYMENT_STATUSES),
             'invoice_image' => 'required|file|mimes:jpg,jpeg,png,pdf|max:20480', // Max 2MB
         ]);
 
@@ -74,7 +76,7 @@ class InvoiceService
             'invoice_date' => 'required|date',
             'due_date' => 'nullable|date|after_or_equal:invoice_date',
             'total_amount' => 'required|numeric|min:1',
-            'payment_status' => 'required|in:' . implode(',', PurchaseInvoice::PAYMENT_STATUSES),
+            'payment_status' => 'required|in:'.implode(',', PurchaseInvoice::PAYMENT_STATUSES),
             'invoice_image' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:20480',
         ]);
         if ($validator->fails()) {
@@ -107,6 +109,7 @@ class InvoiceService
             return $invoice;
         });
     }
+
     /**
      * Menghapus Nota Keuangan dari transaksi.
      */
@@ -138,7 +141,6 @@ class InvoiceService
             return true;
         });
     }
-
 
     public function recalculateTotalAmount(PurchaseInvoice $invoice)
     {
@@ -174,6 +176,7 @@ class InvoiceService
             ]);
         }
     }
+
     public function validateInvoice(PurchaseInvoice $invoice)
     {
         $totalReceived = $invoice->items()->sum('subtotal');
@@ -184,6 +187,7 @@ class InvoiceService
         // Jika lolos semua pengecekan
         $invoice->update(['status' => PurchaseInvoice::STATUS_VALIDATED]);
     }
+
     /**
      * Memproses array product_id untuk menautkan item PO yang ada atau membuat item baru.
      * Digunakan untuk integrasi search/autocomplete.
@@ -192,7 +196,7 @@ class InvoiceService
     {
         $type = $payload['type'] ?? null;
         // Guard: Cek apakah transaksi masih dalam fase yang bisa diubah
-        if (!in_array($invoice->purchase->status, [Purchase::STATUS_RECEIVED, Purchase::STATUS_CHECKING])) {
+        if (! in_array($invoice->purchase->status, [Purchase::STATUS_RECEIVED, Purchase::STATUS_CHECKING])) {
             throw new \Exception('Perubahan data hanya diizinkan saat status Checking atau Received.');
         }
 
@@ -203,7 +207,7 @@ class InvoiceService
             if ($type === 'link') {
                 $ids = $payload['ids'] ?? [];
                 if (empty($ids)) {
-                    throw new \InvalidArgumentException("Harap pilih minimal satu item dari daftar untuk ditautkan.");
+                    throw new \InvalidArgumentException('Harap pilih minimal satu item dari daftar untuk ditautkan.');
                 }
                 $unlinkedPoItems = PurchaseItem::whereIn('id', $ids)
                     ->whereNull('purchase_invoice_id')
@@ -211,7 +215,7 @@ class InvoiceService
 
                 foreach ($unlinkedPoItems as $item) {
                     if ($item->purchase_id !== $invoice->purchase_id) {
-                        throw new \Exception("Keamanan: Item tidak valid untuk transaksi ini.");
+                        throw new \Exception('Keamanan: Item tidak valid untuk transaksi ini.');
                     }
                     if ($item->purchase_invoice_id && $item->purchase_invoice_id !== $invoice->id) {
                         throw new \Exception("Item '{$item->product_snapshot['name']}' sudah tertaut di nota lain. Unlink dulu jika ingin memindahkan.");
@@ -238,20 +242,20 @@ class InvoiceService
                         'purchase_price' => $newPrice,
                         'item_status' => $status,
                         'purchase_invoice_id' => $invoice->id,
-                        'subtotal' => $subtotal
+                        'subtotal' => $subtotal,
                     ]);
                     $linkedItemsCount++;
                 }
-            } else if ($type === 'create') {
+            } elseif ($type === 'create') {
                 $productId = $payload['product_id'] ?? null;
-                if (!$productId) {
-                    throw new \InvalidArgumentException("Produk harus dipilih untuk ditambahkan.");
+                if (! $productId) {
+                    throw new \InvalidArgumentException('Produk harus dipilih untuk ditambahkan.');
                 }
                 $isDuplicate = PurchaseItem::where('purchase_id', $invoice->purchase_id)
                     ->where('product_id', $productId)
                     ->exists();
                 if ($isDuplicate) {
-                    throw new \Exception("Gagal! Produk ini SUDAH ADA di daftar pesanan (PO). Mohon jangan buat baru. Silakan cari item tersebut di daftar kanan (Belum Tertaut) dan tautkan.");
+                    throw new \Exception('Gagal! Produk ini SUDAH ADA di daftar pesanan (PO). Mohon jangan buat baru. Silakan cari item tersebut di daftar kanan (Belum Tertaut) dan tautkan.');
                 }
                 $product = Product::with(['unit:id,name', 'size:id,name', 'brand:id,name', 'category:id,name'])->findOrFail($productId);
 
@@ -267,7 +271,7 @@ class InvoiceService
                     'selling_price' => $product->selling_price,
                     'stock' => $product->stock ?? 0,
                     'inventory_type' => $product->inventory_type ?? '-',
-                    'quantity' => 0
+                    'quantity' => 0,
                 ];
 
                 $invoice->purchase->items()->create([
@@ -277,7 +281,7 @@ class InvoiceService
                     'quantity' => 1, // Default Qty
                     'purchase_price' => $product->purchase_price, // Default Harga Master
                     'subtotal' => $product->purchase_price,
-                    'item_status' => PurchaseItem::STATUS_PENDING
+                    'item_status' => PurchaseItem::STATUS_PENDING,
                 ]);
                 $createdItemsCount++;
             } else {
@@ -286,17 +290,18 @@ class InvoiceService
 
             return [
                 'linked' => $linkedItemsCount,
-                'created' => $createdItemsCount
+                'created' => $createdItemsCount,
             ];
         });
     }
+
     /**
      * Melepaskan tautan item-item dari Nota.
      */
     public function unlinkItems(PurchaseInvoice $invoice, array $itemIds)
     {
         // Guard: Hanya izinkan unlinking jika status masih dalam proses validasi
-        if (!in_array($invoice->purchase->status, [Purchase::STATUS_RECEIVED, Purchase::STATUS_CHECKING])) {
+        if (! in_array($invoice->purchase->status, [Purchase::STATUS_RECEIVED, Purchase::STATUS_CHECKING])) {
             throw new \Exception('Item hanya dapat dilepas pada fase validasi (Received atau Checking).');
         }
 
@@ -309,7 +314,7 @@ class InvoiceService
                     'purchase_invoice_id' => null,
                     'item_status' => PurchaseItem::STATUS_PENDING,
                     'quantity' => DB::raw("product_snapshot->'$.quantity'"),
-                    'purchase_price' => DB::raw("product_snapshot->'$.purchase_price'")
+                    'purchase_price' => DB::raw("product_snapshot->'$.purchase_price'"),
                 ]);
             if ($unlinkedCount === 0) {
                 throw new \Exception('Tidak ada item yang dilepas. Item mungkin sudah tertaut ke nota lain.');
@@ -319,7 +324,6 @@ class InvoiceService
             return $unlinkedCount;
         });
     }
-
 
     /**
      * Update Qty dan Harga Beli item yang sudah tertaut secara massal.
@@ -352,7 +356,7 @@ class InvoiceService
                 // $item = PurchaseItem::find($data['id']);
 
                 // Jika item tidak ketemu, ATAU item itu bukan milik invoice ini -> SKIP/ERROR
-                if (!$item || $item->purchase_invoice_id !== $invoice->id) {
+                if (! $item || $item->purchase_invoice_id !== $invoice->id) {
                     // Opsi A: Abaikan (Continue)
                     // continue;
 

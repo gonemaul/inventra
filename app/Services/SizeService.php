@@ -3,10 +3,9 @@
 namespace App\Services;
 
 use App\Models\Size;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator; // <-- Impor Validator
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class SizeService
 {
@@ -15,6 +14,7 @@ class SizeService
         // Ambil ID dan Nama, urutkan berdasarkan Nama
         return Size::orderBy('name')->get(['id', 'name']);
     }
+
     /**
      * Mengambil semua data kategori.
      */
@@ -22,6 +22,7 @@ class SizeService
     {
         return Size::count();
     }
+
     public function get(array $params)
     {
         $query = Size::query();
@@ -30,7 +31,7 @@ class SizeService
         }
 
         if (isset($params['search']) && $params['search']) {
-            $query->where('name', 'like', '%' . $params['search'] . '%');
+            $query->where('name', 'like', '%'.$params['search'].'%');
         }
         $sortBy = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
@@ -41,6 +42,7 @@ class SizeService
             ->paginate($perPage)
             ->withQueryString();
     }
+
     public function create(array $data)
     {
         $validator = Validator::make($data, [
@@ -68,7 +70,7 @@ class SizeService
                 'string',
                 'max:20',
                 // Aturan 'unique' yang mengabaikan ID saat ini
-                Rule::unique('sizes')->ignore($size->id)
+                Rule::unique('sizes')->ignore($size->id),
             ],
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',

@@ -2,15 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Sale;
-use Inertia\Inertia;
 use App\Models\Purchase;
-use App\Models\SmartInsight;
-use Illuminate\Http\Request;
 use App\Models\PurchaseInvoice;
+use App\Models\Sale;
+use App\Models\SmartInsight;
 use App\Services\InsightService;
-use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use Inertia\Inertia;
 
 class DashboardController extends Controller
 {
@@ -32,7 +30,7 @@ class DashboardController extends Controller
         // Mengambil data Hari Ini & Kemarin dalam satu tarikan database
         $salesStats = Sale::toBase()
             ->whereBetween('transaction_date', [$yesterday->startOfDay(), $today->endOfDay()])
-            ->selectRaw("
+            ->selectRaw('
             -- Data Hari Ini
             SUM(CASE WHEN DATE(transaction_date) = ? THEN total_revenue ELSE 0 END) as today_revenue,
             SUM(CASE WHEN DATE(transaction_date) = ? THEN total_profit ELSE 0 END) as today_profit,
@@ -40,7 +38,7 @@ class DashboardController extends Controller
 
             -- Data Kemarin (Hanya butuh profit untuk perbandingan)
             SUM(CASE WHEN DATE(transaction_date) = ? THEN total_profit ELSE 0 END) as yesterday_profit
-        ", [$today->toDateString(), $today->toDateString(), $today->toDateString(), $yesterday->toDateString()])
+        ', [$today->toDateString(), $today->toDateString(), $today->toDateString(), $yesterday->toDateString()])
             ->first();
 
         // Mapping Variable agar logic perhitungan di bawah tidak berubah
@@ -55,7 +53,7 @@ class DashboardController extends Controller
             'percent' => $yesterdayProfit > 0
                 ? round((($todayProfit - $yesterdayProfit) / $yesterdayProfit) * 100, 1)
                 : 100,
-            'direction' => ($todayProfit >= $yesterdayProfit) ? 'up' : 'down'
+            'direction' => ($todayProfit >= $yesterdayProfit) ? 'up' : 'down',
         ];
 
         $dailyMargin = ($todayRevenue > 0)
@@ -81,7 +79,7 @@ class DashboardController extends Controller
             $chartData[] = [
                 'day' => $date->isoFormat('dd'),
                 'full_date' => $date->format('d M'),
-                'value' => $rawChartData[$dateString] ?? 0 // Ambil dari hasil query atau 0
+                'value' => $rawChartData[$dateString] ?? 0, // Ambil dari hasil query atau 0
             ];
         }
 
@@ -122,13 +120,13 @@ class DashboardController extends Controller
                 ->latest()
                 ->limit(3)
                 ->get()
-                ->map(fn($po) => [
+                ->map(fn ($po) => [
                     'id' => $po->id,
                     'reference_no' => $po->reference_no,
                     'supplier' => $po->supplier,
                     'total' => $po->grand_total,
-                    'status' => $po->status
-                ])
+                    'status' => $po->status,
+                ]),
         ];
 
         // ==========================================
@@ -138,10 +136,10 @@ class DashboardController extends Controller
             ->join('purchases', 'purchase_invoices.purchase_id', '=', 'purchases.id')
             ->where('purchases.status', Purchase::STATUS_COMPLETED)
             ->where('purchase_invoices.payment_status', '!=', PurchaseInvoice::PAYMENT_STATUS_PAID)
-            ->selectRaw("
+            ->selectRaw('
             SUM(purchase_invoices.total_amount - purchase_invoices.amount_paid) as total_debt,
             COUNT(CASE WHEN purchase_invoices.due_date BETWEEN ? AND ? THEN 1 END) as due_soon_count
-        ", [now(), now()->addDays(7)])
+        ', [now(), now()->addDays(7)])
             ->first();
 
         $recentBills = PurchaseInvoice::with('purchase.supplier:id,name')
@@ -152,9 +150,9 @@ class DashboardController extends Controller
             ->get();
 
         $finance = [
-            'total_debt'     => $statsFinance->total_debt ?? 0,
+            'total_debt' => $statsFinance->total_debt ?? 0,
             'due_soon_count' => $statsFinance->due_soon_count ?? 0,
-            'recent_bills'   => $recentBills
+            'recent_bills' => $recentBills,
         ];
 
         // ==========================================
@@ -163,10 +161,10 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard/Dashboard', [
             'stats' => [
                 'revenue' => $todayRevenue,
-                'profit'  => $todayProfit,
+                'profit' => $todayProfit,
                 'transactions' => $todayCount,
                 'profit_trend' => $profitTrend,
-                'daily_margin' => $dailyMargin
+                'daily_margin' => $dailyMargin,
             ],
             'health' => $health,
             'cashflow' => $cashflow,

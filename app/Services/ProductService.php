@@ -2,37 +2,37 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
-use App\Models\Size;
 use App\Models\Brand;
-use App\Models\Product;
 use App\Models\Category;
-use App\Models\SaleItem;
+use App\Models\Product;
 use App\Models\ProductType;
-use Illuminate\Support\Str;
-use App\Models\PurchaseItem;
+use App\Models\SaleItem;
+use App\Models\Size;
 use App\Models\SmartInsight;
 use App\Models\StockMovement;
-use Illuminate\Validation\Rule;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
 use App\Services\Analysis\ProductDSSCalculator;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ProductService
 {
     protected $stockService;
+
     protected $imageService;
+
     protected $calculator;
+
     public function __construct(StockService $stockService, ImageService $imageService, ProductDSSCalculator $calculator)
     {
         $this->stockService = $stockService;
         $this->imageService = $imageService;
         $this->calculator = $calculator;
     }
+
     private function handleImageUpload($file, $existingPath = null)
     {
         $newPath = $this->imageService->upload(
@@ -40,13 +40,13 @@ class ProductService
             'products',
             $existingPath
         );
+
         return $newPath;
     }
 
     /**
      * Mengambil data produk untuk datatable (server-side).
      *
-     * @param array $params
      * @return \Illuminate\Pagination\LengthAwarePaginator
      */
     public function get(array $params)
@@ -67,31 +67,35 @@ class ProductService
         });
 
         // 2. FILTER RELASI (Foreign Keys)
-        $query->when($params['category_id'] ?? null, fn($q, $v) => $q->where('category_id', $v));
-        $query->when($params['brand_id'] ?? null, fn($q, $v) => $q->where('brand_id', $v));
-        $query->when($params['unit_id'] ?? null, fn($q, $v) => $q->where('unit_id', $v));
-        $query->when($params['size_id'] ?? null, fn($q, $v) => $q->where('size_id', $v));
-        $query->when($params['supplier_id'] ?? null, fn($q, $v) => $q->where('supplier_id', $v));
-        $query->when($params['product_type_id'] ?? null, fn($q, $v) => $q->where('product_type_id', $v));
+        $query->when($params['category_id'] ?? null, fn ($q, $v) => $q->where('category_id', $v));
+        $query->when($params['brand_id'] ?? null, fn ($q, $v) => $q->where('brand_id', $v));
+        $query->when($params['unit_id'] ?? null, fn ($q, $v) => $q->where('unit_id', $v));
+        $query->when($params['size_id'] ?? null, fn ($q, $v) => $q->where('size_id', $v));
+        $query->when($params['supplier_id'] ?? null, fn ($q, $v) => $q->where('supplier_id', $v));
+        $query->when($params['product_type_id'] ?? null, fn ($q, $v) => $q->where('product_type_id', $v));
 
         // 3. FILTER STATUS & TRASH
-        $query->when($params['status'] ?? null, fn($q, $v) => $q->where('status', $v));
+        $query->when($params['status'] ?? null, fn ($q, $v) => $q->where('status', $v));
 
         $query->when($params['trashed'] ?? null, function ($q, $trashed) {
-            if ($trashed === 'with') $q->withTrashed();
-            if ($trashed === 'only') $q->onlyTrashed();
+            if ($trashed === 'with') {
+                $q->withTrashed();
+            }
+            if ($trashed === 'only') {
+                $q->onlyTrashed();
+            }
         });
 
         // 4. FILTER RANGE (Min - Max)
         // Harga Jual
-        $query->when($params['price_min'] ?? null, fn($q, $v) => $q->where('selling_price', '>=', $v));
-        $query->when($params['price_max'] ?? null, fn($q, $v) => $q->where('selling_price', '<=', $v));
+        $query->when($params['price_min'] ?? null, fn ($q, $v) => $q->where('selling_price', '>=', $v));
+        $query->when($params['price_max'] ?? null, fn ($q, $v) => $q->where('selling_price', '<=', $v));
         // Harga Beli
-        $query->when($params['cost_min'] ?? null, fn($q, $v) => $q->where('purchase_price', '>=', $v));
-        $query->when($params['cost_max'] ?? null, fn($q, $v) => $q->where('purchase_price', '<=', $v));
+        $query->when($params['cost_min'] ?? null, fn ($q, $v) => $q->where('purchase_price', '>=', $v));
+        $query->when($params['cost_max'] ?? null, fn ($q, $v) => $q->where('purchase_price', '<=', $v));
         // Stok
-        $query->when($params['stock_min'] ?? null, fn($q, $v) => $q->where('stock', '>=', $v));
-        $query->when($params['stock_max'] ?? null, fn($q, $v) => $q->where('stock', '<=', $v));
+        $query->when($params['stock_min'] ?? null, fn ($q, $v) => $q->where('stock', '>=', $v));
+        $query->when($params['stock_max'] ?? null, fn ($q, $v) => $q->where('stock', '<=', $v));
 
         // 5. SORTING
         $sortField = $params['sort'] ?? 'created_at';
@@ -108,10 +112,10 @@ class ProductService
         // Helper finansial Analis Pertumbuhan
         // 1. Tentukan Range Tanggal yang PRESISI (00:00:00 s/d 23:59:59)
         // Periode A: 30 Hari Terakhir (H-29 s/d Hari Ini = 30 Hari)
-        $today   = now()->endOfDay();
+        $today = now()->endOfDay();
         $startThisMonth = now()->subDays(29)->startOfDay();
         // Periode B: 30 Hari Sebelumnya (H-59 s/d H-30 = 30 Hari)
-        $endLastMonth   = now()->subDays(30)->endOfDay();
+        $endLastMonth = now()->subDays(30)->endOfDay();
         $startLastMonth = now()->subDays(59)->startOfDay();
         // --- A. Hitung Penjualan Bulan Ini (30 Hari Terakhir) ---
         // Hasilnya akan masuk ke atribut: 'qty_this_month'
@@ -129,13 +133,14 @@ class ProductService
                 });
             }], 'quantity'); // 1. Total Selamanya
 
-
         $products = $query->paginate($perPage)
             ->withQueryString();
         $products->getCollection()->transform(function ($product) {
             $product->financials = $this->calculator->calculateFinancialHealth($product);
+
             return $product;
         });
+
         return $products;
     }
 
@@ -162,19 +167,18 @@ class ProductService
 
         // Struktur data DSS untuk Frontend
         $dssData = [
-            'restock'       => $insights->where('type', 'restock')->first(),
-            'dead_stock'    => $insights->where('type', 'dead_stock')->first(),
-            'trend'         => $insights->where('type', 'trend')->first(),
-            'margin_alert'  => $insights->where('type', 'margin_alert')->first(),
-            'is_trending'   => $insights->where('type', 'trend')->count() > 0,
+            'restock' => $insights->where('type', 'restock')->first(),
+            'dead_stock' => $insights->where('type', 'dead_stock')->first(),
+            'trend' => $insights->where('type', 'trend')->first(),
+            'margin_alert' => $insights->where('type', 'margin_alert')->first(),
+            'is_trending' => $insights->where('type', 'trend')->count() > 0,
             'is_dead_stock' => $insights->where('type', 'dead_stock')->count() > 0,
             'is_margin_low' => $insights->where('type', 'margin_alert')->count() > 0,
         ];
 
-
         // 4. Statistik Penjualan (Untuk Tab Ringkasan)
         $salesStats = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
+            ->whereHas('sale', fn ($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
             ->sum('quantity');
 
         $dssData['sales_30_days'] = $salesStats;
@@ -184,7 +188,7 @@ class ProductService
         $startDate = now()->subDays(6)->startOfDay();
         $endDate = now()->endOfDay();
         $rawData = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startDate, $endDate]))
+            ->whereHas('sale', fn ($q) => $q->whereBetween('transaction_date', [$startDate, $endDate]))
             ->with('sale:id,transaction_date') // Eager load tanggalnya
             ->get();
         $chartData = [];
@@ -206,28 +210,31 @@ class ProductService
         // 7. Tren Harga (Logic Snapshot)
         $product->financials = $financials;
         $product->inventory = $inventory;
+
         return [
             'product' => $product,
             'dss' => $dssData,
             'chart_data' => $chartData,
             'stock_history' => $stockHistory,
-            'price_trend' => $financials['price_trend']
+            'price_trend' => $financials['price_trend'],
         ];
     }
+
     private function getStockHistory($id)
     {
         $movements = StockMovement::where('product_id', $id)
             ->orderBy('created_at', 'asc') // Urut kronologis (Baru -> Lama)
             ->limit(10)
             ->get();
+
         return $movements;
     }
 
     /**
      * Validasi dan simpan produk baru.
      *
-     * @param array $data
      * @return Product
+     *
      * @throws ValidationException
      */
     public function create(array $data)
@@ -268,16 +275,19 @@ class ProductService
             $data['brand_id'],
             $data['size_id']
         );
+
         return DB::transaction(function () use ($validator, $imageFile, $generatedCode) {
             $validatedData = $validator->validated();
-            if (!$validatedData['code']) {
+            if (! $validatedData['code']) {
                 $validatedData['code'] = $generatedCode;
             }
             if ($imageFile) {
                 $imageValidator = Validator::make(['image' => $imageFile], [
-                    'image' => 'nullable|image|mimes:jpeg,png,webp|max:20480' // Maks 1MB
+                    'image' => 'nullable|image|mimes:jpeg,png,webp|max:20480', // Maks 1MB
                 ]);
-                if ($imageValidator->fails()) throw new ValidationException($imageValidator);
+                if ($imageValidator->fails()) {
+                    throw new ValidationException($imageValidator);
+                }
 
                 // Simpan path ke data yang divalidasi
                 $validatedData['image_path'] = $this->handleImageUpload($imageFile);
@@ -291,6 +301,7 @@ class ProductService
                 ref: 'INIT',
                 desc: 'Stok Awal Produk Baru'
             );
+
             // }
             return true;
         });
@@ -299,9 +310,9 @@ class ProductService
     /**
      * Validasi dan perbarui produk yang ada.
      *
-     * @param int|string $id
-     * @param array $data
+     * @param  int|string  $id
      * @return Product
+     *
      * @throws ValidationException|ModelNotFoundException
      */
     public function update($product, array $data)
@@ -317,14 +328,14 @@ class ProductService
                     type: StockMovement::TYPE_ADJUSTMENT_IN,
                     desc: $data['note']
                 );
-            } else if ($data['adjustment'] == 'reduce') {
+            } elseif ($data['adjustment'] == 'reduce') {
                 $this->stockService->record(
                     productId: $product->id,
                     qty: $data['qty'],
                     type: StockMovement::TYPE_ADJUSTMENT_OUT,
                     desc: $data['note']
                 );
-            } else if ($data['adjustment'] == 'set') {
+            } elseif ($data['adjustment'] == 'set') {
                 $this->stockService->record(
                     productId: $product->id,
                     qty: $data['qty'],
@@ -332,7 +343,7 @@ class ProductService
                     desc: $data['note']
                 );
             }
-        } else if ($data['type'] === 'price') {
+        } elseif ($data['type'] === 'price') {
             $product->updateWithSnapshot([
                 'purchase_price' => $data['purchase_price'],
                 'selling_price' => $data['selling_price'],
@@ -348,15 +359,16 @@ class ProductService
             }
             $product->update($data);
         }
+
         return $product;
     }
 
     /**
      * Hapus produk (Soft Delete atau Force Delete).
      *
-     * @param int|string $id
-     * @param array $params
+     * @param  int|string  $id
      * @return bool
+     *
      * @throws ModelNotFoundException
      */
     public function delete($id, array $params = [])
@@ -374,13 +386,15 @@ class ProductService
     /**
      * Pulihkan produk dari soft delete.
      *
-     * @param int|string $id
+     * @param  int|string  $id
      * @return bool
+     *
      * @throws ModelNotFoundException
      */
     public function restore($id)
     {
         $product = Product::onlyTrashed()->findOrFail($id);
+
         return $product->restore();
     }
 
@@ -414,9 +428,9 @@ class ProductService
     {
         // 1. Ambil Data Master
         $category = Category::find($categoryId);
-        $type     = ProductType::find($typeId);
-        $brand    = Brand::find($brandId);
-        $size    = Size::find($sizeId);
+        $type = ProductType::find($typeId);
+        $brand = Brand::find($brandId);
+        $size = Size::find($sizeId);
 
         // 3. Susun Prefix
         // Format: KAT-TIP-BRD (Contoh: MAT-SEM-TR)
@@ -424,7 +438,7 @@ class ProductService
 
         // 4. Cari Urutan Terakhir untuk Prefix ini
         // Kita cari produk yang kodenya diawali dengan "MAT-SEM-TR-"
-        $lastProduct = Product::where('code', 'like', $prefix . '%')
+        $lastProduct = Product::where('code', 'like', $prefix.'%')
             ->orderByRaw('LENGTH(code) DESC') // Pastikan urutan panjang karakter benar
             ->orderBy('code', 'desc')
             ->first();
@@ -438,12 +452,12 @@ class ProductService
             $lastSeq = end($parts); // Ambil bagian paling belakang
 
             if (is_numeric($lastSeq)) {
-                $sequence = (int)$lastSeq + 1;
+                $sequence = (int) $lastSeq + 1;
             }
         }
 
         // 5. Gabungkan Hasil Akhir
         // Hasil: MAT-SEM-TR-001
-        return $prefix . '-' . str_pad((string)$sequence, 3, '0', STR_PAD_LEFT);
+        return $prefix.'-'.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 }

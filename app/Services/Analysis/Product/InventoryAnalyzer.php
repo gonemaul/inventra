@@ -2,11 +2,10 @@
 
 namespace App\Services\Analysis\Product;
 
-use Carbon\Carbon;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\SmartInsight;
-use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class InventoryAnalyzer
 {
@@ -63,7 +62,7 @@ class InventoryAnalyzer
 
         if ($stock <= 0) {
             $status = SmartInsight::SEVERITY_CRITICAL;
-            $message = "Stok HABIS! (Lost Sales)";
+            $message = 'Stok HABIS! (Lost Sales)';
             $priorityScore = 100;
         } elseif ($stock <= 2 && $avgDailyPredicted > 0) {
             $status = SmartInsight::SEVERITY_CRITICAL;
@@ -71,15 +70,15 @@ class InventoryAnalyzer
             $priorityScore = 90;
         } elseif ($daysLeft <= 3 && $avgDailyPredicted > 0) {
             $status = SmartInsight::SEVERITY_CRITICAL;
-            $message = "Habis < 3 Hari (Laris)";
+            $message = 'Habis < 3 Hari (Laris)';
             $priorityScore = 80;
         } elseif ($stock <= $minStock) {
             $status = SmartInsight::SEVERITY_WARNING;
-            $message = "Di bawah Min. Stock User";
+            $message = 'Di bawah Min. Stock User';
             $priorityScore = 60;
         } elseif ($daysLeft <= 7 && $avgDailyPredicted > 0) {
             $status = SmartInsight::SEVERITY_WARNING;
-            $message = "Habis < 1 Minggu";
+            $message = 'Habis < 1 Minggu';
             $priorityScore = 50;
         } elseif ($isDeadStock) {
             $status = 'dead';
@@ -169,20 +168,20 @@ class InventoryAnalyzer
 
         // Return Data Lengkap untuk View & Dashboard
         return [
-            'status'          => $status, // critical, warning, safe, dead
-            'message'         => $message,
-            'avg_daily'       => round($avgDailyPredicted, 2),
+            'status' => $status, // critical, warning, safe, dead
+            'message' => $message,
+            'avg_daily' => round($avgDailyPredicted, 2),
             'seasonal_factor' => $seasonalFactor,
-            'days_left'       => floor($daysLeft),
-            'stockout_date'   => $stockoutDate ? $stockoutDate->isoFormat('D MMM Y') : '-',
-            'current_stock'   => $stock,
-            'suggested_qty'   => $suggestedQty,
-            'target_stock'    => $targetStock,
-            'restock_reason'  => $restockReason,
-            'is_dead_stock'   => $isDeadStock,
-            'days_inactive'   => $daysInactive,
-            'frozen_asset'    => $deadStockMetrics['frozen_asset'],
-            'substitute_stock' => $substituteStock
+            'days_left' => floor($daysLeft),
+            'stockout_date' => $stockoutDate ? $stockoutDate->isoFormat('D MMM Y') : '-',
+            'current_stock' => $stock,
+            'suggested_qty' => $suggestedQty,
+            'target_stock' => $targetStock,
+            'restock_reason' => $restockReason,
+            'is_dead_stock' => $isDeadStock,
+            'days_inactive' => $daysInactive,
+            'frozen_asset' => $deadStockMetrics['frozen_asset'],
+            'substitute_stock' => $substituteStock,
         ];
     }
 
@@ -192,6 +191,7 @@ class InventoryAnalyzer
      * =========================================================================
      * Membandingkan penjualan bulan ini dengan bulan yang sama tahun lalu
      * untuk mendeteksi tren musiman (Lebaran, Akhir Tahun, dll).
+     *
      * * @return float (Multiplier: 1.0 = Normal, >1.0 = Musim Ramai)
      */
     private function calculateSeasonalFactor(Product $product): float
@@ -203,24 +203,25 @@ class InventoryAnalyzer
 
         // Periode Tahun Lalu (Bulan Ini)
         $startLastYear = now()->subYear()->startOfMonth();
-        $endLastYear   = now()->subYear()->endOfMonth();
+        $endLastYear = now()->subYear()->endOfMonth();
 
         // Periode Tahun Lalu (Bulan Sebelumnya - untuk baseline)
         $startPrevLastYear = now()->subYear()->subMonth()->startOfMonth();
-        $endPrevLastYear   = now()->subYear()->subMonth()->endOfMonth();
+        $endPrevLastYear = now()->subYear()->subMonth()->endOfMonth();
 
         // Query Statistik
         $salesLastYear = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startLastYear, $endLastYear]))
+            ->whereHas('sale', fn ($q) => $q->whereBetween('transaction_date', [$startLastYear, $endLastYear]))
             ->sum('quantity');
 
         $salesPrevLastYear = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn($q) => $q->whereBetween('transaction_date', [$startPrevLastYear, $endPrevLastYear]))
+            ->whereHas('sale', fn ($q) => $q->whereBetween('transaction_date', [$startPrevLastYear, $endPrevLastYear]))
             ->sum('quantity');
 
         // Analisa Lonjakan
         if ($salesPrevLastYear > 0) {
             $growthFactor = $salesLastYear / $salesPrevLastYear;
+
             // Limitasi faktor pengali (Min 0.5x, Max 2.0x) agar tidak terlalu ekstrim
             return max(0.5, min($growthFactor, 2.0));
         }
@@ -234,6 +235,7 @@ class InventoryAnalyzer
      * =========================================================================
      * Mencari produk lain dengan spesifikasi SAMA PERSIS (Kategori, Tipe, Ukuran)
      * tapi Merk berbeda, yang stoknya nganggur (Slow/Dead).
+     *
      * * @return int (Total stok substitusi yang tersedia)
      */
     private function analyzeSubstitutes(Product $product): int
@@ -261,7 +263,7 @@ class InventoryAnalyzer
             // (Kalau substitusinya laris juga, ya jangan diganggu).
 
             $subSales = SaleItem::where('product_id', $sub->id)
-                ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
+                ->whereHas('sale', fn ($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
                 ->sum('quantity');
 
             // Batasan: Dianggap "Nganggur" jika laku < 5 pcs sebulan
@@ -279,6 +281,7 @@ class InventoryAnalyzer
      * =========================================================================
      * Memeriksa kapan terakhir kali barang ini terjual untuk menentukan
      * status kematian produk.
+     *
      * * @return array [is_dead_stock, days_inactive, frozen_asset]
      */
     private function getDeadStockMetrics(Product $product): array
@@ -306,7 +309,7 @@ class InventoryAnalyzer
         return [
             'is_dead_stock' => $isDead,
             'days_inactive' => $daysInactive,
-            'frozen_asset'  => $isDead ? ($product->stock * $product->purchase_price) : 0
+            'frozen_asset' => $isDead ? ($product->stock * $product->purchase_price) : 0,
         ];
     }
 }

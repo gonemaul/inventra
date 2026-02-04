@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\ProductExport;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\ProductExport;
-use App\Exports\CategoryExport; // Buat nanti jika perlu
+
+// Buat nanti jika perlu
 // use App\Exports\SaleExport;
 
 class DataExportController extends Controller

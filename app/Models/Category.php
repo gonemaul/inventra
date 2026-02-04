@@ -2,18 +2,21 @@
 
 namespace App\Models;
 
-use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
 
 class Category extends Model
 {
     use SoftDeletes;
+
     protected $fillable = ['slug', 'code', 'name', 'description'];
+
     protected $hidden = [
         'created_at',
-        'updated_at'
+        'updated_at',
     ];
+
     protected static function boot()
     {
         parent::boot();
@@ -29,7 +32,7 @@ class Category extends Model
 
             // Loop untuk cek apakah slug sudah ada di database
             while (static::where('slug', $category->slug)->exists()) {
-                $category->slug = $originalSlug . '-' . $count++;
+                $category->slug = $originalSlug.'-'.$count++;
             }
         });
     }

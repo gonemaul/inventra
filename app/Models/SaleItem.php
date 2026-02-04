@@ -16,7 +16,7 @@ class SaleItem extends Model
         'capital_price', // HPP Terkunci
         'subtotal',
         'profit',
-        'product_snapshot'
+        'product_snapshot',
     ];
 
     protected $casts = [

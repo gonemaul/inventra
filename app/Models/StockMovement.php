@@ -15,16 +15,23 @@ class StockMovement extends Model
         'stock_before',
         'stock_after',
         'cost_price',
-        'description'
+        'description',
     ];
 
-    const TYPE_INITIAL = 'initial'; //Inisialisasi / Stok Awal
+    const TYPE_INITIAL = 'initial'; // Inisialisasi / Stok Awal
+
     const TYPE_PURCHASE = 'purchase'; // Masuk dari Supplier
+
     const TYPE_SALE = 'sale'; // Keluar ke Pelanggan
+
     const TYPE_ADJUSTMENT_IN = 'adjustment_in';   // Koreksi Tambah (Opname)
+
     const TYPE_ADJUSTMENT_OUT = 'adjustment_out'; // Koreksi Kurang (Opname/Hilang/Rusak)
+
     const TYPE_ADJUSTMENT_OPNAME = 'adjustment_opname';
+
     const TYPE_RETURN_IN = 'return_in'; // Retur dari Customer (Masuk Gudang)
+
     const TYPE_RETURN_OUT = 'return_out'; // Retur ke Supplier (Keluar Gudang)
 
     public function product()

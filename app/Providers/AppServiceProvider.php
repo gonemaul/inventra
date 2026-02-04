@@ -2,19 +2,18 @@
 
 namespace App\Providers;
 
+use App\Listeners\BackupTelegramNotification;
 use Google\Service\Drive;
-use Illuminate\Support\Facades\URL;
-use Illuminate\Support\Facades\Vite;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
-use Spatie\Backup\Events\BackupHasFailed;
-use App\Listeners\BackupTelegramNotification;
-use Spatie\Backup\Events\BackupWasSuccessful;
-use Spatie\Backup\Events\CleanupWasSuccessful;
-use League\Flysystem\Filesystem;        // <--- Tambahkan ini
-use Masbug\Flysystem\GoogleDriveAdapter; // <--- Tambahkan ini
-use Illuminate\Filesystem\FilesystemAdapter; // <--- Tambahkan ini
+use League\Flysystem\Filesystem;
+use Masbug\Flysystem\GoogleDriveAdapter;        // <--- Tambahkan ini
+use Spatie\Backup\Events\BackupHasFailed; // <--- Tambahkan ini
+use Spatie\Backup\Events\BackupWasSuccessful; // <--- Tambahkan ini
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -45,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
         );
         try {
             Storage::extend('google', function ($app, $config) {
-                $client = new \Google\Client();
+                $client = new \Google\Client;
                 $client->setClientId($config['clientId']);
                 $client->setClientSecret($config['clientSecret']);
                 $client->refreshToken($config['refreshToken']);

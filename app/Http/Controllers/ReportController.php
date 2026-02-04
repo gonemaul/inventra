@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Carbon\Carbon;
-use App\Models\Sale;
-use Inertia\Inertia;
 use App\Models\Expense;
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\SaleItem;
-use App\Models\PurchaseItem;
-use Illuminate\Http\Request;
-use App\Models\StockMovement;
 use App\Models\PurchaseInvoice;
+use App\Models\PurchaseItem;
+use App\Models\Sale;
+use App\Models\SaleItem;
+use App\Models\StockMovement;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 
 class ReportController extends Controller
 {
@@ -64,6 +64,7 @@ class ReportController extends Controller
         $netProfit = $currentRevenue - $currentCOGS - $currentExpenses;
 
         $netMargin = $currentRevenue > 0 ? ($netProfit / $currentRevenue) * 100 : 0;
+
         // Render tampilan Menu Laporan
         return Inertia::render('Reports/Index', [
             'summary' => [
@@ -73,18 +74,18 @@ class ReportController extends Controller
                 'revenue_progress' => round($revenueProgress, 1),
                 'debt_due_soon' => (float) $debtDueSoon,
                 'net_profit' => (float) $netProfit,
-                'net_margin' => round($netMargin, 1)
-            ]
+                'net_margin' => round($netMargin, 1),
+            ],
         ]);
     }
 
-    //PILAR 1
+    // PILAR 1
     /**
      * Summary of stockCard
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Kartu Stock
-     * Traking keluar masuk stok per produk
+     *                           Kartu Stock
+     *                           Traking keluar masuk stok per produk
      */
     public function stockCard(Request $request)
     {
@@ -101,14 +102,14 @@ class ReportController extends Controller
             // 1. HITUNG SALDO AWAL (Opening Stock)
             // Rumus: Jumlahkan semua mutasi SEBELUM tanggal awal filter
             $openingStock = StockMovement::where('product_id', $productId)
-                ->where('created_at', '<', $startDate . ' 00:00:00')
+                ->where('created_at', '<', $startDate.' 00:00:00')
                 ->sum('quantity');
 
             // 2. AMBIL MUTASI PERIODE INI
             $movements = StockMovement::where('product_id', $productId)
                 ->whereBetween('created_at', [
-                    $startDate . ' 00:00:00',
-                    $endDate . ' 23:59:59'
+                    $startDate.' 00:00:00',
+                    $endDate.' 23:59:59',
                 ])
                 ->orderBy('created_at', 'asc') // Urut kronologis (Lama -> Baru)
                 ->get();
@@ -116,7 +117,7 @@ class ReportController extends Controller
             $data = [
                 'product' => $product,
                 'opening_stock' => (int) $openingStock,
-                'movements' => $movements
+                'movements' => $movements,
             ];
         }
 
@@ -128,16 +129,16 @@ class ReportController extends Controller
             ],
             // List produk untuk dropdown filter (Optimasi: ambil yg perlu aja)
             'products' => Product::select('id', 'code', 'name')->orderBy('name')->get(),
-            'reportData' => $data
+            'reportData' => $data,
         ]);
     }
 
     /**
      * Summary of stockValue
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Valuasi Aset
-     * Total nilai uang dalam bentuk barang
+     *                           Valuasi Aset
+     *                           Total nilai uang dalam bentuk barang
      */
     public function stockValue(Request $request)
     {
@@ -157,9 +158,9 @@ class ReportController extends Controller
         // Hitung Ringkasan di Backend biar Frontend ringan
         $summary = [
             'total_items' => $products->sum('stock'),
-            'total_asset_value' => $products->sum(fn($p) => $p->stock * $p->purchase_price), // Total Modal
-            'potential_revenue' => $products->sum(fn($p) => $p->stock * $p->selling_price), // Total Jika Laku
-            'potential_profit'  => 0, // Dihitung di bawah
+            'total_asset_value' => $products->sum(fn ($p) => $p->stock * $p->purchase_price), // Total Modal
+            'potential_revenue' => $products->sum(fn ($p) => $p->stock * $p->selling_price), // Total Jika Laku
+            'potential_profit' => 0, // Dihitung di bawah
         ];
         $summary['potential_profit'] = $summary['potential_revenue'] - $summary['total_asset_value'];
 
@@ -167,16 +168,16 @@ class ReportController extends Controller
             'products' => $products,
             'summary' => $summary,
             'categories' => \App\Models\Category::all(), // Untuk filter
-            'filters' => $request->all(['category_id'])
+            'filters' => $request->all(['category_id']),
         ]);
     }
 
     /**
      * Summary of deadStock
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Dead Stock Analis
-     * Deteksi barang macet atau mati
+     *                           Dead Stock Analis
+     *                           Deteksi barang macet atau mati
      */
     public function deadStock(Request $request)
     {
@@ -203,9 +204,13 @@ class ReportController extends Controller
 
                 // Klasifikasi Saran Tindakan
                 $suggestion = 'Promosi';
-                if ($daysSilent > 180) $suggestion = 'Cuci Gudang / Obral';
-                elseif ($daysSilent > 365) $suggestion = 'Scrap / Musnahkan';
-                elseif (!$product->lastSale) $suggestion = 'Cek Display (Blm Pernah Laku)';
+                if ($daysSilent > 180) {
+                    $suggestion = 'Cuci Gudang / Obral';
+                } elseif ($daysSilent > 365) {
+                    $suggestion = 'Scrap / Musnahkan';
+                } elseif (! $product->lastSale) {
+                    $suggestion = 'Cek Display (Blm Pernah Laku)';
+                }
 
                 return [
                     'id' => $product->id,
@@ -231,12 +236,12 @@ class ReportController extends Controller
         ]);
     }
 
-    //PILAR 2 SALES
+    // PILAR 2 SALES
     /**
      * Summary of salesRevenue
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Laporan Omset
+     *                           Laporan Omset
      */
     public function salesRevenue(Request $request)
     {
@@ -244,7 +249,7 @@ class ReportController extends Controller
         $endDate = $request->input('end_date', now()->toDateString());
 
         // 1. Query Agregat Harian (Untuk Grafik & Tabel)
-        $dailySales = Sale::whereBetween('transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+        $dailySales = Sale::whereBetween('transaction_date', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
             ->select(
                 DB::raw('DATE(transaction_date) as date'),
                 DB::raw('SUM(total_revenue) as revenue'),
@@ -261,7 +266,7 @@ class ReportController extends Controller
             // Rata-rata nilai belanja per orang (Basket Size)
             'average_basket_size' => $dailySales->sum('transaction_count') > 0
                 ? $dailySales->sum('revenue') / $dailySales->sum('transaction_count')
-                : 0
+                : 0,
         ];
 
         return Inertia::render('Reports/SalesRevenue', [
@@ -270,16 +275,16 @@ class ReportController extends Controller
                 'end_date' => $endDate,
             ],
             'data' => $dailySales,
-            'summary' => $summary
+            'summary' => $summary,
         ]);
     }
 
     /**
      * Summary of topProducts
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Produk Terlaris (Pareto)
-     * 20% barang penyumbang 80% profit
+     *                           Produk Terlaris (Pareto)
+     *                           20% barang penyumbang 80% profit
      */
     public function topProducts(Request $request)
     {
@@ -293,7 +298,7 @@ class ReportController extends Controller
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id') // Optional: ambil kategori
-            ->whereBetween('sales.transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->whereBetween('sales.transaction_date', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
             ->select(
                 'products.name',
                 'products.code',
@@ -311,18 +316,18 @@ class ReportController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'limit' => $limit,
-                'sort_by' => $sortBy
+                'sort_by' => $sortBy,
             ],
-            'data' => $products
+            'data' => $products,
         ]);
     }
 
     /**
      * Summary of grossProfit
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Laba kotor (margin)
-     * Analisa keuntungan per transaksi
+     *                           Laba kotor (margin)
+     *                           Analisa keuntungan per transaksi
      */
     public function grossProfit(Request $request)
     {
@@ -335,7 +340,7 @@ class ReportController extends Controller
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
-            ->whereBetween('sales.transaction_date', [$startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->whereBetween('sales.transaction_date', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
             // ->where('sales.status', '!=', 'cancelled')
             ->select(
                 'products.name',
@@ -361,7 +366,7 @@ class ReportController extends Controller
                     'revenue' => $item->total_revenue,
                     'cogs' => $item->total_cogs,
                     'profit' => $grossProfit,
-                    'margin' => round($marginPercent, 1)
+                    'margin' => round($marginPercent, 1),
                 ];
             })
             ->sortByDesc('profit') // Default urutkan dari profit terbesar (Sultan)
@@ -372,18 +377,18 @@ class ReportController extends Controller
             'data' => $items,
             'summary' => [
                 'total_profit' => $items->sum('profit'),
-                'avg_margin' => $items->count() > 0 ? round($items->avg('margin'), 1) : 0
-            ]
+                'avg_margin' => $items->count() > 0 ? round($items->avg('margin'), 1) : 0,
+            ],
         ]);
     }
 
     //  PILAR 3 SUPPLIER DAN TAGIHAN
     /**
      * Summary of purchaseBySupplier
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Pembelian Supplier
-     * Volume belanja per vendor
+     *                           Pembelian Supplier
+     *                           Volume belanja per vendor
      */
     public function purchaseBySupplier(Request $request)
     {
@@ -407,15 +412,16 @@ class ReportController extends Controller
         return Inertia::render('Reports/PurchaseBySupplier', [
             'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
             'data' => $data,
-            'total_all_spend' => $data->sum('total_spend')
+            'total_all_spend' => $data->sum('total_spend'),
         ]);
     }
 
     /**
      * Summary of accountsPayable
+     *
      * @return \Inertia\Response
-     * Buku Hutang
-     * Jadwal jatuh tempo hutang
+     *                           Buku Hutang
+     *                           Jadwal jatuh tempo hutang
      */
     public function accountsPayable()
     {
@@ -440,7 +446,7 @@ class ReportController extends Controller
                     'paid_amount' => $inv->paid_amount ?? 0, // Asumsi ada kolom ini
                     'remaining_amount' => $inv->total_amount - ($inv->paid_amount ?? 0),
                     'status' => $inv->payment_status,
-                    'days_overdue' => (int) $daysOverdue
+                    'days_overdue' => (int) $daysOverdue,
                 ];
             });
 
@@ -449,17 +455,17 @@ class ReportController extends Controller
             'summary' => [
                 'total_debt' => $invoices->sum('remaining_amount'),
                 'overdue_debt' => $invoices->where('days_overdue', '>', 0)->sum('remaining_amount'),
-                'count' => $invoices->count()
-            ]
+                'count' => $invoices->count(),
+            ],
         ]);
     }
 
     /**
      * Summary of priceWatch
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Price Watch
-     * Tren kenaikan harga modal
+     *                           Price Watch
+     *                           Tren kenaikan harga modal
      */
     public function priceWatch(Request $request)
     {
@@ -508,7 +514,7 @@ class ReportController extends Controller
                     'max' => $highest,
                     'avg' => round($average),
                     'trend' => $trend,
-                    'latest' => $latest
+                    'latest' => $latest,
                 ];
             }
         }
@@ -518,20 +524,20 @@ class ReportController extends Controller
             'filters' => [
                 'product_id' => $productId,
                 'start_date' => $startDate,
-                'end_date' => $endDate
+                'end_date' => $endDate,
             ],
             'data' => $history,
             'product' => $product,
-            'summary' => $summary
+            'summary' => $summary,
         ]);
     }
 
-    //PILAR 4 FINANCE
+    // PILAR 4 FINANCE
     /**
      * Summary of profitLoss
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Laba Rugi
+     *                           Laba Rugi
      */
     public function profitLoss(Request $request)
     {
@@ -575,23 +581,23 @@ class ReportController extends Controller
         return Inertia::render('Reports/ProfitLoss', [
             'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
             'data' => [
-                'revenue' => (float)$revenue,
-                'cogs' => (float)$cogs,
-                'expenses' => (float)$expenses,
-                'gross_profit' => (float)$grossProfit,
-                'net_profit' => (float)$netProfit,
+                'revenue' => (float) $revenue,
+                'cogs' => (float) $cogs,
+                'expenses' => (float) $expenses,
+                'gross_profit' => (float) $grossProfit,
+                'net_profit' => (float) $netProfit,
                 'gross_margin' => round($grossMargin, 1),
                 'net_margin' => round($netMargin, 1),
-                'expense_details' => $expenseDetails
-            ]
+                'expense_details' => $expenseDetails,
+            ],
         ]);
     }
 
     /**
      * Summary of cashFlow
-     * @param Request $request
+     *
      * @return \Inertia\Response
-     * Arus Kas (CASHFLOW)
+     *                           Arus Kas (CASHFLOW)
      */
     public function cashFlow(Request $request)
     {
@@ -626,9 +632,9 @@ class ReportController extends Controller
                 'breakdown' => [
                     'sales' => (float) $cashIn,
                     'supplier_payment' => (float) $paymentToSupplier,
-                    'expenses' => (float) $operationalCost
-                ]
-            ]
+                    'expenses' => (float) $operationalCost,
+                ],
+            ],
         ]);
     }
 }

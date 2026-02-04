@@ -3,10 +3,9 @@
 namespace App\Services;
 
 use App\Models\Category;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator; // <-- Impor Validator
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class CategoryService
 {
@@ -15,6 +14,7 @@ class CategoryService
         // Ambil ID dan Nama, urutkan berdasarkan Nama
         return Category::with('productTypes:id,category_id,name')->orderBy('name')->get(['id', 'name']);
     }
+
     /**
      * Mengambil semua data kategori.
      */
@@ -22,6 +22,7 @@ class CategoryService
     {
         return Category::count();
     }
+
     public function get(array $params)
     {
         $query = Category::query();
@@ -30,7 +31,7 @@ class CategoryService
         }
 
         if (isset($params['search']) && $params['search']) {
-            $query->where('name', 'like', '%' . $params['search'] . '%');
+            $query->where('name', 'like', '%'.$params['search'].'%');
         }
         $sortBy = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
@@ -69,7 +70,7 @@ class CategoryService
                 'string',
                 'max:20',
                 // Aturan 'unique' yang mengabaikan ID saat ini
-                Rule::unique('categories')->ignore($category->id)
+                Rule::unique('categories')->ignore($category->id),
             ],
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',

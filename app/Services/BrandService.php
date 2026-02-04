@@ -3,10 +3,9 @@
 namespace App\Services;
 
 use App\Models\Brand;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator; // <-- Impor Validator
-use Illuminate\Validation\ValidationException;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class BrandService
 {
@@ -15,6 +14,7 @@ class BrandService
         // Ambil ID dan Nama, urutkan berdasarkan Nama
         return Brand::orderBy('name')->get(['id', 'name']);
     }
+
     /**
      * Mengambil semua data brand.
      */
@@ -22,6 +22,7 @@ class BrandService
     {
         return Brand::count();
     }
+
     public function get(array $params)
     {
         $query = Brand::query();
@@ -30,7 +31,7 @@ class BrandService
         }
 
         if (isset($params['search']) && $params['search']) {
-            $query->where('name', 'like', '%' . $params['search'] . '%');
+            $query->where('name', 'like', '%'.$params['search'].'%');
         }
         $sortBy = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
@@ -69,7 +70,7 @@ class BrandService
                 'string',
                 'max:20',
                 // Aturan 'unique' yang mengabaikan ID saat ini
-                Rule::unique('brands')->ignore($brand->id)
+                Rule::unique('brands')->ignore($brand->id),
             ],
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',

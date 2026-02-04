@@ -2,29 +2,29 @@
 
 namespace App\Services;
 
-use Exception;
 use App\Models\Product;
+use App\Models\Sale;
 use App\Models\SmartInsight;
 use App\Models\StockMovement;
-use App\Services\TelegramService;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use App\Services\Analysis\Product\InventoryAnalyzer;
-use App\Models\Sale;       // Revisi: Kita pakai nama model 'Sale' sesuai migrasi terakhir
-use App\Models\SalesRecap; // Pastikan Model bernama Sale (sesuai migrasi terakhir 'sales')
+use Exception;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;       // Revisi: Kita pakai nama model 'Sale' sesuai migrasi terakhir
 
-use function PHPUnit\Framework\isEmpty;
+// Pastikan Model bernama Sale (sesuai migrasi terakhir 'sales')
 
 class SalesRecapService
 {
     protected $stockService;
+
     protected $inventoryAnalyzer;
+
     public function __construct(StockService $stockService, InventoryAnalyzer $inventoryAnalyzer)
     {
         $this->stockService = $stockService;
         $this->inventoryAnalyzer = $inventoryAnalyzer;
     }
+
     /**
      * Mengambil data transaksi pembelian untuk halaman index (Index.vue).
      */
@@ -45,12 +45,12 @@ class SalesRecapService
         });
 
         // 4. Filter Tanggal (Date Range)
-        $query->when($params['min_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '>=', $date))
-            ->when($params['max_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '<=', $date));
+        $query->when($params['min_date'] ?? null, fn ($q, $date) => $q->where('transaction_date', '>=', $date))
+            ->when($params['max_date'] ?? null, fn ($q, $date) => $q->where('transaction_date', '<=', $date));
 
         // 4. Filter Revenue (Nominal Range)
-        $query->when($params['min_revenue'] ?? null, fn($q, $revenue) => $q->where('total_revenue', '>=', $revenue))
-            ->when($params['max_revenue'] ?? null, fn($q, $revenue) => $q->where('total_revenue', '<=', $revenue));
+        $query->when($params['min_revenue'] ?? null, fn ($q, $revenue) => $q->where('total_revenue', '>=', $revenue))
+            ->when($params['max_revenue'] ?? null, fn ($q, $revenue) => $q->where('total_revenue', '<=', $revenue));
 
         // --- SORTING & PAGINASI ---
         $sortBy = $params['sort'] ?? 'transaction_date';
@@ -62,6 +62,7 @@ class SalesRecapService
             ->paginate($perPage)
             ->withQueryString();
     }
+
     /**
      * Menyimpan data rekap, mengurangi stok, dan hitung profit
      */
@@ -124,7 +125,7 @@ class SalesRecapService
 
                 // Hitungan Baris
                 $subtotal = $inputQty * $sellingPrice;
-                $rowCost  = $inputQty * $capitalPrice;
+                $rowCost = $inputQty * $capitalPrice;
                 $rowProfit = $subtotal - $rowCost;
 
                 // --- LOGIC SNAPSHOT (HISTORY AMAN) ---
@@ -169,7 +170,7 @@ class SalesRecapService
                 }
             }
 
-            if (!empty($data['discount_value']) && $data['discount_value'] > 0) {
+            if (! empty($data['discount_value']) && $data['discount_value'] > 0) {
                 $type = $data['discount_type'] ?? null;
                 if ($type === Sale::DISCON_PERCENT) {
                     $discountTotal = ($totalRevenue * $data['discount_value']) / 100;
@@ -181,7 +182,9 @@ class SalesRecapService
                 $discountTotal = 0;
             }
 
-            if ($discountTotal > $totalRevenue) $discountTotal = $totalRevenue;
+            if ($discountTotal > $totalRevenue) {
+                $discountTotal = $totalRevenue;
+            }
 
             $grandTotal = $totalRevenue - $discountTotal;
 
@@ -196,8 +199,8 @@ class SalesRecapService
                     'item_count' => $itemsCount,
                     'total_qty' => $totalQty,
                     'payment_amount' => $data['payment_amount'] ?? 0,      // Uang diterima
-                    'change_amount'  => $data['change_amount'] ?? 0,       // Kembalian
-                ]
+                    'change_amount' => $data['change_amount'] ?? 0,       // Kembalian
+                ],
             ]);
 
             return $sale;
@@ -266,7 +269,7 @@ class SalesRecapService
                 $capitalPrice = $product->purchase_price;
 
                 $subtotal = $inputQty * $sellingPrice;
-                $rowCost  = $inputQty * $capitalPrice;
+                $rowCost = $inputQty * $capitalPrice;
                 $rowProfit = $subtotal - $rowCost;
 
                 $snapshot = [
@@ -305,7 +308,7 @@ class SalesRecapService
             $sale->update([
                 'total_revenue' => $totalRevenue,
                 'total_profit' => $totalProfit,
-                'financial_summary' => ['item_count' => $itemsCount, 'total_qty' => $totalQty]
+                'financial_summary' => ['item_count' => $itemsCount, 'total_qty' => $totalQty],
             ]);
 
             return $sale;
@@ -332,6 +335,7 @@ class SalesRecapService
 
             // 2. Hapus Item & Header (Soft Delete)
             $sale->items()->delete(); // Soft delete items (optional jika cascade)
+
             return $sale->delete();          // Soft delete header
         });
     }
@@ -341,24 +345,24 @@ class SalesRecapService
     {
         $dateCode = date('ymd', strtotime($date));
         if ($type === Sale::TYPE_REALTIME) {
-            $prefix = 'POS/' . $dateCode . '/';
-        } else if ($type === Sale::TYPE_REKAP) {
-            $prefix = 'REKAP/' . $dateCode . '/';
+            $prefix = 'POS/'.$dateCode.'/';
+        } elseif ($type === Sale::TYPE_REKAP) {
+            $prefix = 'REKAP/'.$dateCode.'/';
         } else {
             $prefix = 'unknown';
         }
 
         // Cari nomor terakhir hari itu
-        $lastSale = Sale::where('reference_no', 'like', $prefix . '%')
+        $lastSale = Sale::where('reference_no', 'like', $prefix.'%')
             ->orderByDesc('id')
             ->first();
 
         $seq = 1;
         if ($lastSale) {
             $parts = explode('/', $lastSale->reference_no);
-            $seq = (int)end($parts) + 1;
+            $seq = (int) end($parts) + 1;
         }
 
-        return $prefix . str_pad($seq, 3, '0', STR_PAD_LEFT);
+        return $prefix.str_pad($seq, 3, '0', STR_PAD_LEFT);
     }
 }

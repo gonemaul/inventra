@@ -13,6 +13,7 @@
 /.zed
 /auth.json
 /node_modules
+# /public/build (Diizinkan untuk diupload ke git)
 # /public/build
 /public/hot
 /public/storage
@@ -24,3 +25,14 @@ Homestead.yaml
 Thumbs.db
 note.md
 vite.config.js
+
+# Playwright artifacts (Bekas Test)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+test-results/
+test_output.txt
+auth_test_fail.txt
+test_debug.log
+debug-*.png

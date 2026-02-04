@@ -2,29 +2,32 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
-use Inertia\Inertia;
+use App\Http\Requests\UpdatePurchaseRequest;
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\Supplier;
-use Illuminate\Http\Request;
 use App\Models\PurchaseInvoice;
-use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Validation\Rule;
+use App\Models\Supplier;
+use App\Models\User;
 use App\Services\InvoiceService;
+use App\Services\ProductService;
 use App\Services\PurchaseService;
+use App\Services\SupplierService;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use App\Http\Requests\UpdatePurchaseRequest;
-use Illuminate\Validation\ValidationException;
-use App\Services\ProductService;  // Untuk dropdown
-use App\Services\SupplierService; // Untuk dropdown
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;  // Untuk dropdown
+use Inertia\Inertia; // Untuk dropdown
 
 class PurchaseController extends Controller
 {
     protected $purchaseService;
+
     protected $supplierService;
+
     protected $productService;
+
     protected $invoiceService;
 
     public function __construct(
@@ -38,12 +41,14 @@ class PurchaseController extends Controller
         $this->productService = $productService;
         $this->invoiceService = $invoiceService;
     }
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
         $purchases = $this->purchaseService->get($request->all());
+
         return Inertia::render('Purchases/index', [
             'purchases' => $purchases,
             'dropdowns' => [
@@ -64,7 +69,7 @@ class PurchaseController extends Controller
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
                 'statuses' => Purchase::STATUSES,
-                'purchase' => null
+                'purchase' => null,
             ],
         ]);
     }
@@ -91,13 +96,11 @@ class PurchaseController extends Controller
     {
         if ($request->ajax()) {
             $res = $this->purchaseService->getRecomendations($supplierId);
+
             return response()->json($res);
         }
     }
 
-    /**
-     *
-     */
     public function getCatalog($supplierId, Request $request)
     {
         $search = $request->input('search');
@@ -161,10 +164,11 @@ class PurchaseController extends Controller
             'invoices:id,purchase_id,invoice_number,invoice_date,due_date,total_amount,payment_status,status,invoice_image',
 
             // 8. Item di dalam Invoice: Biasanya cuma butuh snapshot/qty untuk display
-            'invoices.items:id,purchase_id,purchase_invoice_id'
+            'invoices.items:id,purchase_id,purchase_invoice_id',
         ]);
         $purchase->loadSum('invoices', 'total_amount');
-        $invoice = $purchase->invoices->first() ?? new PurchaseInvoice();
+        $invoice = $purchase->invoices->first() ?? new PurchaseInvoice;
+
         return Inertia::render('Purchases/PurchaseDetail', [
             'purchase' => $purchase,
             'invoice' => $invoice,
@@ -173,11 +177,10 @@ class PurchaseController extends Controller
             // Flag untuk frontend (FE) agar tahu apakah tombol aksi harus ditampilkan
             'isCheckingMode' => in_array($purchase->status, [
                 Purchase::STATUS_RECEIVED,
-                Purchase::STATUS_CHECKING
+                Purchase::STATUS_CHECKING,
             ]),
         ]);
     }
-
 
     // MENAMBAHKAN INVOICE KE TRANSAKSI
     public function storeInvoice(Request $request, Purchase $purchase)
@@ -190,12 +193,13 @@ class PurchaseController extends Controller
             if (Purchase::STATUS_RECEIVED) {
                 $this->purchaseService->updateStatus($purchase->id, Purchase::STATUS_CHECKING);
             }
+
             return redirect()->route('purchases.checking', $purchase)
                 ->with('success', 'Nota berhasil diunggah. Silakan lakukan validasi item.');
         } catch (ValidationException $e) {
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal menyimpan data nota: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyimpan data nota: '.$e->getMessage());
         }
     }
 
@@ -220,11 +224,13 @@ class PurchaseController extends Controller
         // Panggil Service untuk menghapus nota dan file
         try {
             $this->invoiceService->destroy($invoice);
+
             return redirect()->back()->with('success', 'Nota berhasil dihapus.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', $e->getMessage());
         }
     }
+
     /**
      * Detail Nota (Action Detail).
      * Rute: Detail purchases/{purchase}/invoices/{invoice}
@@ -248,6 +254,7 @@ class PurchaseController extends Controller
             ->get();
 
         $purchase->load(['supplier:id,name,phone,address']);
+
         // 4. Kirim data ke Frontend
         return Inertia::render('Purchases/InvoiceLinkagePage', [
             'purchase' => $purchase->only(['id', 'reference_no', 'status',  'supplier']),
@@ -257,6 +264,7 @@ class PurchaseController extends Controller
             'products' => $products,
         ]);
     }
+
     // MENAUTKAN PRODUK KE INVOICE
     public function linkItems(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
     {
@@ -280,7 +288,7 @@ class PurchaseController extends Controller
 
             return redirect()->back();
         } catch (\Exception $e) {
-            return redirect()->back()->with('error',  $e->getMessage());
+            return redirect()->back()->with('error', $e->getMessage());
         }
     }
 
@@ -296,9 +304,10 @@ class PurchaseController extends Controller
 
         try {
             $count = $this->invoiceService->unlinkItems($invoice, $request->input('item_ids'));
+
             return redirect()->back();
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal melepas item: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal melepas item: '.$e->getMessage());
         }
     }
 
@@ -321,7 +330,7 @@ class PurchaseController extends Controller
         } catch (ValidationException $e) {
             return redirect()->back()->withErrors($e->errors())->withInput();
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal menyimpan koreksi: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyimpan koreksi: '.$e->getMessage());
         }
     }
 
@@ -347,7 +356,7 @@ class PurchaseController extends Controller
 
             return redirect()->back()->with('success', 'Invoice berhasil divalidasi.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Gagal memvalidasi invoice: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal memvalidasi invoice: '.$e->getMessage());
         }
     }
 
@@ -360,7 +369,7 @@ class PurchaseController extends Controller
         $validated = $request->validate([
             'shipping_cost' => 'required|numeric|min:0',
             'other_costs' => 'required|numeric|min:0',
-            'notes' => 'nullable'
+            'notes' => 'nullable',
         ]);
 
         try {
@@ -370,9 +379,10 @@ class PurchaseController extends Controller
                 ->with('success', 'Transaksi Selesai! Stok telah bertambah dan HPP diperbarui.');
         } catch (\Exception $e) {
             // Tangkap error validasi logika dari service
-            return redirect()->back()->with('error', 'Gagal menyelesaikan transaksi: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Gagal menyelesaikan transaksi: '.$e->getMessage());
         }
     }
+
     /**
      * Show the form for editing the specified resource.
      */
@@ -413,20 +423,22 @@ class PurchaseController extends Controller
             return back()->withErrors($e->errors());
         } catch (\Exception $e) {
             // Error umum sistem
-            return back()->with('error', 'Terjadi kesalahan sistem: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan sistem: '.$e->getMessage());
         }
     }
+
     public function show(Purchase $purchase)
     {
         //
     }
+
     /**
      * Remove the specified resource from storage.
      */
     public function destroy(Purchase $purchase)
     {
         // SECURITY GUARD: Hanya boleh hapus jika transaksi belum berjalan
-        if (!in_array($purchase->status, [Purchase::STATUS_DRAFT, Purchase::STATUS_ORDERED])) {
+        if (! in_array($purchase->status, [Purchase::STATUS_DRAFT, Purchase::STATUS_ORDERED])) {
             return Redirect::back()
                 ->with('error', 'Transaksi yang sudah dikirim atau diterima tidak bisa dihapus. Harap batalkan.');
         }
@@ -445,7 +457,7 @@ class PurchaseController extends Controller
             'supplier',
             'user',
             'items.product.unit', // Relasi ke Unit produk
-            'items.product.size'  // Relasi ke Size produk
+            'items.product.size',  // Relasi ke Size produk
         ])->findOrFail($id);
 
         $settings = \App\Models\Setting::pluck('value', 'key')->toArray();
@@ -454,20 +466,21 @@ class PurchaseController extends Controller
             'name' => $settings['shop_name'] ?? 'INVENTRA CORP',
             'address' => $settings['shop_address'] ?? 'Alamat Belum Diisi',
             'phone' => $settings['shop_phone'] ?? '-',
-            'email' => ''
+            'email' => '',
         ];
 
         // 3. Load View PDF
         $pdf = Pdf::loadView('exports.purchase_order', [
             'po' => $purchase,
-            'store' => $storeProfile
+            'store' => $storeProfile,
         ]);
 
         $safeRef = str_replace(['/', '\\'], '-', $purchase->reference_no);
-        $filename = $safeRef . '.pdf';
+        $filename = $safeRef.'.pdf';
 
         // 4. Set Kertas & Stream (Tampil di browser)
         $pdf->setPaper('a4', 'portrait');
+
         return $pdf->stream($filename);
     }
 }

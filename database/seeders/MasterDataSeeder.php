@@ -2,14 +2,14 @@
 
 namespace Database\Seeders;
 
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\ProductType;
+use App\Models\Size;
+use App\Models\Supplier;
+use App\Models\Unit;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
-use App\Models\Category;
-use App\Models\Unit;
-use App\Models\Size;
-use App\Models\Brand;
-use App\Models\ProductType;
-use App\Models\Supplier;
 use Illuminate\Support\Str;
 
 class MasterDataSeeder extends Seeder
@@ -40,19 +40,19 @@ class MasterDataSeeder extends Seeder
             'name' => 'Oli',
             'code' => 'OIL',
             'description' => 'Oli Motor, Mobil, Diesel.',
-            'slug' => Str::slug('Oli & Pelumas') // <-- TAMBAHAN WAJIB
+            'slug' => Str::slug('Oli & Pelumas'), // <-- TAMBAHAN WAJIB
         ]);
         $catSpr = Category::create([
             'name' => 'Sparepart Motor',
             'code' => 'SPR',
             'description' => 'Busi, Filter, Minyak Rem.',
-            'slug' => Str::slug('Sparepart Motor') // <-- TAMBAHAN WAJIB
+            'slug' => Str::slug('Sparepart Motor'), // <-- TAMBAHAN WAJIB
         ]);
         $catBat = Category::create([
             'name' => 'Ban',
             'code' => 'BAN',
             'description' => 'Ban Luar/Dalam motor.',
-            'slug' => Str::slug('Ban') // <-- TAMBAHAN WAJIB
+            'slug' => Str::slug('Ban'), // <-- TAMBAHAN WAJIB
         ]);
         // $catElc = Category::create([
         //     'name' => 'Elektronik Pasif',

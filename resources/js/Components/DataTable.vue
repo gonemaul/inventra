@@ -356,7 +356,7 @@ watch(
             fetchServerData();
         }
     },
-    { deep: true }
+    { deep: true },
 );
 // watch([currentPage, perPage, sortKey, sortOrder], () => {
 //     if (isServerMandiri.value) {
@@ -391,7 +391,7 @@ watch(
             perPage.value = newVal.per_page;
         }
     },
-    { deep: true, immediate: true }
+    { deep: true, immediate: true },
 );
 </script>
 

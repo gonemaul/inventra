@@ -2,25 +2,25 @@
 
 namespace Database\Factories;
 
-use App\Models\Product;
+use App\Models\Brand;
 use App\Models\Category;
-use App\Models\Unit;
+use App\Models\Product;
+use App\Models\ProductType;
 use App\Models\Size;
 use App\Models\Supplier;
-use App\Models\Brand;
-use App\Models\ProductType;
-use Illuminate\Support\Str;
-
+use App\Models\Unit;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 class ProductFactory extends Factory
 {
     protected $model = Product::class;
+
     protected function withFaker()
     {
         // Menginstruksikan Faker untuk menggunakan locale Indonesia
         return \Faker\Factory::create('id_ID');
     }
+
     public function definition(): array
     {
         // 1. Ambil ID Acak dari Master Data
@@ -39,6 +39,7 @@ class ProductFactory extends Factory
         // 3. Status
         $statuses = ['active', 'draft'];
         $name = $this->faker->sentence(4, true);
+
         return [
             // Relasi (Ambil ID Acak)
             'category_id' => $this->faker->randomElement($categoryIds),

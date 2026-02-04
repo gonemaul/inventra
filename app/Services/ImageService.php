@@ -3,16 +3,17 @@
 namespace App\Services;
 
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\ImageManager;
 
 class ImageService
 {
     /**
      * Upload gambar dengan kompresi otomatis jika > 2MB
+     *
      * * @param \Illuminate\Http\UploadedFile $file File dari request
-     * @param string $path Folder tujuan (misal: 'shop', 'products')
-     * @param string|null $oldFile Path file lama untuk dihapus (opsional)
+     * @param  string  $path  Folder tujuan (misal: 'shop', 'products')
+     * @param  string|null  $oldFile  Path file lama untuk dihapus (opsional)
      * @return string Path file yang baru disimpan
      */
     public function upload($file, $path, $oldFile = null)
@@ -25,13 +26,13 @@ class ImageService
         // 2. Cek Ukuran File (Bytes)
         // 2MB = 2 * 1024 * 1024 = 2097152 Bytes
         $fileSize = $file->getSize();
-        $fileName = md5(uniqid()) . '.webp'; // Kita standarisasi ke WebP biar ringan
-        $destinationPath = $path . '/' . $fileName;
+        $fileName = md5(uniqid()).'.webp'; // Kita standarisasi ke WebP biar ringan
+        $destinationPath = $path.'/'.$fileName;
 
         // 3. LOGIKA KOMPRESI
         if ($fileSize > 2097152) {
             // JIKA > 2MB: Kompres Agresif
-            $manager = new ImageManager(new Driver());
+            $manager = new ImageManager(new Driver);
             $image = $manager->read($file);
 
             // Resize (Opsional): Jangan biarkan lebar lebih dari 800px (Cukup untuk logo/struk)
@@ -46,7 +47,7 @@ class ImageService
         } else {
             // JIKA < 2MB:
             // Tetap kita convert ke WebP supaya format seragam, tapi kualitas 90%
-            $manager = new ImageManager(new Driver());
+            $manager = new ImageManager(new Driver);
             $image = $manager->read($file);
             $encoded = $image->toWebp(90);
 

@@ -6,27 +6,30 @@ use App\Models\Product;
 use App\Models\SmartInsight;
 use App\Models\StockMovement;
 use App\Services\Analysis\Product\FinancialAnalyzer;
-use Illuminate\Support\Facades\DB;
+use App\Services\Analysis\Product\InventoryAnalyzer;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use App\Services\Analysis\Product\InventoryAnalyzer;
 
 class StockService
 {
     protected $inventoryAnalyzer;
+
     protected $financialAnalyzer;
+
     public function __construct(InventoryAnalyzer $inventoryAnalyzer, FinancialAnalyzer $financialAnalyzer)
     {
         $this->inventoryAnalyzer = $inventoryAnalyzer;
         $this->financialAnalyzer = $financialAnalyzer;
     }
+
     /**
      * Mencatat Perubahan Stok
+     *
      * * @param int $productId
-     * @param int $qty (Positif = Masuk, Negatif = Keluar)
-     * @param string $type ('sale', 'purchase', 'adjustment', etc)
-     * @param string|null $ref (No Referensi Dokumen)
-     * @param string|null $desc (Catatan Tambahan)
+     * @param  int  $qty  (Positif = Masuk, Negatif = Keluar)
+     * @param  string  $type  ('sale', 'purchase', 'adjustment', etc)
+     * @param  string|null  $ref  (No Referensi Dokumen)
+     * @param  string|null  $desc  (Catatan Tambahan)
      */
     public function record($productId, $qty, $type, $ref = null, $desc = null)
     {
@@ -44,11 +47,11 @@ class StockService
                 ['product_id' => $product->id, 'type' => SmartInsight::TYPE_NEW],
                 [
                     'severity' => SmartInsight::SEVERITY_INFO, // HARDCODED CONSTANT
-                    'title'    => 'Produk Baru: ' . $product->name,
-                    'message'  => "Produk baru ditambahkan {$metrics['lifecycle']['days_active']} hari lalu.",
-                    'payload'  => $metrics['lifecycle'],
-                    'action_url' => '/products/' . $product->id,
-                    'updated_at' => now()
+                    'title' => 'Produk Baru: '.$product->name,
+                    'message' => "Produk baru ditambahkan {$metrics['lifecycle']['days_active']} hari lalu.",
+                    'payload' => $metrics['lifecycle'],
+                    'action_url' => '/products/'.$product->id,
+                    'updated_at' => now(),
                 ]
             );
         }
@@ -59,7 +62,7 @@ class StockService
                 $stockAfter = $stockBefore + $qty;
             }
             // rubah stok(timpa)
-            else if (in_array($type, [StockMovement::TYPE_ADJUSTMENT_OPNAME])) {
+            elseif (in_array($type, [StockMovement::TYPE_ADJUSTMENT_OPNAME])) {
                 $stockAfter = $qty;
                 $qty = $qty > $stockBefore ? $qty - $stockBefore : $stockBefore - $qty;
                 $analysis = $this->inventoryAnalyzer->calculateInventoryHealth($product);
@@ -69,7 +72,7 @@ class StockService
                 }
             }
             // kurangi stock
-            else if (in_array($type, [StockMovement::TYPE_ADJUSTMENT_OUT, StockMovement::TYPE_SALE, StockMovement::TYPE_RETURN_OUT])) {
+            elseif (in_array($type, [StockMovement::TYPE_ADJUSTMENT_OUT, StockMovement::TYPE_SALE, StockMovement::TYPE_RETURN_OUT])) {
                 $stockAfter = $stockBefore - $qty;
                 $analysis = $this->inventoryAnalyzer->calculateInventoryHealth($product);
 
@@ -80,7 +83,6 @@ class StockService
             $product->stock = $stockAfter;
         }
         $product->save();
-
 
         // 2. Catat di Buku Sejarah (Stock Movement)
         StockMovement::create([
@@ -97,12 +99,13 @@ class StockService
 
         return $stockAfter;
     }
+
     public function sendLowStock($product, $analysis)
     {
-        if (!Cache::has('notif_critical_' . $product->id)) {
+        if (! Cache::has('notif_critical_'.$product->id)) {
 
             // A. Buat Pesan Singkat & Padat (Actionable)
-            $msg  = "⚠️ <b>STOK KRITIS ALERT!</b>\n\n";
+            $msg = "⚠️ <b>STOK KRITIS ALERT!</b>\n\n";
             $msg .= "📦 <b>{$product->name}</b>\n";
             $msg .= "Sisa Stok: <b>{$analysis['current_stock']} {$product->unit->name}</b>\n";
             $msg .= "Habis dalam: <b>{$analysis['days_left']} hari</b>\nPada Tgl: {$analysis['stockout_date']}\n";
@@ -115,17 +118,17 @@ class StockService
             // Kita set is_notified = 1 karena sudah dikirim barusan.
             // Jadi besok pagi tidak perlu dikirim ulang di laporan rangkuman, cukup jadi arsip.
             SmartInsight::updateOrCreate([
-                'product_id'  => $product->id,
-                'type'        => SmartInsight::TYPE_RESTOCK,
-                'severity'    => SmartInsight::SEVERITY_CRITICAL,
-                'title'       => 'Stok Kritis (Realtime)',
-                'message'     => $analysis['message'],
-                'payload'     => $analysis, // Simpan semua data analisa lengkap di sini
-                'action_url'  => route('products.show', $product->id),
-                'is_read'     => false,
+                'product_id' => $product->id,
+                'type' => SmartInsight::TYPE_RESTOCK,
+                'severity' => SmartInsight::SEVERITY_CRITICAL,
+                'title' => 'Stok Kritis (Realtime)',
+                'message' => $analysis['message'],
+                'payload' => $analysis, // Simpan semua data analisa lengkap di sini
+                'action_url' => route('products.show', $product->id),
+                'is_read' => false,
                 'is_notified' => true, // <--- PENTING: Agar tidak dobel notif besok pagi
             ]);
-            Cache::put('notif_critical_' . $product->id, true, now()->addHours(6));
+            Cache::put('notif_critical_'.$product->id, true, now()->addHours(6));
         }
     }
 }

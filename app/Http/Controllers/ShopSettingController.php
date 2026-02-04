@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Setting;
-use Illuminate\Support\Facades\Storage;
 use App\Services\ImageService;
+use Illuminate\Http\Request;
 
 class ShopSettingController extends Controller
 {
@@ -15,15 +14,16 @@ class ShopSettingController extends Controller
     {
         $this->imageService = $imageService;
     }
+
     public function update(Request $request)
     {
         // 1. Validasi
         $request->validate([
-            'shop_name'      => 'required|string|max:255',
-            'shop_phone'     => 'nullable|string|max:20',
-            'shop_address'   => 'nullable|string',
+            'shop_name' => 'required|string|max:255',
+            'shop_phone' => 'nullable|string|max:20',
+            'shop_address' => 'nullable|string',
             'receipt_footer' => 'nullable|string', // Pesan di bawah struk
-            'shop_logo'      => 'nullable|image|max:20480',
+            'shop_logo' => 'nullable|image|max:20480',
         ]);
 
         // 2. Handle Upload Logo (Jika ada file baru)

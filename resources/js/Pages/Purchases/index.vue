@@ -88,7 +88,7 @@ watch(
     params,
     throttle((newParams) => {
         const query = Object.fromEntries(
-            Object.entries(newParams).filter(([_, v]) => v != null && v !== "")
+            Object.entries(newParams).filter(([_, v]) => v != null && v !== ""),
         );
         isActionLoading.value = true;
         router.get(route("purchases.index"), query, {
@@ -101,7 +101,7 @@ watch(
             },
         });
     }, 300),
-    { deep: true }
+    { deep: true },
 );
 
 watch(search, performSearch);

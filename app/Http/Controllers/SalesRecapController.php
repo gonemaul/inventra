@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Sale;
-use Inertia\Inertia;
-use App\Models\Product;
 use App\Models\Customer;
-use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
+use App\Models\Product;
+use App\Models\Sale;
 use App\Services\CategoryService;
 use App\Services\SalesRecapService;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
+use Inertia\Inertia;
 
 class SalesRecapController extends Controller
 {
     protected $service;
+
     protected $categoryService;
 
     public function __construct(SalesRecapService $service, CategoryService $categoryService)
@@ -23,15 +24,17 @@ class SalesRecapController extends Controller
         $this->service = $service;
         $this->categoryService = $categoryService;
     }
+
     /**
      * Display a listing of the resource.
      */
     public function index(Request $request)
     {
         $sales = $this->service->get($request->all());
+
         return Inertia::render('Sale/index', [
             'sales' => $sales,
-            'filters' => $request->only(['search', 'min_date', 'max_date', 'min_revenue', 'max_revenue',]),
+            'filters' => $request->only(['search', 'min_date', 'max_date', 'min_revenue', 'max_revenue']),
         ]);
     }
 
@@ -42,6 +45,7 @@ class SalesRecapController extends Controller
             'customers' => Customer::select('id', 'name', 'member_code', 'phone')->get(),
         ]);
     }
+
     /**
      * Show the form for creating a new resource.
      */
@@ -60,7 +64,7 @@ class SalesRecapController extends Controller
                     'stock',
                     'image_path', // string pendek
                     'unit_id',
-                    'size_id'
+                    'size_id',
                 ])
                 ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name'])
                 ->orderBy('name')
@@ -101,19 +105,19 @@ class SalesRecapController extends Controller
 
                     $product = Product::with('unit')->find($productId);
 
-                    if ($product && $product->unit && !$product->unit->is_decimal) {
+                    if ($product && $product->unit && ! $product->unit->is_decimal) {
                         // Jika unit TIDAK boleh desimal, cek apakah nilai integer
                         if (floor($value) != $value) {
                             $fail("Produk {$product->name} (Satuan: {$product->unit->name}) tidak boleh pecahan (koma).");
                         }
                     }
-                }
+                },
             ], // Support Desimal
             'items.*.selling_price' => 'required|numeric|min:0',
         ], [
             'items.min' => 'Keranjang penjualan tidak boleh kosong.',
             'items.*.quantity.min' => 'Jumlah barang harus lebih dari 0.',
-            'report_date.before_or_equal' => 'Tanggal laporan tidak boleh melebihi hari ini.'
+            'report_date.before_or_equal' => 'Tanggal laporan tidak boleh melebihi hari ini.',
         ]);
 
         try {
@@ -121,12 +125,13 @@ class SalesRecapController extends Controller
 
             $printUrl = $request->print_invoice ? route('sales.print', $sale->id) : null;
             $message = $validated['input_type'] == Sale::TYPE_REALTIME ? 'Transaksi Berhasil!' : 'Rekap penjualan berhasil disimpan.';
+
             return redirect()->back()->with([
                 'success' => $message,
-                'print_url' => $printUrl // Kirim URL struk ke frontend
+                'print_url' => $printUrl, // Kirim URL struk ke frontend
             ]);
         } catch (\Exception $e) {
-            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
 
@@ -138,7 +143,7 @@ class SalesRecapController extends Controller
     {
         $search = $request->input('query');
 
-        if (!$search) {
+        if (! $search) {
             return response()->json([]);
         }
 
@@ -175,8 +180,9 @@ class SalesRecapController extends Controller
     public function show(Sale $sale)
     {
         $sale->load(['items', 'user']);
+
         return Inertia::render('Sale/Show', [
-            'sale' => $sale
+            'sale' => $sale,
         ]);
     }
 
@@ -189,7 +195,7 @@ class SalesRecapController extends Controller
 
         return Inertia::render('Sale/form', [
             'sale' => $sale, // Kirim data lama ke Vue
-            'mode' => 'edit' // Penanda mode
+            'mode' => 'edit', // Penanda mode
         ]);
     }
 
@@ -225,6 +231,7 @@ class SalesRecapController extends Controller
     {
         try {
             $this->service->deleteRecap($sale);
+
             return Redirect::route('sales.index')
                 ->with('success', "Rekap {$sale->reference_no} berhasil dihapus. Stok telah dikembalikan.");
         } catch (\Exception $e) {
@@ -241,14 +248,15 @@ class SalesRecapController extends Controller
         // Return view blade khusus struk
         // dd($sale->reference_no);
         $dataSettings = [
-            'shop_name'    => $settings['shop_name'] ?? 'Toko Saya',
+            'shop_name' => $settings['shop_name'] ?? 'Toko Saya',
             'shop_address' => $settings['shop_address'] ?? 'Alamat Belum Diisi',
-            'shop_phone'   => $settings['shop_phone'] ?? '-',
+            'shop_phone' => $settings['shop_phone'] ?? '-',
             'receipt_footer' => $settings['receipt_footer'] ?? 'Terima Kasih',
         ];
+
         return view('print.receipt', [
             'sale' => $sale,
-            'settings' => $dataSettings
+            'settings' => $dataSettings,
         ])->render();
     }
 
@@ -266,7 +274,7 @@ class SalesRecapController extends Controller
                 'stock',
                 'image_path', // string pendek
                 'unit_id',
-                'size_id'
+                'size_id',
             ])
             ->withSum('saleItems as total_sold', 'quantity') // Hitung total terjual
             ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name']) // Eager load unit, ambil nama saja

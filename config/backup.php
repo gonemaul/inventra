@@ -24,7 +24,7 @@ return [
                 'exclude' => [
                     base_path('vendor'),
                     base_path('node_modules'),
-                    storage_path('app/backup-temp')
+                    storage_path('app/backup-temp'),
                 ],
 
                 /*
@@ -151,7 +151,7 @@ return [
              */
             'disks' => [
                 'public',
-                'google'
+                'google',
             ],
         ],
 
