@@ -137,43 +137,42 @@ class FinancialAnalyzer
      */
     private function analyzeSalesGrowth(Product $product): array
     {
-        //     // 1. Tentukan Range Tanggal yang PRESISI (00:00:00 s/d 23:59:59)
-        //     // Periode A: 30 Hari Terakhir (H-29 s/d Hari Ini = 30 Hari)
-        //     $endPeriodA   = now()->endOfDay();
-        //     $startPeriodA = now()->subDays(29)->startOfDay();
-        //     // Periode B: 30 Hari Sebelumnya (H-59 s/d H-30 = 30 Hari)
-        //     $endPeriodB   = now()->subDays(30)->endOfDay();
-        //     $startPeriodB = now()->subDays(59)->startOfDay();
-        //     // 2. Query Satu Kali Jalan (Single Query)
-        //     $stats = SaleItem::where('product_id', $product->id)
-        //         ->whereHas('sale', function ($q) use ($startPeriodB, $endPeriodA) {
-        //             // Ambil range terluar (dari awal B sampai akhir A)
-        //             $q->whereBetween('transaction_date', [$startPeriodB, $endPeriodA]);
-        //         })
-        //         ->join('sales', 'sale_items.sale_id', '=', 'sales.id') // Join manual agar bisa akses kolom sales di selectRaw
-        //         ->selectRaw("
-        //     -- Hitung Periode A (Bulan Ini)
-        //     COALESCE(SUM(CASE
-        //         WHEN sales.transaction_date >= ?
-        //         THEN sale_items.quantity
-        //         ELSE 0
-        //     END), 0) as qty_this_month,
+        // 1. Cek apakah data sudah di-Eager Load (dari ProductService) to avoid Double Query
+        if (isset($product->qty_this_month) && isset($product->qty_last_month)) {
+            $qtyThisMonth = $product->qty_this_month;
+            $qtyLastMonth = $product->qty_last_month;
+        } else {
+            // 2. Jika belum ada (misal detail page), Query Manual yang Efisien (Single Query)
+            // Tentukan Range Tanggal (Copy logic dari ProductService agar konsisten)
+            $today = now()->endOfDay();
+            $startPeriodA = now()->subDays(29)->startOfDay(); // 30 Hari Terakhir
+            
+            $endPeriodB = now()->subDays(30)->endOfDay();
+            $startPeriodB = now()->subDays(59)->startOfDay(); // 30 Hari Sebelumnya
 
-        //     -- Hitung Periode B (Bulan Lalu)
-        //     COALESCE(SUM(CASE
-        //         WHEN sales.transaction_date >= ? AND sales.transaction_date <= ?
-        //         THEN sale_items.quantity
-        //         ELSE 0
-        //     END), 0) as qty_last_month
-        // ", [
-        //             $startPeriodA,              // Parameter untuk Periode A
-        //             $startPeriodB,
-        //             $endPeriodB  // Parameter untuk Periode B
-        //         ])
-        //         ->first();
+            $stats = SaleItem::where('product_id', $product->id)
+                ->whereHas('sale', function ($q) use ($startPeriodB, $today) {
+                    $q->whereBetween('transaction_date', [$startPeriodB, $today]);
+                })
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->selectRaw("
+                    COALESCE(SUM(CASE
+                        WHEN sales.transaction_date >= ?
+                        THEN sale_items.quantity
+                        ELSE 0
+                    END), 0) as qty_this_month,
+                    COALESCE(SUM(CASE
+                        WHEN sales.transaction_date >= ? AND sales.transaction_date <= ?
+                        THEN sale_items.quantity
+                        ELSE 0
+                    END), 0) as qty_last_month
+                ", [$startPeriodA, $startPeriodB, $endPeriodB])
+                ->first();
 
-        $qtyThisMonth = $stats->qty_this_month ?? 0;
-        $qtyLastMonth = $stats->qty_last_month ?? 0;
+            $qtyThisMonth = $stats->qty_this_month ?? 0;
+            $qtyLastMonth = $stats->qty_last_month ?? 0;
+        }
+
         // Hitung Persentase Pertumbuhan
         $growthPercent = 0;
         if ($qtyLastMonth > 0) {
@@ -191,8 +190,8 @@ class FinancialAnalyzer
         $isDeclining = $growthPercent < -30;
 
         return [
-            'qty_this_month' => $qtyThisMonth,
-            'qty_last_month' => $qtyLastMonth,
+            'qty_this_month' => (float) $qtyThisMonth,
+            'qty_last_month' => (float) $qtyLastMonth,
             'growth_percent' => round($growthPercent, 1),
             'is_trending' => $isTrending,
             'is_declining' => $isDeclining,

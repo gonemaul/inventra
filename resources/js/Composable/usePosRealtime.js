@@ -15,7 +15,7 @@ export function usePosRealtime(props) {
     // A. Product & Filter State
     const allProducts = ref([]);
     const isFetchingData = ref(false);
-    const displayLimit = ref(8);
+    const displayLimit = ref(20);
     const filterState = ref({
         search: "",
         category: "all",
@@ -233,57 +233,106 @@ export function usePosRealtime(props) {
     // 4. PRODUCT & FILTER LOGIC
     // =========================================================================
 
-    const loadProduct = async () => {
-        isFetchingData.value = true;
+    // =========================================================================
+    // 4. PRODUCT & FILTER LOGIC (SERVER-SIDE)
+    // =========================================================================
+
+    // Cache Memory (In-Memory per session)
+    // Key: JSON.stringify(queryParams)
+    // Value: Array of products
+    const productCache = ref(new Map());
+
+    // Fungsi load product dari server dengan parameter search & limit
+    const loadProduct = async (params = {}) => {
+        // Merge params dengan default
+        const queryParams = {
+            query: params.search || filterState.value.search,
+            limit: displayLimit.value,
+            category_id: filterState.value.category,
+            product_type_id: filterState.value.subCategory,
+            sort: filterState.value.sort, // Cache juga harus sensitif terhadap sorting
+        };
+
+        const cacheKey = JSON.stringify(queryParams);
+
+        // 1. Cek Cache (Client-Side Feel)
+        if (productCache.value.has(cacheKey)) {
+            allProducts.value = productCache.value.get(cacheKey);
+            // Opsional: Tetap fetch di background untuk update data (Stale-While-Revalidate)
+            // Tapi untuk POS, "Feel Cepat" > "Data Detik Ini Update". 
+            // Kita skip fetch background jika sudah ada cache, KECUALI user memaksa refresh / search.
+            // Namun, stok mungkin berubah. Jadi kita bisa implement strategy:
+            // "Pakai Cache Dulu, Fetch Background Nanti"
+        } else {
+            isFetchingData.value = true;
+        }
+
         try {
-            const response = await axios.get(route("sales.products.lite"));
+            // Fetch Background (atau Fetch First jika belum ada cache)
+            const response = await axios.get(route("sales.products.lite"), {
+                params: queryParams
+            });
+
             allProducts.value = response.data;
+            // Simpan ke Cache
+            productCache.value.set(cacheKey, response.data);
         } catch (e) {
             console.error("Gagal load produk:", e);
-            toast.error("Gagal memuat database produk");
+            if (!productCache.value.has(cacheKey)) {
+                toast.error("Gagal memuat database produk");
+            }
         } finally {
             isFetchingData.value = false;
         }
     };
 
+    // Debounce search untuk mengurangi request server
+    const debouncedSearch = debounce(() => {
+        loadProduct();
+    }, 400); // Tunggu 400ms setelah user stop ngetik
+
+    // Watch perubahan filter
+    watch(
+        () => filterState.value,
+        (newVal, oldVal) => {
+            // Jika search berubah, pakai debounce
+            if (newVal.search !== oldVal.search) {
+                isFetchingData.value = true;
+                debouncedSearch();
+            } else {
+                // Jika kategori/sort berubah, load langsung (reset limit idealnya, tapi user scrolling behavior varies)
+                // displayLimit.value = 20; // Opsional: Reset scroll saat ganti kategori
+                loadProduct();
+            }
+        },
+        { deep: true }
+    );
+
+    // Filtered Products sekarang MURNI dari server
+    // Sorting bisa dilakukan di client untuk data yang sudah tampak (karena sorting server side butuh reload)
+    // Tapi jika kita load partial, sorting client side hanya mengurutkan 'what is visible'.
+    // Idealnya sorting dikirim ke server juga. 
+    // Tapi untuk responsiveness POS, sorting client side pada 'Top 20' hasil search biasanya cukup.
     const filteredProducts = computed(() => {
         let result = allProducts.value;
-        const { category, subCategory, search, sort } = filterState.value;
+        const { sort } = filterState.value;
 
-        // Filter Category
-        if (category !== "all") {
-            result = result.filter((p) => p.category_id === category);
-        }
-        // Filter Sub Category
-        if (subCategory !== "all") {
-            result = result.filter((p) => p.product_type_id === subCategory);
-        }
-        // Filter Search
-        if (search) {
-            const q = search.toLowerCase();
-            result = result.filter(
-                (p) =>
-                    p.name.toLowerCase().includes(q) ||
-                    p.code.toLowerCase().includes(q)
-            );
-        }
-        // Sorting
+        // Sorting (Client Side pada hasil Server Side)
         if (sort === "cheapest") {
             result.sort((a, b) => a.selling_price - b.selling_price);
         } else if (sort === "bestseller") {
             result.sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
         } else {
-            // Default sorting by name
             result.sort((a, b) => a.name.localeCompare(b.name));
         }
 
-        return result.slice(0, displayLimit.value);
+        return result;
     });
 
     const loadMoreProducts = () => {
-        if (displayLimit.value < allProducts.value.length) {
-            displayLimit.value += 20;
-        }
+        // Simple Infinite Scroll: Tambah limit dan request ulang
+        displayLimit.value += 20;
+        loadProduct();
     };
 
     // =========================================================================

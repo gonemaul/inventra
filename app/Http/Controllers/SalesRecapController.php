@@ -260,9 +260,13 @@ class SalesRecapController extends Controller
         ])->render();
     }
 
-    public function getAllProductsLite()
+    public function getAllProductsLite(Request $request)
     {
-        $products = Product::query()
+        // 1. Ambil Parameter
+        $search = $request->input('query'); // Input dari ketikan user
+        $limit = $request->input('limit', 20); // Default load 20 saja biar ringan
+
+        $query = Product::query()
             ->select([
                 'id',
                 'code',
@@ -270,20 +274,48 @@ class SalesRecapController extends Controller
                 'category_id',
                 'product_type_id',
                 'brand_id',
-                'selling_price', // atau price
+                'selling_price',
                 'stock',
-                'image_path', // string pendek
+                'image_path',
                 'unit_id',
                 'size_id',
             ])
-            ->withSum('saleItems as total_sold', 'quantity') // Hitung total terjual
-            ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name']) // Eager load unit, ambil nama saja
-            // ->where('stock', '>', 0) // Opsional: hanya yang ada stok
-            ->orderBy('name')
-            ->get();
+            ->withSum('saleItems as total_sold', 'quantity')
+            ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name']);
+            // ->where('stock', '>', 0); // (Opsional) Un-comment jika ingin menyembunyikan stok 0
 
-        // Transform sedikit agar payload makin kecil (Opsional)
-        // Di sini kita kirim raw JSON agar cepat
+        // 2. Logic Search & Filter Server Side
+        // A. Filter Search
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+        // B. Filter Kategori
+        if ($request->filled('category_id') && $request->input('category_id') !== 'all') {
+            $query->where('category_id', $request->input('category_id'));
+        }
+        // C. Filter Tipe/SubKategori
+        if ($request->filled('product_type_id') && $request->input('product_type_id') !== 'all') {
+            $query->where('product_type_id', $request->input('product_type_id'));
+        }
+
+        // 3. Sorting & Limiting (PENTING: Jangan ambil semua)
+        // Sort by 'total_sold' desc (Bestseller) is good default for POS usually,
+        // but Name is safer/standard.
+        if ($search) {
+             // Kalau sedang search, prioritaskan kecocokan nama (implicit via database match usually)
+             // Or keep simple:
+             $query->orderBy('name');
+        } else {
+             // Kalau default load, tampilkan bestseller atau terbaru
+             // $query->orderByDesc('total_sold');
+             $query->orderBy('name');
+        }
+            
+        $products = $query->limit($limit)->get();
+
         return response()->json($products);
     }
 }

@@ -3,7 +3,10 @@ import { Head, Link, router } from "@inertiajs/vue3";
 import { computed } from "vue";
 // Gunakan Layout Utama Anda
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import SalesChart from "@/Components/Charts/SalesChart.vue";
+import { defineAsyncComponent } from "vue";
+const SalesChart = defineAsyncComponent(() =>
+    import("@/Components/Charts/SalesChart.vue")
+);
 import DashboardFinanceWidget from "./DashboardFinanceWidget.vue";
 import RecentSalesWidget from "./RecentSalesWidget.vue";
 import SmartAssistantWidget from "./SmartAssistantWidget.vue";

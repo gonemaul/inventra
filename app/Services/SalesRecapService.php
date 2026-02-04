@@ -187,11 +187,15 @@ class SalesRecapService
             }
 
             $grandTotal = $totalRevenue - $discountTotal;
+            
+            // FIX: Kurangi Profit dengan Diskon
+            // Profit kotor (Row Loop) dikurangi Diskon Transaksi
+            $finalProfit = $totalProfit - $discountTotal;
 
             // 3. Update Header dengan Total Final
             $sale->update(attributes: [
                 'total_revenue' => $grandTotal,
-                'total_profit' => $totalProfit,
+                'total_profit' => $finalProfit, // Use adjusted profit
                 'discount_type' => $data['discount_type'] ?? Sale::DISCON_FIXED,
                 'discount_value' => $data['discount_value'] ?? 0,
                 'discount_total' => $discountTotal, // Rupiah potongannya
@@ -305,9 +309,34 @@ class SalesRecapService
                 $totalQty += $inputQty;
             }
 
+                $itemsCount++;
+                $totalQty += $inputQty;
+            }
+
+            // --- HITUNG DISKON DI EDIT (Logic Tambahan) ---
+            $discountTotal = 0;
+            if (! empty($data['discount_value']) && $data['discount_value'] > 0) {
+                $type = $data['discount_type'] ?? null;
+                if ($type === Sale::DISCON_PERCENT) {
+                    $discountTotal = ($totalRevenue * $data['discount_value']) / 100;
+                } else {
+                    $discountTotal = $data['discount_value'];
+                }
+            }
+
+            if ($discountTotal > $totalRevenue) {
+                $discountTotal = $totalRevenue;
+            }
+            
+            $grandTotal = $totalRevenue - $discountTotal;
+            $finalProfit = $totalProfit - $discountTotal;
+
             $sale->update([
-                'total_revenue' => $totalRevenue,
-                'total_profit' => $totalProfit,
+                'total_revenue' => $grandTotal,
+                'total_profit' => $finalProfit,
+                'discount_type' => $data['discount_type'] ?? Sale::DISCON_FIXED,
+                'discount_value' => $data['discount_value'] ?? 0,
+                'discount_total' => $discountTotal,
                 'financial_summary' => ['item_count' => $itemsCount, 'total_qty' => $totalQty],
             ]);
 
