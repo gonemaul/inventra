@@ -68,6 +68,7 @@ const tabs = computed(() => [
                         :autoBackupEnabled="autoBackupEnabled"
                         :lastRestore="lastRestore"
                         :lastBackup="lastBackup"
+                        :settings="shopSettings"
                 /></template>
             </Tabs>
         </div>

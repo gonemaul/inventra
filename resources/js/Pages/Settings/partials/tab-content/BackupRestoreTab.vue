@@ -1,7 +1,8 @@
 <script setup>
 import { router } from "@inertiajs/vue3";
-import { ref } from "vue";
+import { ref, reactive } from "vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
+import { useToast } from "vue-toastification";
 
 // Menerima data dari Parent (Settings/Index.vue)
 const props = defineProps({
@@ -9,25 +10,48 @@ const props = defineProps({
     autoBackupEnabled: Boolean, // Status ON/OFF jadwal otomatis (dari DB settings)
     lastRestore: Object,
     lastBackup: Object,
+    settings: {
+        type: Object,
+        default: () => ({}),
+    },
 });
 
+const toast = useToast();
 const fileInput = ref(null);
 const { isActionLoading } = useActionLoading();
+
+// Form State untuk Pengaturan Jadwal
+const form = reactive({
+    enabled: props.autoBackupEnabled,
+    backup_daily_time: props.settings.backup_daily_time || "22:00",
+    backup_frequency: props.settings.backup_frequency || "3", // String biar aman di select
+    report_morning_time: props.settings.report_morning_time || "06:30",
+    report_financial_time: props.settings.report_financial_time || "12:30",
+    report_closing_time: props.settings.report_closing_time || "21:00",
+    insight_generate_time: props.settings.insight_generate_time || "21:30",
+});
 
 // ---------------------------------------------------------
 // 1. LOGIC OTOMATISASI (JADWAL)
 // ---------------------------------------------------------
-const toggleAutoBackup = () => {
-    // Kirim status kebalikan (Toggle)
+const saveSettings = () => {
     router.post(
         route("backups.update-setting"),
         {
-            enabled: !props.autoBackupEnabled,
+            enabled: form.enabled,
+            backup_daily_time: form.backup_daily_time,
+            backup_frequency: form.backup_frequency,
+            report_morning_time: form.report_morning_time,
+            report_financial_time: form.report_financial_time,
+            report_closing_time: form.report_closing_time,
+            insight_generate_time: form.insight_generate_time,
         },
         {
             preserveScroll: true,
             onStart: () => (isActionLoading.value = true),
             onFinish: () => (isActionLoading.value = false),
+            onSuccess: () => toast.success("Pengaturan jadwal berhasil disimpan!"),
+            onError: () => toast.error("Gagal menyimpan pengaturan."),
         }
     );
 };
@@ -44,6 +68,7 @@ const createBackup = () => {
             {
                 onFinish: () => (isActionLoading.value = false),
                 preserveScroll: true,
+                onSuccess: () => toast.success("Backup berhasil dibuat!"),
             }
         );
     }
@@ -69,7 +94,6 @@ const restoreFromList = (fileName) => {
             {},
             {
                 onFinish: () => (isActionLoading.value = false),
-                // onSuccess: () => toast.success("Database berhasil dipulihkan."),
                 preserveScroll: true,
             }
         );
@@ -98,8 +122,6 @@ const handleUploadRestore = (e) => {
                 isActionLoading.value = false;
                 fileInput.value.value = null; // Reset input
             },
-            // onSuccess: () =>
-            // toast.success("Database berhasil dipulihkan dari file upload."),
         });
     }
 };
@@ -113,6 +135,7 @@ const deleteBackup = (fileName) => {
         router.delete(route("backups.destroy", fileName), {
             preserveScroll: true,
             onFinish: () => (isActionLoading.value = false),
+            onSuccess: () => toast.success("File backup dihapus."),
         });
     }
 };
@@ -120,73 +143,195 @@ const deleteBackup = (fileName) => {
 
 <template>
     <div class="space-y-8 animate-fade-in">
+        <!-- PENGATURAN JADWAL -->
         <div
-            class="flex items-center justify-between p-6 bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700"
+            class="flex flex-col p-6 space-y-6 bg-white border border-gray-200 shadow-sm dark:bg-gray-800 rounded-2xl dark:border-gray-700"
         >
-            <div class="flex items-center gap-4">
-                <div
-                    class="p-3 rounded-full"
-                    :class="
-                        autoBackupEnabled
-                            ? 'bg-green-100 text-green-600'
-                            : 'bg-gray-100 text-gray-400'
-                    "
-                >
-                    <svg
-                        class="w-6 h-6"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div
+                        class="p-3 rounded-full"
+                        :class="
+                            form.enabled
+                                ? 'bg-green-100 text-green-600'
+                                : 'bg-gray-100 text-gray-400'
+                        "
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        ></path>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-lg font-bold text-gray-800 dark:text-white">
-                        Backup Otomatis
-                    </h3>
-                    <p class="text-sm text-gray-500">
-                        Status:
-                        <span
-                            class="font-bold"
-                            :class="
-                                autoBackupEnabled
-                                    ? 'text-green-600'
-                                    : 'text-gray-400'
-                            "
-                            >{{
-                                autoBackupEnabled
-                                    ? "AKTIF (Setiap Jam 22:00)"
-                                    : "NON-AKTIF"
-                            }}</span
+                        <svg
+                            class="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
                         >
-                    </p>
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                            ></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3
+                            class="text-lg font-bold text-gray-800 dark:text-white"
+                        >
+                            Jadwal Otomatis
+                        </h3>
+                        <p class="text-sm text-gray-500">
+                            Atur kapan backup dan laporan digenerate secara
+                            otomatis.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button
+                        @click="form.enabled = !form.enabled"
+                        class="relative inline-flex items-center h-6 transition-colors rounded-full w-11 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        :class="
+                            form.enabled
+                                ? 'bg-green-500'
+                                : 'bg-gray-200 dark:bg-gray-700'
+                        "
+                    >
+                        <span class="sr-only">Toggle Backup</span>
+                        <span
+                            class="inline-block w-4 h-4 transition-transform transform bg-white rounded-full"
+                            :class="
+                                form.enabled ? 'translate-x-6' : 'translate-x-1'
+                            "
+                        />
+                    </button>
+                    <!-- Tombol Simpan -->
+                    <!-- Tampilkan hanya jika ada perubahan atau kita ingin explicit save -->
+                    <button
+                        v-if="form.enabled"
+                        @click="saveSettings"
+                        :disabled="isActionLoading.value == true"
+                        class="px-4 py-2 text-sm font-bold text-white transition bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                        Simpan Pengaturan
+                    </button>
                 </div>
             </div>
 
-            <button
-                @click="toggleAutoBackup"
-                :disabled="isActionLoading.value == true"
-                class="relative inline-flex items-center h-6 transition-colors rounded-full w-11 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
-                :class="
-                    autoBackupEnabled
-                        ? 'bg-green-500'
-                        : 'bg-gray-200 dark:bg-gray-700'
-                "
+            <!-- Form Detail (Hanya muncul jika Enabled) -->
+            <div
+                v-if="form.enabled"
+                class="grid grid-cols-1 gap-6 pt-6 border-t border-gray-100 md:grid-cols-2 lg:grid-cols-3 dark:border-gray-700"
             >
-                <span class="sr-only">Toggle Backup</span>
-                <span
-                    class="inline-block w-4 h-4 transition-transform transform bg-white rounded-full"
-                    :class="
-                        autoBackupEnabled ? 'translate-x-6' : 'translate-x-1'
-                    "
-                />
-            </button>
+                <!-- 1. Backup Harian (Heavy) -->
+                <div>
+                    <label
+                        class="block mb-1 text-xs font-bold text-gray-500 uppercase"
+                        >Backup Utama (Harian)</label
+                    >
+                    <input
+                        v-model="form.backup_daily_time"
+                        type="time"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                    />
+                    <p class="mt-1 text-xs text-gray-400">
+                        Backup lengkap (DB + File) + Upload Cloud.
+                    </p>
+                </div>
+
+                <!-- 2. Frekuensi Backup Ringan -->
+                <div>
+                    <label
+                        class="block mb-1 text-xs font-bold text-gray-500 uppercase"
+                        >Frekuensi Backup Ringan</label
+                    >
+                    <select
+                        v-model="form.backup_frequency"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                    >
+                        <option value="1">Setiap 1 Jam</option>
+                        <option value="2">Setiap 2 Jam</option>
+                        <option value="3">Setiap 3 Jam</option>
+                        <option value="4">Setiap 4 Jam</option>
+                        <option value="6">Setiap 6 Jam</option>
+                        <option value="12">Setiap 12 Jam</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">
+                        Backup Cepat (Hanya DB, Lokal).
+                    </p>
+                </div>
+
+                <!-- 3. Laporan Pagi -->
+                <div>
+                    <label
+                        class="block mb-1 text-xs font-bold text-gray-500 uppercase"
+                        >Generating Laporan Pagi</label
+                    >
+                    <input
+                        v-model="form.report_morning_time"
+                        type="time"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                    />
+                    <p class="mt-1 text-xs text-gray-400">
+                        Rencana Restock & Insight Harian.
+                    </p>
+                </div>
+
+                <!-- 4. Laporan Finansial -->
+                <div>
+                    <label
+                        class="block mb-1 text-xs font-bold text-gray-500 uppercase"
+                        >Laporan Finansial (Siang)</label
+                    >
+                    <input
+                        v-model="form.report_financial_time"
+                        type="time"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                    />
+                    <p class="mt-1 text-xs text-gray-400">
+                        Cek Omzet & Cash Flow siang hari.
+                    </p>
+                </div>
+
+                <!-- 5. Generate Insight -->
+                <div>
+                    <label
+                        class="block mb-1 text-xs font-bold text-gray-500 uppercase"
+                        >Generate Insight (Analisa)</label
+                    >
+                    <input
+                        v-model="form.insight_generate_time"
+                        type="time"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                    />
+                    <p class="mt-1 text-xs text-gray-400">
+                        Analisa berat (Dead Stock, Tren) untuk besok.
+                    </p>
+                </div>
+
+                <!-- 6. Tutup Toko (Closing) -->
+                <div>
+                    <label
+                        class="block mb-1 text-xs font-bold text-gray-500 uppercase"
+                        >Laporan Closing (Malam)</label
+                    >
+                    <input
+                        v-model="form.report_closing_time"
+                        type="time"
+                        class="w-full px-4 py-2 border rounded-lg focus:ring-indigo-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                    />
+                    <p class="mt-1 text-xs text-gray-400">
+                        Rekap Akhir Hari & Laporan Laba.
+                    </p>
+                </div>
+            </div>
+            <!-- BUTTON SIMPAN JIKA ENABLED=FALSE -->
+            <div v-else class="flex justify-end">
+                 <button
+                        @click="saveSettings"
+                        :disabled="isActionLoading.value == true"
+                        class="px-4 py-2 text-sm font-bold text-white transition bg-indigo-600 rounded-lg shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                        Simpan Perubahan
+                    </button>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2">

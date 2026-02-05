@@ -81,17 +81,34 @@ class BackupController extends Controller
     public function updateSetting(Request $request)
     {
         // Validasi input
-        $request->validate(['enabled' => 'required|boolean']);
+        $request->validate([
+            'enabled' => 'required|boolean',
+            'backup_daily_time' => 'required',
+            'backup_frequency' => 'required',
+            'report_morning_time' => 'required',
+            'report_financial_time' => 'required',
+            'report_closing_time' => 'required',
+            'insight_generate_time' => 'required',
+        ]);
 
         // Update di database settings
-        Setting::updateOrCreate(
-            ['key' => 'enable_auto_backup'],
-            ['value' => $request->enabled ? 'true' : 'false']
-        );
+        $settings = [
+            'enable_auto_backup' => $request->enabled ? 'true' : 'false',
+            'backup_daily_time' => $request->backup_daily_time,
+            'backup_frequency' => $request->backup_frequency,
+            'report_morning_time' => $request->report_morning_time,
+            'report_financial_time' => $request->report_financial_time,
+            'report_closing_time' => $request->report_closing_time,
+            'insight_generate_time' => $request->insight_generate_time,
+        ];
+
+        foreach ($settings as $key => $value) {
+            Setting::updateOrCreate(['key' => $key], ['value' => $value]);
+        }
 
         $status = $request->enabled ? 'diaktifkan' : 'dimatikan';
 
-        return back()->with('success', "Jadwal backup otomatis berhasil {$status}.");
+        return back()->with('success', "Pengaturan jadwal berhasil disimpan.");
     }
 
     // 2. RESTORE DARI FILE LIST

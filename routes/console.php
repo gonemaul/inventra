@@ -13,47 +13,60 @@ Artisan::command('inspire', function () {
 // Kita bungkus dalam try-catch agar tidak error saat migrate awal
 try {
     $autoBackupEnabled = Setting::where('key', 'enable_auto_backup')->value('value') === 'true';
+    $dailyTime = Setting::where('key', 'backup_daily_time')->value('value') ?? '22:00';
+    $frequency = Setting::where('key', 'backup_frequency')->value('value') ?? '3'; 
+    $morningTime = Setting::where('key', 'report_morning_time')->value('value') ?? '06:30';
+    $financialTime = Setting::where('key', 'report_financial_time')->value('value') ?? '12:30';
+    $closingTime = Setting::where('key', 'report_closing_time')->value('value') ?? '21:00';
+    $insightTime = Setting::where('key', 'insight_generate_time')->value('value') ?? '21:30';
 } catch (\Exception $e) {
     $autoBackupEnabled = false;
+    // Default values if DB fails
+    $dailyTime = '22:00';
+    $frequency = '3';
+    $morningTime = '06:30';
+    $financialTime = '12:30';
+    $closingTime = '21:00';
+    $insightTime = '21:30';
 }
 if ($autoBackupEnabled) {
-    // 1. LIGHT BACKUP (Setiap Jam - Kecuali jam 23:00)
+    // 1. LIGHT BACKUP (Custom Frequency)
     // Hanya simpan di Local, Hanya DB. Cepat (< 5 detik).
     Schedule::command('backup:run --only-db --disable-notifications')
-        ->everyThreeHours()
-        ->skip(function () {
-            return date('H') == '22'; // Jangan jalan jam 23:00 (karena ada heavy backup)
+        ->cron("0 */{$frequency} * * *") // Jalan setiap x jam
+        ->skip(function () use ($dailyTime) {
+            // Jangan jalan jika berdekatan dengan heavy backup (jam sama)
+            return date('H:i') == $dailyTime; 
         })
         ->timezone('Asia/Jakarta');
 
-    // 2. HEAVY BACKUP (Setiap Hari Jam 23:00 / Tutup Toko)
+    // 2. HEAVY BACKUP (Custom Time)
     // Backup DB + Files + Upload Google Drive + Hapus Backup Lama
     Schedule::command('backup:run')
-        ->dailyAt('22:00')
+        ->dailyAt($dailyTime)
         ->timezone('Asia/Jakarta');
 
-    // 3. CLEANUP (Bersihkan file lama setelah Heavy Backup)
+    // 3. CLEANUP (Bersihkan file lama setelah Heavy Backup - +15 menit dari daily time)
+    $cleanupTime = date('H:i', strtotime($dailyTime) + 900); // 15 menit setelah backup
     Schedule::command('backup:clean')
-        ->dailyAt('22:15')
+        ->dailyAt($cleanupTime)
         ->timezone('Asia/Jakarta');
 }
 
 // === 1. LAPORAN RUTIN (Reporter) ===
 
-// Pagi (06:30): Laporan Rencana & Restock
-// (Mengambil data hasil analisa tadi malam)
-Schedule::command('report:morning')->dailyAt('06:30');
+// Pagi: Laporan Rencana & Restock
+Schedule::command('report:morning')->dailyAt($morningTime);
 
-// SIANG: Laporan Finansial (Jam 12:30)
-Schedule::command('report:financial')->dailyAt('12:30');
-// Malam (21:00): Tutup Toko
-// (Hitung final omzet hari ini)
-Schedule::command('report:closing')->dailyAt('21:00');
+// SIANG: Laporan Finansial
+Schedule::command('report:financial')->dailyAt($financialTime);
+// Malam: Tutup Toko
+Schedule::command('report:closing')->dailyAt($closingTime);
 
 // === 2. ANALISA & PERSIAPAN (Generator) ===
 
-// Malam (21:30): Analisa Berat
+// Malam: Analisa Berat (Insight)
 // - Menjalankan InventoryService ke semua produk
 // - Menjalankan DSS (Dead Stock) jika hari Minggu
 // - Menyimpan hasil ke tabel Insight untuk dibaca report:morning besok
-Schedule::command('insight:generate')->dailyAt('21:30');
+Schedule::command('insight:generate')->dailyAt($insightTime);
