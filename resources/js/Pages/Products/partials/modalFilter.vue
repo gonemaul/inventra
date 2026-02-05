@@ -55,6 +55,9 @@ const form = useForm({
 
 const { isActionLoading } = useActionLoading();
 const typeProduct = computed(() => {
+    if(props.filters?.category_id && props.filters?.product_type_id){
+        return props.dropdowns.types
+    }
     return props.dropdowns.types.filter(
         (type) => type.category_id === form.category_id
     );
@@ -227,13 +230,14 @@ const formatRupiah = (value) => {
                         <select
                             v-model="form.product_type_id"
                             class="form-select"
-                            :disabled="typeProduct.length === 0"
+                            :disabled="typeProduct?.length === 0"
                         >
-                            <option value="">{{typeProduct.length === 0 ? 'Tidak Ada Tipe' : 'Semua Tipe'}}</option>
+                            <option value="">{{typeProduct?.length === 0 ? 'Tidak Ada Tipe' : 'Semua Tipe'}}</option>
                             <option
                                 v-for="opt in typeProduct"
                                 :key="opt.id"
                                 :value="opt.id"
+                                :selected="opt.id === form.product_type_id"
                             >
                                 {{ opt.name }}
                             </option>

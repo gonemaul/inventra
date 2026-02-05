@@ -35,7 +35,8 @@ watch(showTrashed, (newValue) => {
 const columns = [
     { key: "code", label: "Kode", sortable: true, width: "120px" },
     { key: "name", label: "Nama", sortable: true },
-    { key: "category.name", label: "Kategori", sortable: true },
+    { key: "category.name", label: "Kategori" },
+    { key: "product_count", label: "Produk", sortable: true },
     { key: "description", label: "Deskripsi", sortable: false },
     {
         key: "actions",
@@ -51,11 +52,12 @@ const refreshTable = () => {
 };
 const openCreateModal = () => {
     modalMode.value = "create";
-    editingData.value = null;
+    editingData.value = null;   
     showModal.value = true;
 };
 
 const editType = (row) => {
+    console.log(row)
     modalMode.value = "edit";
     editingData.value = { ...row };
     showModal.value = true;
@@ -146,11 +148,7 @@ const restoreType = (row) => {
                 </label>
             </div>
             <div class="flex gap-2">
-                <div class="flex items-center gap-2">
-                    <label
-                        class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
-                        >Kategori</label
-                    >
+                <div class="flex items-center">
                     <select name="category_id" id="category_id" v-model="params.category_id" class="w-full px-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all">
                         <option value="">Semua Kategori</option>
                         <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>

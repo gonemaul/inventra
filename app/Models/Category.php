@@ -37,6 +37,11 @@ class Category extends Model
         });
     }
 
+    public function product()
+    {
+        return $this->hasMany(Product::class, 'category_id');
+    }
+    
     public function productTypes()
     {
         return $this->hasMany(ProductType::class, 'category_id');
