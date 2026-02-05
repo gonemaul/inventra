@@ -56,6 +56,12 @@ onMounted(async () => {
     form.margin_nominal = Math.ceil(nominal);
 });
 
+const TypeProduct = computed(() => {
+    return props.dropdowns.types.filter(
+        (type) => type.category_id === form.category_id
+    );
+});
+
 const onPurchaseChange = () => {
     const buy = parseFloat(form.purchase_price) || 0;
     const percent = parseFloat(form.target_margin_percent) || 0;
@@ -313,10 +319,11 @@ const onScanResult = (decodedText) => {
                     <select
                         class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:border-lime-500 focus:ring-lime-500"
                         v-model="form.product_type_id"
+                        :disabled="TypeProduct.length === 0"
                     >
-                        <option :value="null">Pilih Tipe</option>
+                        <option :value="null">{{ TypeProduct.length === 0 ? 'Tidak Ada Tipe' : 'Pilih Tipe' }}</option>
                         <option
-                            v-for="type in dropdowns.types"
+                            v-for="type in TypeProduct"
                             :key="type.id"
                             :value="type.id"
                         >

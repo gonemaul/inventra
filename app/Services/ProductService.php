@@ -101,11 +101,17 @@ class ProductService
         $sortField = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
 
-        $allowedSorts = ['name', 'selling_price', 'purchase_price', 'stock', 'created_at', 'code', 'total_sold_all_time'];
-        if (in_array($sortField, $allowedSorts)) {
-            $query->orderBy($sortField, $sortDirection);
-        } else {
-            $query->orderBy('created_at', 'desc');
+        if($sortField === 'cheapest'){
+            $query->orderBy('selling_price', 'asc');
+        }else if($sortField === 'bestseller'){
+            $query->orderBy('total_sold_all_time', 'desc');
+        }else{
+            $allowedSorts = ['name', 'selling_price', 'purchase_price', 'stock', 'created_at', 'code', 'total_sold_all_time'];
+            if (in_array($sortField, $allowedSorts)) {
+                $query->orderBy($sortField, $sortDirection);
+            } else {
+                $query->orderBy('created_at', 'desc');
+            }
         }
 
         $perPage = $params['per_page'] ?? 10;

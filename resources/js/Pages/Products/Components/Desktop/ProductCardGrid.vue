@@ -24,9 +24,7 @@ const formatRupiah = (val) =>
         minimumFractionDigits: 0,
     }).format(val);
 
-console.log(props.data);
 const isTrashed = computed(() => props.data.deleted_at !== null);
-console.log(props.data);
 </script>
 <template>
     <div

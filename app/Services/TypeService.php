@@ -12,7 +12,7 @@ class TypeService
     public function getAll()
     {
         // Ambil ID dan Nama, urutkan berdasarkan Nama
-        return ProductType::orderBy('name')->get(['id', 'name']);
+        return ProductType::orderBy('name')->get(['id', 'name', 'category_id']);
     }
 
     /**
@@ -32,6 +32,10 @@ class TypeService
 
         if (isset($params['search']) && $params['search']) {
             $query->where('name', 'like', '%'.$params['search'].'%');
+        }
+
+        if (isset($params['category_id']) && $params['category_id']) {
+            $query->where('category_id', $params['category_id']);
         }
         $sortBy = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';

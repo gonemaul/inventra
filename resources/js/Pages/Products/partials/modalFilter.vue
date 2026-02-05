@@ -1,5 +1,6 @@
 <script setup>
-import Modal from "@/Components/Modal.vue";
+// import Modal from "@/Components/Modal.vue";
+import { computed } from "vue";
 import { useForm, router } from "@inertiajs/vue3";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import BottomSheetFilter from "@/Components/BottomSheetFilter.vue";
@@ -53,7 +54,11 @@ const form = useForm({
 });
 
 const { isActionLoading } = useActionLoading();
-
+const typeProduct = computed(() => {
+    return props.dropdowns.types.filter(
+        (type) => type.category_id === form.category_id
+    );
+});
 // Helper: Bersihkan nilai kosong sebelum dikirim ke URL
 function clean(obj) {
     return Object.entries(obj).reduce((acc, [key, value]) => {
@@ -222,10 +227,11 @@ const formatRupiah = (value) => {
                         <select
                             v-model="form.product_type_id"
                             class="form-select"
+                            :disabled="typeProduct.length === 0"
                         >
-                            <option value="">Semua Tipe</option>
+                            <option value="">{{typeProduct.length === 0 ? 'Tidak Ada Tipe' : 'Semua Tipe'}}</option>
                             <option
-                                v-for="opt in dropdowns.types"
+                                v-for="opt in typeProduct"
                                 :key="opt.id"
                                 :value="opt.id"
                             >
