@@ -32,7 +32,7 @@ watch(showTrashed, (newValue) => {
 const columns = [
     { key: "code", label: "Kode", sortable: true, width: "120px" },
     { key: "name", label: "Nama", sortable: true },
-    { key: "product_count", label: "Produk", sortable: true },
+    { key: "products_count", label: "Produk", sortable: true },
     { key: "description", label: "Deskripsi", sortable: false },
     {
         key: "actions",
@@ -57,6 +57,7 @@ const openCreateModal = () => {
 };
 
 const editCategory = (row) => {
+    console.log(row);
     modalMode.value = "edit";
     editingData.value = { ...row };
     showModal.value = true;

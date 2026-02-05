@@ -25,7 +25,7 @@ class CategoryService
 
     public function get(array $params)
     {
-        $query = Category::query()->with('products');
+        $query = Category::query()->withCount('products');
         if (isset($params['trashed']) && $params['trashed']) {
             $query->onlyTrashed();
         }

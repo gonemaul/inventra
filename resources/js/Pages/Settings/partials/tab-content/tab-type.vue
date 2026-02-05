@@ -36,7 +36,7 @@ const columns = [
     { key: "code", label: "Kode", sortable: true, width: "120px" },
     { key: "name", label: "Nama", sortable: true },
     { key: "category.name", label: "Kategori" },
-    { key: "product_count", label: "Produk", sortable: true },
+    { key: "products_count", label: "Produk", sortable: true },
     { key: "description", label: "Deskripsi", sortable: false },
     {
         key: "actions",

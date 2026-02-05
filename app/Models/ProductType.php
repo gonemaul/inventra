@@ -24,7 +24,7 @@ class ProductType extends Model
     }
 
     // Tipe ini memiliki banyak produk
-    public function product()
+    public function products()
     {
         return $this->hasMany(Product::class, 'product_type_id');
     }

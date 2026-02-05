@@ -25,7 +25,7 @@ class TypeService
 
     public function get(array $params)
     {
-        $query = ProductType::query()->withCount('product');
+        $query = ProductType::query()->withCount('products');
         if (isset($params['trashed']) && $params['trashed']) {
             $query->onlyTrashed();
         }
