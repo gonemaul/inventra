@@ -309,10 +309,6 @@ class SalesRecapService
                 $totalQty += $inputQty;
             }
 
-                $itemsCount++;
-                $totalQty += $inputQty;
-            }
-
             // --- HITUNG DISKON DI EDIT (Logic Tambahan) ---
             $discountTotal = 0;
             if (! empty($data['discount_value']) && $data['discount_value'] > 0) {

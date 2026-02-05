@@ -58,7 +58,7 @@ class ProductService
         }])->withSum('saleItems as total_sold_all_time', 'quantity');
 
         // 1. SEARCH GLOBAL
-        $query->when($paramSearch ?? null, function ($q, $search) {
+        $query->when($params['search'] ?? null, function ($q, $search) {
             $keyword = Str::lower($search) ?? null;
             $q->where(function ($sub) use ($keyword) {
                 $sub->where('name', 'like', "%{$keyword}%")
@@ -357,7 +357,7 @@ class ProductService
             if ($product->is_margin_low) {
                 $this->calculator->sendMarginAlert($product);
             }
-        } else {
+        } elseif ($data['type'] === 'full') {
             // dd($data);
             if ($imageFile) {
                 // Kirim path lama untuk dihapus

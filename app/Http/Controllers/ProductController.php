@@ -179,8 +179,13 @@ class ProductController extends Controller
 
         $this->productService->update($product, $data);
 
-        return Redirect::route('products.index')
-            ->with('success', 'Produk berhasil diperbarui!');
+        if ($data['type'] === 'full') {
+            return Redirect::route('products.index')
+                ->with('success', 'Produk berhasil diperbarui!');
+        } elseif ($data['type'] === 'stock' || $data['type'] === 'price') {
+            return back()
+                ->with('success', 'Produk berhasil diperbarui!');
+        }
     }
 
     /**

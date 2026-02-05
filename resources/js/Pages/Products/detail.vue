@@ -1,4 +1,4 @@
-<script setup>
+    <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Deferred, Head } from "@inertiajs/vue3";
 import CardDetail from "./partials/card-detail.vue";
@@ -493,16 +493,16 @@ const maxChartValue = computed(() => {
                                         <p
                                             class="text-sm font-bold"
                                             :class="
+                                            log.type === 'adjustment_opname' ? 'text-blue-600' :
                                                 getLogConfig(log).isPositive
                                                     ? 'text-green-600'
                                                     : 'text-red-600'
                                             "
                                         >
-                                            {{
-                                                getLogConfig(log).isPositive
-                                                    ? "+"
-                                                    : "-"
-                                            }}{{ log.quantity }}
+                                            {{ log.type === 'adjustment_opname' ? '~ ' : getLogConfig(log).isPositive
+                                                    ? "+ "
+                                                    : "- "
+                                            }}{{ log.type === 'adjustment_opname' ? log.stock_after : log.quantity }}
                                         </p>
                                         <p
                                             class="text-[10px] text-gray-400 mt-1"

@@ -174,6 +174,7 @@ const isFiltering = computed(() => {
 const sortCustom = (sort) => {
     const currentFilters = { ...props.filters };
     currentFilters.sort = sort;
+    console.log(sort)
     if (sort === 'default') {
         delete currentFilters.sort;
     }
@@ -325,7 +326,7 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                 <button
                     @click="
                         sortCustom(
-                            sort === 'cheapest' ? 'default' : 'cheapest'
+                            filters.sort === 'cheapest' ? 'default' : 'cheapest'
                         )
                     "
                     :class="
@@ -355,7 +356,7 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                 <button
                     @click="
                         sortCustom(
-                            sort === 'bestseller' ? 'default' : 'bestseller'
+                            filters.sort === 'bestseller' ? 'default' : 'bestseller'
                         )
                     "
                     :class="

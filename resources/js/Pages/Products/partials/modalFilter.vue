@@ -102,13 +102,13 @@ function applyFilter() {
 
     const finalFilters = clean(payload);
 
+    emit("close");
     isActionLoading.value = true;
     router.get(route("products.index"), finalFilters, {
         preserveState: true,
         replace: true,
         onFinish: () => {
             isActionLoading.value = false;
-            emit("close");
         },
     });
 }
@@ -119,6 +119,7 @@ function resetFilter() {
         ? { search: props.filters.search }
         : {};
 
+    emit("close");  
     isActionLoading.value = true;
     router.get(route("products.index"), currentSearch, {
         preserveState: true,
@@ -127,7 +128,6 @@ function resetFilter() {
             isActionLoading.value = false;
             form.reset();
             form.defaults();
-            emit("close");
         },
     });
 }
@@ -347,7 +347,7 @@ const formatRupiah = (value) => {
                         </div>
                     </div>
 
-                    <div>
+                    <div class="col-span-2 md:col-span-1 mx-auto">
                         <label
                             class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
                             >Harga Jual</label
@@ -383,7 +383,7 @@ const formatRupiah = (value) => {
                         </div>
                     </div>
 
-                    <div>
+                    <div class="col-span-2 md:col-span-1 mx-auto">
                         <label
                             class="block mb-1.5 text-xs font-bold text-gray-700 dark:text-gray-300"
                             >Harga Beli</label

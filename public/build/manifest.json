@@ -343,7 +343,7 @@
     ]
   },
   "resources/js/Pages/Dashboard/Dashboard.vue": {
-    "file": "assets/Dashboard-BhBZzDEW.js",
+    "file": "assets/Dashboard-CizWnSa_.js",
     "name": "Dashboard",
     "src": "resources/js/Pages/Dashboard/Dashboard.vue",
     "isDynamicEntry": true,
@@ -641,7 +641,7 @@
     ]
   },
   "resources/js/Pages/Products/detail.vue": {
-    "file": "assets/detail-q4RwKie_.js",
+    "file": "assets/detail-DLpnte4H.js",
     "name": "detail",
     "src": "resources/js/Pages/Products/detail.vue",
     "isDynamicEntry": true,
@@ -683,7 +683,7 @@
     ]
   },
   "resources/js/Pages/Products/index.vue": {
-    "file": "assets/index-BMn3cbz0.js",
+    "file": "assets/index-BgfGgJBU.js",
     "name": "index",
     "src": "resources/js/Pages/Products/index.vue",
     "isDynamicEntry": true,
@@ -762,7 +762,7 @@
     ]
   },
   "resources/js/Pages/Products/partials/modalFilter.vue": {
-    "file": "assets/modalFilter-BiIFK7N3.js",
+    "file": "assets/modalFilter-D1zwqVY5.js",
     "name": "modalFilter",
     "src": "resources/js/Pages/Products/partials/modalFilter.vue",
     "isDynamicEntry": true,
@@ -775,7 +775,7 @@
       "_vendor-charts-Bw6UNgWf.js"
     ],
     "css": [
-      "assets/modalFilter-BqscX9ok.css"
+      "assets/modalFilter-Dss5p2w7.css"
     ]
   },
   "resources/js/Pages/Products/partials/pagination.vue": {
@@ -1268,7 +1268,7 @@
     ]
   },
   "resources/js/Pages/Purchases/PurchaseDetail.vue": {
-    "file": "assets/PurchaseDetail-DO4109io.js",
+    "file": "assets/PurchaseDetail-BXn8F2BH.js",
     "name": "PurchaseDetail",
     "src": "resources/js/Pages/Purchases/PurchaseDetail.vue",
     "isDynamicEntry": true,
@@ -1300,7 +1300,7 @@
     ]
   },
   "resources/js/Pages/Purchases/create.vue": {
-    "file": "assets/create-D6zbu0BI.js",
+    "file": "assets/create-OW27f6lx.js",
     "name": "create",
     "src": "resources/js/Pages/Purchases/create.vue",
     "isDynamicEntry": true,
@@ -2018,7 +2018,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-CoYOJcfA.js",
+    "file": "assets/app-DSL-ws3L.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
