@@ -124,8 +124,7 @@ watch(
             form.type = newData.type || "";
             form.status = newData.status || "";
             form.category_id = newData.category_id || null;
-            form.is_decimal = newData.is_decimal || false;
-            // (Tambahkan field supplier di sini nanti)
+            form.is_decimal = Boolean(newData.is_decimal);
         } else {
             form.reset();
         }

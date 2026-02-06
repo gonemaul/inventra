@@ -72,6 +72,7 @@ class UnitService
             ],
             'name' => 'required|string|max:100',
             'description' => 'nullable|string|max:255',
+            'is_decimal' => 'boolean',
         ]);
 
         if ($validator->fails()) {

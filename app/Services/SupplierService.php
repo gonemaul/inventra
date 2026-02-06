@@ -26,7 +26,7 @@ class SupplierService
      */
     public function get(array $params)
     {
-        $query = Supplier::query();
+        $query = Supplier::query()->withCount('products');
 
         // 1. Cek apakah 'trashed' (sampah) diminta
         if (isset($params['trashed']) && $params['trashed']) {

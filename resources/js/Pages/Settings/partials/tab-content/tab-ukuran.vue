@@ -32,7 +32,7 @@ watch(showTrashed, (newValue) => {
 const columns = [
     { key: "code", label: "Kode", sortable: true, width: "120px" },
     { key: "name", label: "Nama", sortable: true },
-    { key: "description", label: "Deskripsi", sortable: false },
+    { key: "description", label: "Deskripsi", sortable: false, width: "300px", slot: "description" },
     {
         key: "actions",
         label: "Aksi",
@@ -158,6 +158,11 @@ const restoreSize = (row) => {
             :perPageOptions="[5, 10, 25, 50, 100]"
             :params="params"
         >
+            <template #description="{ row }">
+                <div class="truncate max-w-[300px]" :title="row.description">
+                    {{ row.description || "-" }}
+                </div>
+            </template>
             <!-- Slot aksi -->
             <template #aksi="{ row }">
                 <button

@@ -32,7 +32,8 @@ watch(showTrashed, (newValue) => {
 const columns = [
     { key: "code", label: "Kode", sortable: true, width: "120px" },
     { key: "name", label: "Nama", sortable: true },
-    { key: "description", label: "Deskripsi", sortable: false },
+    { key: "products_count", label: "Jumlah Produk", sortable: true },
+    { key: "description", label: "Deskripsi", sortable: false, width: "300px", slot: "description" },
     {
         key: "actions",
         label: "Aksi",
@@ -159,6 +160,11 @@ const restoreBrand = (row) => {
             :perPageOptions="[5, 10, 25, 50, 100]"
             :params="params"
         >
+            <template #description="{ row }">
+                <div class="truncate max-w-[300px]" :title="row.description">
+                    {{ row.description || "-" }}
+                </div>
+            </template>
             <template #aksi="{ row }">
                 <button
                     class="px-2 py-1 bg-blue-500 rounded hover:bg-blue-700"

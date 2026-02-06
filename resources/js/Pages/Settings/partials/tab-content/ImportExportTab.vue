@@ -1,6 +1,6 @@
 <script setup>
 import { useForm, usePage } from "@inertiajs/vue3";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 
 // --- LOGIC EXPORT ---
 const exportTargets = [
@@ -31,7 +31,23 @@ const importTargets = [
 ];
 
 const page = usePage();
-const importErrors = computed(() => page.props.errors.import_errors || []);
+const importErrors = computed(() => {
+    const err = page.props.errors.import_errors;
+    if (!err) return [];
+    return Array.isArray(err) ? err : [err];
+});
+const showErrors = ref(false);
+
+watch(
+    () => page.props.errors.import_errors,
+    (newVal) => {
+        if (newVal && newVal.length > 0) {
+            showErrors.value = true;
+        }
+    },
+    { immediate: true }
+);
+
 const selectedImport = ref("");
 const fileInput = ref(null);
 const importForm = useForm({ type: "", file: null });
@@ -52,6 +68,7 @@ const submitImport = () => {
         onSuccess: () => {
             importForm.reset();
             fileInput.value.value = null;
+            showErrors.value = false;
         },
     });
 };
@@ -124,6 +141,7 @@ const submitImport = () => {
                         >3. Upload & Proses</label
                     >
                     <input
+                        :disabled="!selectedImport"
                         type="file"
                         ref="fileInput"
                         accept=".xlsx"
@@ -144,40 +162,68 @@ const submitImport = () => {
                 </button>
 
                 <div
-                    v-if="importErrors.length > 0"
-                    class="p-4 mt-4 border border-red-200 rounded-lg bg-red-50 dark:bg-red-900/20 dark:border-red-800"
+                    v-if="importErrors.length > 0 && showErrors"
+                    class="relative p-4 mt-4 transition-all duration-300 border border-red-200 shadow-sm rounded-xl bg-red-50 dark:bg-red-900/10 dark:border-red-800 animate-in fade-in slide-in-from-top-2"
                 >
-                    <div class="flex items-start">
-                        <div class="flex-shrink-0">
+                    <button
+                        @click="showErrors = false"
+                        class="absolute top-3 right-3 text-red-400 hover:text-red-700 dark:hover:text-red-200 transition-colors"
+                    >
+                        <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+
+                    <div class="flex items-start gap-3">
+                        <div
+                            class="flex-shrink-0 p-2 text-red-500 bg-red-100 rounded-full dark:bg-red-800 dark:text-red-200"
+                        >
                             <svg
-                                class="w-5 h-5 text-red-400 dark:text-red-300"
+                                class="w-5 h-5"
                                 viewBox="0 0 20 20"
                                 fill="currentColor"
-                                aria-hidden="true"
                             >
                                 <path
                                     fill-rule="evenodd"
-                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z"
+                                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
                                     clip-rule="evenodd"
                                 />
                             </svg>
                         </div>
 
-                        <div class="w-full ml-3">
+                        <div class="w-full">
                             <h3
-                                class="text-sm font-semibold text-red-800 dark:text-red-200"
+                                class="text-sm font-bold text-red-800 dark:text-red-200"
                             >
-                                Gagal Import ({{ importErrors.length }} baris)
+                                Proses Import Gagal
+                                <span class="font-normal opacity-80"
+                                    >({{ importErrors.length }} error)</span
+                                >
                             </h3>
                             <div
-                                class="mt-2 overflow-y-auto text-sm text-red-700 max-h-40 dark:text-red-300"
+                                class="pr-2 mt-2 overflow-y-auto text-sm text-red-700 max-h-60 custom-scrollbar dark:text-red-300"
                             >
-                                <ul class="pl-5 space-y-1 list-disc">
+                                <ul class="space-y-2">
                                     <li
                                         v-for="(err, i) in importErrors"
                                         :key="i"
+                                        class="flex items-start gap-2 p-2 bg-white border border-red-100 rounded-lg dark:bg-red-900/30 dark:border-red-800/50"
                                     >
-                                        {{ err }}
+                                        <span
+                                            class="mt-1 text-xs text-red-400 select-none"
+                                            >•</span
+                                        >
+                                        <span>{{ err }}</span>
                                     </li>
                                 </ul>
                             </div>

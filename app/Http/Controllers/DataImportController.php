@@ -94,8 +94,7 @@ class DataImportController extends Controller
             return back()->withErrors(['import_errors' => $messages]);
         } catch (\Exception $e) {
             DB::rollBack(); // Batalkan jika ada error database/coding
-
-            return back()->withErrors('Gagal Import: '.$e->getMessage());
+            return back()->withErrors(['import_errors' => ['Gagal Import: '.$e->getMessage()]]);
         }
     }
 

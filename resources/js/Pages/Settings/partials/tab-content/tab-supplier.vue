@@ -33,6 +33,7 @@ const columns = [
     { key: "name", label: "Supplier", sortable: true, slot: "supplier" },
     { key: "address", label: "Alamat", sortable: true, slot: "address" },
     { key: "type", label: "Type", sortable: true, slot: "type" },
+    { key: "products_count", label: "Jumlah Produk", sortable: true },
     {
         key: "status",
         label: "Status",

@@ -11,8 +11,8 @@ class CategoryService
 {
     public function getAll()
     {
-        // Ambil ID dan Nama, urutkan berdasarkan Nama
-        return Category::with('productTypes:id,category_id,name')->orderBy('name')->get(['id', 'name']);
+        // Ambil ID dan Nama, urutkan berdasarkan Nama, sertakan jumlah tipe produk
+        return Category::withCount('productTypes')->orderBy('name')->get(['id', 'name']);
     }
 
     /**
@@ -25,7 +25,7 @@ class CategoryService
 
     public function get(array $params)
     {
-        $query = Category::query()->withCount('products');
+        $query = Category::query()->withCount(['products', 'productTypes']);
         if (isset($params['trashed']) && $params['trashed']) {
             $query->onlyTrashed();
         }

@@ -37,7 +37,7 @@ const columns = [
     { key: "name", label: "Nama", sortable: true },
     { key: "category.name", label: "Kategori" },
     { key: "products_count", label: "Produk", sortable: true },
-    { key: "description", label: "Deskripsi", sortable: false },
+    { key: "description", label: "Deskripsi", sortable: false, width: "300px", slot: "description" },
     {
         key: "actions",
         label: "Aksi",
@@ -169,6 +169,11 @@ const restoreType = (row) => {
             :perPageOptions="[5, 10, 25, 50, 100]"
             :params="params"
         >
+            <template #description="{ row }">
+                <div class="truncate max-w-[300px]" :title="row.description">
+                    {{ row.description || "-" }}
+                </div>
+            </template>
             <template #aksi="{ row }">
                 <div class="inline-flex">
                     <button

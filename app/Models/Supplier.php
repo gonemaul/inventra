@@ -16,6 +16,11 @@ class Supplier extends Model
         'updated_at',
     ];
 
+    public function products()
+    {
+        return $this->hasMany(Product::class);
+    }
+
     const STATUS_ACTIVE = 'active';
 
     const STATUS_INACTIVE = 'inactive';

@@ -25,7 +25,7 @@ class BrandService
 
     public function get(array $params)
     {
-        $query = Brand::query();
+        $query = Brand::query()->withCount('products');
         if (isset($params['trashed']) && $params['trashed']) {
             $query->onlyTrashed();
         }
