@@ -11,7 +11,7 @@ class ProductExport implements FromCollection, WithHeadings, WithMapping
 {
     public function collection()
     {
-        return Product::with(['category', 'unit', 'supplier', 'brand'])->get();
+        return Product::with(['category', 'unit', 'supplier', 'brand', 'productType','saleItems', 'size'])->get();
     }
 
     public function map($product): array
@@ -19,18 +19,39 @@ class ProductExport implements FromCollection, WithHeadings, WithMapping
         return [
             $product->code,
             $product->name,
+            $product->description ?? '',
             $product->category->name ?? '-',
+            $product->productType->name ?? '-',
             $product->unit->name ?? '-',
-            $product->brand->name ?? '-',
+            $product->size->name ?? '-',
             $product->supplier->name ?? '-',
+            $product->brand->name ?? '-',
             $product->purchase_price,
             $product->selling_price,
             $product->stock,
+            $product->min_stock ?? 0,
+            $product->saleItems->sum('quantity')
         ];
     }
 
     public function headings(): array
     {
-        return ['Kode', 'Nama', 'Kategori', 'Satuan', 'Merk', 'Supplier', 'Harga Beli', 'Harga Jual', 'Stok'];
+        // Must match DataImportController::getTemplateHeaders('products')
+        return [
+            'Kode Produk',
+            'Nama Produk',
+            'Deskripsi',
+            'Kategori',
+            'Type Produk',
+            'Satuan',
+            'Ukuran',
+            'Supplier',
+            'Merk',
+            'Harga Beli',
+            'Harga Jual',
+            'Stok Awal',
+            'Min Stok',
+            'Terjual'
+        ];
     }
 }
