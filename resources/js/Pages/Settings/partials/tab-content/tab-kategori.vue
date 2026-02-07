@@ -21,6 +21,7 @@ const params = ref({
     refresh_key: 0,
 });
 
+
 watch(showTrashed, (newValue) => {
     if (newValue === true) {
         params.value.trashed = true;

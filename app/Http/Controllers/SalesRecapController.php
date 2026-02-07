@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Customer;
 use App\Models\Product;
+use App\Models\Brand;
 use App\Models\Sale;
 use App\Services\CategoryService;
 use App\Services\SalesRecapService;
@@ -43,6 +44,7 @@ class SalesRecapController extends Controller
         return Inertia::render('Sale/Pos/index', [
             'categories' => $this->categoryService->getAll(),
             'customers' => Customer::select('id', 'name', 'member_code', 'phone')->get(),
+            'brands' => Brand::select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 
@@ -271,6 +273,7 @@ class SalesRecapController extends Controller
                 'id',
                 'code',
                 'name',
+                'description',
                 'category_id',
                 'product_type_id',
                 'brand_id',
@@ -281,8 +284,11 @@ class SalesRecapController extends Controller
                 'size_id',
             ])
             ->withSum('saleItems as total_sold', 'quantity')
-            ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name']);
-            // ->where('stock', '>', 0); // (Opsional) Un-comment jika ingin menyembunyikan stok 0
+            ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name', 'category:id,name','productType:id,name']);
+            
+        if ($request->boolean('hide_empty_stock')) {
+            $query->where('stock', '>', 0);
+        }
 
         // 2. Logic Search & Filter Server Side
         // A. Filter Search
@@ -299,6 +305,10 @@ class SalesRecapController extends Controller
         // C. Filter Tipe/SubKategori
         if ($request->filled('product_type_id') && $request->input('product_type_id') !== 'all') {
             $query->where('product_type_id', $request->input('product_type_id'));
+        }
+        // D. Filter Brand
+        if ($request->filled('brand_id') && $request->input('brand_id') !== 'all') {
+            $query->where('brand_id', $request->input('brand_id'));
         }
 
         // 3. Sorting & Limiting (PENTING: Jangan ambil semua)

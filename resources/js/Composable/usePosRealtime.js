@@ -20,8 +20,13 @@ export function usePosRealtime(props) {
         search: "",
         category: "all",
         subCategory: "all",
+        brand: "all",
         sort: "default",
+        hideEmptyStock: false,
     });
+
+    // Comparison State
+    const compareList = ref([]);
 
     // B. Member State
     const memberSearch = ref("");
@@ -250,7 +255,10 @@ export function usePosRealtime(props) {
             limit: displayLimit.value,
             category_id: filterState.value.category,
             product_type_id: filterState.value.subCategory,
-            sort: filterState.value.sort, // Cache juga harus sensitif terhadap sorting
+            brand_id: filterState.value.brand, // New addition
+            sort: filterState.value.sort,
+            hide_empty_stock: filterState.value.hideEmptyStock ? 1 : 0, // Changed to 1 or 0
+            // page: page, // 'page' is not defined in the current scope
         };
 
         const cacheKey = JSON.stringify(queryParams);
@@ -302,6 +310,12 @@ export function usePosRealtime(props) {
             } else {
                 // Jika kategori/sort berubah, load langsung (reset limit idealnya, tapi user scrolling behavior varies)
                 // displayLimit.value = 20; // Opsional: Reset scroll saat ganti kategori
+
+                // Clear products for loading effect if category changed
+                if (newVal.category !== oldVal.category) {
+                    allProducts.value = [];
+                }
+
                 loadProduct();
             }
         },
@@ -480,6 +494,31 @@ export function usePosRealtime(props) {
         }).format(val);
 
     // =========================================================================
+    // 8. COMPARISON LOGIC
+    // =========================================================================
+
+    const toggleCompare = (product) => {
+        const index = compareList.value.findIndex((p) => p.id === product.id);
+        if (index !== -1) {
+            compareList.value.splice(index, 1);
+        } else {
+            if (compareList.value.length >= 5) {
+                toast.warning("Maksimal 5 produk untuk perbandingan.");
+                return;
+            }
+            compareList.value.push(product);
+        }
+    };
+
+    const clearCompare = () => {
+        compareList.value = [];
+    };
+
+    const isInCompare = (productId) => {
+        return compareList.value.some(p => p.id === productId);
+    };
+
+    // =========================================================================
     // 8. LIFECYCLE
     // =========================================================================
 
@@ -495,6 +534,7 @@ export function usePosRealtime(props) {
         allProducts,
         filteredProducts,
         isFetchingData,
+        compareList,
 
         // Member State
         memberSearch,
@@ -510,22 +550,21 @@ export function usePosRealtime(props) {
         hasInvalidQty,
         moneySuggestions,
 
-        // Actions: Cart
+        loadMoreProducts,
+        queryMember,
         addItem,
         removeItem,
         updateQty,
+        resetPayment,
+        handleMoneyClick,
         recalcFromQty,
         recalcFromSubtotal,
         recalcFromPrice,
-        resetPayment,
-        handleMoneyClick,
 
-        // Actions: Product & Member
-        loadMoreProducts,
-        selectMember,
-        removeMember,
-        queryProduk,
-        queryMember,
+        // Actions: Compare
+        toggleCompare,
+        clearCompare,
+        isInCompare,
 
         // Transaction
         submitTransaction,

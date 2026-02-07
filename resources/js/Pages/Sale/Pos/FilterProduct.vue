@@ -6,13 +6,16 @@ import { Link } from "@inertiajs/vue3";
 const props = defineProps({
     // Data Utama
     categories: { type: Array, required: true },
+    brands: { type: Array, default: () => [] },
     isFetching: { type: Boolean, default: false }, // Status loading sync
 
     // State Filter (v-model bindings)
     search: { type: String, default: "" }, // v-model:search
     category: { type: [String, Number], default: "all" }, // v-model:category
     subCategory: { type: [String, Number], default: "all" }, // v-model:subCategory
+    brand: { type: [String, Number], default: "all" }, // v-model:brand
     sort: { type: String, default: "default" }, // v-model:sort
+    hideEmptyStock: { type: Boolean, default: false }, // v-model:hideEmptyStock
 });
 
 // 2. Mengirim Event ke Parent
@@ -20,14 +23,17 @@ const emit = defineEmits([
     "update:search",
     "update:category",
     "update:subCategory",
+    "update:brand",
     "update:sort",
+    "update:hideEmptyStock",
     "scan", // Event tombol scan
 ]);
 
 // Helper: Hitung Sub Kategori berdasarkan Kategori yang dipilih
 const activeSubCategories = computed(() => {
     if (props.category === "all") return [];
-    const cat = props.categories.find((c) => c.id === props.category);
+    // Fix: Gunakan '==' untuk comparison yang aman terhadap number/string difference
+    const cat = props.categories.find((c) => c.id == props.category);
     return cat ? cat.product_types || [] : []; // Pastikan backend kirim 'subs' atau sesuaikan key-nya
 });
 
@@ -149,39 +155,67 @@ const updateCategory = (val) => {
         </div>
 
         <div
-            class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-900 shrink-0"
+            class="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-900 shrink-0 max-w-screen"
         >
-            <div class="flex flex-1 gap-2 mr-2 overflow-x-auto scrollbar-hide">
-                <button
-                    v-if="category !== 'all' && activeSubCategories.length > 0"
-                    @click="$emit('update:subCategory', 'all')"
-                    :class="
-                        subCategory === 'all'
-                            ? 'text-lime-700 bg-lime-100 border-lime-200'
-                            : 'text-gray-500 border-transparent'
-                    "
-                    class="px-3 py-1 text-[10px] font-bold border rounded-lg whitespace-nowrap transition-colors"
-                >
-                    Semua
-                </button>
-                <button
-                    v-for="sub in activeSubCategories"
-                    :key="sub.id"
-                    @click="$emit('update:subCategory', sub.id)"
-                    :class="
-                        subCategory === sub.id
-                            ? 'text-lime-700 bg-lime-100 border-lime-200 ring-1 ring-lime-300'
-                            : 'text-gray-500 bg-white border-gray-200'
-                    "
-                    class="px-3 py-1 text-[10px] font-bold border rounded-lg whitespace-nowrap transition-all"
-                >
-                    {{ sub.name }}
-                </button>
-            </div>
-
+         <!-- Brand Filter -->
+          <div class="flex gap-2">
+              <div class="flex flex-col items-left gap-2 shrink-0">
+                  <span class="text-[10px] font-bold text-gray-400 uppercase">Brand:</span>
+                  <select
+                      :value="brand"
+                      @change="$emit('update:brand', $event.target.value)"
+                      class="py-1 pl-2 text-xs font-bold bg-gray-50 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 focus:ring-lime-500 focus:border-lime-500"
+                  >
+                      <option value="all">Semua</option>
+                      <option v-for="b in brands" :key="b.id" :value="b.id">
+                          {{ b.name }}
+                      </option>
+                  </select>
+              </div>
+              <div class="flex flex-col items-left gap-2 shrink-0" v-if="activeSubCategories?.length > 0">
+                  <span class="text-[10px] font-bold text-gray-400 uppercase">Tipe:</span>
+                  <select
+                      :value="subCategory"
+                      @change="$emit('update:subCategory', $event.target.value)"
+                      class="py-1 pl-2 text-xs font-bold bg-gray-50 border border-gray-200 rounded-lg dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 focus:ring-lime-500 focus:border-lime-500"
+                  >
+                      <option value="all">Semua</option>
+                      <option v-for="sub in activeSubCategories" :key="sub.id" :value="sub.id">
+                          {{ sub.name }}
+                      </option>
+                  </select>
+              </div>
+          </div>
             <div
-                class="flex items-center gap-2 pl-2 border-l border-gray-300 dark:border-gray-700 shrink-0"
+                class="flex items-center mt-auto gap-2 shrink-0"
             >
+                <button
+                    @click="$emit('update:hideEmptyStock', !hideEmptyStock)"
+                    :class="
+                        hideEmptyStock
+                            ? 'bg-red-100 text-red-700 border-red-200'
+                            : 'bg-white text-gray-400 border-gray-200'
+                    "
+                    class="flex items-center gap-1.5 px-2.5 py-1.5 border rounded-lg transition-all"
+                    title="Sembunyikan Stok Kosong"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-4 h-4"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                    >
+                        <path d="M17.94 17.94A10 10 0 0 1 12 20c-5.52 0-10-4.48-10-10a9.93 9.93 0 0 1 2.06-6.06" />
+                        <path d="M12 2a10 10 0 0 1 7.94 4.06" />
+                        <line x1="1" y1="1" x2="23" y2="23" />
+                    </svg>
+                    <span class="text-xs font-bold hidden sm:inline">Stok > 0</span>
+                </button>
+
                 <button
                     @click="
                         $emit(

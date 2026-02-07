@@ -219,16 +219,15 @@ const {
                             {{ item.name }}
                         </h4>
                         <div class="flex items-center gap-2 mt-1">
-                            <span
+                            <span v-if="item.size"
                                 class="text-[11px] font-mono text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded tracking-wide"
                             >
-                                {{ item.size.name }}
+                                {{ item.size?.name }}
                             </span>
                             <span
-                                v-if="item.unit"
                                 class="text-[10px] font-bold text-gray-400"
                             >
-                                / {{ item.unit.name }}
+                                / {{ item.unit?.name ?? '-' }}
                             </span>
                             <span
                                 class="text-[10px] font-bold"
