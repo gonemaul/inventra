@@ -1,1 +1,0 @@
-import{q as d}from"./vendor-core-CJbEklrS.js";const e=d(!1);function s(){return{isExtended:e,toggleExtended:()=>{e.value=!e.value},closeExtended:()=>{e.value=!0}}}const{isExtended:a,closeExtended:l}=s(),t=d(!1);function c(){return{isSidebarOpen:t,toggleSidebar:()=>{t.value=!t.value,l(),console.log("Sidebar open?",a.value)},closeSidebar:()=>{t.value=!1}}}export{c as a,s as u};
