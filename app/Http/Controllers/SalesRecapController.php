@@ -31,10 +31,108 @@ class SalesRecapController extends Controller
      */
     public function index(Request $request)
     {
-        $sales = $this->service->get($request->all());
+        // 1. Logic Global Search: Jika ada search, abaikan filter tanggal
+        $filters = $request->all();
+        if (!empty($request->search)) {
+            // Hapus filter tanggal agar pencarian bersifat global
+            unset($filters['min_date']);
+            unset($filters['max_date']);
+        } elseif (!$request->has('min_date') && !$request->has('max_date') && $request->input('period') !== 'all') {
+            // FIX: Default ke Hari Ini jika tidak ada filter sama sekali
+            $filters['min_date'] = now()->format('Y-m-d');
+            $filters['max_date'] = now()->format('Y-m-d');
+        }
+        
+        $sales = $this->service->get($filters);
+
+        // 2. Hitung Ringkasan (Dashboard & Best Seller)
+        // REVISI: Menggunakan Rolling Period (Hari ini ke belakang)
+        $todayDate = now();
+        $weekDate = now()->subDays(6); // 7 Hari Terakhir (termasuk hari ini)
+        $monthDate = now()->subDays(29); // 30 Hari Terakhir
+
+        $today = $todayDate->format('Y-m-d');
+        $startOfWeek = $weekDate->format('Y-m-d');
+        $startOfMonth = $monthDate->format('Y-m-d');
+
+        // Helper untuk hitung produk terlaris (Top 3 by Omset)
+        $getBestSellingRevenue = function ($startDate, $endDate = null) {
+            $query = \App\Models\SaleItem::selectRaw('product_id, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
+                ->whereHas('sale', function ($q) use ($startDate, $endDate) {
+                    $q->where('transaction_date', '>=', $startDate);
+                    if ($endDate) {
+                        $q->where('transaction_date', '<=', $endDate);
+                    }
+                })
+                ->groupBy('product_id')
+                ->orderByDesc('total_revenue') // Order by Omset
+                ->with('product:id,name,slug,unit,price,code') 
+                ->limit(3)
+                ->get();
+
+            return $query->map(function ($item) {
+                return [
+                    'id' => $item->product_id,
+                    'slug' => $item->product->slug,
+                    'name' => $item->product->name ?? 'Unknown',
+                    'code' => $item->product->code ?? '-',
+                    'qty' => $item->total_qty,
+                    'revenue' => $item->total_revenue
+                ];
+            });
+        };
+
+        // Helper untuk hitung produk terlaris (Top 3 by Qty)
+        $getBestSellingQty = function ($startDate, $endDate = null) {
+            $query = \App\Models\SaleItem::selectRaw('product_id, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
+                ->whereHas('sale', function ($q) use ($startDate, $endDate) {
+                    $q->where('transaction_date', '>=', $startDate);
+                    if ($endDate) {
+                        $q->where('transaction_date', '<=', $endDate);
+                    }
+                })
+                ->groupBy('product_id')
+                ->orderByDesc('total_qty') // Order by Qty
+                ->with('product:id,name,slug,unit,price,code') 
+                ->limit(3)
+                ->get();
+
+            return $query->map(function ($item) {
+                return [
+                    'id' => $item->product_id,
+                    'slug' => $item->product->slug,
+                    'name' => $item->product->name ?? 'Unknown',
+                    'code' => $item->product->code ?? '-',
+                    'qty' => $item->total_qty,
+                    'revenue' => $item->total_revenue
+                ];
+            });
+        };
+
+        $summary = [
+            'sales_today' => Sale::whereDate('transaction_date', $today)->sum('total_revenue'),
+            'sales_week' => Sale::where('transaction_date', '>=', $startOfWeek)->sum('total_revenue'),
+            'sales_month' => Sale::where('transaction_date', '>=', $startOfMonth)->sum('total_revenue'),
+            'count_today' => Sale::whereDate('transaction_date', $today)->count(),
+            
+            // Info Periode (String) untuk Frontend
+            'period_today' => $todayDate->translatedFormat('d M Y'),
+            'period_week' => $weekDate->translatedFormat('d M') . ' - ' . $todayDate->translatedFormat('d M Y'),
+            'period_month' => $monthDate->translatedFormat('d M') . ' - ' . $todayDate->translatedFormat('d M Y'),
+
+            // Data Tambahan untuk "Produk Terlaris" per periode
+            'best_selling_revenue_today' => $getBestSellingRevenue($today, $today),
+            'best_selling_revenue_week' => $getBestSellingRevenue($startOfWeek),
+            'best_selling_revenue_month' => $getBestSellingRevenue($startOfMonth),
+
+            'best_selling_qty_today' => $getBestSellingQty($today, $today),
+            'best_selling_qty_week' => $getBestSellingQty($startOfWeek),
+            'best_selling_qty_month' => $getBestSellingQty($startOfMonth),
+        ];
 
         return Inertia::render('Sale/index', [
             'sales' => $sales,
+            'summary' => $summary,
             'filters' => $request->only(['search', 'min_date', 'max_date', 'min_revenue', 'max_revenue']),
         ]);
     }
@@ -181,7 +279,7 @@ class SalesRecapController extends Controller
      */
     public function show(Sale $sale)
     {
-        $sale->load(['items', 'user']);
+        $sale->load(['items','items.product:id,slug', 'user']);
 
         return Inertia::render('Sale/Show', [
             'sale' => $sale,

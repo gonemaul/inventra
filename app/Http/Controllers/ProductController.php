@@ -74,7 +74,7 @@ class ProductController extends Controller
         $limit = $request->input('limit', 20); // Default ambil 20 item saja agar ringan
 
         $query = Product::query()
-            ->with('category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insight', 'movements');
+            ->with('category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insights', 'movements');
 
         if ($keyword) {
             $query->where(function ($q) use ($keyword) {

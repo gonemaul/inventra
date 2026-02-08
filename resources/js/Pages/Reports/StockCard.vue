@@ -1,12 +1,13 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, useForm } from "@inertiajs/vue3";
+import { Head, useForm, Link } from "@inertiajs/vue3";
 import { computed } from "vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
+import ProductSearchSelect from "@/Components/ProductSearchSelect.vue";
 
 const props = defineProps({
     filters: Object,
-    products: Array,
+    products: Array, // Empty now
     reportData: Object, // { product, opening_stock, movements }
 });
 const { isActionLoading } = useActionLoading();
@@ -17,6 +18,7 @@ const form = useForm({
 });
 
 const applyFilter = () => {
+    if (!form.product_id) return; // Prevent empty search
     isActionLoading.value = true;
     form.get(route("reports.stock-card"), {
         preserveScroll: true,
@@ -72,6 +74,40 @@ const getTypeBadge = (type) => {
     <Head title="Kartu Stok" />
 
     <AuthenticatedLayout headerTitle="Laporan & Audit">
+        <template #header>
+            <div class="flex items-center gap-4">
+                <Link
+                    :href="route('reports.index')"
+                    class="p-2 transition rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+                >
+                    <svg
+                        class="w-6 h-6 text-gray-600 dark:text-gray-300"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"
+                        ></path>
+                    </svg>
+                </Link>
+                <h2 class="text-xl font-semibold leading-tight text-gray-800 dark:text-gray-200">
+                    Kartu Stok
+                </h2>
+            </div>
+            <div class="flex gap-2">
+                <button @click="doExport" v-if="product" class="p-2 text-gray-600 transition hover:text-green-600 dark:text-gray-300" title="Export CSV">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                </button>
+                <button onclick="window.print()" class="p-2 text-gray-600 transition hover:text-blue-600 dark:text-gray-300" title="Print">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                </button>
+            </div>
+        </template>
+        
         <div class="space-y-6">
             <div
                 class="p-6 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-800 dark:border-gray-700"
@@ -88,19 +124,13 @@ const getTypeBadge = (type) => {
                             class="block mb-1 text-xs font-bold text-gray-500 uppercase"
                             >Pilih Produk</label
                         >
-                        <select
+                        <!-- Unified Search Component -->
+                        <ProductSearchSelect 
                             v-model="form.product_id"
-                            class="w-full border-gray-300 rounded-lg dark:bg-gray-700 focus:ring-lime-500 dark:text-white"
-                        >
-                            <option value="" disabled>-- Cari Barang --</option>
-                            <option
-                                v-for="p in products"
-                                :key="p.id"
-                                :value="p.id"
-                            >
-                                {{ p.code }} - {{ p.name }}
-                            </option>
-                        </select>
+                            :initialProduct="reportData?.product"
+                            placeholder="Ketik Kode / Nama Produk..."
+                            @change="applyFilter" 
+                        />
                     </div>
 
                     <div>
@@ -129,8 +159,8 @@ const getTypeBadge = (type) => {
                         </div>
                         <button
                             @click="applyFilter"
-                            :disabled="form.processing"
-                            class="flex items-center justify-center px-4 py-2 mt-auto font-bold text-white transition rounded-lg shadow-md bg-lime-500 hover:bg-lime-600"
+                            :disabled="form.processing || !form.product_id"
+                            class="flex items-center justify-center px-4 py-2 mt-auto font-bold text-white transition rounded-lg shadow-md bg-lime-500 hover:bg-lime-600 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Tampilkan
                         </button>

@@ -357,85 +357,85 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                 <select
                     v-model="stockStatusFilter"
                     @change="applyStockFilter"
-                    class="py-1.5 pl-3 pr-8 text-sm border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                    class="py-1.5 pl-3 pr-8 text-sm border-gray-300 rounded-lg md:mr-1 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 >
-                    <option value="">Semua Stok</option>
-                    <option value="ready">Ready Stok</option>
-                    <option value="empty">Stok Habis</option>
+                    <option value="">Semua</option>
+                    <option value="ready">Ready</option>
+                    <option value="empty">Habis</option>
                 </select>
             </div>
 
-            <div
-                class="flex items-center gap-2 pl-2 border-l border-gray-300 dark:border-gray-700 shrink-0"
-            >
-                <button
-                    @click="
-                        sortCustom(
-                            filters.sort === 'cheapest' ? 'default' : 'cheapest'
-                        )
-                    "
-                    :class="
-                        filters.sort === 'cheapest'
-                            ? 'bg-orange-100 text-orange-700 border-orange-200'
-                            : 'bg-white text-gray-400 border-gray-200'
-                    "
-                    class="p-1.5 border rounded-lg transition-all flex items-center gap-2 font-medium text-sm"
-                    title="Termurah"
+                <div
+                    class="flex items-center gap-2 pl-2 md:border-l md:border-gray-300 dark:md:border-gray-700 shrink-0"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                    <button
+                        @click="
+                            sortCustom(
+                                filters.sort === 'cheapest' ? 'default' : 'cheapest'
+                            )
+                        "
+                        :class="
+                            filters.sort === 'cheapest'
+                                ? 'bg-orange-100 text-orange-700 border-orange-200'
+                                : 'bg-white text-gray-400 border-gray-200'
+                        "
+                        class="p-1.5 border rounded-lg transition-all flex items-center gap-2 font-medium text-sm"
+                        title="Termurah"
                     >
-                        <path d="M12 20V10" />
-                        <path d="M18 20V4" />
-                        <path d="M6 20v-4" />
-                    </svg>
-                    {{ filters.sort === 'cheapest' ? 'Termurah' : '' }}
-                </button>
-                <button
-                    @click="
-                        sortCustom(
-                            filters.sort === 'bestseller' ? 'default' : 'bestseller'
-                        )
-                    "
-                    :class="
-                        filters.sort === 'bestseller'
-                            ? 'bg-purple-100 text-purple-700 border-purple-200'
-                            : 'bg-white text-gray-400 border-gray-200'
-                    "
-                    class="p-1.5 border rounded-lg transition-all flex gap-2 items-center font-medium text-sm"
-                    title="Terlaris"
-                >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="w-4 h-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-4 h-4"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M12 20V10" />
+                            <path d="M18 20V4" />
+                            <path d="M6 20v-4" />
+                        </svg>
+                        {{ filters.sort === 'cheapest' ? 'Termurah' : '' }}
+                    </button>
+                    <button
+                        @click="
+                            sortCustom(
+                                filters.sort === 'bestseller' ? 'default' : 'bestseller'
+                            )
+                        "
+                        :class="
+                            filters.sort === 'bestseller'
+                                ? 'bg-purple-100 text-purple-700 border-purple-200'
+                                : 'bg-white text-gray-400 border-gray-200'
+                        "
+                        class="p-1.5 border rounded-lg transition-all flex gap-2 items-center font-medium text-sm"
+                        title="Terlaris"
                     >
-                        <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
-                        <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
-                        <path d="M4 22h16" />
-                        <path
-                            d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"
-                        />
-                        <path
-                            d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"
-                        />
-                        <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
-                    </svg>
-                    {{ filters.sort === 'bestseller' ? 'Terlaris' : '' }}
-                </button>
-            </div>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="w-4 h-4"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        >
+                            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+                            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+                            <path d="M4 22h16" />
+                            <path
+                                d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"
+                            />
+                            <path
+                                d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"
+                            />
+                            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+                        </svg>
+                        {{ filters.sort === 'bestseller' ? 'Terlaris' : '' }}
+                    </button>
+                </div>
             </div>
             <Pagination
                 v-if="products.data.length > 10"

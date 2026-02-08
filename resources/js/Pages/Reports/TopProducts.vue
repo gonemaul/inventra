@@ -1,8 +1,9 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, useForm } from "@inertiajs/vue3";
+import { Head, useForm, Link } from "@inertiajs/vue3";
 import { computed } from "vue";
 import VueApexCharts from "vue3-apexcharts";
+import { useExport } from "@/Composable/useExport";
 
 const props = defineProps({
     filters: Object,
@@ -15,6 +16,20 @@ const form = useForm({
     limit: props.filters.limit,
     sort_by: props.filters.sort_by,
 });
+
+const { exportToCsv } = useExport();
+
+const doExport = () => {
+    const dataToExport = props.data.map((d, index) => ({
+        Rank: index + 1,
+        Nama: d.name,
+        Kode: d.code,
+        Kategori: d.category_name,
+        'Terjual (Qty)': d.total_qty,
+        'Omzet (Rp)': d.total_revenue
+    }));
+    exportToCsv('Laporan_Top_Produk', dataToExport);
+};
 
 const applyFilter = () => {
     form.get(route("reports.top-products"), { preserveScroll: true });
@@ -97,6 +112,28 @@ const chartSeries = computed(() => [
 
     <AuthenticatedLayout headerTitle="Analisa Produk Terlaris">
         <div class="space-y-6">
+            <!-- Toolbar -->
+            <div class="flex flex-col gap-4 mb-4 md:flex-row md:items-center md:justify-between print:hidden">
+                <div class="flex items-center gap-2">
+                    <Link
+                        :href="route('reports.index')"
+                        class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-600 transition bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:text-blue-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                        Kembali
+                    </Link>
+                </div>
+                <div class="flex gap-2">
+                    <button @click="doExport" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-green-600 rounded-lg shadow hover:bg-green-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Export CSV
+                    </button>
+                    <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-blue-600 rounded-lg shadow hover:bg-blue-700">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                        Print
+                    </button>
+                </div>
+            </div>
             <div
                 class="flex flex-col items-end justify-between gap-4 p-5 bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-800 dark:border-gray-700 md:flex-row"
             >

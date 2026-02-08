@@ -57,13 +57,90 @@ class ReportController extends Controller
         })
             ->sum(DB::raw('quantity * capital_price'));
 
+        // Hitung Revenue Bulan Lalu untuk Komparasi Trend
+        $lastMonthStart = now()->subMonth()->startOfMonth();
+        $lastMonthEnd = now()->subMonth()->endOfMonth();
+        $lastMonthRevenue = Sale::whereBetween('transaction_date', [$lastMonthStart, $lastMonthEnd])->sum('total_revenue');
+        
+        $revenueGrowth = 0;
+        if ($lastMonthRevenue > 0) {
+            $revenueGrowth = (($currentRevenue - $lastMonthRevenue) / $lastMonthRevenue) * 100;
+        } elseif ($currentRevenue > 0) {
+            $revenueGrowth = 100; // Jika bulan lalu 0 dan sekarang ada, anggap 100% (atau infinite)
+        }
+
         $currentExpenses = 0;
+        $lastMonthExpenses = 0;
+        
         if (class_exists('App\Models\Expense')) {
             $currentExpenses = Expense::whereBetween('date', [$startOfMonth, $endOfMonth])->sum('amount');
+            $lastMonthExpenses = Expense::whereBetween('date', [$lastMonthStart, $lastMonthEnd])->sum('amount');
         }
-        $netProfit = $currentRevenue - $currentCOGS - $currentExpenses;
 
+        // COGS Bulan Lalu
+        $lastMonthCOGS = SaleItem::whereHas('sale', function ($q) use ($lastMonthStart, $lastMonthEnd) {
+            $q->whereBetween('transaction_date', [$lastMonthStart, $lastMonthEnd]);
+        })->sum(DB::raw('quantity * capital_price'));
+
+        $netProfit = $currentRevenue - $currentCOGS - $currentExpenses;
+        $lastMonthProfit = $lastMonthRevenue - $lastMonthCOGS - $lastMonthExpenses;
+
+        $profitGrowth = 0;
+        if ($lastMonthProfit > 0) {
+            $profitGrowth = (($netProfit - $lastMonthProfit) / $lastMonthProfit) * 100;
+        } elseif ($netProfit > 0) {
+            $profitGrowth = 100;
+        }
         $netMargin = $currentRevenue > 0 ? ($netProfit / $currentRevenue) * 100 : 0;
+
+        // --- BARU: KESEHATAN STOK ---
+        // 1. Produk Menipis (Stock <= min_stock atau default 5)
+        $lowStockQuery = Product::where('stock', '>', 0)
+            ->where(function ($q) {
+                $q->whereColumn('stock', '<=', 'min_stock')
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('min_stock')->where('stock', '<=', 5);
+                  });
+            });
+
+        $lowStockCount = $lowStockQuery->count();
+        $lowStockItems = $lowStockQuery->select('name', 'stock', 'unit_id')
+            ->with('unit:id,name')
+            ->orderBy('stock', 'asc')
+            ->limit(5)
+            ->get();
+
+        // 2. Dead Stock Value (90 Hari tanpa penjualan)
+        $deadStockThreshold = now()->subDays(90);
+        $deadStockQuery = Product::where('stock', '>', 0)
+            ->whereDoesntHave('saleItems', function ($q) use ($deadStockThreshold) {
+                $q->whereHas('sale', function ($s) use ($deadStockThreshold) {
+                    $s->where('transaction_date', '>=', $deadStockThreshold);
+                });
+            });
+
+        $deadStockValue = $deadStockQuery->sum(DB::raw('stock * purchase_price'));
+        $deadStockItems = $deadStockQuery->select('name', 'stock', 'purchase_price', 'unit_id')
+            ->with('unit:id,name')
+            ->orderBy(DB::raw('stock * purchase_price'), 'desc') // Urutkan berdasarkan nilai uang mati terbesar
+            ->limit(5)
+            ->get();
+
+        // 3. Top Movers (5 Produk Terlaris Bulan Ini)
+        $topMovers = SaleItem::query()
+            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
+            ->join('products', 'products.id', '=', 'sale_items.product_id')
+            ->whereBetween('sales.transaction_date', [$startOfMonth, $endOfMonth])
+            ->select(
+                'products.name',
+                'products.code',
+                DB::raw('SUM(sale_items.quantity) as total_qty'),
+                DB::raw('SUM(sale_items.subtotal) as total_revenue')
+            )
+            ->groupBy('sale_items.product_id', 'products.name', 'products.code')
+            ->orderByDesc('total_qty')
+            ->limit(5)
+            ->get();
 
         // Render tampilan Menu Laporan
         return Inertia::render('Reports/Index', [
@@ -75,6 +152,14 @@ class ReportController extends Controller
                 'debt_due_soon' => (float) $debtDueSoon,
                 'net_profit' => (float) $netProfit,
                 'net_margin' => round($netMargin, 1),
+                // New Metrics
+                'low_stock_count' => $lowStockCount,
+                'low_stock_items' => $lowStockItems, // New List
+                'dead_stock_value' => (float) $deadStockValue,
+                'dead_stock_items' => $deadStockItems, // New List
+                'top_movers' => $topMovers,
+                'revenue_growth' => round($revenueGrowth, 1),
+                'profit_growth' => round($profitGrowth, 1),
             ],
         ]);
     }
@@ -127,8 +212,9 @@ class ReportController extends Controller
                 'start_date' => $startDate,
                 'end_date' => $endDate,
             ],
-            // List produk untuk dropdown filter (Optimasi: ambil yg perlu aja)
-            'products' => Product::select('id', 'code', 'name')->orderBy('name')->get(),
+            // products untuk dropdown tidak perlu diload semua (berat)
+            // Frontend akan menggunakan API Search
+            'products' => [], 
             'reportData' => $data,
         ]);
     }
@@ -152,23 +238,63 @@ class ReportController extends Controller
         if ($request->has('category_id') && $request->category_id) {
             $query->where('category_id', $request->category_id);
         }
+        
+        // Sorting logic
+        $sortColumn = $request->input('sort', 'stock'); // Default sort by stock
+        $sortDirection = $request->input('direction', 'desc'); // Default desc
 
-        $products = $query->orderBy('name')->get();
+        // Validasi kolom sort agar aman
+        $validSortColumns = ['name', 'stock', 'purchase_price', 'asset_value', 'potential_revenue'];
+        
+        if (in_array($sortColumn, ['asset_value', 'potential_revenue'])) {
+             // Sort by expression (calculated columns)
+             if ($sortColumn === 'asset_value') {
+                $query->orderByRaw('stock * purchase_price ' . $sortDirection);
+             } elseif ($sortColumn === 'potential_revenue') {
+                $query->orderByRaw('stock * selling_price ' . $sortDirection);
+             }
+        } else {
+            // Sort by combined column or standard column
+            if (in_array($sortColumn, $validSortColumns)) {
+                 $query->orderBy($sortColumn, $sortDirection);
+            } else {
+                 $query->orderBy('stock', 'desc'); // Fallback
+            }
+        }
 
-        // Hitung Ringkasan di Backend biar Frontend ringan
+
+        // Hitung Ringkasan di Backend (Aggregate) - SEBELUM Pagination
+        // Clone query agar filter tetap jalan tapi limit/offset tidak
+        $summaryQuery = clone $query; 
+        
+        // Gunakan DB::raw untuk kalkulasi sum product
+        $totalItems = $summaryQuery->sum('stock');
+        $totalAssetValue = $summaryQuery->sum(DB::raw('stock * purchase_price'));
+        $potentialRevenue = $summaryQuery->sum(DB::raw('stock * selling_price'));
+        $potentialProfit = $potentialRevenue - $totalAssetValue;
+
         $summary = [
-            'total_items' => $products->sum('stock'),
-            'total_asset_value' => $products->sum(fn ($p) => $p->stock * $p->purchase_price), // Total Modal
-            'potential_revenue' => $products->sum(fn ($p) => $p->stock * $p->selling_price), // Total Jika Laku
-            'potential_profit' => 0, // Dihitung di bawah
+            'total_items' => (int) $totalItems,
+            'total_asset_value' => (float) $totalAssetValue,
+            'potential_revenue' => (float) $potentialRevenue, // Total Jika Laku
+            'potential_profit' => (float) $potentialProfit, // Dihitung di bawah
         ];
-        $summary['potential_profit'] = $summary['potential_revenue'] - $summary['total_asset_value'];
+
+        // Pagination
+        $products = $query->paginate(20)->withQueryString();
+
+        // Append custom calculated attributes to each item in the current page
+        $products->getCollection()->transform(function ($product) {
+            $product->asset_value = $product->stock * $product->purchase_price;
+            $product->potential_sale = $product->stock * $product->selling_price;
+            return $product;
+        });
 
         return Inertia::render('Reports/StockValue', [
             'products' => $products,
             'summary' => $summary,
             'categories' => \App\Models\Category::all(), // Untuk filter
-            'filters' => $request->all(['category_id']),
+            'filters' => $request->only(['category_id', 'sort', 'direction']),
         ]);
     }
 
@@ -186,53 +312,72 @@ class ReportController extends Controller
         $cutOffDate = now()->subDays($thresholdDays);
 
         // Query: Ambil produk stok > 0 DAN (Tidak punya penjualan SEJAK cutOffDate)
-        $products = Product::with(['category', 'unit', 'lastSale'])
+        // Gunakan addSelect untuk mengambil tanggal penjualan terakhir agar bisa disortir dlm SQL
+        $query = Product::with(['category', 'unit'])
             ->where('stock', '>', 0)
-            ->whereDoesntHave('movements', function ($query) use ($cutOffDate) {
-                $query->where('type', StockMovement::TYPE_SALE)
+            ->addSelect(['last_sale_at' => StockMovement::select('created_at')
+                ->whereColumn('product_id', 'products.id')
+                ->where('type', StockMovement::TYPE_SALE)
+                ->latest()
+                ->limit(1)
+            ])
+            ->whereDoesntHave('movements', function ($q) use ($cutOffDate) {
+                $q->where('type', StockMovement::TYPE_SALE)
                     ->where('created_at', '>=', $cutOffDate);
-            })
-            ->get()
-            ->map(function ($product) {
-                // Hitung Hari Mandek
-                $lastSaleDate = $product->lastSale ? $product->lastSale->created_at : $product->created_at;
-                // PERBAIKAN: Gunakan startOfDay() untuk reset jam ke 00:00:00
-                // Agar perhitungan murni berdasarkan tanggal kalender (Integer)
-                $date1 = Carbon::parse($lastSaleDate)->startOfDay();
-                $date2 = now()->startOfDay();
-                $daysSilent = (int) $date1->diffInDays($date2);
+            });
 
-                // Klasifikasi Saran Tindakan
-                $suggestion = 'Promosi';
-                if ($daysSilent > 180) {
-                    $suggestion = 'Cuci Gudang / Obral';
-                } elseif ($daysSilent > 365) {
-                    $suggestion = 'Scrap / Musnahkan';
-                } elseif (! $product->lastSale) {
-                    $suggestion = 'Cek Display (Blm Pernah Laku)';
-                }
+        // Hitung Total Aset Macet (Aggregate di level Database sebelum pagination)
+        // Kita butuh query terpisah atau clone karena pagination akan memotong hasil
+        $totalFrozenAsset = $query->sum(DB::raw('stock * purchase_price'));
 
-                return [
-                    'id' => $product->id,
-                    'code' => $product->code,
-                    'name' => $product->name,
-                    'category' => $product->category->name ?? '-',
-                    'stock' => $product->stock,
-                    'unit' => $product->unit->name ?? '',
-                    'price' => $product->purchase_price, // HPP
-                    'asset_value' => $product->stock * $product->purchase_price, // Uang Mandek
-                    'last_sale_date' => $product->lastSale ? $product->lastSale->created_at : null,
-                    'days_silent' => $daysSilent,
-                    'suggestion' => $suggestion,
-                ];
-            })
-            ->sortByDesc('days_silent') // Urutkan dari yang paling "berkarat"
-            ->values();
+        // Sorting: Prioritaskan yang BELUM PERNAH LAKU (last_sale_at IS NULL),
+        // Kemudian urutkan dari yang Terakhir Lakunya Paling Lama (ASC)
+        $query->orderByRaw('last_sale_at IS NULL DESC')
+              ->orderBy('last_sale_at', 'asc');
+
+        $products = $query->paginate(20)->withQueryString();
+
+        $products->getCollection()->transform(function ($product) {
+            // Hitung Hari Mandek
+            // Gunakan atribut 'last_sale_at' yang sudah di-select via subquery atau dari relasi jika eager loaded (disini via subquery)
+            // Jika null, berarti belum pernah laku sejak awal (gunakan created_at barang sbg basis atau anggap infinity?)
+            // Logic lama: jika lastSale kosong, pakai created_at produk.
+            
+            $lastActivityDate = $product->last_sale_at ? $product->last_sale_at : $product->created_at;
+            
+            $date1 = Carbon::parse($lastActivityDate)->startOfDay();
+            $date2 = now()->startOfDay();
+            $daysSilent = (int) $date1->diffInDays($date2);
+
+            // Klasifikasi Saran Tindakan
+            $suggestion = 'Promosi';
+            if ($daysSilent > 180) {
+                $suggestion = 'Cuci Gudang / Obral';
+            } elseif ($daysSilent > 365) {
+                $suggestion = 'Scrap / Musnahkan';
+            } elseif (! $product->last_sale_at) { // Cek subquery attribute
+                $suggestion = 'Cek Display (Blm Pernah Laku)';
+            }
+
+            return [
+                'id' => $product->id,
+                'code' => $product->code,
+                'name' => $product->name,
+                'category' => $product->category->name ?? '-',
+                'stock' => $product->stock,
+                'unit' => $product->unit->name ?? '',
+                'price' => $product->purchase_price, // HPP
+                'asset_value' => $product->stock * $product->purchase_price, // Uang Mandek
+                'last_sale_date' => $product->last_sale_at,
+                'days_silent' => $daysSilent,
+                'suggestion' => $suggestion,
+            ];
+        });
 
         return Inertia::render('Reports/DeadStock', [
-            'products' => $products,
+            'products' => $products, // Paginated Object
             'filters' => ['days' => $thresholdDays],
-            'total_frozen_asset' => $products->sum('asset_value'),
+            'total_frozen_asset' => (float) $totalFrozenAsset,
         ]);
     }
 
@@ -334,50 +479,92 @@ class ReportController extends Controller
         $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
         $endDate = $request->input('end_date', now()->toDateString());
 
+        // Sorting logic
+        $sortColumn = $request->input('sort', 'profit'); // Default sort by profit
+        $sortDirection = $request->input('direction', 'desc');
+
         // Query Agregat Per Produk
-        // Asumsi: tabel sale_items punya kolom 'purchase_price' (HPP saat jual)
-        $items = SaleItem::query()
+        // Subquery atau Raw Select untuk kalkulasi performa
+        // Kita hitung di level database sebisa mungkin
+        $query = SaleItem::query()
             ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
             ->join('products', 'products.id', '=', 'sale_items.product_id')
             ->leftJoin('categories', 'categories.id', '=', 'products.category_id')
             ->whereBetween('sales.transaction_date', [$startDate.' 00:00:00', $endDate.' 23:59:59'])
-            // ->where('sales.status', '!=', 'cancelled')
+            ->where('sales.status', '!=', 'cancelled') // Pastikan tidak include batal (jika ada status)
             ->select(
                 'products.name',
                 'products.code',
                 'categories.name as category_name',
                 DB::raw('SUM(sale_items.quantity) as total_qty'),
                 DB::raw('SUM(sale_items.subtotal) as total_revenue'), // Omzet
-                DB::raw('SUM(sale_items.quantity * sale_items.capital_price) as total_cogs') // HPP
+                DB::raw('SUM(sale_items.quantity * sale_items.capital_price) as total_cogs'), // HPP
+                DB::raw('SUM(sale_items.subtotal - (sale_items.quantity * sale_items.capital_price)) as profit') // Profit
             )
-            ->groupBy('sale_items.product_id', 'products.name', 'products.code', 'categories.name')
-            ->get()
-            ->map(function ($item) {
-                $grossProfit = $item->total_revenue - $item->total_cogs;
-                $marginPercent = $item->total_revenue > 0
-                    ? ($grossProfit / $item->total_revenue) * 100
-                    : 0;
+            ->groupBy('sale_items.product_id', 'products.name', 'products.code', 'categories.name');
 
-                return [
-                    'name' => $item->name,
-                    'code' => $item->code,
-                    'category' => $item->category_name ?? '-',
-                    'qty' => $item->total_qty,
-                    'revenue' => $item->total_revenue,
-                    'cogs' => $item->total_cogs,
-                    'profit' => $grossProfit,
-                    'margin' => round($marginPercent, 1),
-                ];
-            })
-            ->sortByDesc('profit') // Default urutkan dari profit terbesar (Sultan)
-            ->values();
+        // Total Summary (Dihitung dari query terpisah agar tidak kena limit pagination)
+        // Kita gunakan query builder yang belum di-get
+        // Clone untuk summary
+        $summaryQuery = clone $query;
+        // Bungkus dalam subquery untuk sum hasil group by
+        $summaryStats = DB::table(DB::raw("({$summaryQuery->toSql()}) as grouped_sales"))
+            ->mergeBindings($summaryQuery->getQuery())
+            ->select(
+                DB::raw('SUM(profit) as total_profit'),
+                DB::raw('SUM(total_revenue) as total_revenue'),
+                 // Rata-rata margin dari total global
+            )
+            ->first();
+        
+        $totalProfit = $summaryStats->total_profit ?? 0;
+        $totalRevenue = $summaryStats->total_revenue ?? 0;
+        $globalMargin = $totalRevenue > 0 ? ($totalProfit / $totalRevenue) * 100 : 0;
+
+
+        // Apply Sorting
+        // Perlu hati-hati sorting kolom alias (total_revenue, dll)
+        if (in_array($sortColumn, ['total_qty', 'total_revenue', 'total_cogs', 'profit'])) {
+             $query->orderBy($sortColumn, $sortDirection);
+        } elseif ($sortColumn === 'margin') {
+             // Margin = (profit / revenue) * 100.
+             // Sort by expression
+             $query->orderByRaw('SUM(sale_items.subtotal - (sale_items.quantity * sale_items.capital_price)) / NULLIF(SUM(sale_items.subtotal),0) ' . $sortDirection);
+        } else {
+             $query->orderBy('products.name', $sortDirection);
+        }
+
+        $items = $query->paginate(20)->withQueryString();
+
+        // Transform data untuk frontend (terutama margin per item)
+        $items->getCollection()->transform(function ($item) {
+             $marginPercent = $item->total_revenue > 0
+                ? ($item->profit / $item->total_revenue) * 100
+                : 0;
+
+            return [
+                'name' => $item->name,
+                'code' => $item->code,
+                'category' => $item->category_name ?? '-',
+                'qty' => (int) $item->total_qty,
+                'revenue' => (float) $item->total_revenue,
+                'cogs' => (float) $item->total_cogs,
+                'profit' => (float) $item->profit,
+                'margin' => round($marginPercent, 1),
+            ];
+        });
 
         return Inertia::render('Reports/GrossProfit', [
-            'filters' => ['start_date' => $startDate, 'end_date' => $endDate],
-            'data' => $items,
+            'filters' => [
+                'start_date' => $startDate, 
+                'end_date' => $endDate,
+                'sort' => $sortColumn,
+                'direction' => $sortDirection
+            ],
+            'data' => $items, // Paginated
             'summary' => [
-                'total_profit' => $items->sum('profit'),
-                'avg_margin' => $items->count() > 0 ? round($items->avg('margin'), 1) : 0,
+                'total_profit' => (float) $totalProfit,
+                'avg_margin' => round($globalMargin, 1), // Margin global rata-rata
             ],
         ]);
     }
@@ -635,6 +822,66 @@ class ReportController extends Controller
                     'expenses' => (float) $operationalCost,
                 ],
             ],
+        ]);
+    }
+    public function expenseSummary(Request $request)
+    {
+        // 1. Filter Date
+        $startDate = $request->input('start_date', now()->startOfMonth()->toDateString());
+        $endDate = $request->input('end_date', now()->endOfMonth()->toDateString());
+
+        // 2. Query Base
+        $query = Expense::whereBetween('date', [$startDate, $endDate]);
+
+        // 3. Summary Stats
+        $totalExpense = (clone $query)->sum('amount');
+        
+        $daysCount = Carbon::parse($startDate)->diffInDays(Carbon::parse($endDate)) + 1;
+        $avgDaily = $daysCount > 0 ? $totalExpense / $daysCount : 0;
+
+        // 4. Chart Data (Group by Category)
+        $chartData = (clone $query)
+            ->select('category', DB::raw('sum(amount) as total'))
+            ->groupBy('category')
+            ->orderByDesc('total')
+            ->get();
+
+        // 5. Paginated List
+        $expenses = (clone $query)
+            ->orderBy('date', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+
+        return Inertia::render('Reports/ExpenseSummary', [
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
+            'summary' => [
+                'total_expense' => $totalExpense,
+                'avg_daily' => $avgDaily,
+            ],
+            'chart_data' => $chartData,
+            'expenses' => $expenses,
+        ]);
+    }
+    
+    public function topCustomers()
+    {
+        $customers = Sale::whereNotNull('customer_id')
+            ->select(
+                'customer_id',
+                DB::raw('sum(total_revenue) as total_spent'),
+                DB::raw('count(id) as visit_count'),
+                DB::raw('max(transaction_date) as last_seen')
+            )
+            ->groupBy('customer_id')
+            ->with('customer')
+            ->orderByDesc('total_spent')
+            ->paginate(20);
+
+        return Inertia::render('Reports/TopCustomers', [
+            'customers' => $customers,
         ]);
     }
 }

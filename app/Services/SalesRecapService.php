@@ -44,9 +44,9 @@ class SalesRecapService
             });
         });
 
-        // 4. Filter Tanggal (Date Range)
-        $query->when($params['min_date'] ?? null, fn ($q, $date) => $q->where('transaction_date', '>=', $date))
-            ->when($params['max_date'] ?? null, fn ($q, $date) => $q->where('transaction_date', '<=', $date));
+        // 4. Filter Tanggal (Date Range) - FIX: Pakai whereDate agar time component diabaikan (full day)
+        $query->when($params['min_date'] ?? null, fn ($q, $date) => $q->whereDate('transaction_date', '>=', $date))
+            ->when($params['max_date'] ?? null, fn ($q, $date) => $q->whereDate('transaction_date', '<=', $date));
 
         // 4. Filter Revenue (Nominal Range)
         $query->when($params['min_revenue'] ?? null, fn ($q, $revenue) => $q->where('total_revenue', '>=', $revenue))

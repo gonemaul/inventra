@@ -352,7 +352,7 @@ export function usePosRealtime(props) {
 
     const loadMoreProducts = () => {
         // Simple Infinite Scroll: Tambah limit dan request ulang
-        displayLimit.value += 20;
+        displayLimit.value += 12;
         loadProduct();
     };
 

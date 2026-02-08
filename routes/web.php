@@ -131,6 +131,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         // PILAR 4 FINANCE
         Route::get('/profit-loss', [ReportController::class, 'profitLoss'])->name('profit-loss');
         Route::get('/cash-flow', [ReportController::class, 'cashFlow'])->name('cash-flow');
+        Route::get('/expense-summary', [ReportController::class, 'expenseSummary'])->name('expense-summary');
+        Route::get('/top-customers', [ReportController::class, 'topCustomers'])->name('top-customers');
     });
 
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);
