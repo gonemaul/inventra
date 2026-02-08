@@ -8,6 +8,7 @@ import { ZiggyVue } from "../../vendor/tightenco/ziggy";
 
 import Toast, { POSITION } from "vue-toastification";
 import "vue-toastification/dist/index.css";
+import "vue-toastification/dist/index.css";
 
 import { registerSW } from "virtual:pwa-register";
 

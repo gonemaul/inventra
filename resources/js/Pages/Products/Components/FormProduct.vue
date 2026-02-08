@@ -49,6 +49,14 @@ const form = useForm({
 });
 const imagePreview = ref(props.product?.image_url ?? null);
 
+function handleFileChange(event) {
+    const file = event.target.files[0];
+    if (file) {
+        form.image = file; // Simpan file di form
+        imagePreview.value = URL.createObjectURL(file); // Buat preview lokal
+    }
+}
+
 onMounted(async () => {
     const buy = parseFloat(form.purchase_price) || 0;
     const sell = parseFloat(form.selling_price) || 0;
@@ -114,13 +122,7 @@ const onMarginNominalChange = () => {
     }
 };
 
-function handleFileChange(event) {
-    const file = event.target.files[0];
-    if (file) {
-        form.image = file; // Simpan file di form
-        imagePreview.value = URL.createObjectURL(file); // Buat preview lokal
-    }
-}
+
 const submitForm = () => {
     isActionLoading.value = true; // Nyalakan loader global
 
@@ -152,6 +154,7 @@ const onScanResult = (decodedText) => {
         @result="onScanResult"
         @close="showScanCode = false"
     />
+    
     <form class="flex flex-col h-full" @submit.prevent="submitForm">
         <div
             class="flex-1 p-4 space-y-5 overflow-y-auto md:p-6 md:space-y-6 custom-scrollbar"
