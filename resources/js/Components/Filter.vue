@@ -34,6 +34,9 @@ const emit = defineEmits(["showFilter", "update:modelValue"]);
             v-if="isSearch"
             :model-value="modelValue"
             @update:model-value="(value) => emit('update:modelValue', value)"
+            @focus="$event.target.select()"
+            type="search"
+            enterkeyhint="search"
             placeholder="Cari..."
         />
         <div class="flex justify-between md:justify-end">

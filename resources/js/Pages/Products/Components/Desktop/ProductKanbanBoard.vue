@@ -7,193 +7,63 @@ const props = defineProps({
     products: Array, // Data raw dari backend
 });
 
-// LOGIC PENGELOMPOKAN (ALLOW DUPLICATES)
-// Satu produk bisa masuk ke Critical DAN Trending sekaligus.
-// Hanya masuk ke 'Safe' jika tidak punya masalah sama sekali.
-
-const grouped = computed(() => {
-    const groups = {
-        critical: [],
-        trending: [],
-        dead: [],
-        safe: [],
-    };
-
-    props.products.forEach((product) => {
-        const insights = product.insights || [];
-        let hasIssue = false; // Penanda apakah produk ini punya status khusus
-        // 1. Cek Restock (Independen)
-        if (
-            insights.some(
-                (i) => i.type === "restock" && i.severity === "critical"
-            ) ||
-            product.stock <= product.min_stock
-        ) {
-            groups.critical.push(product);
-            hasIssue = true;
+const groupedByCategory = computed(() => {
+    const groups = {};
+    
+    // 1. Grouping
+    props.products.forEach(product => {
+        const categoryName = product.category?.name || 'Uncategorized';
+        if (!groups[categoryName]) {
+            groups[categoryName] = {
+                name: categoryName,
+                products: []
+            };
         }
-
-        // 2. Cek Trending (Independen - Pakai IF baru, bukan ELSE IF)
-        if (insights.some((i) => i.type === "trend")) {
-            groups.trending.push(product);
-            hasIssue = true;
-        }
-
-        // 3. Cek Dead Stock (Independen)
-        if (insights.some((i) => i.type === "dead_stock")) {
-            groups.dead.push(product);
-            hasIssue = true;
-        }
-
-        // 4. Cek Safe (Hanya jika TIDAK punya isu di atas)
-        if (!hasIssue) {
-            groups.safe.push(product);
-        }
+        groups[categoryName].products.push(product);
     });
 
-    return groups;
+    // 2. Sort Category by Name (Optional) and return as array
+    return Object.values(groups).sort((a, b) => a.name.localeCompare(b.name));
 });
 
-const openDetail = (id) => {
+const openDetail = (slug) => {
     router.visit(route("products.show", slug));
 };
 </script>
 
 <template>
     <div class="pb-4 overflow-x-auto">
-        <div class="flex gap-4 min-w-[1000px] max-h-[55vh] lg:min-w-0">
+        <div class="flex gap-4 min-w-full w-max px-1 pt-1 pb-4">
             <div
-                class="flex-1 bg-red-50/50 dark:bg-red-900/10 rounded-xl p-3 border border-red-100 dark:border-red-800 flex flex-col gap-3 min-w-[250px]"
+                v-for="group in groupedByCategory"
+                :key="group.name"
+                class="w-[280px] flex-shrink-0 flex flex-col max-h-[75vh] bg-gray-100/80 dark:bg-gray-800/50 rounded-xl border border-gray-200 dark:border-gray-700 backdrop-blur-sm"
             >
-                <div
-                    class="flex items-center justify-between pb-2 border-b border-red-200"
-                >
-                    <h3
-                        class="flex items-center gap-2 text-sm font-bold text-red-700"
-                    >
-                        🚨 Perlu Restock
-                        <span
-                            class="bg-red-200 text-red-800 px-1.5 rounded-full text-[10px]"
-                            >{{ grouped.critical.length }}</span
-                        >
+                <!-- Header Column -->
+                <div class="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center sticky top-0 bg-gray-100/90 dark:bg-gray-800/90 z-10 rounded-t-xl backdrop-blur-md">
+                    <h3 class="font-bold text-gray-700 dark:text-gray-200 text-sm truncate uppercase tracking-wider">
+                        {{ group.name }}
                     </h3>
+                    <span class="bg-white dark:bg-gray-700 text-gray-500 dark:text-gray-300 font-mono text-xs px-2 py-0.5 rounded-md border border-gray-200 dark:border-gray-600 shadow-sm">
+                        {{ group.products.length }}
+                    </span>
                 </div>
-                <div
-                    class="flex flex-col gap-2 overflow-y-auto max-h-[600px] pr-1 custom-scrollbar"
-                >
+
+                <!-- Product List -->
+                <div class="p-3 flex flex-col gap-3 overflow-y-auto custom-scrollbar flex-1">
                     <ProductKanbanCard
-                        v-for="p in grouped.critical"
+                        v-for="p in group.products"
                         :key="p.id"
                         :data="p"
-                        type="critical"
-                        @click="openDetail(p.id)"
+                        @click="openDetail(p.slug)"
                     />
-                    <div
-                        v-if="grouped.critical.length === 0"
-                        class="py-8 text-xs italic text-center text-red-300"
-                    >
-                        Stok aman bos!
-                    </div>
                 </div>
             </div>
-
-            <div
-                class="flex-1 bg-purple-50/50 dark:bg-purple-900/10 rounded-xl p-3 border border-purple-100 dark:border-purple-800 flex flex-col gap-3 min-w-[250px]"
-            >
-                <div
-                    class="flex items-center justify-between pb-2 border-b border-purple-200"
-                >
-                    <h3
-                        class="flex items-center gap-2 text-sm font-bold text-purple-700"
-                    >
-                        🔥 Sedang Hype
-                        <span
-                            class="bg-purple-200 text-purple-800 px-1.5 rounded-full text-[10px]"
-                            >{{ grouped.trending.length }}</span
-                        >
-                    </h3>
-                </div>
-                <div
-                    class="flex flex-col gap-2 overflow-y-auto max-h-[600px] pr-1 custom-scrollbar"
-                >
-                    <ProductKanbanCard
-                        v-for="p in grouped.trending"
-                        :key="p.id"
-                        :data="p"
-                        type="trending"
-                        @click="openDetail(p.id)"
-                    />
-                    <div
-                        v-if="grouped.trending.length === 0"
-                        class="py-8 text-xs italic text-center text-purple-300"
-                    >
-                        Belum ada tren
-                    </div>
-                </div>
-            </div>
-
-            <div
-                class="flex-1 bg-gray-100/50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-200 dark:border-gray-700 flex flex-col gap-3 min-w-[250px]"
-            >
-                <div
-                    class="flex items-center justify-between pb-2 border-b border-gray-300"
-                >
-                    <h3
-                        class="flex items-center gap-2 text-sm font-bold text-gray-600 dark:text-gray-300"
-                    >
-                        🐢 Barang Mati
-                        <span
-                            class="bg-gray-300 text-gray-800 px-1.5 rounded-full text-[10px]"
-                            >{{ grouped.dead.length }}</span
-                        >
-                    </h3>
-                </div>
-                <div
-                    class="flex flex-col gap-2 overflow-y-auto max-h-[600px] pr-1 custom-scrollbar"
-                >
-                    <ProductKanbanCard
-                        v-for="p in grouped.dead"
-                        :key="p.id"
-                        :data="p"
-                        type="dead"
-                        @click="openDetail(p.id)"
-                    />
-                    <div
-                        v-if="grouped.dead.length === 0"
-                        class="py-8 text-xs italic text-center text-gray-400"
-                    >
-                        Gudang sehat!
-                    </div>
-                </div>
-            </div>
-
-            <div
-                class="flex-1 bg-green-50/50 dark:bg-green-900/10 rounded-xl p-3 border border-green-100 dark:border-green-800 flex flex-col gap-3 min-w-[250px]"
-            >
-                <div
-                    class="flex items-center justify-between pb-2 border-b border-green-200"
-                >
-                    <h3
-                        class="flex items-center gap-2 text-sm font-bold text-green-700"
-                    >
-                        ✅ Stok Aman
-                        <span
-                            class="bg-green-200 text-green-800 px-1.5 rounded-full text-[10px]"
-                            >{{ grouped.safe.length }}</span
-                        >
-                    </h3>
-                </div>
-                <div
-                    class="flex flex-col gap-2 overflow-y-auto max-h-[600px] pr-1 custom-scrollbar"
-                >
-                    <ProductKanbanCard
-                        v-for="p in grouped.safe"
-                        :key="p.id"
-                        :data="p"
-                        type="safe"
-                        @click="openDetail(p.id)"
-                    />
-                </div>
+            
+            <!-- Empty State Helper -->
+             <div v-if="products.length === 0" class="flex flex-col items-center justify-center w-full py-20 text-gray-400">
+                <svg class="w-16 h-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                <p>Belum ada data produk untuk ditampilkan.</p>
             </div>
         </div>
     </div>
@@ -208,10 +78,10 @@ const openDetail = (id) => {
     background: transparent;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background: #d1d5db;
+    background: #cbd5e1;
     border-radius: 10px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: #9ca3af;
+    background: #94a3b8;
 }
 </style>

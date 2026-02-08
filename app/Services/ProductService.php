@@ -97,6 +97,15 @@ class ProductService
         $query->when($params['stock_min'] ?? null, fn ($q, $v) => $q->where('stock', '>=', $v));
         $query->when($params['stock_max'] ?? null, fn ($q, $v) => $q->where('stock', '<=', $v));
 
+        // FILTER STATUS STOK (Ready / Habis)
+        $query->when($params['stock_status'] ?? null, function ($q, $status) {
+            if ($status === 'ready') {
+                $q->where('stock', '>', 0);
+            } elseif ($status === 'empty') {
+                $q->where('stock', '<=', 0);
+            }
+        });
+
         // 5. SORTING
         $sortField = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
@@ -229,7 +238,7 @@ class ProductService
     private function getStockHistory($id)
     {
         $movements = StockMovement::where('product_id', $id)
-            ->orderBy('created_at', 'asc') // Urut kronologis (Baru -> Lama)
+            ->orderBy('created_at', 'desc') // Urut kronologis (Baru -> Lama)
             ->limit(10)
             ->get();
 

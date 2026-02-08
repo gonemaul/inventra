@@ -94,7 +94,9 @@ const {
             <div v-if="!selectedMember" class="relative">
                 <input
                     v-model="memberSearch"
-                    type="text"
+                    @focus="$event.target.select()"
+                    type="search"
+                    enterkeyhint="search"
                     placeholder="Cari / Scan Member..."
                     class="w-full text-xs border border-gray-200 dark:border-gray-600 rounded-xl p-2.5 pr-10 bg-gray-50 dark:bg-gray-900 dark:text-white focus:ring-lime-500 transition"
                 />
@@ -494,7 +496,9 @@ const {
                                 </button>
                                 <input
                                     v-model="form.discount_value"
-                                    type="number"
+                                    type="text"
+                                    inputmode="numeric"
+                                    @focus="$event.target.select()"
                                     placeholder="0"
                                     class="w-full px-2 py-1 ml-2 text-sm font-bold bg-white border border-gray-200 rounded-lg dark:bg-gray-700 dark:text-gray-300 focus:ring-lime-500"
                                 />
@@ -543,7 +547,7 @@ const {
                     >
                         <div class="flex flex-col flex-1 min-w-0 pr-2">
                             <span
-                                class="text-[9px] md:text-[10px] font-bold text-lime-800 uppercase tracking-widest mb-0.5 md:mb-1"
+                                class="text-[9px] md:text-[10px] dark:text-lime-400 font-bold text-lime-800 uppercase tracking-widest mb-0.5 md:mb-1"
                             >
                                 Total Tagihan
                             </span>
@@ -567,7 +571,7 @@ const {
 
                             <span
                                 v-if="subTotal !== grandTotal"
-                                class="text-[9px] md:text-[10px] text-gray-400 mt-1 truncate"
+                                class="text-[9px] md:text-[10px] text-gray-400 mt-1 truncate dark:text-gray-600"
                             >
                                 Subtotal:
                                 <span class="line-through">{{
@@ -578,7 +582,7 @@ const {
 
                         <div class="w-32 sm:w-40 shrink-0">
                             <label
-                                class="text-[9px] md:text-[10px] font-bold text-right text-lime-800 uppercase block mb-1 truncate"
+                                class="text-[9px] md:text-[10px] font-bold text-right text-lime-800 uppercase block mb-1 truncate dark:text-lime-400"
                             >
                                 Bayar ({{ form.payment_method }})
                             </label>
@@ -587,6 +591,7 @@ const {
                                 <MoneyInput
                                     v-model="form.payment_amount"
                                     placeholder="0"
+                                    @focus="$event.target.select()"
                                     class="w-full p-0 text-xl font-black text-right placeholder-gray-300 transition-colors bg-transparent border-none sm:text-2xl focus:ring-0"
                                     :class="
                                         isPaymentSufficient

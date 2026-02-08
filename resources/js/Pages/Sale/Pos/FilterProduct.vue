@@ -75,7 +75,9 @@ const updateCategory = (val) => {
                 <input
                     :value="search"
                     @input="$emit('update:search', $event.target.value)"
-                    type="text"
+                    @focus="$event.target.select()"
+                    type="search"
+                    enterkeyhint="search"
                     placeholder="Cari Nama / Kode..."
                     class="w-full pl-9 pr-10 py-2.5 bg-gray-100 dark:bg-gray-900 border-none rounded-xl focus:ring-2 focus:ring-lime-500 text-sm dark:text-white transition-all shadow-inner"
                 />

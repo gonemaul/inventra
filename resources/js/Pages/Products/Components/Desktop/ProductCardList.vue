@@ -1,11 +1,11 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 
 const props = defineProps({
     data: Object,
 });
-console.log(props.data);
+// console.log(props.data);
 const emit = defineEmits(["imageClick", "delete", "restore", "forceDelete"]);
 
 // --- HELPERS ---
@@ -15,6 +15,24 @@ const formatRupiah = (val) =>
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(val);
+
+const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return "Baru saja";
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} menit lalu`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} jam lalu`;
+    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} hari lalu`;
+    
+    return new Intl.DateTimeFormat("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+    }).format(date);
+};
 
 // --- LOGIC DSS ---
 const isTrending = computed(() =>
@@ -35,385 +53,172 @@ const isStockLow = computed(() => {
     return hasInsight || props.data.stock <= props.data.min_stock;
 });
 
+// Image Fallback Logic
+const imageError = ref(false);
+const handleImageError = () => {
+    imageError.value = true;
+};
+
 const isTrashed = computed(() => props.data.deleted_at !== null);
 </script>
 
 <template>
     <div
-        class="flex flex-col h-full overflow-hidden transition-all duration-300 bg-white border border-gray-300 shadow-md md:flex-row group dark:bg-gray-800 rounded-xl dark:border-gray-700 hover:shadow-md"
+        class="relative flex flex-row w-full overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-sm group dark:bg-gray-800 rounded-2xl dark:border-gray-700 hover:shadow-xl hover:-translate-y-0.5 hover:border-lime-500/30"
+        :class="{ 'opacity-60 grayscale': isTrashed }"
     >
+        <!-- 1. IMAGE SECTION (Left) -->
         <div
-            class="relative flex flex-col flex-shrink-0 w-32 mx-auto border-r border-gray-100 sm:w-36 dark:border-gray-700 bg-gray-50 dark:bg-gray-900"
+            class="relative w-36 shrink-0 bg-gray-50 dark:bg-gray-900 border-r border-gray-100 dark:border-gray-700 select-none cursor-pointer overflow-hidden"
+            @click="
+                emit('imageClick', {
+                    path: data.image_url,
+                    name: data.name,
+                })
+            "
         >
+            <img
+                v-if="!imageError"
+                :src="data.image_url"
+                loading="lazy"
+                class="absolute inset-0 object-cover w-full h-full transition-transform duration-500 hover:scale-110"
+                @error="handleImageError"
+            />
+            
+            <!-- Default Image Placeholder -->
             <div
-                class="relative flex items-center justify-center flex-1 w-full p-2 overflow-hidden bg-gray-100 border border-gray-200 cursor-pointer dark:bg-gray-800 group dark:border-gray-700 aspect-square"
-                @click="
-                    emit('imageClick', {
-                        path: data.image_url,
-                        name: data.name,
-                    })
-                "
+                 v-if="imageError || !data.image_url"
+                class="absolute inset-0 flex items-center justify-center bg-gray-100 dark:bg-gray-800 text-gray-300"
             >
-                <div
-                    class="absolute inset-0 z-0 flex flex-col items-center justify-center w-full h-full transition-colors duration-300"
-                >
-                    <svg
-                        class="w-10 h-10 mb-2 text-gray-400 dark:text-gray-600"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="1.5"
-                            d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                        ></path>
-                    </svg>
-                    <span
-                        class="text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-wider"
-                    >
-                        NO IMG
-                    </span>
-                </div>
-
-                <img
-                    :src="data.image_url"
-                    :alt="data.name"
-                    loading="lazy"
-                    decoding="async"
-                    onload="this.classList.remove('opacity-0')"
-                    onerror="this.style.display='none'"
-                    class="absolute inset-0 z-10 object-contain w-full h-full p-2 transition-all duration-500 bg-white opacity-0 md:p-4 group-hover:scale-110 dark:bg-gray-800"
-                />
-                <div
-                    class="absolute z-10 flex flex-col items-start gap-1 top-1 left-1 right-1"
-                >
-                    <span
-                        v-if="isTrending"
-                        class="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-purple-600 text-white rounded shadow-sm animate-pulse"
-                    >
-                        🔥 Trending
-                    </span>
-                    <span
-                        v-if="isDeadStock"
-                        class="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-gray-600 text-white rounded shadow-sm"
-                    >
-                        🐢 Slow
-                    </span>
-                </div>
-                <div
-                    class="absolute z-10 justify-between hidden gap-1 md:flex bottom-2 left-2 right-2"
-                >
-                    <span
-                        v-if="isMarginLow"
-                        class="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-opacity-50 bg-yellow-400 text-white rounded shadow-sm"
-                    >
-                        ⚠️ Margin
-                    </span>
-                    <span
-                        v-if="isStockLow"
-                        class="px-1.5 py-0.5 text-[9px] flex flex-col font-bold uppercase tracking-wider bg-red-500 bg-opacity-50 text-white rounded shadow-sm"
-                    >
-                        🚨 Stok
-                    </span>
-                </div>
+                <svg class="w-10 h-10 opacity-50" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
             </div>
 
-            <div
-                class="group relative py-1 text-[10px] rounded-br rounded-bl font-bold text-center text-white uppercase tracking-wider transition-colors cursor-help group-hover:bg-cyan-500 overflow-hidden"
-                :class="
-                    data.status === 'active' ? 'bg-lime-500' : 'bg-gray-400'
-                "
-            >
-                <div
-                    class="transition-all duration-300 ease-in-out transform group-hover:-translate-y-[150%] group-hover:opacity-0"
+             <!-- Badges (Overlay Top Left) -->
+             <div class="absolute top-2 left-2 flex flex-col gap-1 pointer-events-none z-10">
+                <span
+                    v-for="badge in data.active_badges"
+                    :key="badge.type"
+                     :class="[
+                        'self-start px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white rounded shadow-sm backdrop-blur-sm',
+                        badge.class,
+                    ]"
                 >
-                    {{ data.status === "active" ? "Aktif" : "Non-Aktif" }}
-                </div>
-
-                <div
-                    class="absolute inset-0 flex items-center justify-center px-1 transition-all duration-300 ease-in-out transform translate-y-[150%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100"
-                >
-                    <span class="w-full text-center truncate">
-                        {{ data.supplier?.name || "Tanpa Supplier" }}
-                    </span>
-                </div>
+                     {{ badge.label }}
+                </span>
             </div>
         </div>
 
-        <div
-            class="flex flex-col justify-between flex-1 min-w-0 p-3 bg-white dark:bg-gray-800"
-        >
-            <div>
-                <div class="flex items-start justify-between mb-1">
-                    <div
-                        class="flex flex-wrap items-center gap-1.5 text-[10px] font-bold text-gray-400 uppercase tracking-wider"
-                    >
-                        <span
-                            class="truncate bg-gray-200 dark:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-600 text-gray-500 dark:text-gray-100"
-                            >{{ data.brand?.name }}</span
-                        >
-                        <span class="hidden md:block">•</span>
-                        <span class="hidden truncate md:flex text-lime-600">{{
-                            data.category?.name
-                        }}</span>
-                        <span class="hidden md:block">|</span>
-                        <span
-                            class="truncate hidden md:flex max-w-[70px] text-lime-600"
-                            >{{ data.product_type?.name }}</span
-                        >
-                    </div>
-                    <span
-                        class="text-[11px] font-mono text-gray-500 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-100 dark:border-gray-600 dark:text-gray-100"
-                    >
-                        {{ data.code }}
-                    </span>
+        <!-- 2. CONTENT SECTION (Structured Grid/Flex) -->
+        <div class="flex flex-1 items-stretch divide-x divide-gray-50 dark:divide-gray-700">
+            
+            <!-- Col A: Identity (Name, Brand, Category) -->
+            <div class="flex-1 p-4 flex flex-col justify-center min-w-[200px]">
+                <div class="flex items-center gap-2 mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                     <span class="text-lime-600 dark:text-lime-400 truncate max-w-[100px]">{{ data.brand?.name }}</span>
+                     <span>•</span>
+                     <span class="truncate max-w-[100px]">{{ data.category?.name }}</span>
                 </div>
-
                 <Link
                     :href="route('products.show', data.slug)"
-                    class="block mb-2 text-sm font-bold leading-snug text-gray-900 transition sm:text-base dark:text-white hover:text-lime-600 line-clamp-1"
-                    :title="data.full_name"
+                    class="text-base font-bold leading-tight text-gray-900 dark:text-gray-100 hover:text-lime-600 dark:hover:text-lime-400 transition-colors line-clamp-2"
                 >
                     {{ data.name }}
                 </Link>
-
-                <div
-                    class="flex items-center justify-center gap-3 pb-2 mb-2 text-xs text-gray-500 border-b md:justify-start dark:text-gray-400"
-                >
-                    <div class="flex flex-col items-center gap-1 md:flex-row">
-                        <span
-                            class="text-[10px] font-bold uppercase text-gray-400"
-                            >Size</span
-                        >
-                        <span
-                            class="font-semibold text-gray-700 rounded px-1.5 py-0.5 bg-gray-100 border-gray-100 dark:text-gray-200 dark:bg-gray-700 dark:border-gray-700"
-                            >{{ data.size?.name || "-" }}</span
-                        >
-                    </div>
-                    <div class="flex flex-col items-center gap-1 md:flex-row">
-                        <span
-                            class="text-[10px] font-bold uppercase text-gray-400"
-                            >Unit</span
-                        >
-                        <span
-                            class="font-semibold text-gray-700 bg-gray-100 px-1.5 py-0.5 dark:bg-gray-700 border-gray-100 rounded dark:text-gray-200 dark:border-gray-700"
-                            >{{ data.unit?.name || "Pcs" }}</span
-                        >
-                    </div>
-                    <div class="flex flex-col items-center gap-1 md:flex-row">
-                        <span
-                            class="text-[10px] font-bold uppercase"
-                            :class="
-                                isStockLow ? 'text-red-500' : 'text-gray-400'
-                            "
-                            >Stok</span
-                        >
-                        <span
-                            class="font-bold px-1.5 py-0.5 rounded"
-                            :class="
-                                isStockLow
-                                    ? 'bg-red-50 dark:bg-red-100 !text-red-600 ring-1 ring-red-100'
-                                    : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200'
-                            "
-                            >{{ data.stock }}</span
-                        >
-                    </div>
+                <div class="mt-3 flex flex-wrap items-center gap-3">
+                     <span class="text-[10px] bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded text-gray-500 dark:text-gray-400 font-mono border border-gray-200 dark:border-gray-600">
+                        {{ data.code }}
+                     </span>
+                     <span v-if="data.supplier" class="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                        {{ data.supplier?.name }}
+                     </span>
+                     <span class="text-[10px] text-gray-400 italic">
+                        Updated {{ formatDate(data.updated_at) }}
+                     </span>
                 </div>
             </div>
 
-            <div class="space-y-2.5">
-                <div class="flex flex-col gap-1">
-                    <span class="text-[11px] text-gray-400 font-bold uppercase"
-                        >Modal (HPP)</span
+            <!-- Col B: Inventory (Stock, Unit) -->
+            <div class="w-32 p-4 flex flex-col justify-center items-center bg-gray-50/50 dark:bg-gray-800/50 transition-colors hover:bg-lime-50/30">
+                <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Stok</span>
+                <div class="text-center">
+                    <span 
+                        class="text-lg font-bold block leading-none"
+                        :class="isStockLow ? 'text-red-500' : 'text-gray-700 dark:text-gray-200'"
                     >
-                    <div class="flex flex-wrap items-center gap-2">
-                        <span
-                            class="text-sm font-bold text-gray-600 dark:text-gray-300"
-                        >
+                        {{ data.stock }}
+                    </span>
+                    <span class="text-[10px] text-gray-400 uppercase font-medium">{{ data.unit?.name }}</span>
+                </div>
+            </div>
+
+            <!-- Col C: Financials (HPP, Harga, Margin) -->
+            <div class="w-48 p-4 flex flex-col justify-center gap-2">
+                 <!-- Selling Price -->
+                 <div>
+                    <span class="text-[9px] block text-gray-400 uppercase font-bold">Harga Jual</span>
+                    <span class="text-base font-black text-gray-900 dark:text-white">
+                        {{ formatRupiah(data.selling_price) }}
+                    </span>
+                 </div>
+                 
+                 <!-- Modal / Margin -->
+                 <div class="flex items-center gap-3">
+                     <div>
+                        <span class="text-[9px] block text-gray-400 uppercase font-bold">Modal</span>
+                        <span class="text-xs font-semibold text-gray-500 dark:text-gray-400">
                             {{ formatRupiah(data.purchase_price) }}
                         </span>
-
-                        <div
-                            v-if="
-                                data.financials.price_trend.direction === 'up'
-                            "
-                            class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100"
-                            :title="
-                                `Modal Naik : ` +
-                                formatRupiah(
-                                    data.financials.price_trend.diff_rp
-                                )
-                            "
+                     </div>
+                     <div class="text-right flex-1">
+                        <span class="text-[9px] block text-gray-400 uppercase font-bold">Margin</span>
+                         <span 
+                            class="text-xs font-bold"
+                            :class="data.is_margin_low ? 'text-red-500' : 'text-green-600'"
                         >
-                            <span
-                                >↗
-                                {{ data.financials.price_trend.percent }}%</span
-                            >
-                        </div>
-                        <div
-                            v-if="
-                                data.financials.price_trend.direction === 'down'
-                            "
-                            class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600 border border-green-100"
-                            :title="
-                                `Modal Turun : ` +
-                                formatRupiah(
-                                    data.financials.price_trend.diff_rp
-                                )
-                            "
-                        >
-                            <span
-                                >↘ ({{
-                                    data.financials.price_trend.percent
-                                }}%)</span
-                            >
-                        </div>
-                    </div>
-                </div>
+                            +{{ data.current_margin["percent"] }}%
+                        </span>
+                     </div>
+                 </div>
+            </div>
 
-                <div class="flex flex-col gap-1">
-                    <span class="text-[11px] text-gray-400 font-bold uppercase"
-                        >Harga Jual</span
+            <!-- Col D: Actions -->
+            <div class="w-auto p-4 flex items-center justify-center gap-1 pr-6">
+                <!-- If Normal View -->
+                 <template v-if="!isTrashed">
+                    <Link
+                        :href="route('products.edit', data.slug)"
+                        class="p-2 text-gray-500 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-lime-600"
+                        title="Edit Produk"
                     >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                    </Link>
+                    <button
+                        @click="emit('delete', data)"
+                        class="p-2 text-gray-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600"
+                        title="Hapus Produk"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                 </template>
 
-                    <div class="flex items-center justify-between">
-                        <div class="flex flex-wrap items-center gap-2">
-                            <span
-                                class="text-lg font-black leading-none text-gray-900 dark:text-white"
-                            >
-                                {{ formatRupiah(data.selling_price) }}
-                            </span>
-                            <div
-                                class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-600 border border-blue-100"
-                                :title="
-                                    `Margin : ` +
-                                    formatRupiah(data.financials.margin.rp)
-                                "
-                            >
-                                <span
-                                    >+{{
-                                        data.financials.margin.percent
-                                    }}%</span
-                                >
-                            </div>
-                            <div
-                                v-if="
-                                    data.financials.sales_trend.direction ===
-                                    'up'
-                                "
-                                class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600 border border-green-100"
-                                :title="
-                                    `Harga Jual Naik : ` +
-                                    formatRupiah(
-                                        data.financials.sales_trend.diff_rp
-                                    )
-                                "
-                            >
-                                <span
-                                    >↗
-                                    {{
-                                        data.financials.sales_trend.percent
-                                    }}%</span
-                                >
-                            </div>
-                            <div
-                                v-if="
-                                    data.financials.sales_trend.direction ===
-                                    'down'
-                                "
-                                class="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-red-50 text-red-600 border border-red-100"
-                                :title="
-                                    `Harga Jual Turun : ` +
-                                    formatRupiah(
-                                        data.financials.sales_trend.diff_rp
-                                    )
-                                "
-                            >
-                                <span
-                                    >↘
-                                    {{
-                                        data.financials.sales_trend.percent
-                                    }}%</span
-                                >
-                            </div>
-                        </div>
-
-                        <div class="flex items-center gap-1">
-                            <Link
-                                v-if="!isTrashed"
-                                :href="route('products.edit', data.slug)"
-                                class="p-1.5 text-yellow-700 hover:text-yellow-100 bg-yellow-100 hover:bg-yellow-300 border border-gray-200 rounded transition"
-                            >
-                                <svg
-                                    class="w-3 h-3 sm:w-5 sm:h-5"
-                                    viewBox="0 0 24 24"
-                                    fill="currentColor"
-                                >
-                                    <path
-                                        d="M19.9902 18.9531C20.5471 18.9534 21 19.4124 21 19.9766C21 20.5418 20.5471 20.9998 19.9902 21H14.2793C13.7224 20.9998 13.2695 20.5419 13.2695 19.9766C13.2696 19.4124 13.7224 18.9533 14.2793 18.9531H19.9902ZM12.2412 3.95703C13.1538 2.78531 14.7463 2.67799 16.0303 3.69922L17.5049 4.87109C18.1097 5.34407 18.5134 5.96737 18.6514 6.62305C18.8105 7.34415 18.6403 8.05244 18.1631 8.66504L9.37598 20.0283C8.97274 20.544 8.37869 20.834 7.74219 20.8447L4.24023 20.8877C4.0493 20.8876 3.89009 20.7589 3.84766 20.5762L3.05176 17.125C2.91398 16.4909 3.05194 15.8352 3.45508 15.3301L9.68457 7.26758C9.79068 7.13908 9.98121 7.11856 10.1084 7.21387L12.7295 9.2998C12.8993 9.43955 13.1329 9.51467 13.377 9.48242C13.8969 9.41792 14.2474 8.94469 14.1943 8.43945C14.1625 8.18164 14.0349 7.96685 13.8652 7.80566C13.8122 7.76267 11.3184 5.7627 11.3184 5.7627C11.1593 5.63368 11.1276 5.39743 11.2549 5.2373L12.2412 3.95703Z"
-                                        fill="currentColor"
-                                    />
-                                </svg>
-                            </Link>
-                            <button
-                                :title="'Hapus ' + data.name"
-                                v-if="!isTrashed"
-                                @click="emit('delete', data)"
-                                class="p-1.5 text-red-700 hover:text-red-100 bg-red-200 hover:bg-red-300 border border-red-200 rounded transition"
-                            >
-                                <svg
-                                    class="w-3 h-3 sm:w-5 sm:h-5"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                >
-                                    <path
-                                        d="M18.9395 8.69727C19.1385 8.69738 19.3191 8.78402 19.4619 8.93066C19.5952 9.08766 19.663 9.28326 19.6436 9.48926C19.6429 9.56521 19.1099 16.2984 18.8057 19.1338C18.6151 20.8747 17.493 21.9319 15.8096 21.9609C14.5151 21.9899 13.2497 22 12.0039 22C10.6812 22 9.3874 21.9899 8.13184 21.9609C6.50488 21.9218 5.38206 20.8457 5.20117 19.1338C4.88816 16.2881 4.36472 9.56385 4.35449 9.48926C4.34477 9.28326 4.41071 9.08766 4.54492 8.93066C4.67715 8.78375 4.86811 8.69731 5.06836 8.69727H18.9395ZM14.0645 2C14.9485 2 15.7382 2.61708 15.9668 3.49707L16.1309 4.22656C16.2631 4.82145 16.778 5.24302 17.3711 5.24316H20.2871C20.676 5.24316 20.9998 5.56576 21 5.97656V6.35742C20.9998 6.75821 20.676 7.09082 20.2871 7.09082H3.71387C3.32402 7.09082 3.00025 6.75821 3 6.35742V5.97656C3.00021 5.56576 3.324 5.24316 3.71387 5.24316H6.62988C7.22203 5.24301 7.7369 4.82143 7.87012 4.22754L8.02344 3.5459C8.26078 2.61698 9.04181 2 9.93555 2H14.0645Z"
-                                        fill="currentColor"
-                                    />
-                                </svg>
-                            </button>
-                            <button
-                                :title="'Pulihkan ' + data.name"
-                                v-if="isTrashed"
-                                @click="emit('restore', data)"
-                                class="p-1.5 transition border rounded text-lime-500 bg-lime-100 hover:bg-lime-500 hover:text-lime-100"
-                            >
-                                <svg
-                                    class="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                                    ></path>
-                                </svg>
-                            </button>
-                            <button
-                                :title="'Hapus Permanen ' + data.name"
-                                v-if="isTrashed"
-                                @click="emit('forceDelete', data)"
-                                class="p-1 text-red-100 transition bg-red-700 border border-red-800 rounded hover:text-red-500 hover:bg-red-100 dark:border-red-200"
-                            >
-                                <svg
-                                    class="w-3 h-3 sm:w-5 sm:h-5"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                >
-                                    <path
-                                        d="M18.9395 8.69727C19.1385 8.69738 19.3191 8.78402 19.4619 8.93066C19.5952 9.08766 19.663 9.28326 19.6436 9.48926C19.6429 9.56521 19.1099 16.2984 18.8057 19.1338C18.6151 20.8747 17.493 21.9319 15.8096 21.9609C14.5151 21.9899 13.2497 22 12.0039 22C10.6812 22 9.3874 21.9899 8.13184 21.9609C6.50488 21.9218 5.38206 20.8457 5.20117 19.1338C4.88816 16.2881 4.36472 9.56385 4.35449 9.48926C4.34477 9.28326 4.41071 9.08766 4.54492 8.93066C4.67715 8.78375 4.86811 8.69731 5.06836 8.69727H18.9395ZM14.0645 2C14.9485 2 15.7382 2.61708 15.9668 3.49707L16.1309 4.22656C16.2631 4.82145 16.778 5.24302 17.3711 5.24316H20.2871C20.676 5.24316 20.9998 5.56576 21 5.97656V6.35742C20.9998 6.75821 20.676 7.09082 20.2871 7.09082H3.71387C3.32402 7.09082 3.00025 6.75821 3 6.35742V5.97656C3.00021 5.56576 3.324 5.24316 3.71387 5.24316H6.62988C7.22203 5.24301 7.7369 4.82143 7.87012 4.22754L8.02344 3.5459C8.26078 2.61698 9.04181 2 9.93555 2H14.0645Z"
-                                        fill="currentColor"
-                                    />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div>
+                 <!-- If Trash View -->
+                 <template v-else>
+                     <button
+                        @click="emit('restore', data)"
+                        class="p-2 text-lime-600 transition-colors rounded-lg hover:bg-lime-50"
+                        title="Pulihkan"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                    </button>
+                    <button
+                        @click="emit('forceDelete', data)"
+                        class="p-2 text-red-600 transition-colors rounded-lg hover:bg-red-50"
+                        title="Hapus Permanen"
+                    >
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
+                 </template>
             </div>
         </div>
     </div>

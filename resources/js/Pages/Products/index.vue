@@ -13,15 +13,15 @@ import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 import ImageModal from "@/Components/ImageModal.vue";
 import BottomSheet from "@/Components/BottomSheet.vue";
 // Product view
-import ProductCardList from "./Components/Desktop/ProductCardList.vue";
+import MobileCardGrid from "./Components/Mobile/MobileCardGrid.vue";
+import MobileCardList from "./Components/Mobile/MobileCardList.vue";
 import ProductCardGrid from "./Components/Desktop/ProductCardGrid.vue";
+import ProductCardList from "./Components/Desktop/ProductCardList.vue";
 import ProductKanbanBoard from "./Components/Desktop/ProductKanbanBoard.vue";
 import EmptyState from "./Components/EmptyState.vue";
 import StockAdjustmentForm from "./Components/Mobile/StockAdjustmentSheet.vue";
 import PriceAdjustmentForm from "./Components/Mobile/PriceAdjustmentSheet.vue";
 import ProductDetailSheet from "./Components/Mobile/ProductDetailSheet.vue";
-// Child
-import MobileCardGrid from "./Components/Mobile/MobileCardGrid.vue";
 
 const props = defineProps({
     products: Object, // Berisi data produk yang sudah dipaginasi
@@ -158,6 +158,7 @@ const restoreProduct = (row) => {
 const performSearch = throttle(() => {
     const currentFilters = { ...props.filters };
     currentFilters.search = search.value;
+    currentFilters.page = 1;
     if (!currentFilters.search || search.value == "") {
         delete currentFilters.search;
     }
@@ -191,8 +192,39 @@ const sortCustom = (sort) => {
         }
     );
 }
+
+// Filter Stok Logic
+const stockStatusFilter = ref(props.filters.stock_status || "");
+
+const applyStockFilter = () => {
+    const currentFilters = { ...props.filters };
+    
+    if (stockStatusFilter.value) {
+        currentFilters.stock_status = stockStatusFilter.value;
+    } else {
+        delete currentFilters.stock_status;
+    }
+
+    // Reset ke halaman 1 saat filter berubah
+    currentFilters.page = 1;
+
+    isActionLoading.value = true;
+    router.get(
+        route("products.index"),
+        currentFilters,
+        {
+            preserveState: true,
+            replace: true,
+            onFinish: () => {
+                isActionLoading.value = false;
+            },
+        }
+    );
+};
+
 const resetFilter = () => {
     isActionLoading.value = true;
+    stockStatusFilter.value = ""; // Reset local state
     router.get(
         route("products.index"),
         { per_page: props.filters.per_page || 10 },
@@ -320,7 +352,20 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                     </svg>
                 </button>
 
-                <div
+                <!-- Filter Stok Status -->
+            <div class="relative">
+                <select
+                    v-model="stockStatusFilter"
+                    @change="applyStockFilter"
+                    class="py-1.5 pl-3 pr-8 text-sm border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                >
+                    <option value="">Semua Stok</option>
+                    <option value="ready">Ready Stok</option>
+                    <option value="empty">Stok Habis</option>
+                </select>
+            </div>
+
+            <div
                 class="flex items-center gap-2 pl-2 border-l border-gray-300 dark:border-gray-700 shrink-0"
             >
                 <button
@@ -426,18 +471,30 @@ onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
                 </div>
                 <div
                     v-else-if="viewMode === 'list'"
-                    class="grid grid-cols-1 gap-4 mt-4 sm:grid-cols-2 lg:grid-cols-3"
+                    class="mt-4"
+                    :class="isMobile ? 'flex flex-col gap-3' : 'grid grid-cols-1 gap-4'"
                 >
-                    <ProductCardList
-                        v-for="product in productsWithBadges"
-                        :is-trash-view="isTrashView"
-                        :key="product.id"
-                        :data="product"
-                        @delete="openDeleteModal(product, false)"
-                        @forceDelete="openDeleteModal(product, true)"
-                        @restore="restoreProduct(product)"
-                        @imageClick="openImageModal"
-                    />
+                     <template v-if="isMobile">
+                        <MobileCardList
+                            v-for="product in productsWithBadges"
+                            :key="'mobile-list-' + product.id"
+                            :data="product"
+                            @click="openOpsiSheet('detail', product)"
+                            @imageClick="openImageModal"
+                        />
+                     </template>
+                    <template v-else>
+                         <ProductCardList
+                            v-for="product in productsWithBadges"
+                            :is-trash-view="isTrashView"
+                            :key="'desktop-list-' + product.id"
+                            :data="product"
+                            @delete="openDeleteModal(product, false)"
+                            @forceDelete="openDeleteModal(product, true)"
+                            @restore="restoreProduct(product)"
+                            @imageClick="openImageModal"
+                        />
+                    </template>
                 </div>
                 <div v-else-if="viewMode === 'kanban'">
                     <ProductKanbanBoard :products="productsWithBadges" />

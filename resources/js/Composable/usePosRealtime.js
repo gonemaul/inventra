@@ -22,7 +22,7 @@ export function usePosRealtime(props) {
         subCategory: "all",
         brand: "all",
         sort: "default",
-        hideEmptyStock: false,
+        hideEmptyStock: true,
     });
 
     // Comparison State
@@ -36,7 +36,14 @@ export function usePosRealtime(props) {
     // C. Main Transaction Form
     const form = useForm({
         input_type: "realtime",
-        report_date: new Date().toISOString().slice(0, 10),
+        // FIX: Gunakan Waktu Lokal (bukan UTC) untuk menghindari tanggal mundur jika jam < 7 pagi
+        report_date: (() => {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        })(),
         items: [],
         customer_id: null,
         payment_amount: 0,

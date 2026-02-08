@@ -24,26 +24,28 @@ const formatRupiah = (val) =>
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(val);
+// Konfigurasi Tampilan Berdasarkan Type
 const formatDate = (dateString) => {
     if (!dateString) return "-";
-    return new Date(dateString).toLocaleDateString("id-ID", {
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("id-ID", {
         day: "numeric",
         month: "short",
         year: "numeric",
         hour: "2-digit",
         minute: "2-digit",
-    });
+    }).format(date);
 };
-// Konfigurasi Tampilan Berdasarkan Type
+
 const getLogConfig = (log) => {
     const type = log.type;
     const qty = Number(log.quantity);
 
-    // Default Config
     let config = {
         label: "Transaksi",
-        icon: "📝", // Default icon
-        colorClass: "bg-gray-100 text-gray-600",
+        icon: "📝",
+        dotClass: "bg-gray-400",
+        badgeClass: "bg-gray-100 text-gray-600 border-gray-200",
         isPositive: qty > 0,
         sign: qty > 0 ? "+" : "",
     };
@@ -52,59 +54,66 @@ const getLogConfig = (log) => {
         case "initial":
             config.label = "Stok Awal";
             config.icon = "🏁";
-            config.colorClass = "bg-blue-100 text-blue-600";
+            config.dotClass = "bg-blue-500 shadow-blue-500/50";
+            config.badgeClass = "bg-blue-50 text-blue-600 border-blue-100";
             config.isPositive = true;
             break;
 
         case "purchase":
             config.label = "Pembelian";
             config.icon = "🚛";
-            config.colorClass = "bg-green-100 text-green-600";
+            config.dotClass = "bg-green-500 shadow-green-500/50";
+            config.badgeClass = "bg-green-50 text-green-600 border-green-100";
             config.isPositive = true;
             break;
 
         case "sale":
             config.label = "Penjualan";
             config.icon = "🛒";
-            config.colorClass = "bg-red-100 text-red-600";
+            config.dotClass = "bg-red-500 shadow-red-500/50";
+            config.badgeClass = "bg-red-50 text-red-600 border-red-100";
             config.isPositive = false;
             break;
 
         case "adjustment_in":
-            config.label = "Koreksi Masuk";
+            config.label = "Koreksi (+)";
             config.icon = "🔧";
-            config.colorClass = "bg-emerald-100 text-emerald-600";
+            config.dotClass = "bg-emerald-500";
+            config.badgeClass = "bg-emerald-50 text-emerald-600 border-emerald-100";
             config.isPositive = true;
             break;
 
         case "adjustment_out":
-            config.label = "Koreksi Keluar";
+            config.label = "Koreksi (-)";
             config.icon = "📉";
-            config.colorClass = "bg-orange-100 text-orange-600";
+            config.dotClass = "bg-orange-500";
+            config.badgeClass = "bg-orange-50 text-orange-600 border-orange-100";
             config.isPositive = false;
             break;
 
         case "adjustment_opname":
             config.label = "Stok Opname";
             config.icon = "📋";
-            // Opname bisa plus (hijau) atau minus (merah) tergantung selisih
             config.isPositive = qty >= 0;
-            config.colorClass = config.isPositive
-                ? "bg-purple-100 text-purple-600"
-                : "bg-pink-100 text-pink-600";
+            config.dotClass = config.isPositive ? "bg-purple-500" : "bg-pink-500";
+            config.badgeClass = config.isPositive 
+                ? "bg-purple-50 text-purple-600 border-purple-100" 
+                : "bg-pink-50 text-pink-600 border-pink-100";
             break;
 
         case "return_in":
             config.label = "Retur Customer";
             config.icon = "↩️";
-            config.colorClass = "bg-teal-100 text-teal-600";
+            config.dotClass = "bg-teal-500";
+            config.badgeClass = "bg-teal-50 text-teal-600 border-teal-100";
             config.isPositive = true;
             break;
 
         case "return_out":
             config.label = "Retur Supplier";
             config.icon = "↪️";
-            config.colorClass = "bg-rose-100 text-rose-600";
+            config.dotClass = "bg-rose-500";
+            config.badgeClass = "bg-rose-50 text-rose-600 border-rose-100";
             config.isPositive = false;
             break;
     }
@@ -331,57 +340,87 @@ const maxChartValue = computed(() => {
 
                 <Tabs :tabs="tabs" defaultTab="ringkasan">
                     <template #ringkasan>
-                        <div
-                            class="p-4 bg-white rounded-lg shadow dark:bg-gray-800"
-                        >
-                            <h2
-                                class="text-lg font-semibold text-gray-900 dark:text-white"
-                            >
-                                Ringkasan Penjualan
-                            </h2>
-                            <p
-                                class="mt-2 text-sm text-gray-600 dark:text-gray-300"
-                            >
-                                Performa penjualan produk ini dalam 7 hari
-                                terakhir.
-                            </p>
-
-                            <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="space-y-6">
+                            <!-- Stats Cards -->
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <div
-                                    class="p-3 border border-blue-100 rounded bg-blue-50 dark:bg-gray-700 dark:border-gray-600"
+                                    class="p-4 bg-white border border-gray-100 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700"
                                 >
-                                    <p
-                                        class="text-xs text-gray-500 uppercase dark:text-gray-400"
-                                    >
-                                        Terjual (30 Hari)
-                                    </p>
-                                    <p
-                                        class="text-2xl font-bold text-blue-600 dark:text-blue-400"
-                                    >
-                                        {{ detail.dss.sales_30_days }}
-                                        <span class="text-sm text-gray-500">{{
-                                            detail.product.unit?.name
-                                        }}</span>
-                                    </p>
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-2 bg-blue-50 text-blue-600 rounded-lg dark:bg-blue-900/20 dark:text-blue-400">
+                                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                                        </div>
+                                        <div>
+                                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                                Terjual (30 Hari)
+                                            </p>
+                                            <p class="text-2xl font-black text-gray-900 dark:text-white">
+                                                {{ detail.dss.sales_30_days }}
+                                                <span class="text-sm font-medium text-gray-500">{{ detail.product.unit?.name }}</span>
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <div
-                                    class="p-3 border border-green-100 rounded bg-green-50 dark:bg-gray-700 dark:border-gray-600"
+                                    class="p-4 bg-white border border-gray-100 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700"
                                 >
-                                    <p
-                                        class="text-xs text-gray-500 uppercase dark:text-gray-400"
-                                    >
-                                        Estimasi Omzet (30 Hari)
-                                    </p>
-                                    <p
-                                        class="text-lg font-bold text-green-600 dark:text-green-400"
-                                    >
-                                        {{
-                                            formatRupiah(
-                                                detail.dss.sales_30_days *
-                                                    detail.product.selling_price
-                                            )
-                                        }}
-                                    </p>
+                                    <div class="flex items-center gap-3">
+                                        <div class="p-2 bg-green-50 text-green-600 rounded-lg dark:bg-green-900/20 dark:text-green-400">
+                                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        </div>
+                                        <div>
+                                             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                                Estimasi Omzet
+                                            </p>
+                                            <p class="text-2xl font-black text-gray-900 dark:text-white">
+                                                {{ formatRupiah(detail.dss.sales_30_days * detail.product.selling_price) }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Description & Specs -->
+                            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                <!-- Main Info -->
+                                <div class="lg:col-span-2 p-5 bg-white border border-gray-100 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700">
+                                    <h3 class="text-base font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                        <svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" /></svg>
+                                        Deskripsi Produk
+                                    </h3>
+                                    <div class="prose prose-sm max-w-none text-gray-600 dark:text-gray-300">
+                                        <p v-if="detail.product.description">{{ detail.product.description }}</p>
+                                        <p v-else class="italic text-gray-400">Tidak ada deskripsi untuk produk ini.</p>
+                                    </div>
+                                </div>
+
+                                <!-- Specs Sidebar -->
+                                <div class="p-5 bg-white border border-gray-100 rounded-xl shadow-sm dark:bg-gray-800 dark:border-gray-700">
+                                    <h3 class="text-sm font-bold text-gray-900 dark:text-white mb-4 uppercase tracking-wider border-b border-gray-100 dark:border-gray-700 pb-2">
+                                        Spesifikasi
+                                    </h3>
+                                    <div class="space-y-3">
+                                        <div class="flex justify-between items-center text-sm">
+                                            <span class="text-gray-500 dark:text-gray-400">Min. Stok</span>
+                                            <span class="font-bold text-gray-900 dark:text-white">{{ detail.product.min_stock }} {{ detail.product.unit?.name }}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-sm">
+                                            <span class="text-gray-500 dark:text-gray-400">Max. Stok</span>
+                                            <span class="font-bold text-gray-900 dark:text-white">{{ detail.product.max_stock || '∞' }}</span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-sm">
+                                            <span class="text-gray-500 dark:text-gray-400">Berat</span>
+                                            <span class="font-bold text-gray-900 dark:text-white">
+                                                 {{ detail.product.weight ? detail.product.weight + ' gr' : '-' }}
+                                            </span>
+                                        </div>
+                                        <div class="flex justify-between items-center text-sm">
+                                            <span class="text-gray-500 dark:text-gray-400">SKU/Barcode</span>
+                                            <span class="font-mono text-xs bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded text-gray-700 dark:text-gray-300">
+                                                {{ detail.product.barcode || '-' }}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
