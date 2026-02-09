@@ -57,12 +57,23 @@ const getDateRange = (tab) => {
 
 // Handle Tab Change
 const setTab = (tabId) => {
-    activeTab.value = tabId;
-    const { min, max } = getDateRange(tabId);
-    
+    console.log(tabId, activeTab.value)
+    if(tabId === 'all' && activeTab.value === 'all'){
+        activeTab.value = 'today';
+        params.value.min_date = getDateRange('today').min;
+        params.value.max_date = getDateRange('today').max;
+    }
+    else if(activeTab.value == tabId){
+        activeTab.value = 'all';
+        params.value.min_date = null;
+        params.value.max_date = null;
+    }else{
+        activeTab.value = tabId;
+        const { min, max } = getDateRange(tabId);
+        params.value.min_date = min;
+        params.value.max_date = max;
+    }
     // Update params
-    params.value.min_date = min;
-    params.value.max_date = max;
     params.value.page = 1; // Reset page
 };
 
@@ -73,25 +84,39 @@ const params = ref({
     page: props.sales.current_page || 1,
     min_date: props.filters.min_date || getDateRange('today').min, // Default filter hari ini? User request "Fokus ke hari ini"
     max_date: props.filters.max_date || getDateRange('today').max,
+    show_deleted: props.filters.show_deleted === 'true' || false,
 });
 
 // Update activeTab based on filters from URL when mounted
 // Cek filter existing untuk set Active Tab
-const initTab = () => {
-    const { min_date, max_date } = props.filters;
-    if (!min_date && !max_date) return; // Default 'today' handled by ref init or params default
+const syncTabWithDate = (min, max) => {
+    if (!min && !max) {
+         // Fix: If no date filter, usually means 'all' OR default. 
+         // But in this logic, clearing filter = 'all'.
+         activeTab.value = 'all';
+         return; 
+    }
 
-    // Cek pattern tanggal
     const today = getDateRange('today');
     const week = getDateRange('week');
     const month = getDateRange('month');
 
-    if (min_date === today.min && max_date === today.max) activeTab.value = 'today';
-    else if (min_date === week.min && max_date === week.max) activeTab.value = 'week';
-    else if (min_date === month.min && max_date === month.max) activeTab.value = 'month';
+    if (min === today.min && max === today.max) activeTab.value = 'today';
+    else if (min === week.min && max === week.max) activeTab.value = 'week';
+    else if (min === month.min && max === month.max) activeTab.value = 'month';
     else activeTab.value = 'all'; // Custom range or All
 };
+
+const initTab = () => {
+    // Use params.value as it's the reactive state initialized from props.filters
+    syncTabWithDate(params.value.min_date, params.value.max_date);
+};
 initTab();
+
+// Trigger saat URL/Params berubah (Manual Filter -> Tab Update)
+watch(() => [params.value.min_date, params.value.max_date], ([min, max]) => {
+    syncTabWithDate(min, max);
+});
 
 
 const performSearch = throttle(() => {
@@ -122,22 +147,33 @@ watch(search, (val) => {
     }
 });
 
+import SalesChart from "./Components/SalesChart.vue";
+
 // Insight Data based on Active Tab
 const activePeriodInsight = computed(() => {
     let revenue = [];
     let qty = [];
+    let chart = { labels: [], values: [] };
+    let label = '';
+
     if (activeTab.value === 'today') {
         revenue = props.summary.best_selling_revenue_today;
         qty = props.summary.best_selling_qty_today;
+        chart = props.summary.chart_today;
+        label = "Per Jam";
     } else if (activeTab.value === 'week') {
         revenue = props.summary.best_selling_revenue_week;
         qty = props.summary.best_selling_qty_week;
+        chart = props.summary.chart_week;
+        label = "7 Hari Terakhir";
     } else if (activeTab.value === 'month') {
         revenue = props.summary.best_selling_revenue_month;
         qty = props.summary.best_selling_qty_month;
+        chart = props.summary.chart_month;
+        label = "Mingguan";
     }
     
-    return { revenue, qty };
+    return { revenue, qty, chart, label };
 });
 
 const openInvoice = async (row) => {
@@ -191,97 +227,125 @@ const pagination = computed(() => props.sales);
 
             <!-- 2. Controls & Tabs -->
             <div class="flex flex-col gap-4">
-                <!-- Tabs -->
-                <div class="flex p-1 space-x-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-x-auto">
-                    <button
-                        v-for="tab in tabs"
-                        :key="tab.id"
-                        @click="setTab(tab.id)"
-                        class="px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap flex-1"
-                        :class="
-                            activeTab === tab.id
-                                ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
-                                : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                        "
-                    >
-                        {{ tab.label }}
-                    </button>
+                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                    <!-- Tabs -->
+                    <div class="flex p-1 space-x-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-x-auto w-full md:w-auto">
+                        <button
+                        v-if="activeTab !== 'all'"
+                            v-for="tab in tabs.filter(t => t.id !== 'all')"
+                            :key="tab.id"
+                            @click="setTab(tab.id)"
+                            class="px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap flex-1"
+                            :class="
+                                activeTab === tab.id
+                                    ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                            "
+                        >
+                            {{ tab.label }}
+                        </button>
+                        <!-- Custom 'All' / Custom Range Indicator -->
+                        <button
+                             v-if="activeTab === 'all'"
+                             @click="setTab('all')"
+                             class="px-4 py-2 text-sm font-bold rounded-lg bg-white dark:bg-gray-700 text-blue-600 shadow-sm whitespace-nowrap"
+                        >
+                            Custom / Semua
+                        </button>
+                    </div>
+
+                     <!-- Toggle Deleted -->
+                    <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-300">
+                        <input 
+                            type="checkbox" 
+                            v-model="params.show_deleted" 
+                            class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        >
+                        <span>Tampilkan Terhapus</span>
+                    </label>
                 </div>
                 
                 <!-- Insight Cards Grid -->
-                <!-- Only show if data exists -->
-                <div v-if="activePeriodInsight.revenue?.length > 0 || activePeriodInsight.qty?.length > 0" 
-                     class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    <!-- Card 1: Top Omset -->
-                    <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
-                        <div class="flex items-center justify-between mb-3 relative z-10">
-                            <div class="flex items-center gap-2">
-                                <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-                                    <span class="text-sm">💎</span>
+                <!-- Show only if activeTab is one of the standard periods AND data exists -->
+                <div v-if="['today', 'week', 'month'].includes(activeTab) && (activePeriodInsight.revenue?.length > 0 || activePeriodInsight.qty?.length > 0)" class="space-y-4">
+                     
+                    <!-- GRAFIK PENJUALAN -->
+                     <SalesChart 
+                        :data="activePeriodInsight.chart" 
+                        :title="`Grafik Omset (${activePeriodInsight.label})`" 
+                    />
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Card 1: Top Omset -->
+                        <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+                            <div class="flex items-center justify-between mb-3 relative z-10">
+                                <div class="flex items-center gap-2">
+                                    <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+                                        <span class="text-sm">💎</span>
+                                    </div>
+                                    <h3 class="font-bold text-base leading-tight">Top Omset</h3>
                                 </div>
-                                <h3 class="font-bold text-base leading-tight">Top Omset</h3>
+                                <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Most Valuable</span>
                             </div>
-                            <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Most Valuable</span>
-                        </div>
 
-                        <div class="space-y-2 relative z-10">
-                            <Link 
-                                v-for="(product, idx) in activePeriodInsight.revenue" 
-                                :key="'rev-'+product.id"
-                                :href="route('products.show', product.slug)" 
-                                class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition group"
-                            >
-                                <div class="w-5 h-5 flex items-center justify-center font-bold text-indigo-700 bg-white rounded-full text-xs shadow-sm">
-                                    {{ idx + 1 }}
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-xs font-bold truncate group-hover:text-indigo-200 transition">{{ product.name }}</p>
-                                    <p class="text-[10px] text-indigo-200/80">{{ product.qty }} items</p>
-                                </div>
-                                <div class="font-bold text-xs">
-                                    {{ new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(product.revenue) }}
-                                </div>
-                            </Link>
-                        </div>
-                        
-                         <!-- Decoration -->
-                        <div class="absolute -right-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">💎</div>
-                    </div>
-
-                    <!-- Card 2: Top Qty -->
-                    <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
-                        <div class="flex items-center justify-between mb-3 relative z-10">
-                            <div class="flex items-center gap-2">
-                                <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-                                    <span class="text-sm">📦</span>
-                                </div>
-                                <h3 class="font-bold text-base leading-tight">Terlaris (Qty)</h3>
+                            <div class="space-y-2 relative z-10">
+                                <Link 
+                                    v-for="(product, idx) in activePeriodInsight.revenue" 
+                                    :key="'rev-'+product.id"
+                                    :href="route('products.show', product.slug)" 
+                                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition group"
+                                >
+                                    <div class="w-5 h-5 flex items-center justify-center font-bold text-indigo-700 bg-white rounded-full text-xs shadow-sm">
+                                        {{ idx + 1 }}
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold truncate group-hover:text-indigo-200 transition">{{ product.name }}</p>
+                                        <p class="text-[10px] text-indigo-200/80">{{ product.qty }} items</p>
+                                    </div>
+                                    <div class="font-bold text-xs">
+                                        {{ new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(product.revenue) }}
+                                    </div>
+                                </Link>
                             </div>
-                            <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Most Popular</span>
+                            
+                            <!-- Decoration -->
+                            <div class="absolute -right-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">💎</div>
                         </div>
 
-                        <div class="space-y-2 relative z-10">
-                             <Link 
-                                v-for="(product, idx) in activePeriodInsight.qty" 
-                                :key="'qty-'+product.id"
-                                :href="route('products.show', product.slug)" 
-                                class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition group"
-                            >
-                                <div class="w-5 h-5 flex items-center justify-center font-bold text-orange-700 bg-white rounded-full text-xs shadow-sm">
-                                    {{ idx + 1 }}
+                        <!-- Card 2: Top Qty -->
+                        <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+                            <div class="flex items-center justify-between mb-3 relative z-10">
+                                <div class="flex items-center gap-2">
+                                    <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+                                        <span class="text-sm">📦</span>
+                                    </div>
+                                    <h3 class="font-bold text-base leading-tight">Terlaris (Qty)</h3>
                                 </div>
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-xs font-bold truncate group-hover:text-orange-200 transition">{{ product.name }}</p>
-                                </div>
-                                <div class="font-bold text-xs bg-white/20 px-1.5 py-0.5 rounded">
-                                    {{ product.qty }} items
-                                </div>
-                            </Link>
-                        </div>
+                                <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Most Popular</span>
+                            </div>
 
-                        <!-- Decoration -->
-                        <div class="absolute -right-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">🔥</div>
+                            <div class="space-y-2 relative z-10">
+                                <Link 
+                                    v-for="(product, idx) in activePeriodInsight.qty" 
+                                    :key="'qty-'+product.id"
+                                    :href="route('products.show', product.slug)" 
+                                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition group"
+                                >
+                                    <div class="w-5 h-5 flex items-center justify-center font-bold text-orange-700 bg-white rounded-full text-xs shadow-sm">
+                                        {{ idx + 1 }}
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-xs font-bold truncate group-hover:text-orange-200 transition">{{ product.name }}</p>
+                                    </div>
+                                    <div class="font-bold text-xs bg-white/20 px-1.5 py-0.5 rounded">
+                                        {{ product.qty }} items
+                                    </div>
+                                </Link>
+                            </div>
+
+                            <!-- Decoration -->
+                            <div class="absolute -right-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">🔥</div>
+                        </div>
                     </div>
                 </div>
 

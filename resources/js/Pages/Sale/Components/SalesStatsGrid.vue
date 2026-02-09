@@ -81,22 +81,23 @@ const stats = computed(() => [
                 </div>
                 <!-- Label for desktop -->
                 <div class="hidden lg:block">
-                     <h3
-                        class="text-sm font-bold text-gray-400 uppercase tracking-wider"
+                     <h3 :class="stat.textClass"
+                        class="text-sm font-bold uppercase tracking-wider"
                     >
                         {{ stat.label }}
                     </h3>
-                    <p class="text-[10px] text-gray-400 font-mono">{{ stat.period }}</p>
+                    <p class="text-[12px] text-gray-500 font-mono">{{ stat.period }}</p>
                 </div>
+                <!-- Label for mobile (above value) -->
+                <h3 :class="stat.textClass"
+                    class="lg:hidden text-[10px] font-bold uppercase tracking-wider mb-0.5"
+                >
+                    {{ stat.label }} 
+                </h3>
             </div>
 
             <div>
-                 <!-- Label for mobile (above value) -->
-                <h3
-                    class="lg:hidden text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-0.5"
-                >
-                    {{ stat.label }} <span class="font-normal normal-case text-gray-300">({{ stat.period }})</span>
-                </h3>
+                <span class="text-[11px] lg:hidden font-mono normal-case text-gray-500">{{stat.period}}</span>
                 <p
                     class="text-lg lg:text-2xl font-black truncate"
                     :class="stat.textClass"

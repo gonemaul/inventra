@@ -16,6 +16,8 @@ const props = defineProps({
     categories: Array,
     customers: Array,
     brands: Array,
+    sale: Object, // Existing sale for edit
+    mode: String, // 'edit' or 'create'
 });
 const pos = usePosRealtime(props);
 // --- PANGGIL COMPOSABLE ---
@@ -173,6 +175,12 @@ const confirmTransaction = (shouldPrint) => {
         return toast.error("Uang kurang!");
     submitTransaction(shouldPrint, {
         onSuccess: (page) => {
+            // Cek apakah ada error dari server (via flash message)
+            if (page.props.flash.error) {
+                toast.error(page.props.flash.error);
+                return;
+            }
+
             // Tutup modal & drawer HP setelah sukses reset data
             showConfirmModal.value = false;
             showMobileCart.value = false;

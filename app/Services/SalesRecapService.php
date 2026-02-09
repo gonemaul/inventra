@@ -33,9 +33,13 @@ class SalesRecapService
         $query = Sale::query();
 
         // 1. Filter Trashed (Sampah)
-        $query->when($params['trashed'] ?? false, function ($q) {
-            $q->onlyTrashed();
-        });
+        // Jika param 'show_deleted' true -> Tampilkan semua (termasuk yg dihapus)
+        // Jika param 'trashed' true -> Hanya tampilkan yg dihapus
+        if (!empty($params['show_deleted']) && $params['show_deleted'] == 'true') {
+            $query->withTrashed();
+        } elseif (!empty($params['trashed'])) {
+            $query->onlyTrashed();
+        }
 
         // 2. Filter Search (PENTING: Dibungkus closure agar tidak merusak filter lain)
         $query->when($params['search'] ?? null, function ($q, $search) {
@@ -58,6 +62,8 @@ class SalesRecapService
         $perPage = $params['per_page'] ?? 10;
 
         return $query
+            ->withCount('items')
+            ->withSum('items', 'quantity')
             ->orderBy($sortBy, $sortDirection)
             ->paginate($perPage)
             ->withQueryString();
@@ -220,10 +226,14 @@ class SalesRecapService
 
             // --- LANGKAH 1: KEMBALIKAN SEMUA STOK LAMA (REFUND) ---
             foreach ($sale->items as $oldItem) {
-                $product = Product::find($oldItem->product_id);
-                if ($product) {
-                    $product->increment('stock', $oldItem->quantity);
-                }
+                // GUNAKAN STOCK SERVICE AGAR TERCATAT
+                $this->stockService->record(
+                    productId: $oldItem->product_id,
+                    qty: $oldItem->quantity, // Positif = Masuk (Refund)
+                    type: StockMovement::TYPE_RETURN_IN,
+                    ref: $sale->reference_no,
+                    desc: 'Koreksi Stok (Edit Transaksi)'
+                );
             }
 
             // --- LANGKAH 2: HAPUS SEMUA ITEM LAMA ---
@@ -297,7 +307,7 @@ class SalesRecapService
                 // $product->decrement('stock', $inputQty);
                 $this->stockService->record(
                     productId: $product->id,
-                    qty: -abs($inputQty), // PASTIKAN NEGATIF (Keluar)
+                    qty: $inputQty, // Positif, StockService akan kurangi otomatis jika tipe SALE
                     type: StockMovement::TYPE_SALE,
                     ref: $sale->reference_no, // No Nota Kasir
                     desc: 'Update Penjualan Kasir'
@@ -349,13 +359,14 @@ class SalesRecapService
 
             // 1. Loop semua item untuk kembalikan stok
             foreach ($sale->items as $item) {
-                $product = Product::find($item->product_id);
-
-                if ($product) {
-                    // KEMBALIKAN STOK (Increment)
-                    // Karena penjualan mengurangi, maka hapus penjualan = menambah kembali
-                    $product->increment('stock', $item->quantity);
-                }
+                // GUNAKAN STOCK SERVICE - LOGGING
+                 $this->stockService->record(
+                    productId: $item->product_id,
+                    qty: $item->quantity, // Positif = Masuk (Refund)
+                    type: StockMovement::TYPE_RETURN_IN,
+                    ref: $sale->reference_no,
+                    desc: 'Void / Hapus Transaksi'
+                );
             }
 
             // 2. Hapus Item & Header (Soft Delete)
@@ -377,8 +388,9 @@ class SalesRecapService
             $prefix = 'unknown';
         }
 
-        // Cari nomor terakhir hari itu
-        $lastSale = Sale::where('reference_no', 'like', $prefix.'%')
+        // Cari nomor terakhir hari itu (termasuk yang sudah dihapus agar sequence tidak bentrok)
+        $lastSale = Sale::withTrashed()
+            ->where('reference_no', 'like', $prefix.'%')
             ->orderByDesc('id')
             ->first();
 

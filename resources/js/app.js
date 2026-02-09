@@ -9,6 +9,7 @@ import { ZiggyVue } from "../../vendor/tightenco/ziggy";
 import Toast, { POSITION } from "vue-toastification";
 import "vue-toastification/dist/index.css";
 import "vue-toastification/dist/index.css";
+import VueApexCharts from "vue3-apexcharts";
 
 import { registerSW } from "virtual:pwa-register";
 
@@ -44,6 +45,7 @@ createInertiaApp({
             .use(plugin)
             .use(ZiggyVue)
             .use(Toast, toastOptions)
+            .use(VueApexCharts)
             .mount(el);
     },
     progress: {

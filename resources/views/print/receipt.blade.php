@@ -168,7 +168,7 @@
 
         <div>
             No : {{ $sale->reference_no }}<br>
-            Tgl : {{ date('d/M/y H:i', strtotime($sale->created_at)) }} WIB<br>
+            Tgl : {{ date('d/M/y H:i:s', strtotime($sale->created_at)) }}<br>
             Kasir : {{ $sale->user->name ?? 'Admin' }}<br>
             @if (isset($sale->customer) && $sale->customer->name != 'Umum')
                 Member: {{ $sale->customer->name }}

@@ -17,135 +17,107 @@ export function usePosRecap(props) {
 
     // --- LOCAL STORAGE LOGIC ---
     onMounted(() => {
-        const saved = localStorage.getItem(STORAGE_KEY);
-        if (saved) {
-            try {
-                const parsed = JSON.parse(saved);
-                cart.value = parsed.cart || [];
-                transactionDate.value =
-                    parsed.date || new Date().toISOString().slice(0, 10);
-            } catch (e) {
-                localStorage.removeItem(STORAGE_KEY);
+        if (props.mode === 'edit' && props.sale) {
+            // LOAD DARI DB (Edit Mode)
+            transactionDate.value = props.sale.transaction_date;
+            cart.value = props.sale.items.map(item => ({
+                id: item.product.id,
+                name: item.product.name,
+                code: item.product.code,
+                image: item.product.image_path,
+                selling_price: parseFloat(item.selling_price),
+                purchase_price: parseFloat(item.purchase_price || 0), // Fallback if not loaded
+                stock: parseFloat(item.product.stock) + parseFloat(item.quantity), // Restore stock logic
+                quantity: parseFloat(item.quantity),
+            }));
+            form.notes = props.sale.notes || "";
+        } else {
+            // LOAD DARI LOCAL STORAGE (Create Mode)
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    cart.value = parsed.cart || [];
+                    transactionDate.value =
+                        parsed.date || new Date().toISOString().slice(0, 10);
+                } catch (e) {
+                    localStorage.removeItem(STORAGE_KEY);
+                }
             }
         }
     });
 
-    watch(
-        [cart, transactionDate],
-        () => {
-            localStorage.setItem(
-                STORAGE_KEY,
-                JSON.stringify({
-                    cart: cart.value,
-                    date: transactionDate.value,
-                })
-            );
-        },
-        { deep: true }
-    );
+    // --- COMPUTED ---
+    const filteredProducts = computed(() => {
+        let items = props.products || [];
 
-    // --- CART ACTIONS ---
-
-    // 1. Tambah Produk
-    const addToCart = (product) => {
-        if (product.stock <= 0) {
-            toast.error(`Stok ${product.name} Habis!`);
-            return;
+        if (selectedCategory.value !== 'all') {
+            items = items.filter(p => p.category_id === selectedCategory.value);
         }
 
-        const existing = cart.value.find((item) => item.id === product.id);
+        // if (selectedProductType.value !== 'all') {
+        //      items = items.filter(p => p.product_type_id === selectedProductType.value);
+        // }
 
+        const q = searchQuery.value.toLowerCase().trim();
+        if (q) {
+            items = items.filter(p =>
+                (p.name && p.name.toLowerCase().includes(q)) ||
+                (p.code && p.code.toLowerCase().includes(q))
+            );
+        }
+
+        return items;
+    });
+
+    const totalRevenue = computed(() => {
+        return cart.value.reduce((total, item) => total + (item.selling_price * item.quantity), 0);
+    });
+
+    const totalProfit = computed(() => {
+        return cart.value.reduce((total, item) => {
+            const revenue = item.selling_price * item.quantity;
+            const cost = (item.purchase_price || 0) * item.quantity;
+            return total + (revenue - cost);
+        }, 0);
+    });
+
+    const currentProductType = computed(() => {
+        // Placeholder if needed for subcategories
+        return [];
+    });
+
+    // --- ACTIONS ---
+    const addToCart = (product) => {
+        if (product.stock <= 0) return toast.warning("Stok Habis!");
+
+        const existing = cart.value.find(c => c.id === product.id);
         if (existing) {
-            // Cek stok sebelum nambah
-            if (existing.quantity < product.stock) {
-                existing.quantity++;
-            } else {
-                toast.warning(`Stok maksimal tercapai (${product.stock})`);
+            if (existing.quantity >= product.stock) {
+                return toast.warning("Stok tidak cukup!");
             }
+            existing.quantity++;
         } else {
-            // Item Baru
             cart.value.push({
                 id: product.id,
                 name: product.name,
                 code: product.code,
-                image: product.image_path, // Pastikan sesuai nama kolom di DB
-                selling_price: product.selling_price, // Harga Jual (Bisa diedit nanti)
-                purchase_price: product.purchase_price, // HPP (Disimpan untuk profit)
-                stock: product.stock, // Untuk validasi
-                quantity: 1,
+                selling_price: parseFloat(product.selling_price),
+                purchase_price: parseFloat(product.purchase_price),
+                stock: product.stock,
+                quantity: 1
             });
         }
     };
 
-    // 2. Hapus Item
     const removeItem = (index) => {
         cart.value.splice(index, 1);
     };
 
-    // 3. Reset Cart
     const clearCart = () => {
-        if (confirm("Hapus semua data rekap?")) {
-            cart.value = [];
-            localStorage.removeItem(STORAGE_KEY);
-        }
+        cart.value = [];
+        localStorage.removeItem(STORAGE_KEY);
     };
-
-    // --- SEARCH & FILTER ---
-    const currentProductType = computed(() => {
-        if (selectedCategory.value === "all") return [];
-
-        const category = props.categories.find(
-            (c) => c.id === selectedCategory.value
-        );
-        return category ? category.product_types : [];
-    });
-
-    watch(selectedCategory, () => {
-        selectedProductType.value = "all";
-    });
-
-    const filteredProducts = computed(() => {
-        let items = props.products || [];
-
-        // Filter Kategori
-        if (selectedCategory.value !== "all") {
-            items = items.filter(
-                (p) => p.category_id === selectedCategory.value
-            );
-        }
-        // Filter Product Type
-        if (selectedProductType.value !== "all") {
-            items = items.filter(
-                (p) => p.product_type_id === selectedProductType.value
-            );
-        }
-
-        // Filter Search (Nama atau Kode)
-        if (searchQuery.value) {
-            const q = searchQuery.value.toLowerCase();
-            items = items.filter(
-                (p) =>
-                    p.name.toLowerCase().includes(q) ||
-                    (p.code && p.code.toLowerCase().includes(q))
-            );
-        }
-        return items;
-    });
-
-    // --- CALCULATIONS ---
-    const totalRevenue = computed(() => {
-        return cart.value.reduce(
-            (acc, item) => acc + item.selling_price * item.quantity,
-            0
-        );
-    });
-
-    const totalProfit = computed(() => {
-        return cart.value.reduce((acc, item) => {
-            const margin = item.selling_price - item.purchase_price;
-            return acc + margin * item.quantity;
-        }, 0);
-    });
 
     // --- SUBMIT RECAP ---
     const form = useForm({
@@ -164,6 +136,21 @@ export function usePosRecap(props) {
         notes: "",
     });
 
+    // Watcher dipindah ke sini agar 'form' sudah terdefinisi
+    watch(
+        [cart, transactionDate, () => form.notes],
+        () => {
+            if (props.mode !== 'edit') {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    cart: cart.value,
+                    date: transactionDate.value,
+                    notes: form.notes
+                }));
+            }
+        },
+        { deep: true }
+    );
+
     const processRecap = () => {
         // Validasi Dasar
         if (cart.value.length === 0) return toast.error("Data masih kosong!");
@@ -177,30 +164,42 @@ export function usePosRecap(props) {
         form.report_date = transactionDate.value;
         form.items = cart.value.map((item) => ({
             product_id: item.id,
-            quantity: item.quantity, // Frontend pakai 'qty', Controller harus mapping ke 'quantity' atau sebaliknya
+            quantity: item.quantity,
             selling_price: item.selling_price,
             purchase_price: item.purchase_price,
         }));
 
         form.total_revenue = parseFloat(totalRevenue.value);
-        form.total_profit = parseFloat(totalProfit.value);
+        form.total_profit = parseFloat(totalProfit.value); // Needs calculation fix if purchase_price missing
 
         // Rekap dianggap uang pas
         form.payment_amount = parseFloat(totalRevenue.value);
         form.change_amount = 0;
 
-        // Kirim
-        form.post(route("sales.pos.store"), {
-            onSuccess: () => {
-                cart.value = [];
-                localStorage.removeItem(STORAGE_KEY);
-                // toast.success("Rekap Berhasil Disimpan!");
+        const options = {
+            onSuccess: (page) => {
+                if (page.props.flash.error) {
+                    toast.error(page.props.flash.error);
+                    return;
+                }
+
+                if (props.mode !== 'edit') {
+                    cart.value = [];
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+                toast.success("Rekap Berhasil Disimpan!");
             },
             onError: (err) => {
                 console.error(err);
                 toast.error("Gagal menyimpan rekap.");
             },
-        });
+        };
+
+        if (props.mode === 'edit') {
+            form.put(route("sales.update", props.sale.id), options);
+        } else {
+            form.post(route("sales.pos.store"), options);
+        }
     };
 
     return {
@@ -208,7 +207,7 @@ export function usePosRecap(props) {
         searchQuery,
         selectedCategory,
         selectedProductType,
-        currentProductType,
+        // currentProductType,
         cart,
         transactionDate,
         form, // Untuk loading state (form.processing)

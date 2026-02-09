@@ -39,7 +39,7 @@ class SalesRecapController extends Controller
             unset($filters['max_date']);
         } elseif (!$request->has('min_date') && !$request->has('max_date') && $request->input('period') !== 'all') {
             // FIX: Default ke Hari Ini jika tidak ada filter sama sekali
-            $filters['min_date'] = now()->format('Y-m-d');
+            $filters['min_date'] = now()->subDays(1)->format('Y-m-d'); // Mundur 1 hari untuk safety timezone
             $filters['max_date'] = now()->format('Y-m-d');
         }
         
@@ -59,9 +59,9 @@ class SalesRecapController extends Controller
         $getBestSellingRevenue = function ($startDate, $endDate = null) {
             $query = \App\Models\SaleItem::selectRaw('product_id, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
                 ->whereHas('sale', function ($q) use ($startDate, $endDate) {
-                    $q->where('transaction_date', '>=', $startDate);
+                    $q->whereDate('transaction_date', '>=', $startDate);
                     if ($endDate) {
-                        $q->where('transaction_date', '<=', $endDate);
+                        $q->whereDate('transaction_date', '<=', $endDate);
                     }
                 })
                 ->groupBy('product_id')
@@ -86,9 +86,9 @@ class SalesRecapController extends Controller
         $getBestSellingQty = function ($startDate, $endDate = null) {
             $query = \App\Models\SaleItem::selectRaw('product_id, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
                 ->whereHas('sale', function ($q) use ($startDate, $endDate) {
-                    $q->where('transaction_date', '>=', $startDate);
+                    $q->whereDate('transaction_date', '>=', $startDate);
                     if ($endDate) {
-                        $q->where('transaction_date', '<=', $endDate);
+                        $q->whereDate('transaction_date', '<=', $endDate);
                     }
                 })
                 ->groupBy('product_id')
@@ -109,13 +109,75 @@ class SalesRecapController extends Controller
             });
         };
 
+        // Helper Chart Data
+        $getChartData = function ($type) use ($today, $startOfWeek, $startOfMonth) {
+            $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+
+            if ($type === 'today') {
+                // Gunakan updated_at untuk jam karena transaction_date hanya tanggal
+                // Jika update != create, ambil update (logic standar updated_at)
+                $timeColumn = 'updated_at'; 
+                $labelRaw = $isSqlite ? "CAST(strftime('%H', $timeColumn) AS INTEGER)" : "HOUR($timeColumn)";
+                
+                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as value")
+                    ->whereDate('transaction_date', $today)
+                    ->groupBy('label')
+                    ->pluck('value', 'label')
+                    ->toArray();
+                
+                // Fill 00-23
+                $result = [];
+                for ($i = 0; $i <= 23; $i++) {
+                    $result[] = (int)($data[$i] ?? 0);
+                }
+                return ['labels' => range(0, 23), 'values' => $result];
+            }
+            
+            if ($type === 'week') {
+                $labelRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
+
+                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as value")
+                    ->where('transaction_date', '>=', $startOfWeek)
+                    ->groupBy('label')
+                    ->pluck('value', 'label')
+                    ->toArray();
+                
+                // Fill Last 7 Days
+                $labels = [];
+                $values = [];
+                for ($i = 6; $i >= 0; $i--) {
+                    $date = now()->subDays($i)->format('Y-m-d');
+                    $labels[] = now()->subDays($i)->format('d/m'); // Format tgl
+                    $values[] = (int)($data[$date] ?? 0);
+                }
+                return ['labels' => $labels, 'values' => $values];
+            }
+
+            if ($type === 'month') {
+                // Group by Week (Week Number)
+                // SQLite %W: week of year (00-53)
+                $labelRaw = $isSqlite ? "strftime('%W', transaction_date)" : "WEEK(transaction_date, 1)";
+                $dateRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
+
+                $data = Sale::selectRaw("$labelRaw as label, MIN($dateRaw) as start_date, SUM(total_revenue) as value")
+                    ->where('transaction_date', '>=', $startOfMonth)
+                    ->groupBy('label')
+                    ->orderBy('start_date')
+                    ->get();
+                
+                return [
+                    'labels' => $data->map(fn($item) => 'Minggu ' . date('W', strtotime($item->start_date)))->toArray(),
+                    'values' => $data->pluck('value')->toArray()
+                ];
+            }
+        };
+
         $summary = [
             'sales_today' => Sale::whereDate('transaction_date', $today)->sum('total_revenue'),
             'sales_week' => Sale::where('transaction_date', '>=', $startOfWeek)->sum('total_revenue'),
             'sales_month' => Sale::where('transaction_date', '>=', $startOfMonth)->sum('total_revenue'),
             'count_today' => Sale::whereDate('transaction_date', $today)->count(),
             
-            // Info Periode (String) untuk Frontend
             'period_today' => $todayDate->translatedFormat('d M Y'),
             'period_week' => $weekDate->translatedFormat('d M') . ' - ' . $todayDate->translatedFormat('d M Y'),
             'period_month' => $monthDate->translatedFormat('d M') . ' - ' . $todayDate->translatedFormat('d M Y'),
@@ -128,6 +190,11 @@ class SalesRecapController extends Controller
             'best_selling_qty_today' => $getBestSellingQty($today, $today),
             'best_selling_qty_week' => $getBestSellingQty($startOfWeek),
             'best_selling_qty_month' => $getBestSellingQty($startOfMonth),
+
+            // Charts
+            'chart_today' => $getChartData('today'),
+            'chart_week' => $getChartData('week'),
+            'chart_month' => $getChartData('month'),
         ];
 
         return Inertia::render('Sale/index', [
@@ -161,6 +228,7 @@ class SalesRecapController extends Controller
                     'category_id',
                     'brand_id',
                     'selling_price', // atau price
+                    'purchase_price', // Penting untuk hitung profit di frontend
                     'stock',
                     'image_path', // string pendek
                     'unit_id',
@@ -201,7 +269,8 @@ class SalesRecapController extends Controller
                 function ($attribute, $value, $fail) use ($request) {
                     // Ambil index dari items.*.qty (ex: items.0.qty -> 0)
                     $index = explode('.', $attribute)[1];
-                    $productId = $request->input("items.{$index}.id");
+                    // FIX: Gunakan product_id, bukan id (karena payload items.*.product_id)
+                    $productId = $request->input("items.{$index}.product_id");
 
                     $product = Product::with('unit')->find($productId);
 
@@ -231,6 +300,7 @@ class SalesRecapController extends Controller
                 'print_url' => $printUrl, // Kirim URL struk ke frontend
             ]);
         } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("Sales Store Error: " . $e->getMessage());
             return back()->with('error', 'Terjadi kesalahan: '.$e->getMessage());
         }
     }
@@ -291,7 +361,17 @@ class SalesRecapController extends Controller
      */
     public function edit(Sale $sale)
     {
-        $sale->load('items.product.unit');
+        $sale->load('items.product.unit', 'customer');
+
+        if ($sale->input_type == Sale::TYPE_REALTIME) {
+            return Inertia::render('Sale/Pos/index', [
+                'categories' => $this->categoryService->getAll(),
+                'customers' => Customer::select('id', 'name', 'member_code', 'phone')->get(),
+                'brands' => Brand::select('id', 'name')->orderBy('name')->get(),
+                'sale' => $sale, // Pass existing sale for editing
+                'mode' => 'edit',
+            ]);
+        }
 
         return Inertia::render('Sale/form', [
             'sale' => $sale, // Kirim data lama ke Vue

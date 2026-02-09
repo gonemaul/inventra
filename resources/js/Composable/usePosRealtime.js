@@ -34,24 +34,39 @@ export function usePosRealtime(props) {
     const selectedMember = ref(null);
 
     // C. Main Transaction Form
+    const isEditMode = computed(() => props.mode === 'edit');
+    const existingSale = props.sale || null;
+
     const form = useForm({
-        input_type: "realtime",
-        // FIX: Gunakan Waktu Lokal (bukan UTC) untuk menghindari tanggal mundur jika jam < 7 pagi
-        report_date: (() => {
+        id: existingSale?.id || null, // For update
+        input_type: existingSale?.input_type || "realtime",
+        report_date: existingSale?.transaction_date || (() => {
             const d = new Date();
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         })(),
-        items: [],
-        customer_id: null,
-        payment_amount: 0,
-        change_amount: 0,
-        payment_method: "cash",
-        discount_type: "fixed",
-        discount_value: 0,
-        notes: "",
+        items: existingSale?.items?.map(item => ({
+            product_id: item.product_id,
+            code: item.product?.code,
+            name: item.product?.name,
+            unit: item.product?.unit,
+            size: item.product?.size,
+            stock_max: parseFloat(item.product?.stock || 0) + parseFloat(item.quantity), // Restore stock for validation logic
+            selling_price: parseFloat(item.selling_price),
+            original_price: parseFloat(item.selling_price),
+            quantity: parseFloat(item.quantity),
+            original_quantity: parseFloat(item.quantity), // PENTING: Untuk hitung ulang stok max saat sync catalog
+            subtotal: parseFloat(item.subtotal),
+        })) || [],
+        customer_id: existingSale?.customer_id || null,
+        payment_amount: existingSale ? parseFloat(existingSale.total_payment) : 0,
+        change_amount: existingSale ? parseFloat(existingSale.change_amount) : 0,
+        payment_method: existingSale?.payment_method || "cash",
+        discount_type: existingSale?.discount_type || "fixed",
+        discount_value: existingSale?.discount_value || 0,
+        notes: existingSale?.notes || "",
     });
 
     // =========================================================================
@@ -210,6 +225,7 @@ export function usePosRealtime(props) {
                 selling_price: price,
                 original_price: price,
                 quantity: 1,
+                original_quantity: 0, // New items start with 0 original_quantity
                 subtotal: price,
             });
         }
@@ -240,6 +256,29 @@ export function usePosRealtime(props) {
     const resetPayment = () => {
         form.payment_amount = 0;
     };
+
+    // FUNGSI BARU: Sync Stock Max dengan Katalog Realtime
+    const syncStockWithCatalog = () => {
+        if (!allProducts.value.length) return;
+
+        form.items.forEach(item => {
+            const product = allProducts.value.find(p => p.id === item.product_id);
+            if (product) {
+                // Logic: Stok Realtime di DB + Qty yang saya pegang sebelumnya (Original Qty)
+                // Jika produk baru (tidak punya original_qty), maka anggap 0.
+                const myHoldings = item.original_quantity || 0;
+                const freshStock = parseFloat(product.stock);
+                item.stock_max = freshStock + myHoldings;
+
+                // Validasi ulang qty jika melebihi stok baru
+                if (item.quantity > item.stock_max) {
+                    toast.warning(`Stok ${item.name} berubah! Disesuaikan ke max: ${item.stock_max}`);
+                    item.quantity = item.stock_max;
+                    recalcFromQty(item); // Hitung ulang subtotal
+                }
+            }
+        });
+    }
 
     // =========================================================================
     // 4. PRODUCT & FILTER LOGIC
@@ -273,6 +312,7 @@ export function usePosRealtime(props) {
         // 1. Cek Cache (Client-Side Feel)
         if (productCache.value.has(cacheKey)) {
             allProducts.value = productCache.value.get(cacheKey);
+            syncStockWithCatalog(); // Sync saat load cache
             // Opsional: Tetap fetch di background untuk update data (Stale-While-Revalidate)
             // Tapi untuk POS, "Feel Cepat" > "Data Detik Ini Update". 
             // Kita skip fetch background jika sudah ada cache, KECUALI user memaksa refresh / search.
@@ -291,6 +331,7 @@ export function usePosRealtime(props) {
             allProducts.value = response.data;
             // Simpan ke Cache
             productCache.value.set(cacheKey, response.data);
+            syncStockWithCatalog(); // Sync saat fetch baru
         } catch (e) {
             console.error("Gagal load produk:", e);
             if (!productCache.value.has(cacheKey)) {
@@ -417,6 +458,7 @@ export function usePosRealtime(props) {
     // =========================================================================
 
     const restoreSession = () => {
+        if (isEditMode.value) return; // FIX: Jangan load dari local storage jika sedang edit transaksi
         const savedData = localStorage.getItem(STORAGE_KEY);
         if (savedData) {
             try {
@@ -472,25 +514,37 @@ export function usePosRealtime(props) {
         form.change_amount = changeAmount.value;
         form.payment_amount = parseFloat(form.payment_amount);
 
-        form.transform((data) => ({
-            ...data,
-            print_invoice: printInvoice,
-        })).post(route("sales.pos.store"), {
+        const options = {
             onStart: callbacks.onStart,
             onFinish: callbacks.onFinish,
             onSuccess: (page) => {
-                loadProduct(); // Reload stok
-                localStorage.removeItem(STORAGE_KEY);
-                form.reset();
-                form.items = [];
-                selectedMember.value = null;
+                if (!isEditMode.value) {
+                    loadProduct(); // Reload stok
+                    localStorage.removeItem(STORAGE_KEY);
+                    form.reset();
+                    form.items = [];
+                    selectedMember.value = null;
+                }
+
                 if (callbacks.onSuccess) callbacks.onSuccess(page);
             },
             onError: (err) => {
                 console.error(err);
                 toast.error("Gagal memproses transaksi");
             },
-        });
+        };
+
+        if (isEditMode.value) {
+            form.transform((data) => ({
+                ...data,
+                // Ensure required fields for validation match
+            })).put(route("sales.update", form.id), options);
+        } else {
+            form.transform((data) => ({
+                ...data,
+                print_invoice: printInvoice,
+            })).post(route("sales.pos.store"), options);
+        }
     };
 
     const rp = (val) =>
@@ -532,6 +586,12 @@ export function usePosRealtime(props) {
     onMounted(() => {
         loadProduct();
         restoreSession();
+
+        if (isEditMode.value) {
+            const today = new Date().toISOString().slice(0, 10);
+            form.report_date = today;
+            // toast.info("Tanggal transaksi disesuaikan dengan hari ini.");
+        }
     });
 
     return {
