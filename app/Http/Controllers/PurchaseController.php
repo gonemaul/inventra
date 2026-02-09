@@ -49,8 +49,75 @@ class PurchaseController extends Controller
     {
         $purchases = $this->purchaseService->get($request->all());
 
+        // --- Summary Statistics (Dashboard) ---
+        $now = now();
+        
+        // 1. Belanja Bulan Ini vs Bulan Lalu
+        $spendThisMonth = Purchase::whereYear('transaction_date', $now->year)
+            ->whereMonth('transaction_date', $now->month)
+            ->sum('grand_total');
+            
+        $lastMonthDate = $now->copy()->subMonth();
+        $spendLastMonth = Purchase::whereYear('transaction_date', $lastMonthDate->year)
+            ->whereMonth('transaction_date', $lastMonthDate->month)
+            ->sum('grand_total');
+
+        // 2. Belanja Tahun Ini
+        $spendThisYear = Purchase::whereYear('transaction_date', $now->year)->sum('grand_total');
+        $spendLastYear = Purchase::whereYear('transaction_date', $now->copy()->subYear()->year)->sum('grand_total');
+
+        // 3. Top Supplier Bulan Ini
+        $topSupplier = Purchase::selectRaw('supplier_id, SUM(grand_total) as total')
+            ->whereYear('transaction_date', $now->year)
+            ->whereMonth('transaction_date', $now->month)
+            ->whereNotNull('supplier_id')
+            ->groupBy('supplier_id')
+            ->orderByDesc('total')
+            ->with('supplier:id,name')
+            ->first();
+
+        // 4. Active Plan (Draft/Proses)
+        $activeOrderCount = Purchase::whereIn('status', [
+            Purchase::STATUS_DRAFT, 
+            Purchase::STATUS_ORDERED, 
+            Purchase::STATUS_SHIPPED,
+            Purchase::STATUS_CHECKING
+        ])->count();
+
+        // 5. Chart 12 Bulan Terakhir
+        $chartLabels = [];
+        $chartValues = [];
+        for ($i = 11; $i >= 0; $i--) {
+             $d = $now->copy()->subMonths($i);
+             $chartLabels[] = $d->translatedFormat('M y'); // Jan 24
+             
+             $val = Purchase::whereYear('transaction_date', $d->year)
+                    ->whereMonth('transaction_date', $d->month)
+                    ->sum('grand_total');
+             $chartValues[] = (int) $val;
+        }
+
+        $summary = [
+            'spend_this_month' => $spendThisMonth,
+            'spend_growth_month' => $spendLastMonth > 0 ? round((($spendThisMonth - $spendLastMonth) / $spendLastMonth) * 100, 1) : 0,
+            
+            'spend_this_year' => $spendThisYear,
+            'spend_growth_year' => $spendLastYear > 0 ? round((($spendThisYear - $spendLastYear) / $spendLastYear) * 100, 1) : 0,
+
+            'top_supplier_name' => $topSupplier->supplier->name ?? '-',
+            'top_supplier_amount' => $topSupplier->total ?? 0,
+            
+            'active_orders' => $activeOrderCount,
+
+            'chart' => [
+                'labels' => $chartLabels,
+                'values' => $chartValues
+            ]
+        ];
+
         return Inertia::render('Purchases/index', [
             'purchases' => $purchases,
+            'summary' => $summary, // Pass Summary
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
                 'purchaseStatuses' => Purchase::STATUSES,

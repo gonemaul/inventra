@@ -50,6 +50,7 @@ class PurchaseService
         });
         // 3. Filter Status & Supplier (Simple Where)
         $query->when($params['status'] ?? null, fn ($q, $status) => $q->where('status', $status));
+        $query->when($params['status_in'] ?? null, fn ($q, $statuses) => $q->whereIn('status', $statuses));
         $query->when($params['supplier_id'] ?? null, fn ($q, $id) => $q->where('supplier_id', $id));
         $query->when($params['user_id'] ?? null, fn ($q, $id) => $q->where('user_id', $id));
 

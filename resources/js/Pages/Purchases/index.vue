@@ -1,132 +1,160 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head, Link } from "@inertiajs/vue3";
-import DataTable from "@/Components/DataTable.vue";
+import { Head, Link, router } from "@inertiajs/vue3";
 import Filter from "@/Components/Filter.vue";
 import FilterModal from "./partials/modalFilter.vue";
-import { useActionLoading } from "@/Composable/useActionLoading";
-import { router } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { throttle } from "lodash";
+import PurchaseStatsGrid from "./Components/PurchaseStatsGrid.vue";
+import PurchaseTransactionList from "./Components/PurchaseTransactionList.vue";
+import SalesChart from "../Sale/Components/SalesChart.vue"; // Reuse Chart
 
 const props = defineProps({
-    dropdowns: Object, // Paginator object
+    dropdowns: Object, 
     filters: Object,
     purchases: Object,
+    summary: Object
 });
 
 const search = ref(props.filters.search || "");
 const showFilterModal = ref(false);
-const { isActionLoading } = useActionLoading();
-const showTrashed = ref(false);
-const columns = [
-    {
-        key: "transaction_date",
-        label: "Tanggal Order",
-        sortable: true,
-        format: "tanggal",
-    },
-    {
-        key: "reference_no",
-        label: "No. Referensi",
-        sortable: true,
-    },
-    {
-        key: "supplier",
-        label: "Supplier",
-        slot: "supplier",
-    },
-    {
-        key: "grand_total",
-        label: "Total Belanja",
-        sortable: true,
-        format: "rupiah",
-    },
-    {
-        key: "status",
-        label: "Status",
-        sortable: true,
-        slot: "status",
-    },
-    { key: "aksi", label: "Aksi", width: "120px", slot: "aksi" },
+
+// --- TABS LOGIC ---
+const activeTab = ref("all");
+const tabs = [
+    { id: "all", label: "Semua" },
+    { id: "process", label: "Dalam Proses", status: ['draft','dipesan','dikirim','checking'] },
+    { id: "completed", label: "Selesai", status: ['selesai'] },
 ];
+
+// Helper to update params based on tab
+const setTab = (tabId) => {
+    activeTab.value = tabId;
+    // Reset page on tab switch
+    params.value.page = 1;
+
+    // Set filter status based on Tab
+    if(tabId === 'all') {
+        delete params.value.status_in;
+    } else {
+        const tab = tabs.find(t => t.id === tabId);
+        if(tab && tab.status) {
+            params.value.status_in = tab.status; // Pass array, backend must handle whereIn or we use loop?
+            // Laravel Request params string? better pass comma separated or array.
+            // Inertia handles arrays usually. Check standard handling.
+            // If backend `PurchaseService` uses `whereIn` for `status_in` key...
+            // Need to check backend `PurchaseService` later. 
+            // For now assume standard filter or I might need to adjust backend.
+            // Let's assume I need to pass specific statuses.
+        }
+    }
+};
 
 const params = ref({
     search: props.filters.search || "",
     sort: props.filters.sort || "transaction_date",
     order: props.filters.order || "desc",
-    page: props.purchases.current_page || 1, // Penting untuk pagination
+    page: props.purchases.current_page || 1,
+    // Add tab specific filters if needed
 });
 
-const refreshTable = () => {
-    // Memanggil fungsi fetchData di DataTable (jika mode Server Side Mandiri)
-    // Jika mode Semi Side (Inertia), ini memicu reload prop Inertia
-    router.reload({ only: ["purchases", "filters"], preserveScroll: true });
-};
-
+// WATCHERS
 const performSearch = throttle(() => {
-    const currentFilters = { ...props.filters };
-    currentFilters.search = search.value;
-    if (!currentFilters.search) {
-        delete currentFilters.search;
-    }
-    router.get(route("purchases.index"), currentFilters, {
+    const query = { ...params.value };
+    
+    // Clean up
+    if(!query.search) delete query.search;
+
+    router.get(route("purchases.index"), query, {
         preserveState: true,
+        preserveScroll: true,
         replace: true,
+        only: ["purchases", "filters", "summary"],
     });
 }, 300);
 
-// WATHCH
-watch(showTrashed, (newValue) => {
-    if (newValue === true) {
-        params.value.trashed = true;
-    } else {
-        delete params.value.trashed;
-    }
+watch(params, performSearch, { deep: true });
+
+watch(search, (val) => {
+    params.value.search = val;
+    params.value.page = 1;
 });
-watch(
-    params,
-    throttle((newParams) => {
-        const query = Object.fromEntries(
-            Object.entries(newParams).filter(([_, v]) => v != null && v !== ""),
-        );
-        isActionLoading.value = true;
-        router.get(route("purchases.index"), query, {
-            preserveState: true, // Jangan scroll ke atas
-            preserveScroll: true,
-            replace: true, // Jangan penuh-penuhin history browser
-            only: ["purchases", "filters"], // Optimasi: Cuma update data tabel
-            onFinish: () => {
-                isActionLoading.value = false;
-            },
-        });
-    }, 300),
-    { deep: true },
-);
 
-watch(search, performSearch);
-
-const activeFilterCount = computed(() => {
-    const filterKeys = Object.keys(props.filters);
-    const ignoredKeys = ["search", "page", "per_page"];
-    return filterKeys.filter((key) => !ignoredKeys.includes(key)).length;
+// COMPUTED
+const chartData = computed(() => {
+    // Format for SalesChart: { labels: [], values: [] }
+    return props.summary?.chart || { labels: [], values: [] };
 });
 </script>
 
 <template>
     <Head title="Pembelian" />
 
-    <AuthenticatedLayout headerTitle="Pembelian">
-        <div class="w-full min-h-screen space-y-6">
-            <Filter
-                :filters="filters"
-                v-model="search"
-                @showFilter="showFilterModal = true"
-                :filterCount="activeFilterCount"
-                :actions="[
-                    { route: route('purchases.create'), buttonText: 'RAB' },
-                ]"
-            />
+    <AuthenticatedLayout headerTitle="Dashboard Procurement">
+        <div class="w-full min-h-screen space-y-6 pb-20">
+            
+            <!-- 1. Stats Grid (Selalu Muncul) -->
+            <PurchaseStatsGrid :summary="summary" />
+
+            <!-- 2. Chart (Ringkasan Tahunan/Bulanan) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                     <SalesChart 
+                        :data="chartData" 
+                        title="Grafik Belanja 12 Bulan Terakhir"
+                        color="#3b82f6" 
+                    />
+                </div>
+                <!-- Mini Panel: Quick Actions / Supplier Shortcuts? -->
+                 <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-center items-center text-center">
+                    <p class="text-xs text-gray-500 font-bold uppercase mb-2">Shortcut Filter</p>
+                    <div class="flex flex-wrap gap-2 justify-center">
+                         <button 
+                            @click="showFilterModal = true"
+                            class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition"
+                        >
+                            🔍 Cari per Supplier
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Controls & Tabs -->
+             <div class="flex flex-col gap-4 mt-4">
+                 <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                     <!-- Tabs -->
+                    <div class="flex p-1 space-x-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-x-auto w-full md:w-auto">
+                        <button
+                            v-for="tab in tabs"
+                            :key="tab.id"
+                            @click="setTab(tab.id)"
+                            class="px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap flex-1"
+                            :class="
+                                activeTab === tab.id
+                                    ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
+                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
+                            "
+                        >
+                            {{ tab.label }}
+                        </button>
+                    </div>
+
+                    <!-- Filter Bar -->
+                     <div class="w-full md:w-auto flex gap-2">
+                         <Filter
+                            class="w-full"
+                            :filters="filters"
+                            v-model="search"
+                            @showFilter="showFilterModal = true"
+                            :filterCount="0"
+                            :actions="[
+                                { route: route('purchases.create'), buttonText: '+ RAB Baru' },
+                            ]"
+                        />
+                    </div>
+                 </div>
+            </div>
+
             <FilterModal
                 :show="showFilterModal"
                 @close="showFilterModal = false"
@@ -134,94 +162,42 @@ const activeFilterCount = computed(() => {
                 :dropdowns="dropdowns"
             />
 
-            <div
-                class="p-4 space-y-6 bg-gray-100 border shadow-md rounded-xl dark:bg-customBg-tableDark"
-            >
-                <!-- Title & Description -->
-                <div>
-                    <h2
-                        class="text-base font-semibold text-gray-900 dark:text-white sm:text-lg lg:text-xl"
-                    >
-                        Daftar Pembelian
+            <!-- 4. Content (List) -->
+            <div>
+                 <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-lg font-bold text-gray-800 dark:text-white">
+                        Daftar Transaksi
                     </h2>
-                    <p
-                        class="mt-1 text-xs text-gray-600 dark:text-gray-300 sm:text-sm lg:text-base"
-                    >
-                        Kelola semua pembelian.
-                    </p>
-                    <label class="flex items-center space-x-2 cursor-pointer">
-                        <input
-                            type="checkbox"
-                            v-model="showTrashed"
-                            class="rounded dark:bg-gray-900 border-gray-300 dark:border-gray-700 ..."
-                        />
-                        <span class="text-sm text-gray-600 dark:text-gray-400">
-                            Tampilkan Sampah
-                        </span>
-                    </label>
+                    <span class="text-xs text-gray-500">
+                        Total {{ purchases.total }} Data
+                    </span>
                 </div>
-                <!-- Data Table -->
-                <DataTable
-                    serverSide="true"
-                    :data="purchases.data"
-                    :columns="columns"
-                    :perPageOptions="[5, 10, 25, 50, 100]"
-                    v-model:params="params"
-                    :pagination="purchases"
-                >
-                    <template #supplier="{ row }">
-                        <div class="flex flex-col">
-                            <span class="font-medium">{{
-                                row.supplier ? row.supplier.name : "Umum/Cash"
-                            }}</span>
-                            <span class="text-xs text-gray-500">{{
-                                row.supplier ? row.supplier.phone : "-"
-                            }}</span>
-                        </div>
-                    </template>
-                    <template #status="{ row }">
-                        <span
-                            class="px-2 py-1 text-xs font-bold uppercase rounded"
-                            :class="{
-                                'bg-gray-200 text-gray-600':
-                                    row.status === 'draft',
-                                'bg-blue-100 text-blue-600':
-                                    row.status === 'dipesan',
-                                'bg-yellow-100 text-yellow-600':
-                                    row.status === 'dikirim',
-                                'bg-purple-100 text-purple-600':
-                                    row.status === 'diterima',
-                                'bg-teal-100 text-teal-600':
-                                    row.status === 'checking',
-                                'bg-green-100 text-green-600':
-                                    row.status === 'selesai',
-                                'bg-red-100 text-red-600':
-                                    row.status === 'dibatalkan',
-                            }"
-                        >
-                            {{ row.status }}
-                        </span>
-                    </template>
-                    <template #aksi="{ row }">
-                        <div class="inline-flex w-full gap-2">
-                            <Link
-                                v-if="row.status == 'checking'"
-                                :href="route('purchases.checking', row.id)"
-                                class="px-3 py-1 text-sm font-medium text-teal-600 transition border border-teal-200 rounded hover:text-teal-900 hover:bg-teal-300"
-                            >
-                                Validasi Barang
-                            </Link>
-                            <Link
-                                v-else
-                                :href="route('purchases.show', row.id)"
-                                class="px-3 py-1 text-sm font-medium text-indigo-600 transition border border-indigo-200 rounded hover:text-indigo-900 hover:bg-indigo-300"
-                            >
-                                Lihat Detail
-                            </Link>
-                        </div>
-                    </template>
-                </DataTable>
+
+                <PurchaseTransactionList :purchases="purchases.data" />
+                
+                 <!-- Pagination -->
+                 <div v-if="purchases.last_page > 1" class="flex justify-center mt-8 gap-2">
+                    <button
+                        v-bind="purchases.links[0]"
+                        :disabled="!purchases.prev_page_url"
+                        @click="params.page--"
+                        class="px-4 py-2 bg-white border rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                    >
+                        Prev
+                    </button>
+                    <span class="px-4 py-2 text-gray-500 text-sm flex items-center">
+                        Hal {{ purchases.current_page }} / {{ purchases.last_page }}
+                    </span>
+                    <button
+                        :disabled="!purchases.next_page_url"
+                        @click="params.page++"
+                        class="px-4 py-2 bg-white border rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                    >
+                        Next
+                    </button>
+                </div>
             </div>
+
         </div>
     </AuthenticatedLayout>
 </template>
