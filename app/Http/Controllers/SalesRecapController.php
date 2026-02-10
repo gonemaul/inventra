@@ -234,10 +234,12 @@ class SalesRecapController extends Controller
                     'unit_id',
                     'size_id',
                 ])
+                ->withSum('saleItems as total_sold', 'quantity')
                 ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name'])
                 ->orderBy('name')
                 ->get(),
             'categories' => $this->categoryService->getAll(),
+            'brands' => Brand::select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 

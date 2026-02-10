@@ -375,6 +375,9 @@ const getCartQty = (productId) => {
                                             }}
                                         </span>
                                     </div>
+                                    <span v-if="product.total_sold > 0" class="text-[9px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                                        {{ product.total_sold }} Terjual
+                                    </span>
                                 </div>
     
                                 <div

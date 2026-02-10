@@ -119,7 +119,7 @@ class ProductService
             if (in_array($sortField, $allowedSorts)) {
                 $query->orderBy($sortField, $sortDirection);
             } else {
-                $query->orderBy('created_at', 'desc');
+                $query->orderBy('name', 'asc');
             }
         }
 

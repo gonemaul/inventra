@@ -16,6 +16,7 @@ export function usePosRealtime(props) {
     const allProducts = ref([]);
     const isFetchingData = ref(false);
     const displayLimit = ref(20);
+    const hasMore = ref(true); // Fix Infinite Scroll
     const filterState = ref({
         search: "",
         category: "all",
@@ -281,10 +282,6 @@ export function usePosRealtime(props) {
     }
 
     // =========================================================================
-    // 4. PRODUCT & FILTER LOGIC
-    // =========================================================================
-
-    // =========================================================================
     // 4. PRODUCT & FILTER LOGIC (SERVER-SIDE)
     // =========================================================================
 
@@ -295,29 +292,34 @@ export function usePosRealtime(props) {
 
     // Fungsi load product dari server dengan parameter search & limit
     const loadProduct = async (params = {}) => {
+        const currentLimit = displayLimit.value;
+
         // Merge params dengan default
         const queryParams = {
             query: params.search || filterState.value.search,
-            limit: displayLimit.value,
+            limit: currentLimit,
             category_id: filterState.value.category,
             product_type_id: filterState.value.subCategory,
             brand_id: filterState.value.brand, // New addition
             sort: filterState.value.sort,
-            hide_empty_stock: filterState.value.hideEmptyStock ? 1 : 0, // Changed to 1 or 0
-            // page: page, // 'page' is not defined in the current scope
+            hide_empty_stock: filterState.value.hideEmptyStock ? 1 : 0,
         };
 
         const cacheKey = JSON.stringify(queryParams);
 
         // 1. Cek Cache (Client-Side Feel)
         if (productCache.value.has(cacheKey)) {
-            allProducts.value = productCache.value.get(cacheKey);
-            syncStockWithCatalog(); // Sync saat load cache
-            // Opsional: Tetap fetch di background untuk update data (Stale-While-Revalidate)
-            // Tapi untuk POS, "Feel Cepat" > "Data Detik Ini Update". 
-            // Kita skip fetch background jika sudah ada cache, KECUALI user memaksa refresh / search.
-            // Namun, stok mungkin berubah. Jadi kita bisa implement strategy:
-            // "Pakai Cache Dulu, Fetch Background Nanti"
+            const cachedData = productCache.value.get(cacheKey);
+            allProducts.value = cachedData;
+
+            // Cek hasMore dari cache juga
+            if (cachedData.length < currentLimit) {
+                hasMore.value = false;
+            } else {
+                hasMore.value = true;
+            }
+
+            syncStockWithCatalog();
         } else {
             isFetchingData.value = true;
         }
@@ -329,6 +331,14 @@ export function usePosRealtime(props) {
             });
 
             allProducts.value = response.data;
+
+            // Fix Infinite Scroll Logic
+            if (response.data.length < currentLimit) {
+                hasMore.value = false;
+            } else {
+                hasMore.value = true;
+            }
+
             // Simpan ke Cache
             productCache.value.set(cacheKey, response.data);
             syncStockWithCatalog(); // Sync saat fetch baru
@@ -344,6 +354,9 @@ export function usePosRealtime(props) {
 
     // Debounce search untuk mengurangi request server
     const debouncedSearch = debounce(() => {
+        // Reset limit saat search berubah
+        displayLimit.value = 20;
+        hasMore.value = true;
         loadProduct();
     }, 400); // Tunggu 400ms setelah user stop ngetik
 
@@ -356,12 +369,14 @@ export function usePosRealtime(props) {
                 isFetchingData.value = true;
                 debouncedSearch();
             } else {
-                // Jika kategori/sort berubah, load langsung (reset limit idealnya, tapi user scrolling behavior varies)
-                // displayLimit.value = 20; // Opsional: Reset scroll saat ganti kategori
+                // Jika kategori/sort berubah, load langsung & Reset Limit
+                if (newVal.category !== oldVal.category ||
+                    newVal.subCategory !== oldVal.subCategory ||
+                    newVal.brand !== oldVal.brand) {
 
-                // Clear products for loading effect if category changed
-                if (newVal.category !== oldVal.category) {
-                    allProducts.value = [];
+                    displayLimit.value = 20;
+                    hasMore.value = true;
+                    allProducts.value = []; // Clear visual
                 }
 
                 loadProduct();
@@ -371,11 +386,8 @@ export function usePosRealtime(props) {
     );
 
     // Filtered Products sekarang MURNI dari server
-    // Sorting bisa dilakukan di client untuk data yang sudah tampak (karena sorting server side butuh reload)
-    // Tapi jika kita load partial, sorting client side hanya mengurutkan 'what is visible'.
-    // Idealnya sorting dikirim ke server juga. 
-    // Tapi untuk responsiveness POS, sorting client side pada 'Top 20' hasil search biasanya cukup.
     const filteredProducts = computed(() => {
+        // ... (sorting logic unchanged - needs to be inside or reused)
         let result = allProducts.value;
         const { sort } = filterState.value;
 
@@ -392,6 +404,9 @@ export function usePosRealtime(props) {
     });
 
     const loadMoreProducts = () => {
+        // Stop jika tidak ada lagi atau sedang loading
+        if (!hasMore.value || isFetchingData.value) return;
+
         // Simple Infinite Scroll: Tambah limit dan request ulang
         displayLimit.value += 12;
         loadProduct();

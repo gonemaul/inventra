@@ -102,7 +102,7 @@ const chartData = computed(() => {
                      <SalesChart 
                         :data="chartData" 
                         title="Grafik Belanja 12 Bulan Terakhir"
-                        color="#3b82f6" 
+                        color="#84cc16" 
                     />
                 </div>
                 <!-- Mini Panel: Quick Actions / Supplier Shortcuts? -->

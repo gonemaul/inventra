@@ -12,7 +12,11 @@ class CategoryService
     public function getAll()
     {
         // Ambil ID dan Nama, urutkan berdasarkan Nama, sertakan jumlah tipe produk
-        return Category::with('productTypes:id,category_id,name')->orderBy('name')->get(['id', 'name']);
+        return Category::withCount('products')
+            ->with('productTypes:id,category_id,name')
+            ->orderByDesc('products_count')
+            ->orderBy('name')
+            ->get(['id', 'name']);
     }
 
     /**

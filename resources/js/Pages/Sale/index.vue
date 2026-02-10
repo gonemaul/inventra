@@ -272,12 +272,13 @@ const pagination = computed(() => props.sales);
                     <!-- GRAFIK PENJUALAN -->
                      <SalesChart 
                         :data="activePeriodInsight.chart" 
-                        :title="`Grafik Omset (${activePeriodInsight.label})`" 
+                        :title="`Grafik Omset (${activePeriodInsight.label})`"
+                        color="#84cc16"
                     />
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Card 1: Top Omset -->
-                        <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+                        <div class="bg-gradient-to-br from-lime-600 to-green-700 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
                             <div class="flex items-center justify-between mb-3 relative z-10">
                                 <div class="flex items-center gap-2">
                                     <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -295,12 +296,12 @@ const pagination = computed(() => props.sales);
                                     :href="route('products.show', product.slug)" 
                                     class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition group"
                                 >
-                                    <div class="w-5 h-5 flex items-center justify-center font-bold text-indigo-700 bg-white rounded-full text-xs shadow-sm">
+                                    <div class="w-5 h-5 flex items-center justify-center font-bold text-lime-700 bg-white rounded-full text-xs shadow-sm">
                                         {{ idx + 1 }}
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold truncate group-hover:text-indigo-200 transition">{{ product.name }}</p>
-                                        <p class="text-[10px] text-indigo-200/80">{{ product.qty }} items</p>
+                                        <p class="text-xs font-bold truncate group-hover:text-lime-200 transition">{{ product.name }}</p>
+                                        <p class="text-[10px] text-lime-100/80">{{ product.qty }} items</p>
                                     </div>
                                     <div class="font-bold text-xs">
                                         {{ new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(product.revenue) }}
@@ -313,7 +314,7 @@ const pagination = computed(() => props.sales);
                         </div>
 
                         <!-- Card 2: Top Qty -->
-                        <div class="bg-gradient-to-br from-orange-500 to-red-600 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+                        <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
                             <div class="flex items-center justify-between mb-3 relative z-10">
                                 <div class="flex items-center gap-2">
                                     <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
@@ -331,11 +332,11 @@ const pagination = computed(() => props.sales);
                                     :href="route('products.show', product.slug)" 
                                     class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition group"
                                 >
-                                    <div class="w-5 h-5 flex items-center justify-center font-bold text-orange-700 bg-white rounded-full text-xs shadow-sm">
+                                    <div class="w-5 h-5 flex items-center justify-center font-bold text-teal-700 bg-white rounded-full text-xs shadow-sm">
                                         {{ idx + 1 }}
                                     </div>
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold truncate group-hover:text-orange-200 transition">{{ product.name }}</p>
+                                        <p class="text-xs font-bold truncate group-hover:text-teal-200 transition">{{ product.name }}</p>
                                     </div>
                                     <div class="font-bold text-xs bg-white/20 px-1.5 py-0.5 rounded">
                                         {{ product.qty }} items
