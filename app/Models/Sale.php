@@ -42,11 +42,13 @@ class Sale extends Model
     ];
 
     const PAYMENT_METHOD_CASH = 'cash';
+    const PAYMENT_METHOD_QRIS = 'qris';
 
     const PAYMENT_METHOD_EWALLET = 'e-wallet';
 
     const PAYMENT_METHODS = [
         self::PAYMENT_METHOD_CASH,
+        self::PAYMENT_METHOD_QRIS,
         self::PAYMENT_METHOD_EWALLET,
     ];
 

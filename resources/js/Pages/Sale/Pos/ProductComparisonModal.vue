@@ -146,7 +146,7 @@ const maxSold = computed(() => {
                                  </div>
                                  <div class="flex flex-col py-2 border-b border-gray-100 dark:border-gray-700">
                                     <span class="text-gray-400 mb-1">Deskripsi</span>
-                                    <span class="text-xs text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed">{{ product.description || '-' }}</span>
+                                    <span class="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{{ product.description || '-' }}</span>
                                  </div>
                             </div>
                             

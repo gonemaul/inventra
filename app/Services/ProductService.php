@@ -284,16 +284,16 @@ class ProductService
         if ($validator->fails()) {
             throw new ValidationException($validator);
         }
-        $generatedCode = $this->generateProductCode(
-            $data['category_id'],
-            $data['product_type_id'],
-            $data['brand_id'],
-            $data['size_id']
-        );
 
-        return DB::transaction(function () use ($validator, $imageFile, $generatedCode) {
+        return DB::transaction(function () use ($validator, $imageFile) {
             $validatedData = $validator->validated();
             if (! $validatedData['code']) {
+                $generatedCode = $this->generateProductCode(
+                $validatedData['category_id'],
+                $validatedData['product_type_id'],
+                $validatedData['brand_id'],
+                $validatedData['size_id']
+            );
                 $validatedData['code'] = $generatedCode;
             }
             if ($imageFile) {

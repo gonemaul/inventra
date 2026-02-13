@@ -56,7 +56,9 @@ class StockService
             );
         }
         // 1. Update Master Stok di Produk
-        if ($type != StockMovement::TYPE_INITIAL) {
+        $isService = in_array(strtolower($product->category->name ?? ''), ['jasa', 'layanan']);
+
+        if ($type != StockMovement::TYPE_INITIAL && !$isService) {
             // tambah stok
             if (in_array($type, [StockMovement::TYPE_ADJUSTMENT_IN, StockMovement::TYPE_PURCHASE, StockMovement::TYPE_RETURN_IN])) {
                 $stockAfter = $stockBefore + $qty;
@@ -81,8 +83,11 @@ class StockService
                 }
             }
             $product->stock = $stockAfter;
+            $product->save();
+        } else {
+             // Jika Jasa, stock update diskip, tapi variabel stockAfter disamakan stockBefore agar log mencatat saldo akhir tetap.
+             $stockAfter = $stockBefore;
         }
-        $product->save();
 
         // 2. Catat di Buku Sejarah (Stock Movement)
         StockMovement::create([
@@ -107,9 +112,9 @@ class StockService
             // A. Buat Pesan Singkat & Padat (Actionable)
             $msg = "⚠️ <b>STOK KRITIS ALERT!</b>\n\n";
             $msg .= "📦 <b>{$product->name}</b>\n";
-            $msg .= "Sisa Stok: <b>{$analysis['current_stock']} {$product->unit->name}</b>\n";
+            $msg .= "Sisa Stok: <b>{$analysis['current_stock']} {$product->unit?->name}</b>\n";
             $msg .= "Habis dalam: <b>{$analysis['days_left']} hari</b>\nPada Tgl: {$analysis['stockout_date']}\n";
-            $msg .= "<i>Saran: Segera order {$analysis['suggested_qty']} pcs</i>";
+            $msg .= "<i>Saran: Segera order {$analysis['suggested_qty']} {$product->unit?->name}</i>";
 
             // B. Kirim Telegram Langsung
             TelegramService::send($msg);

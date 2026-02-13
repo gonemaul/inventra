@@ -34,6 +34,8 @@ export function usePosRealtime(props) {
     const memberSearchResults = ref([]);
     const selectedMember = ref(null);
 
+    const serviceProducts = ref([]);
+
     // C. Main Transaction Form
     const isEditMode = computed(() => props.mode === 'edit');
     const existingSale = props.sale || null;
@@ -48,19 +50,36 @@ export function usePosRealtime(props) {
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         })(),
-        items: existingSale?.items?.map(item => ({
-            product_id: item.product_id,
-            code: item.product?.code,
-            name: item.product?.name,
-            unit: item.product?.unit,
-            size: item.product?.size,
-            stock_max: parseFloat(item.product?.stock || 0) + parseFloat(item.quantity), // Restore stock for validation logic
-            selling_price: parseFloat(item.selling_price),
-            original_price: parseFloat(item.selling_price),
-            quantity: parseFloat(item.quantity),
-            original_quantity: parseFloat(item.quantity), // PENTING: Untuk hitung ulang stok max saat sync catalog
-            subtotal: parseFloat(item.subtotal),
-        })) || [],
+        items: existingSale?.items?.map(item => {
+            const product = item.product;
+            const snapshot = item.product_snapshot || {};
+
+            // Fallback Logic
+            const name = product?.name || snapshot.name || "Unknown Item";
+            const code = product?.code || snapshot.code || "-";
+
+            // Reconstruct Category Object for Compatibility
+            // Snapshot stores category NAME string, but UI expects object with .name
+            let categoryObj = product?.category;
+            if (!categoryObj && snapshot.category) {
+                categoryObj = { name: snapshot.category };
+            }
+
+            return {
+                product_id: item.product_id,
+                code: code,
+                name: name,
+                category: categoryObj,
+                unit: product?.unit || (snapshot.unit ? { name: snapshot.unit } : null),
+                size: product?.size,
+                stock_max: parseFloat(product?.stock || 0) + parseFloat(item.quantity),
+                selling_price: parseFloat(item.selling_price),
+                original_price: parseFloat(item.selling_price),
+                quantity: parseFloat(item.quantity),
+                original_quantity: parseFloat(item.quantity),
+                subtotal: parseFloat(item.subtotal),
+            };
+        }) || [],
         customer_id: existingSale?.customer_id || null,
         payment_amount: existingSale ? parseFloat(existingSale.total_payment) : 0,
         change_amount: existingSale ? parseFloat(existingSale.change_amount) : 0,
@@ -198,7 +217,10 @@ export function usePosRealtime(props) {
 
     // Cart Management
     const addItem = (product) => {
-        if (parseFloat(product.stock) <= 0) {
+        // LOGIC JASA: Cek apakah produk adalah Jasa/Layanan
+        const isService = ['Jasa', 'Layanan'].includes(product.category?.name);
+
+        if (!isService && parseFloat(product.stock) <= 0) {
             toast.error("Stok habis!");
             return;
         }
@@ -208,6 +230,12 @@ export function usePosRealtime(props) {
         );
 
         if (existingItem) {
+            // Jika Jasa, tolak duplikasi
+            if (isService) {
+                toast.warning(`Jasa "${product.name}" sudah ada di keranjang.`);
+                return;
+            }
+
             if (existingItem.quantity + 1 > product.stock) {
                 toast.warning("Stok maksimal!");
                 return;
@@ -220,14 +248,17 @@ export function usePosRealtime(props) {
                 product_id: product.id,
                 code: product.code,
                 name: product.name,
+                image_url: product.image_url,
+                category: product.category,
                 unit: product.unit,
                 size: product.size,
                 stock_max: parseFloat(product.stock),
                 selling_price: price,
                 original_price: price,
                 quantity: 1,
-                original_quantity: 0, // New items start with 0 original_quantity
+                original_quantity: 0,
                 subtotal: price,
+                is_service: isService, // Flag helper
             });
         }
     };
@@ -290,19 +321,30 @@ export function usePosRealtime(props) {
     // Value: Array of products
     const productCache = ref(new Map());
 
+    // Dynamic Filter State
+    const dynamicBrands = ref([]);
+    const dynamicSizes = ref([]);
+
     // Fungsi load product dari server dengan parameter search & limit
     const loadProduct = async (params = {}) => {
         const currentLimit = displayLimit.value;
 
+        const activeSearch = params.search || filterState.value.search;
+
         // Merge params dengan default
+        // REVISI: Jika ada search query, ignore filter kategori/brand/type (seolah "all")
+        // Tapi tetap hormati sort & hide_empty_stock
         const queryParams = {
-            query: params.search || filterState.value.search,
+            query: activeSearch,
             limit: currentLimit,
-            category_id: filterState.value.category,
-            product_type_id: filterState.value.subCategory,
-            brand_id: filterState.value.brand, // New addition
+            category_id: activeSearch ? "all" : filterState.value.category,
+            product_type_id: activeSearch ? "all" : filterState.value.subCategory,
+            brand_id: activeSearch ? "all" : filterState.value.brand,
             sort: filterState.value.sort,
             hide_empty_stock: filterState.value.hideEmptyStock ? 1 : 0,
+
+            // Add other filter params if needed for base scope logic on server (e.g. size_id)
+            size_id: activeSearch ? "all" : (filterState.value.size || "all"),
         };
 
         const cacheKey = JSON.stringify(queryParams);
@@ -310,13 +352,21 @@ export function usePosRealtime(props) {
         // 1. Cek Cache (Client-Side Feel)
         if (productCache.value.has(cacheKey)) {
             const cachedData = productCache.value.get(cacheKey);
-            allProducts.value = cachedData;
-
-            // Cek hasMore dari cache juga
-            if (cachedData.length < currentLimit) {
-                hasMore.value = false;
+            // Handle Old Cache Format (Array) vs New Format (Object)
+            if (Array.isArray(cachedData)) {
+                allProducts.value = cachedData;
+                // If old cache, we might miss dynamic filters, but that's okay for now or invalidate cache
             } else {
-                hasMore.value = true;
+                allProducts.value = cachedData.products;
+                dynamicBrands.value = cachedData.available_brands || [];
+                dynamicSizes.value = cachedData.available_sizes || [];
+
+                // Cek hasMore
+                if (cachedData.products.length < currentLimit) {
+                    hasMore.value = false;
+                } else {
+                    hasMore.value = true;
+                }
             }
 
             syncStockWithCatalog();
@@ -330,17 +380,30 @@ export function usePosRealtime(props) {
                 params: queryParams
             });
 
-            allProducts.value = response.data;
+            // New Response Format handling
+            const data = response.data;
+            let products = [];
+
+            if (Array.isArray(data)) {
+                // Fallback if server returns array (shouldn't happen with new code)
+                products = data;
+            } else {
+                products = data.products;
+                dynamicBrands.value = data.available_brands || [];
+                dynamicSizes.value = data.available_sizes || [];
+            }
+
+            allProducts.value = products;
 
             // Fix Infinite Scroll Logic
-            if (response.data.length < currentLimit) {
+            if (products.length < currentLimit) {
                 hasMore.value = false;
             } else {
                 hasMore.value = true;
             }
 
-            // Simpan ke Cache
-            productCache.value.set(cacheKey, response.data);
+            // Simpan ke Cache (Save full object)
+            productCache.value.set(cacheKey, data);
             syncStockWithCatalog(); // Sync saat fetch baru
         } catch (e) {
             console.error("Gagal load produk:", e);
@@ -385,22 +448,9 @@ export function usePosRealtime(props) {
         { deep: true }
     );
 
-    // Filtered Products sekarang MURNI dari server
+    // Filtered Products sekarang MURNI dari server (No Client Side Sort)
     const filteredProducts = computed(() => {
-        // ... (sorting logic unchanged - needs to be inside or reused)
-        let result = allProducts.value;
-        const { sort } = filterState.value;
-
-        // Sorting (Client Side pada hasil Server Side)
-        if (sort === "cheapest") {
-            result.sort((a, b) => a.selling_price - b.selling_price);
-        } else if (sort === "bestseller") {
-            result.sort((a, b) => (b.total_sold || 0) - (a.total_sold || 0));
-        } else {
-            result.sort((a, b) => a.name.localeCompare(b.name));
-        }
-
-        return result;
+        return allProducts.value;
     });
 
     const loadMoreProducts = () => {
@@ -410,6 +460,24 @@ export function usePosRealtime(props) {
         // Simple Infinite Scroll: Tambah limit dan request ulang
         displayLimit.value += 12;
         loadProduct();
+    };
+
+    const fetchServices = async () => {
+        try {
+            const response = await axios.get(route("sales.products.lite"), {
+                params: { only_services: true, limit: 100 }
+            });
+            // Handle new response format { products, available_brands, ... }
+            if (response.data.products) {
+                serviceProducts.value = response.data.products;
+            } else if (Array.isArray(response.data)) {
+                serviceProducts.value = response.data;
+            } else {
+                serviceProducts.value = [];
+            }
+        } catch (e) {
+            console.error("Gagal load layanan:", e);
+        }
     };
 
     // =========================================================================
@@ -525,41 +593,61 @@ export function usePosRealtime(props) {
     // 7. TRANSACTION SUBMIT & UTILS
     // =========================================================================
 
-    const submitTransaction = (printInvoice = false, callbacks = {}) => {
-        form.change_amount = changeAmount.value;
-        form.payment_amount = parseFloat(form.payment_amount);
+    const submitTransaction = (printInvoice = false) => {
+        return new Promise((resolve, reject) => {
+            // Capture these BEFORE reset
+            const currentChange = changeAmount.value;
+            const currentTotal = grandTotal.value;
 
-        const options = {
-            onStart: callbacks.onStart,
-            onFinish: callbacks.onFinish,
-            onSuccess: (page) => {
-                if (!isEditMode.value) {
-                    loadProduct(); // Reload stok
-                    localStorage.removeItem(STORAGE_KEY);
-                    form.reset();
-                    form.items = [];
-                    selectedMember.value = null;
+            form.change_amount = currentChange;
+            form.payment_amount = parseFloat(form.payment_amount);
+
+            const options = {
+                onSuccess: (page) => {
+                    const flash = page.props.flash || {};
+                    const saleId = flash.sale_id;
+
+                    if (!isEditMode.value) {
+                        loadProduct(); // Reload stok
+                        localStorage.removeItem(STORAGE_KEY);
+                        form.reset();
+                        form.items = [];
+                        selectedMember.value = null;
+                    }
+
+                    // if (flash.success) {
+                    //     toast.success(flash.success);
+                    // }
+
+                    // Return captured values
+                    resolve({
+                        success: true,
+                        saleId: saleId,
+                        change: currentChange,
+                        total: currentTotal
+                    });
+                },
+                onError: (err) => {
+                    console.error(err);
+                    toast.error("Gagal memproses transaksi");
+                    reject(err);
+                },
+                onFinish: () => {
+                    // Optional: remove loading state
                 }
+            };
 
-                if (callbacks.onSuccess) callbacks.onSuccess(page);
-            },
-            onError: (err) => {
-                console.error(err);
-                toast.error("Gagal memproses transaksi");
-            },
-        };
-
-        if (isEditMode.value) {
-            form.transform((data) => ({
-                ...data,
-                // Ensure required fields for validation match
-            })).put(route("sales.update", form.id), options);
-        } else {
-            form.transform((data) => ({
-                ...data,
-                print_invoice: printInvoice,
-            })).post(route("sales.pos.store"), options);
-        }
+            if (isEditMode.value) {
+                form.transform((data) => ({
+                    ...data,
+                })).put(route("sales.update", form.id), options);
+            } else {
+                form.transform((data) => ({
+                    ...data,
+                    print_invoice: printInvoice,
+                })).post(route("sales.pos.store"), options);
+            }
+        });
     };
 
     const rp = (val) =>
@@ -600,6 +688,7 @@ export function usePosRealtime(props) {
 
     onMounted(() => {
         loadProduct();
+        fetchServices();
         restoreSession();
 
         if (isEditMode.value) {
@@ -617,6 +706,9 @@ export function usePosRealtime(props) {
         filteredProducts,
         isFetchingData,
         compareList,
+        serviceProducts,
+        dynamicBrands,
+        dynamicSizes,
 
         // Member State
         memberSearch,

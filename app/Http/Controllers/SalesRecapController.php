@@ -300,6 +300,7 @@ class SalesRecapController extends Controller
             return redirect()->back()->with([
                 'success' => $message,
                 'print_url' => $printUrl, // Kirim URL struk ke frontend
+                'sale_id' => $sale->id,   // Kirim ID untuk keperluan lain
             ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Sales Store Error: " . $e->getMessage());
@@ -363,7 +364,16 @@ class SalesRecapController extends Controller
      */
     public function edit(Sale $sale)
     {
-        $sale->load('items.product.unit', 'customer');
+        $sale->load([
+            'items.product' => function($q) {
+                $q->withTrashed();
+            },
+            'items.product.unit', 
+            'items.product.category', 
+            'items.product.brand',
+            'items.product.size',
+            'customer'
+        ]);
 
         if ($sale->input_type == Sale::TYPE_REALTIME) {
             return Inertia::render('Sale/Pos/index', [
@@ -490,22 +500,118 @@ class SalesRecapController extends Controller
         if ($request->filled('brand_id') && $request->input('brand_id') !== 'all') {
             $query->where('brand_id', $request->input('brand_id'));
         }
+        // E. Filter Size
+        if ($request->filled('size_id') && $request->input('size_id') !== 'all') {
+            $query->where('size_id', $request->input('size_id'));
+        }
 
-        // 3. Sorting & Limiting (PENTING: Jangan ambil semua)
-        // Sort by 'total_sold' desc (Bestseller) is good default for POS usually,
-        // but Name is safer/standard.
-        if ($search) {
-             // Kalau sedang search, prioritaskan kecocokan nama (implicit via database match usually)
-             // Or keep simple:
+        // 3. Sorting & Limiting
+        $sort = $request->input('sort', 'default');
+        
+        if ($request->boolean('only_services')) {
+             // LOGIC BARU: Ambil HANYA Jasa/Layanan
+             $query->whereHas('category', function($q) {
+                 $q->whereIn('name', ['Jasa', 'Layanan']);
+             });
              $query->orderBy('name');
         } else {
-             // Kalau default load, tampilkan bestseller atau terbaru
-             // $query->orderByDesc('total_sold');
-             $query->orderBy('name');
+             // Logic Sorting Utama
+             if ($sort === 'cheapest') {
+                 $query->orderBy('selling_price', 'asc');
+             } elseif ($sort === 'bestseller') {
+                 $query->orderByDesc('total_sold');
+             } else {
+                 $query->orderBy('name');
+             }
+             
+             // LOGIC FILTER JASA: Sembunyikan Jasa/Layanan jika tidak ada filter kategori spesifik
+             if (!$request->filled('category_id') || $request->input('category_id') === 'all') {
+                 $query->whereDoesntHave('category', function($q) {
+                     $q->whereIn('name', ['Jasa', 'Layanan']);
+                 });
+             }
         }
             
+        // --- LOGIC DYNAMIC FILTERS (FACETS) ---
+        // Requirement:
+        // 1. Jika Category = All -> Tampilkan Semua Brand, Hide Size.
+        // 2. Jika Category Selected -> Tampilkan Brand & Size yg available di produk kategori tsb.
+        
+        $availableBrands = [];
+        $availableSizes = [];
+
+        // RE-BUILD BASIC QUERY SCOPE (Search + Category + Type + Jasa Logic)
+        // Note: Kita gunakan scope ini untuk mencari "Available Brands" dan "Available Sizes"
+        // Kita TIDAK meng-apply filter Brand/Size di sini, karena Facet harus menunjukkan opsi lain
+        
+        $baseScope = Product::query();
+        if ($request->boolean('hide_empty_stock')) {
+            $baseScope->where('stock', '>', 0);
+        }
+        
+        // Context 1: Current Search Context
+        if ($search) {
+             $baseScope->where(function($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+        
+        // Context 2: Current Category Context
+        $categoryId = $request->input('category_id');
+        $hasCategoryFilter = $request->filled('category_id') && $categoryId !== 'all';
+        
+        if ($hasCategoryFilter) {
+            $baseScope->where('category_id', $categoryId);
+        }
+        
+        if ($request->filled('product_type_id') && $request->input('product_type_id') !== 'all') {
+            $baseScope->where('product_type_id', $request->input('product_type_id'));
+        }
+        
+        // Jasa Logic
+        if ($request->boolean('only_services')) {
+             $baseScope->whereHas('category', function($q) { $q->whereIn('name', ['Jasa', 'Layanan']); });
+        } else {
+             if (!$hasCategoryFilter) {
+                  // Jika All Category, exclude Jasa (default pos behavior usually) 
+                  // Kecuali user cari spesifik? 
+                  // Mari kita ikut logic utama:
+                  $baseScope->whereDoesntHave('category', function($q) { $q->whereIn('name', ['Jasa', 'Layanan']); });
+             }
+        }
+
+        // 1. Get Available Brands
+        // Logic: Ambil brand dari scope produk saat ini.
+        // Jika Category All (dan no search), baseScope covers almost all products (minus jasa).
+        // Maka ini akan return semua brand. Ini SESUAI request "tampilkan semua brands".
+        $availableBrands = Brand::whereIn('id', $baseScope->clone()->select('brand_id')->distinct())
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+
+        // 2. Get Available Sizes
+        // Logic: "ketika all (Category) ... hide size"
+        if ($hasCategoryFilter || $search) {
+            // Jika ada filter kategori ATAU ada search -> baru cari Size
+            $availableSizes = \App\Models\Size::whereIn('id', $baseScope->clone()->select('size_id')->distinct())
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        } else {
+            // Jika Category All & No Search -> Kosongkan Size (Hide)
+            $availableSizes = []; 
+        }
+
+        // --- END FACETS ---
+
         $products = $query->limit($limit)->get();
 
-        return response()->json($products);
+        return response()->json([
+            'products' => $products,
+            'available_brands' => $availableBrands,
+            'available_sizes' => $availableSizes,
+        ]);
     }
 }

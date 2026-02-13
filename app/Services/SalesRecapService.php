@@ -108,7 +108,10 @@ class SalesRecapService
                 $sellingPrice = $itemData['selling_price'];
 
                 // Validasi Stok (Opsional, jika tidak boleh minus)
-                if ($product->stock < $inputQty) {
+                // SKIP jika kategori Jasa/Layanan
+                $isService = in_array(strtolower($product->category->name ?? ''), ['jasa', 'layanan']);
+                
+                if (!$isService && $product->stock < $inputQty) {
                     throw new Exception("Stok tidak cukup untuk produk: {$product->name}. Sisa: {$product->stock}");
                 }
 
