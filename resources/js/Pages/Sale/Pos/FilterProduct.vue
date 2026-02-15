@@ -86,6 +86,7 @@ const resetFilters = () => {
             <div class="relative flex-1">
                 <input
                     :value="search"
+                    @focus="$event.target.select()"
                     @input="$emit('update:search', $event.target.value)"
                     type="search"
                     placeholder="Cari produk..."

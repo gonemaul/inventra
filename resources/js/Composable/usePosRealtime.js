@@ -258,7 +258,7 @@ export function usePosRealtime(props) {
                 quantity: 1,
                 original_quantity: 0,
                 subtotal: price,
-                is_service: isService, // Flag helper
+                is_service: isService, // Flag helper if needed, or rely on category
             });
         }
     };

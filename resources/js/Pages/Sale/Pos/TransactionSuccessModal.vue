@@ -1,5 +1,5 @@
 <script setup>
-import Modal from "@/Components/Modal.vue";
+import BottomSheet from "@/Components/BottomSheet.vue";
 
 const props = defineProps({
     show: {
@@ -23,8 +23,8 @@ const rp = (val) =>
 </script>
 
 <template>
-    <Modal :show="show" max-width="sm" :closeable="false">
-        <div class="relative p-10 text-center bg-white dark:bg-gray-800 rounded-[2.5rem] overflow-hidden">
+    <BottomSheet :show="show" :persistent="true" @close="$emit('newTransaction')">
+        <div class="relative w-full text-center pt-4 overflow-hidden">
              <!-- Background Blur Glow -->
             <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-lime-400/20 rounded-full blur-[80px] pointer-events-none"></div>
 
@@ -56,7 +56,7 @@ const rp = (val) =>
                 <svg class="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
             </button>
         </div>
-    </Modal>
+    </BottomSheet>
 </template>
 
 <style scoped>

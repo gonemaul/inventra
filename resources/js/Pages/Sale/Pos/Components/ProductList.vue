@@ -51,9 +51,10 @@ const isInCompare = (productId) => {
 
 // Berfungsi mendeteksi jika user scroll mentok bawah -> load data lagi
 const handleScroll = (e) => {
-    const { scrollTop, clientHeight, scrollHeight } = e.target;
-    // Toleransi 50px sebelum mentok bawah
-    if (scrollTop + clientHeight >= scrollHeight - 50) {
+    const element = e.target;
+    emit('scroll-list', e); // Emit scroll event for parent
+    
+    if (element.scrollHeight - element.scrollTop <= element.clientHeight + 50) {
         emit("loadMore");
     }
 };

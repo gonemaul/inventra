@@ -231,11 +231,27 @@ const handleConfirmTransaction = (printInvoice) => {
             
             // IMMEDIATE RESET CART UI TO STEP 1
             cartRef.value?.resetStep();
+            
+            // Close Mobile Cart
+            showMobileCart.value = false; 
         } else {
             toast.success("Transaksi berhasil disimpan.");
         }
+    }).catch((err) => {
+        console.error("Error submitting transaction:", err);
+        isSubmitting.value = false;
+        // Optional: toast.error("Gagal menyimpan transaksi.");
     });
 };
+
+// --- UX IMPROVEMENTS ---
+// Auto-close keyboard on scroll
+const handleProductListScroll = () => {
+    // Check if on mobile (optional logic, but simple blur is safe)
+    if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        document.activeElement.blur();
+    }
+}
 </script>
 
 <template>
@@ -277,7 +293,27 @@ const handleConfirmTransaction = (printInvoice) => {
                 @scan="openScanProduk"
             />
             
-            <!-- MODULAR PRODUCT LIST -->
+            <!-- MODULAR PRODUCT LIST WRAPPER FOR SCROLL EVENT -->
+            <!-- We need to capture scroll here. But ProductList might handle scroll internally. 
+                 Let's check ProductList structure or wrap it. 
+                 ProductList usually emits 'loadMore' on scroll. 
+                 If ProductList has a scrollable container, we should listen there. 
+                 Wait, ProductList.vue likely has the scroll container.
+                 Let's pass a prop or listener to ProductList? 
+                 Better: Wrap ProductList in a div that captures bubbling scroll? 
+                 Scroll event doesn't bubble by default from overflow elements. 
+                 We need to modify ProductList.vue to emit scroll or handle it there.
+                 
+                 Plan B: For now, let's just close mobile cart here and address scroll in ProductList.vue 
+                 Wait, user asked for "scroll product list -> close keyboard".
+                 This means we should modify ProductList.vue or pass a handler.
+                 Let's add the handler to `ProductList` component tag if it supports @scroll.native equivalent.
+                 Vue 3: @scroll on component listens to root element scroll? No, only specific emissions.
+                 
+                 Let's Look at ProductList.vue content first? I already have it in context? 
+                 No, I viewed index.vue. I need to check ProductList.vue for the scroll container.
+            -->
+            
             <ProductList
                 :products="filteredProducts"
                 :is-fetching="isFetchingData"
@@ -288,7 +324,9 @@ const handleConfirmTransaction = (printInvoice) => {
                 @addToCart="handleDirectAddToCart"
                 @openDetail="openDetail"
                 @toggleCompare="toggleCompare"
+                @scroll-list="handleProductListScroll" 
             />
+            <!-- Added @scroll-list listener. Now I need to update ProductList.vue to emit it. -->
 
 
             <!-- Floating Compare Bar (Bottom Right) -->

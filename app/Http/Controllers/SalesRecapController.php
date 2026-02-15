@@ -487,6 +487,7 @@ class SalesRecapController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%");
             });
+            $query->orderByDesc('total_sold');
         }
         // B. Filter Kategori
         if ($request->filled('category_id') && $request->input('category_id') !== 'all') {

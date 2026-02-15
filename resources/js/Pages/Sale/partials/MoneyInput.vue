@@ -29,6 +29,7 @@ const displayValue = computed({
             inputmode="numeric"
             v-model="displayValue"
             :placeholder="placeholder"
+            @focus="$event.target.select()"
             class="w-full py-2 pl-10 pr-4 text-lg font-bold text-right text-gray-800 bg-white border border-gray-300 dark:bg-gray-800 dark:border-gray-600 rounded-xl focus:ring-2 focus:ring-lime-500 dark:text-white"
         />
     </div>

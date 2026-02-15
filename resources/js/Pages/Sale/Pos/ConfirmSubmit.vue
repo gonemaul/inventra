@@ -1,5 +1,5 @@
 <script setup>
-import Modal from "@/Components/Modal.vue";
+import BottomSheet from "@/Components/BottomSheet.vue";
 import { watch, ref } from "vue";
 const props = defineProps({
     showConfirmModal: {
@@ -35,14 +35,13 @@ const handleClick = (type) => {
 const emit = defineEmits(["close", "confirmTransaction"]);
 </script>
 <template>
-    <Modal 
+    <BottomSheet 
         :show="showConfirmModal" 
         @close="!processing && $emit('close')" 
-        max-width="md"
-        :closeable="!processing"
+        :persistent="processing"
     >
         <div
-            class="relative z-10 w-full p-6 overflow-hidden text-center transition-all transform scale-100 bg-white shadow-2xl dark:bg-gray-800 rounded-3xl"
+            class="relative z-10 w-full p-6 pb-8 overflow-hidden text-center transition-all transform scale-100"
         >
              <!-- Processing Overlay with Premium Animation -->
             <div v-if="processing" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm">
@@ -123,5 +122,5 @@ const emit = defineEmits(["close", "confirmTransaction"]);
                 </button>
             </div>
         </div>
-    </Modal>
+    </BottomSheet>
 </template>

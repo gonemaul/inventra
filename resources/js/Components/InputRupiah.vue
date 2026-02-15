@@ -141,6 +141,7 @@ watch(
             :value="displayValue"
             @input="onInput"
             @keydown="onKeydown"
+            @focus="$event.target.select()"
             v-bind="{ ...$attrs, class: null }"
             :class="inputClasses"
         />
