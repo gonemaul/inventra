@@ -1,5 +1,5 @@
 <script setup>
-import { watch, onMounted, onUnmounted } from "vue";
+import { watch, onMounted, onUnmounted, ref } from "vue";
 
 const props = defineProps({
     show: { type: Boolean, required: true },
@@ -46,6 +46,57 @@ onUnmounted(() => {
     toggleBodyScroll(false);
     document.removeEventListener("keydown", handleKeydown);
 });
+// --- SWIPE TO CLOSE LOGIC ---
+const sheetContent = ref(null);
+const startY = ref(0);
+const currentY = ref(0);
+const isDragging = ref(false);
+const sheetTransform = ref("");
+const sheetTransition = ref("");
+
+const handleTouchStart = (e) => {
+    // Only allow swipe if content is scrolled to top
+    // Note: 'sheetContent' ref points to the wrapper div. 
+    // If the scrollable area is inside, we might need to check that instead.
+    // For now, let's allow swipe if we touch the handle or header area.
+    
+    startY.value = e.touches[0].clientY;
+    isDragging.value = true;
+    sheetTransition.value = "none"; // Disable transition during drag
+};
+
+const handleTouchMove = (e) => {
+    if (!isDragging.value) return;
+    
+    const touchY = e.touches[0].clientY;
+    const deltaY = touchY - startY.value;
+
+    if (deltaY > 0) { // Only swipe down
+        currentY.value = deltaY;
+        sheetTransform.value = `translateY(${deltaY}px)`;
+        // Prevent default only if we are dragging the sheet down to avoid scrolling body
+        if (e.cancelable) e.preventDefault(); 
+    }
+};
+
+const handleTouchEnd = () => {
+    if (!isDragging.value) return;
+    isDragging.value = false;
+    sheetTransition.value = "transform 0.3s ease-out"; // Re-enable transition
+
+    if (currentY.value > 100 && !props.persistent) { // Threshold 100px
+        close();
+        // Reset after animation (though component will unmount)
+        setTimeout(() => {
+            currentY.value = 0;
+            sheetTransform.value = "";
+        }, 300);
+    } else {
+        // Bounce back
+        currentY.value = 0;
+        sheetTransform.value = "";
+    }
+};
 </script>
 
 <template>
@@ -64,8 +115,13 @@ onUnmounted(() => {
                 ></div>
 
                 <div
+                    ref="sheetContent"
                     class="relative w-full max-w-md mx-auto flex flex-col max-h-[90vh] bg-white dark:bg-gray-900 rounded-t-2xl sm:rounded-2xl shadow-2xl transform transition-transform sheet-content"
+                    :style="{ transform: sheetTransform, transition: sheetTransition }"
                     @click.stop
+                    @touchstart="handleTouchStart"
+                    @touchmove="handleTouchMove"
+                    @touchend="handleTouchEnd"
                 >
                     <div
                         class="flex justify-center pt-3 pb-1 cursor-pointer shrink-0"

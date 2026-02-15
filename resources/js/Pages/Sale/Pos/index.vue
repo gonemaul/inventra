@@ -2,6 +2,7 @@
 import { Head } from "@inertiajs/vue3";
 import { ref, watch, nextTick } from "vue";
 import { usePosRealtime } from "@/Composable/usePosRealtime";
+import { useWakeLock } from "@/Composable/useWakeLock";
 
 import { useToast } from "vue-toastification";
 import ConfirmSubmit from "./ConfirmSubmit.vue";
@@ -22,6 +23,7 @@ const props = defineProps({
     mode: String, // 'edit' or 'create'
 });
 const pos = usePosRealtime(props);
+const { isDimmed, resetIdleTimer } = useWakeLock(); // 2 minutes default
 // --- PANGGIL COMPOSABLE ---
 const {
     //state
@@ -277,6 +279,18 @@ const handleProductListScroll = () => {
     <div
         class="flex flex-col lg:flex-row h-[100dvh] w-full bg-gray-100 dark:bg-gray-900 overflow-hidden font-sans transition-colors duration-300"
     >
+        <!-- DIMMER OVERLAY (Screen Saver / Power Save) -->
+        <div 
+            v-if="isDimmed"
+            @click="resetIdleTimer"
+            class="fixed inset-0 z-[9999] bg-black/90 flex flex-col items-center justify-center cursor-pointer transition-opacity duration-1000"
+        >
+            <div class="text-center animate-pulse">
+                <span class="text-6xl mb-4 block">🌙</span>
+                <p class="text-white/50 text-sm font-light tracking-widest uppercase">Mode Hemat Daya</p>
+                <p class="text-white/30 text-xs mt-2">Sentuh layar untuk kembali</p>
+            </div>
+        </div>
         <div class="relative flex flex-col flex-1 h-full overflow-hidden">
             <FilterProduct
                 :categories="categories"
