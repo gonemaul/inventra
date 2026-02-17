@@ -473,7 +473,9 @@ class SalesRecapController extends Controller
                 'unit_id',
                 'size_id',
             ])
-            ->withSum('saleItems as total_sold', 'quantity')
+            ->withSum(['saleItems as total_sold' => function($q) {
+                $q->where('created_at', '>=', now()->subDays(90));
+            }], 'quantity')
             ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name', 'category:id,name','productType:id,name']);
             
         if ($request->boolean('hide_empty_stock')) {
@@ -521,6 +523,33 @@ class SalesRecapController extends Controller
                  $query->orderBy('selling_price', 'asc');
              } elseif ($sort === 'bestseller') {
                  $query->orderByDesc('total_sold');
+             } elseif ($sort === 'recommendation') {
+                 // LOGIC REKOMENDASI (Weighted Scoring)
+                 // Hanya aktif jika ada kategori spesifik (untuk fairness komparasi)
+                 if ($request->filled('category_id') && $request->input('category_id') !== 'all') {
+                     // Rumus: (Stock * 40%) + ((Margin/1000) * 40%) - (Terjual * 20%)
+                     // Margin = selling_price - original_price (disini kita assume original_price ada di tabel purchase_prices atau kita pakai selling_price saja sebagai simplifikasi jika data kurang lengkap, 
+                     // tapi idealnya kita butuh margin. Jika tidak join tabel purchase, kita simplifikasi pakai Selling Price tinggi saja).
+                     // Catatan: Karena kolom original_price mungkin tidak ada di tabel products (biasanya di purchases), kita pakai asumsi:
+                     // Prioritas = Stock Banyak + Harga Jual Tinggi (Asumsi margin sebanding) - Terjual Sedikit.
+                     
+                     // Revisi Rumus Database Friendly (Tanpa Join Purchase Price dulu biar cepat):
+                     // Score = (Stock * 0.4) + (Selling_Price / 10000 * 0.4) - (Total_Sold * 0.2)
+                     // Update: Tambahkan CAST untuk memastikan tipe data benar (terutama selling_price jika varchar).
+                     // Serta naikkan bobot Margin agar lebih terasa efeknya.
+                     
+                     // New Formula: (Stock * 0.3) + ((SellingPrice / 1000) * 0.5) - (Sold * 0.2)
+                     // Margin/Harga Jual bobot naik jadi 50% dan pembagi diperkecil (1000) agar nilai nominal lebih berpengaruh.
+                     
+                     $query->orderByRaw('( 
+                        (CAST(stock AS DECIMAL(10,2)) * 0.3) + 
+                        ((CAST(selling_price AS DECIMAL(15,2)) / 1000) * 0.5) - 
+                        (COALESCE((SELECT SUM(quantity) FROM sale_items WHERE product_id = products.id), 0) * 0.2) 
+                     ) DESC');
+                 } else {
+                    // Fallback jika user "hack" request tanpa kategori
+                    $query->orderBy('name');
+                 }
              } else {
                  $query->orderBy('name');
              }
@@ -607,12 +636,48 @@ class SalesRecapController extends Controller
 
         // --- END FACETS ---
 
+        // --- END FACETS ---
+
         $products = $query->limit($limit)->get();
+
+        // --- DYNAMIC THRESHOLD LOGIC ---
+        // Hitung Rata-rata Global (Cache 10 menit agar performa terjaga)
+        $globalStats = \Illuminate\Support\Facades\Cache::remember('pos_product_global_stats', 600, function () {
+            $totalSold90d = \Illuminate\Support\Facades\DB::table('sale_items')
+                ->where('created_at', '>=', now()->subDays(90))
+                ->sum('quantity');
+            
+            $productCount = \App\Models\Product::count();
+            $avgStock = \App\Models\Product::avg('stock');
+
+            return [
+                'avg_sold' => $productCount > 0 ? $totalSold90d / $productCount : 0,
+                'avg_stock' => $avgStock ?? 0
+            ];
+        });
+
+        $avgSold = $globalStats['avg_sold'];
+        $avgStock = $globalStats['avg_stock'];
+
+        // Transform data untuk menambahkan flag Badge
+        $products->transform(function ($product) use ($avgSold, $avgStock) {
+            $totalSold = (float) $product->total_sold;
+            $stock = (float) $product->stock;
+
+            // Logic Best Seller: Sold > 1.5x Rata-rata (Min 5 unit biar valid)
+            $product->is_best_seller = $totalSold > ($avgSold * 1.5) && $totalSold > 5;
+
+            // Logic Stok Banyak (Dead Stock): Stok > 1.5x Rata-rata AND Sold < 0.5x Rata-rata
+            $product->is_dead_stock = $stock > ($avgStock * 1.5) && $totalSold < ($avgSold * 0.5);
+
+            return $product;
+        });
 
         return response()->json([
             'products' => $products,
             'available_brands' => $availableBrands,
             'available_sizes' => $availableSizes,
+            'stats' => $globalStats // Optional: Kirim stats buat debug frontend
         ]);
     }
 }

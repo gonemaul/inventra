@@ -282,7 +282,7 @@ const handleProductListScroll = () => {
         <!-- DIMMER OVERLAY (Screen Saver / Power Save) -->
         <div 
             v-if="isDimmed"
-            @click="resetIdleTimer"
+            @click.stop.prevent="resetIdleTimer"
             class="fixed inset-0 z-[9999] bg-black/90 flex flex-col items-center justify-center cursor-pointer transition-opacity duration-1000"
         >
             <div class="text-center animate-pulse">
@@ -338,7 +338,6 @@ const handleProductListScroll = () => {
                 @addToCart="handleDirectAddToCart"
                 @openDetail="openDetail"
                 @toggleCompare="toggleCompare"
-                @scroll-list="handleProductListScroll" 
             />
             <!-- Added @scroll-list listener. Now I need to update ProductList.vue to emit it. -->
 

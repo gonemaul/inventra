@@ -183,22 +183,27 @@ const resetFilters = () => {
                 <!-- 1. Sort -->
                 <div>
                     <h4 class="text-xs font-bold text-gray-400 uppercase mb-3">Urutkan Berdasarkan</h4>
-                    <div class="grid grid-cols-3 gap-2">
+                    <div class="grid grid-cols-4 gap-2">
                         <button 
                             v-for="opt in [
                                 { val: 'default', label: 'Nama (A-Z)', icon: 'AZ' },
                                 { val: 'bestseller', label: 'Terlaris', icon: '🔥' },
-                                { val: 'cheapest', label: 'Termurah', icon: '💰' }
+                                { val: 'cheapest', label: 'Termurah', icon: '💰' },
+                                { val: 'recommendation', label: 'Rekomendasi', icon: '⭐', disabled: category === 'all' }
                             ]"
                             :key="opt.val"
-                            @click="$emit('update:sort', opt.val)"
-                            class="flex flex-col items-center justify-center p-3 rounded-xl border transition active:scale-95"
-                            :class="sort === opt.val 
-                                ? 'bg-lime-50 border-lime-500 text-lime-700 dark:bg-lime-900/20 dark:text-lime-400' 
-                                : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300'"
+                            :disabled="opt.disabled"
+                            @click="!opt.disabled && $emit('update:sort', opt.val)"
+                            class="flex flex-col items-center justify-center p-3 rounded-xl border transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:border-gray-200 dark:disabled:bg-gray-800 dark:disabled:border-gray-700"
+                            :class="[
+                                sort === opt.val 
+                                    ? 'bg-lime-50 border-lime-500 text-lime-700 dark:bg-lime-900/20 dark:text-lime-400' 
+                                    : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300',
+                            ]"
+                            :title="opt.disabled ? 'Pilih kategori terlebih dahulu' : ''"
                         >
                             <span class="text-lg mb-1">{{ opt.icon }}</span>
-                            <span class="text-xs font-bold">{{ opt.label }}</span>
+                            <span class="text-xs font-bold text-center leading-tight">{{ opt.label }}</span>
                         </button>
                     </div>
                 </div>

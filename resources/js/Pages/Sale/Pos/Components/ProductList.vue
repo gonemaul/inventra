@@ -52,10 +52,17 @@ const isInCompare = (productId) => {
 // Berfungsi mendeteksi jika user scroll mentok bawah -> load data lagi
 const handleScroll = (e) => {
     const element = e.target;
-    emit('scroll-list', e); // Emit scroll event for parent
+    // emit('scroll-list', e); // Removed to prevent auto-blur on programmatic scroll
     
     if (element.scrollHeight - element.scrollTop <= element.clientHeight + 50) {
         emit("loadMore");
+    }
+};
+
+const handleTouchStart = () => {
+    // Only blur if active element is an input
+    if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        document.activeElement.blur();
     }
 };
 </script>
@@ -65,6 +72,7 @@ const handleScroll = (e) => {
         ref="productGridRef"
         class="h-[calc(100vh-220px)] flex-1 p-4 overflow-y-auto bg-gray-100 custom-scroll scroll-smooth pb-28 lg:pb-4 dark:bg-gray-900"
         @scroll="handleScroll"
+        @touchstart.passive="handleTouchStart"
     >
         <div
             class="grid grid-cols-2 gap-3 pb-10 md:grid-cols-3 lg:grid-cols-4"
@@ -105,6 +113,16 @@ const handleScroll = (e) => {
                             >
                                 {{ product.size?.name }}
                             </span>
+                        </div>
+
+                        <!-- BADGES STATUS (Right Side) -->
+                        <div class="absolute z-20 flex flex-col items-end gap-1 top-2 right-2">
+                             <span v-if="product.is_best_seller" class="text-[10px] font-bold px-2 py-0.5 bg-orange-200 rounded shadow-sm text-orange-600 border border-orange-400 animate-pulse flex items-center gap-1">
+                                🔥 Best Seller
+                             </span>
+                             <span v-if="product.is_dead_stock" class="text-[10px] font-bold px-2 py-0.5 rounded shadow-sm text-white bg-blue-500 border border-blue-600 flex items-center gap-1">
+                                📦 Stok Banyak
+                             </span>
                         </div>
 
                         <img
