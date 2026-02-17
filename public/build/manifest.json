@@ -204,8 +204,8 @@
       "_vendor-core-By7Plnkm.js"
     ]
   },
-  "_usePurchaseCart-CjJ4CQAW.js": {
-    "file": "assets/usePurchaseCart-CjJ4CQAW.js",
+  "_usePurchaseCart-DhLhC2K2.js": {
+    "file": "assets/usePurchaseCart-DhLhC2K2.js",
     "name": "usePurchaseCart",
     "imports": [
       "_vendor-core-By7Plnkm.js"
@@ -369,7 +369,7 @@
     ]
   },
   "resources/js/Pages/Dashboard/Dashboard.vue": {
-    "file": "assets/Dashboard-aWBh49IJ.js",
+    "file": "assets/Dashboard-BeBXflD1.js",
     "name": "Dashboard",
     "src": "resources/js/Pages/Dashboard/Dashboard.vue",
     "isDynamicEntry": true,
@@ -1202,7 +1202,7 @@
     ]
   },
   "resources/js/Pages/Purchases/Components/RAB/CatalogCard.vue": {
-    "file": "assets/CatalogCard-DGJ8Jt5m.js",
+    "file": "assets/CatalogCard-CDk-Qd0H.js",
     "name": "CatalogCard",
     "src": "resources/js/Pages/Purchases/Components/RAB/CatalogCard.vue",
     "isDynamicEntry": true,
@@ -1213,7 +1213,7 @@
     ]
   },
   "resources/js/Pages/Purchases/Components/RAB/CatalogView.vue": {
-    "file": "assets/CatalogView-D3Vg4bT6.js",
+    "file": "assets/CatalogView-C3snUdmQ.js",
     "name": "CatalogView",
     "src": "resources/js/Pages/Purchases/Components/RAB/CatalogView.vue",
     "isDynamicEntry": true,
@@ -1221,7 +1221,11 @@
       "_vendor-core-By7Plnkm.js",
       "_vendor-common-GpUWqhKr.js",
       "resources/js/Pages/Purchases/Components/RAB/CatalogCard.vue",
+      "__plugin-vue_export-helper-DlAUqK2U.js",
       "_vendor-charts-Bw6UNgWf.js"
+    ],
+    "css": [
+      "assets/CatalogView-B80gw-2o.css"
     ]
   },
   "resources/js/Pages/Purchases/Components/RAB/Desktop/HeadRabDesktop.vue": {
@@ -1264,28 +1268,25 @@
     ]
   },
   "resources/js/Pages/Purchases/Components/RAB/PurchaseTable.vue": {
-    "file": "assets/PurchaseTable-rB-9eTqH.js",
+    "file": "assets/PurchaseTable-DXKf9XSy.js",
     "name": "PurchaseTable",
     "src": "resources/js/Pages/Purchases/Components/RAB/PurchaseTable.vue",
     "isDynamicEntry": true,
     "imports": [
-      "_DataTable-DmVyQVh1.js",
       "_vendor-core-By7Plnkm.js",
       "_vendor-common-GpUWqhKr.js",
       "_vendor-charts-Bw6UNgWf.js"
     ]
   },
   "resources/js/Pages/Purchases/Components/RAB/recom.vue": {
-    "file": "assets/recom-CBY234Xc.js",
+    "file": "assets/recom-DJZptrS2.js",
     "name": "recom",
     "src": "resources/js/Pages/Purchases/Components/RAB/recom.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-core-By7Plnkm.js",
-      "_BottomSheet-CbDDnn2t.js",
       "_vendor-common-GpUWqhKr.js",
-      "_vendor-charts-Bw6UNgWf.js",
-      "__plugin-vue_export-helper-DlAUqK2U.js"
+      "_vendor-charts-Bw6UNgWf.js"
     ]
   },
   "resources/js/Pages/Purchases/Components/RAB/search.vue": {
@@ -1328,7 +1329,7 @@
     ]
   },
   "resources/js/Pages/Purchases/PurchaseDetail.vue": {
-    "file": "assets/PurchaseDetail-BW8cfx-w.js",
+    "file": "assets/PurchaseDetail-CPkmdQ-1.js",
     "name": "PurchaseDetail",
     "src": "resources/js/Pages/Purchases/PurchaseDetail.vue",
     "isDynamicEntry": true,
@@ -1360,7 +1361,7 @@
     ]
   },
   "resources/js/Pages/Purchases/create.vue": {
-    "file": "assets/create-D1wqTYR7.js",
+    "file": "assets/create-DHcTGh2N.js",
     "name": "create",
     "src": "resources/js/Pages/Purchases/create.vue",
     "isDynamicEntry": true,
@@ -1369,7 +1370,7 @@
       "_AuthenticatedLayout-BlgKae2S.js",
       "_vendor-core-By7Plnkm.js",
       "_useActionLoading-BREuot5v.js",
-      "_usePurchaseCart-CjJ4CQAW.js",
+      "_usePurchaseCart-DhLhC2K2.js",
       "resources/js/Pages/Purchases/Components/RAB/CatalogView.vue",
       "resources/js/Pages/Purchases/Components/RAB/PurchaseTable.vue",
       "resources/js/Pages/Purchases/Components/RAB/recom.vue",
@@ -1377,8 +1378,6 @@
       "_vendor-charts-Bw6UNgWf.js",
       "_useSidebar-CpEDRVzi.js",
       "resources/js/Pages/Purchases/Components/RAB/CatalogCard.vue",
-      "_DataTable-DmVyQVh1.js",
-      "_BottomSheet-CbDDnn2t.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "dynamicImports": [
@@ -1434,13 +1433,13 @@
     ]
   },
   "resources/js/Pages/Purchases/partials/PurchaseForm.vue": {
-    "file": "assets/PurchaseForm-CLILomw0.js",
+    "file": "assets/PurchaseForm-PQGVyo2l.js",
     "name": "PurchaseForm",
     "src": "resources/js/Pages/Purchases/partials/PurchaseForm.vue",
     "isDynamicEntry": true,
     "imports": [
       "_vendor-core-By7Plnkm.js",
-      "_usePurchaseCart-CjJ4CQAW.js",
+      "_usePurchaseCart-DhLhC2K2.js",
       "_vendor-common-GpUWqhKr.js",
       "_vendor-charts-Bw6UNgWf.js"
     ]
@@ -1776,7 +1775,7 @@
     ]
   },
   "resources/js/Pages/Sale/Pos/Components/ProductList.vue": {
-    "file": "assets/ProductList-DjiML4g8.js",
+    "file": "assets/ProductList-BohmJ4CU.js",
     "name": "ProductList",
     "src": "resources/js/Pages/Sale/Pos/Components/ProductList.vue",
     "isDynamicEntry": true,
@@ -1800,7 +1799,7 @@
     ]
   },
   "resources/js/Pages/Sale/Pos/FilterProduct.vue": {
-    "file": "assets/FilterProduct-BQl2g2i2.js",
+    "file": "assets/FilterProduct-ZbHcqeu0.js",
     "name": "FilterProduct",
     "src": "resources/js/Pages/Sale/Pos/FilterProduct.vue",
     "isDynamicEntry": true,
@@ -1812,7 +1811,7 @@
       "_vendor-charts-Bw6UNgWf.js"
     ],
     "css": [
-      "assets/FilterProduct-CwS2Nztv.css"
+      "assets/FilterProduct-ChL8-Wz4.css"
     ]
   },
   "resources/js/Pages/Sale/Pos/ProductComparisonModal.vue": {
@@ -1885,7 +1884,7 @@
     ]
   },
   "resources/js/Pages/Sale/Pos/index.vue": {
-    "file": "assets/index-yy_FolLT.js",
+    "file": "assets/index-xWZXx0wk.js",
     "name": "index",
     "src": "resources/js/Pages/Sale/Pos/index.vue",
     "isDynamicEntry": true,
@@ -2249,7 +2248,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-D-iVvX8r.js",
+    "file": "assets/app-CWu9moJ_.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -2390,7 +2389,7 @@
       "resources/js/Pages/user.vue"
     ],
     "css": [
-      "assets/app-jYR-yluA.css"
+      "assets/app-Cg0dGRny.css"
     ]
   }
 }

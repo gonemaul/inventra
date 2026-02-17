@@ -22,7 +22,6 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
         if (savedLocal) {
             try {
                 cartItems.value = JSON.parse(savedLocal);
-                console.log("Loaded from LocalStorage (Unsaved Changes)");
                 return; // STOP DISINI. Jangan load dari DB.
             } catch (e) {
                 console.error("Local data corrupt, clearing...");
@@ -49,6 +48,7 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
     // 2. Tambah Item Baru (Mode: ADD)
     // Jika barang sudah ada, kita tambahkan jumlahnya (merge)
     function addToCart(product, quantity, price) {
+        console.log(product);
         const targetId = product.product_id;
         const qty = parseInt(quantity);
         const buyPrice = parseFloat(price);
@@ -61,11 +61,17 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
             // Snapshot Data Produk (Read-only di tabel)
             name: product.name,
             code: product.code,
-            category: product.category?.name || product.category || "-",
-            unit: product.unit?.name || product.unit || "-",
-            size: product.size?.name || product.size || "-",
-            current_stock: product.stock || product.current_stock,
-            image_url: product.image_url || "",
+
+            // Robust Mapping for Nested Objects (Catalog vs Recom vs DB)
+            brand: product.brand?.name ?? product.brand ?? "-",
+            category: product.category?.name ?? product.category ?? "-",
+            unit: product.unit?.name ?? product.unit ?? "-",
+            size: product.size?.name ?? product.size ?? "-",
+
+            current_stock: product.stock ?? product.current_stock ?? 0,
+            min_stock: product.min_stock ?? 0,
+            image_url: product.image_url ?? product.image_path ?? "",
+            image_path: product.image_path ?? "",
 
             // Data Transaksi (Editable)
             quantity: qty,
@@ -101,6 +107,13 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
         );
     }
 
+    function removeMultipleItems(productIds) {
+        console.log("Removing multiple:", productIds);
+        cartItems.value = cartItems.value.filter(
+            (item) => !productIds.includes(item.product_id)
+        );
+    }
+
     // 5. Reset Keranjang
     function clearCart() {
         cartItems.value = [];
@@ -117,10 +130,12 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
                 code: item.product_snapshot?.code ?? item.code,
                 unit: item.product_snapshot?.unit ?? item.unit,
                 size: item.product_snapshot?.size ?? item.size,
+                brand: item.product_snapshot?.brand ?? item.brand,
                 category: item.product_snapshot?.category ?? item.category,
                 stock: item.product_snapshot?.stock ?? item.current_stock, // Master data stock
-                image_url: item.product_snapshot?.image_url ?? "",
-                // Master data fields lain bisa ditambahkan di sini
+                image_url: item.product_snapshot?.image_url ?? item.image_url,
+                image_path: item.product_snapshot?.image_path ?? item.image_path,
+                min_stock: item.product_snapshot?.min_stock ?? item.min_stock,
             };
             // Panggil fungsi addItem yang sudah ada untuk setiap item
             addToCart(productData, item.quantity, item.purchase_price);
@@ -155,6 +170,7 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
         addToCart,
         updateCartItem,
         removeItem,
+        removeMultipleItems,
         clearCart,
         totalUnit,
         totalBelanja,

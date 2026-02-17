@@ -33,6 +33,8 @@ const HeadRabDesktop = defineAsyncComponent(() =>
 const props = defineProps({
     purchase: Object, // Data transaksi (null jika create)
     dropdowns: Object, // { suppliers: [], statuses: [] }
+    categories: Array, // Filter Kategori
+    brands: Array, // Filter Brand
 });
 
 const toast = useToast();
@@ -71,6 +73,7 @@ const {
     totalBelanja,
     totalMacam,
     addMultipleItems,
+    removeMultipleItems,
 } = usePurchaseCart(isEditMode.value, props.purchase);
 
 // Form Header
@@ -280,6 +283,9 @@ const submitTransaction = () => {
             .post(route("purchases.store"), options);
     }
 };
+const handleBulkRemove = (ids) => {
+    removeMultipleItems(ids);
+};
 
 // --- 10. UTILS ---
 function formatRupiah(number) {
@@ -430,7 +436,10 @@ function parseRupiah(value) {
                             :items="cartItems"
                             :stagingItem="stagingItem"
                             :isDraft="isDraft"
+                            :categories="categories"
+                            :brands="brands"
                             @remove="handleRemoveItem"
+                            @remove-multiple="handleBulkRemove"
                             @edit="handleEditCartItem"
                             @select-product="handleCatalogSelection"
                         />
@@ -438,5 +447,14 @@ function parseRupiah(value) {
                 </div>
             </div>
         </div>
+
+        <!-- REKOMENDASI MODAL -->
+        <Recom
+            :show="showRecom"
+            :supplier-id="formHeader.supplier_id"
+            :cart-items="cartItems"
+            @close="showRecom = false"
+            @add-items="addMultipleItems"
+        />
     </AuthenticatedLayout>
 </template>

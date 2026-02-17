@@ -380,8 +380,11 @@ class PurchaseService
 
         // 2. Query Utama: Gabungkan Produk Kritis DSS + Produk di Bawah Min Stock
         $query = Product::query()
-            ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_url', 'unit_id', 'size_id', 'category_id', 'brand_id', 'supplier_id')
+            ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'supplier_id')
             ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'insights']) // Eager load insights
+            ->withSum(['saleItems as sold_last_90_days' => function ($query) {
+                $query->where('created_at', '>=', now()->subDays(90));
+            }], 'quantity') // Hitung total terjual 90 hari terakhir
             ->where('status', 'active');
 
         // Filter Supplier
@@ -391,18 +394,25 @@ class PurchaseService
 
         // Logic Gabungan: (Ada di Insight Restock) ATAU (Stok <= Min Stock)
         $query->where(function ($q) use ($insightProductIds) {
-            $q->whereIn('id', $insightProductIds);
+            $q->whereIn('id', $insightProductIds)
+              ->orWhereColumn('stock', '<=', 'min_stock');
         });
 
-        // 3. Eksekusi & Sorting
-        // Kita sort manual nanti di collection agar yang ada Insight-nya di paling atas
-        $products = $query->limit(50)->get();
+        // 3. Eksekusi
+        $products = $query->limit(100)->get();
 
         // 4. Transformasi Data + Penambahan Logic Rekomendasi Qty
         $formattedRecommendations = $products->map(function ($item) {
 
             // Cek apakah produk ini punya insight restock?
             $restockInsight = $item->insights->where('type', SmartInsight::TYPE_RESTOCK)->first();
+            
+            // Logic Suggestion Qty: Insight > (Min - Stock) > 1
+            $suggestedQty = $restockInsight ? (int) $restockInsight->payload['suggested_qty'] : 0;
+            if ($suggestedQty <= 0) {
+                $gap = $item->min_stock - $item->stock;
+                $suggestedQty = $gap > 0 ? $gap : 1;
+            }
 
             return [
                 'product_id' => $item->id,
@@ -412,22 +422,38 @@ class PurchaseService
                 'min_stock' => $item->min_stock,
                 'purchase_price' => $item->purchase_price,
 
-                // Hasil Hitungan Cerdas
-                'quantity' => (int) $restockInsight->payload['suggested_qty'],
-                'reason' => $restockInsight->payload['restock_reason'], // Info tambahan untuk ditampilkan di modal (misal badge)
-                'is_critical' => (bool) $restockInsight, // Flag untuk highlight warna merah
+                // Hasil Hitungan
+                'quantity' => $suggestedQty,
+                'reason' => $restockInsight ? $restockInsight->payload['restock_reason'] : 'Stok Menipis',
+                'is_critical' => $item->stock <= 0 || ($restockInsight && ($restockInsight->severity ?? 'info') === 'critical'),
 
                 // Snapshot Data
-                'unit' => $item->unit->name ?? '-',
+                'unit' => $item->unit->name ?? 'Pcs',
                 'size' => $item->size->name ?? '-',
                 'category' => $item->category->name ?? '-',
                 'brand' => $item->brand->name ?? '-',
                 'image_path' => $item->image_path,
+                'image_url' => $item->image_url,
+                'sold_90d' => (int) $item->sold_last_90_days ?? 0,
             ];
         });
 
-        // Sortir: Yang ada Insight Critical taruh paling atas
-        return $formattedRecommendations->sortByDesc('is_critical')->values();
+        // Sortir: 
+        // 1. Critical (Stok Habis / Insight Critical)
+        // 2. Stok Paling Sedikit (ASC)
+        // 3. Terlaris (Sold 90d DESC)
+        return $formattedRecommendations->sort(function ($a, $b) {
+            // Prioritas 1: Critical
+            if ($a['is_critical'] !== $b['is_critical']) {
+                return $b['is_critical'] ? 1 : -1;
+            }
+            // Prioritas 2: Stok (ASC)
+            if ($a['current_stock'] !== $b['current_stock']) {
+                return $a['current_stock'] <=> $b['current_stock'];
+            }
+            // Prioritas 3: Terlaris (DESC)
+            return $b['sold_90d'] <=> $a['sold_90d'];
+        })->values();
     }
 
     /**

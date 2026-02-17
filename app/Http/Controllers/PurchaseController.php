@@ -132,12 +132,19 @@ class PurchaseController extends Controller
      */
     public function create()
     {
+        // Ambil data untuk Filter Katalog
+        $categories = \App\Models\Category::with('productTypes')->select('id', 'name')->get();
+        $brands = \App\Models\Brand::select('id', 'name')->get();
+
         return Inertia::render('Purchases/create', [
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
                 'statuses' => Purchase::STATUSES,
                 'purchase' => null,
             ],
+            // Data Filter Tambahan
+            'categories' => $categories,
+            'brands' => $brands,
         ]);
     }
 
@@ -171,18 +178,126 @@ class PurchaseController extends Controller
     public function getCatalog($supplierId, Request $request)
     {
         $search = $request->input('search');
-        $productsForAutocomplete = Product::query()
+        $categoryId = $request->input('category_id');
+        $subCategoryId = $request->input('product_type_id'); // Sub Kategori
+        $brandId = $request->input('brand_id');
+        $sizeId = $request->input('size_id');
+        $stockStatus = $request->input('stock_status'); // 'empty', 'low', 'safe'
+
+        // Base Query (Tanpa Filter Facet)
+        $baseQuery = Product::query()
             ->where('status', 'active')
-            ->where('supplier_id', $supplierId)
+            ->where('supplier_id', $supplierId);
+
+        // --- 1. UTAMA: Query Produk (Apply Semua Filter) ---
+        $productQuery = $baseQuery->clone()
             ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_url', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'product_type_id', 'supplier_id')
-            ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'productType:id,name', 'insights'])
-            ->when($search, function ($q) use ($search) {
+            ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'productType:id,name', 'insights']);
+
+        // Apply Search (Global)
+        if ($search) {
+             $productQuery->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->paginate(10);
+            });
+        }
 
-        return response()->json($productsForAutocomplete);
+        // Add Sales Stats for Badges
+        $productQuery->withSum(['saleItems as sold_last_90_days' => function ($query) {
+            $query->where('created_at', '>=', now()->subDays(90));
+        }], 'quantity');
+
+        if ($categoryId && $categoryId !== 'all') $productQuery->where('category_id', $categoryId);
+        if ($subCategoryId && $subCategoryId !== 'all') $productQuery->where('product_type_id', $subCategoryId);
+        if ($brandId && $brandId !== 'all') $productQuery->where('brand_id', $brandId);
+        if ($sizeId && $sizeId !== 'all') $productQuery->where('size_id', $sizeId);
+        
+        if ($stockStatus) {
+            if ($stockStatus === 'empty') {
+                $productQuery->where('stock', '<=', 0);
+            } elseif ($stockStatus === 'low') {
+                $productQuery->whereColumn('stock', '<=', 'min_stock')->where('stock', '>', 0);
+            } elseif ($stockStatus === 'safe') {
+                $productQuery->whereColumn('stock', '>', 'min_stock');
+            }
+        }
+
+        // --- 2. FACETED DATA (Smart Filters) ---
+        
+        // Helper untuk clone dan filter (kecuali key tertentu)
+        $getScope = function($excludeKeys = []) use ($baseQuery, $request, $search) {
+            $q = $baseQuery->clone();
+            if ($search) {
+                 $q->where(function ($sq) use ($search) {
+                    $sq->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%");
+                });
+            }
+            // Apply filter jika TIDAK di-exclude
+            if (!in_array('category', $excludeKeys) && $request->filled('category_id') && $request->input('category_id') !== 'all') 
+                $q->where('category_id', $request->input('category_id'));
+            
+            if (!in_array('brand', $excludeKeys) && $request->filled('brand_id') && $request->input('brand_id') !== 'all')
+                $q->where('brand_id', $request->input('brand_id'));
+                
+            if (!in_array('type', $excludeKeys) && $request->filled('product_type_id') && $request->input('product_type_id') !== 'all')
+                $q->where('product_type_id', $request->input('product_type_id'));
+
+            // Size biasanya paling bawah, jarang mempengaruhi filter atas, tapi bisa jadi
+            if (!in_array('size', $excludeKeys) && $request->filled('size_id') && $request->input('size_id') !== 'all')
+                $q->where('size_id', $request->input('size_id'));
+
+            return $q;
+        };
+
+        // A. Available Categories
+        // Logic: Filter by Brand/Type/Size (Ignore Category)
+        $availableCategories = \App\Models\Category::whereIn('id', $getScope(['category'])->select('category_id')->distinct())
+            ->with('productTypes') // Eager load sub categories (product types) for mapping later if needed
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        // B. Available Brands
+        // Logic: Filter by Category/Type/Size (Ignore Brand)
+        $availableBrands = \App\Models\Brand::whereIn('id', $getScope(['brand'])->select('brand_id')->distinct())
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        // C. Available Types (Sub Category)
+        // Logic: Filter by Category/Brand/Size (Ignore Type)
+        // Note: User request "Tipe produk hanya aktif jika kategori aktif" -> Front end logic hiding, but backend sends valid data.
+        $availableTypes = \App\Models\ProductType::whereIn('id', $getScope(['type'])->select('product_type_id')->distinct())
+            ->select('id', 'name', 'category_id')
+            ->orderBy('name')
+            ->get();
+        
+        // D. Available Sizes
+        // Logic: Filter by Category/Brand/Type (Ignore Size)
+        // Muncul jika ada filter aktif (Category/Brand)
+        $hasActiveFilter = ($categoryId && $categoryId !== 'all') || ($brandId && $brandId !== 'all') || $search;
+        $availableSizes = [];
+        if ($hasActiveFilter) {
+            $availableSizes = \App\Models\Size::whereIn('id', $getScope(['size'])->select('size_id')->distinct())
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get();
+        }
+
+        // 3. SORTING DEFAULT
+        $productsForAutocomplete = $productQuery
+            ->orderBy('stock', 'asc') 
+            ->orderBy('name', 'asc')
+            ->paginate(20); 
+
+        // Return Data + Dynamic Filters
+        return response()->json([
+            'products' => $productsForAutocomplete,
+            'available_categories' => $availableCategories,
+            'available_brands' => $availableBrands,
+            'available_types' => $availableTypes,
+            'available_sizes' => $availableSizes,
+        ]);
     }
 
     /**
@@ -469,6 +584,9 @@ class PurchaseController extends Controller
                 'suppliers' => $this->supplierService->getAll(),
                 'statuses' => Purchase::STATUSES,
             ],
+            // Data Filter
+            'categories' => \App\Models\Category::with('productTypes')->select('id', 'name')->get(),
+            'brands' => \App\Models\Brand::select('id', 'name')->get(),
         ]);
     }
 

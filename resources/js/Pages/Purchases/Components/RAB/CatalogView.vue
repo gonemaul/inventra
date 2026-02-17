@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, onMounted } from "vue";
+import { ref, watch, onMounted, computed } from "vue";
 import axios from "axios";
 import debounce from "lodash/debounce";
 import CatalogCard from "./CatalogCard.vue";
@@ -12,6 +12,8 @@ const props = defineProps({
     },
     items: Object,
     stagingItem: Object,
+    categories: Array,
+    brands: Array,
 });
 
 const emit = defineEmits(["select-product"]);
@@ -23,17 +25,36 @@ const isLoadingMore = ref(false); // Loading infinite scroll
 const page = ref(1);
 const hasMore = ref(true);
 const searchKeyword = ref("");
-const observerTarget = ref(null); // Elemen pemantau scroll bawah
+const observerTarget = ref(null); 
+
+// Filter State
+const filterCategory = ref("all");
+const filterSubCategory = ref("all");
+const filterBrand = ref("all");
+const filterSize = ref("all"); // New Size Filter
+const filterStock = ref(""); // '' | 'empty' | 'low' | 'safe'
+
+// Dynamic Data (from Backend)
+const dynamicCategories = ref([]);
+const dynamicBrands = ref([]);
+const dynamicSizes = ref([]);
+const dynamicTypes = ref([]);
+
+// Computed SubCategories (Dynamic based on Category)
+const activeSubCategories = computed(() => {
+    if (filterCategory.value === "all") return [];
+    const cat = props.categories.find((c) => c.id == filterCategory.value);
+    return cat ? cat.product_types || [] : [];
+});
 
 // --- 1. CORE LOGIC: FETCH DATA ---
 const fetchProducts = async (reset = false) => {
-    // Jangan fetch jika tidak ada supplier
     if (!props.supplierId) return;
 
     if (reset) {
         isLoading.value = true;
         page.value = 1;
-        products.value = []; // Kosongkan data lama
+        products.value = [];
         hasMore.value = true;
     } else {
         isLoadingMore.value = true;
@@ -46,11 +67,24 @@ const fetchProducts = async (reset = false) => {
                 params: {
                     page: page.value,
                     search: searchKeyword.value,
+                    // Kirim Parameter Filter
+                    category_id: filterCategory.value === 'all' ? null : filterCategory.value,
+                    product_type_id: filterSubCategory.value === 'all' ? null : filterSubCategory.value,
+                    brand_id: filterBrand.value === 'all' ? null : filterBrand.value,
+                    size_id: filterSize.value === 'all' ? null : filterSize.value,
+                    stock_status: filterStock.value || null,
                 },
             }
         );
 
-        const newItems = response.data.data;
+        // Backend returns: { products: { data: [], ... }, available_brands: [], available_sizes: [] }
+        const result = response.data;
+        const newItems = result.products.data;
+
+        // Update Dynamic Filters (Hanya update jika reset/ganti filter, biar gak kedip-kedip saat scroll)
+        // Atau update selalu agar akurat? POS update selalu.
+        if (result.available_brands) dynamicBrands.value = result.available_brands;
+        if (result.available_sizes) dynamicSizes.value = result.available_sizes;
 
         if (reset) {
             products.value = newItems;
@@ -58,8 +92,7 @@ const fetchProducts = async (reset = false) => {
             products.value = [...products.value, ...newItems];
         }
 
-        // Cek next page
-        hasMore.value = !!response.data.next_page_url;
+        hasMore.value = !!result.products.next_page_url;
         if (hasMore.value) page.value++;
     } catch (error) {
         console.error("Gagal load katalog:", error);
@@ -69,28 +102,64 @@ const fetchProducts = async (reset = false) => {
     }
 };
 
-// --- 2. FITUR: AUTO REFRESH SAAT SUPPLIER BERUBAH ---
-watch(
-    () => props.supplierId,
-    (newId) => {
-        if (newId) {
-            // Reset Search & Load Ulang dari Page 1
-            searchKeyword.value = "";
-            fetchProducts(true);
-        } else {
-            products.value = []; // Kosongkan jika supplier di-unselect
-        }
-    },
-    { immediate: true }
-);
-// immediate: true -> agar jalan juga saat pertama kali komponen di-mount
+// --- 2. FITUR: AUTO REFRESH ---
 
-// --- 3. FITUR: SEARCH ---
+
+
+// Reset Pagination saat Filter Ganti
+const applyFilter = () => {
+    // Jika Search ada isi, hapus search dulu agar filter aktif? 
+    // SESUAI REQUEST: Search override filter. 
+    // Jadi kalau user klik filter, kita asumsikan dia ingin filter manual, jadi search kita kosongkan biar gak bingung.
+    if (searchKeyword.value) searchKeyword.value = ""; 
+    
+    fetchProducts(true);
+};
+
+// Reset Filter saat Searching
 const handleSearch = debounce(() => {
+    // Search tdk mereset filter total, hanya menyesuaikan hasil
     fetchProducts(true);
 }, 500);
 
-// --- 4. FITUR: INFINITE SCROLL ---
+const resetFilters = () => {
+    searchKeyword.value = "";
+    filterCategory.value = "all";
+    filterSubCategory.value = "all";
+    filterBrand.value = "all";
+    filterSize.value = "all";
+    filterStock.value = "";
+    // Kembalikan ke props awal agar tidak kosong
+    dynamicCategories.value = props.categories || [];
+    dynamicBrands.value = props.brands || [];
+    dynamicTypes.value = [];
+    dynamicSizes.value = [];
+};
+
+// --- RESET LOGIC (Smart Filters) ---
+watch(filterCategory, (newVal) => {
+    // Reset lower levels
+    if (newVal === 'all') {
+        dynamicTypes.value = [];
+    }
+    filterSubCategory.value = 'all';
+    filterSize.value = 'all';
+    // fetchProducts triggered by @change in template, but if we want to be safe we can rely on that.
+    // However, CatalogView uses @change="applyFilter" on selects, which calls fetchProducts.
+    // So the Watcher here effectively just cleans up the State *before* or *during* the fetch?
+    // Actually applyFilter calls fetchProducts.
+    // This watcher might trigger AFTER applyFilter updates the model?
+    // Use `applyFilter` function modification instead?
+    // Modifying `applyFilter` is better to ensure single flow.
+});
+
+watch(filterBrand, () => {
+    // Brand also restricts Type usually (though technically Type belongs to Category, but "Available Types" depends on Brand)
+    filterSubCategory.value = 'all';
+    filterSize.value = 'all';
+});
+
+// --- 4. INFINITE SCROLL ---
 const onIntersect = (entries) => {
     const entry = entries[0];
     if (
@@ -99,7 +168,7 @@ const onIntersect = (entries) => {
         !isLoading.value &&
         !isLoadingMore.value
     ) {
-        fetchProducts(false); // Load Next Page
+        fetchProducts(false);
     }
 };
 
@@ -108,46 +177,128 @@ onMounted(() => {
     if (observerTarget.value) observer.observe(observerTarget.value);
 });
 
+// Reset Total saat Supplier Ganti
+watch(
+    () => props.supplierId,
+    (newId) => {
+        if (newId) {
+            resetFilters();
+            fetchProducts(true);
+        } else {
+            products.value = [];
+        }
+    },
+    { immediate: true }
+);
+
 const getItemInCart = (itemId) => {
     return props.items.find((c) => c.product_id === itemId);
 };
 
-// --- ACTION ---
 const selectItem = (item) => {
     emit("select-product", item);
 };
 </script>
 
 <template>
-    <div class="flex flex-col h-full">
+    <div class="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
         <div
-            class="sticky top-0 z-20 p-3 bg-white border-b rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700"
+            class="sticky top-0 z-20 bg-white border-b shadow-sm dark:bg-gray-800 dark:border-gray-700"
         >
-            <div class="relative">
-                <div
-                    class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none"
-                >
-                    <svg
-                        class="w-5 h-5 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                        ></path>
-                    </svg>
-                </div>
+            <!-- Search Bar -->
+            <div class="pb-2 px-4 py-3 flex items-center gap-3">
+                <div class="relative flex-1">
                 <input
                     v-model="searchKeyword"
                     @input="handleSearch"
-                    type="text"
-                    class="block w-full py-2 pl-10 pr-3 leading-5 placeholder-gray-500 bg-white border border-gray-300 rounded-lg focus:outline-none focus:placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 sm:text-sm dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                    placeholder="Cari nama barang atau kode..."
+                    @focus="$event.target.select()"
+                    type="search"
+                    placeholder="Cari produk..."
+                    class="w-full pl-10 pr-4 py-2.5 bg-gray-100 dark:bg-gray-800 border-none rounded-xl focus:ring-2 focus:ring-lime-500 text-sm font-medium text-gray-800 dark:text-white placeholder-gray-400 transition-all"
                 />
+                <span class="absolute left-3.5 top-2.5 text-gray-400">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </span>
+                
+                <!-- Loading Indicator -->
+                <div v-if="isLoading" class="absolute right-3 top-3">
+                     <span class="relative flex h-3 w-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-lime-500"></span>
+                    </span>
+                </div>
+            </div>
+            </div>
+
+            <!-- Filters Scrollable -->
+            <div class="px-3 pb-3 overflow-x-auto no-scrollbar scroll-smooth mask-fade-right">
+                <div class="flex items-center gap-2">
+                    
+                    <!-- Kategori -->
+                    <select 
+                        v-model="filterCategory" 
+                        @change="applyFilter"
+                        class="text-xs font-medium py-1.5 pl-2 pr-8 bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all"
+                    >
+                        <option value="all">Semua Kategori</option>
+                        <option v-for="c in dynamicCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
+                    </select>
+
+                    <!-- Brand (Level 1/2) -->
+                    <select 
+                        v-model="filterBrand" 
+                        @change="applyFilter"
+                        class="text-xs font-medium py-1.5 pl-2 pr-8 bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all"
+                    >
+                        <option value="all">Semua Brand</option>
+                        <option v-for="b in dynamicBrands" :key="b.id" :value="b.id">{{ b.name }}</option>
+                    </select>
+
+                     <!-- Tipe Produk (Level 2 - Muncul jika Kategori dipilih) -->
+                    <select 
+                        v-if="filterCategory !== 'all' && dynamicTypes.length > 0"
+                        v-model="filterSubCategory" 
+                        @change="applyFilter"
+                        class="text-xs font-medium py-1.5 pl-2 pr-8 bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all duration-300 animate-fade-in"
+                    >
+                        <option value="all">Semua Tipe</option>
+                        <option v-for="t in dynamicTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
+                    </select>
+
+                    <!-- Size (Level 3 - Muncul jika ada filter) -->
+                    <select 
+                        v-if="dynamicSizes.length > 0"
+                        v-model="filterSize" 
+                        @change="applyFilter"
+                        class="text-xs font-medium py-1.5 pl-2 pr-8 bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all duration-300 animate-fade-in"
+                    >
+                        <option value="all">Semua Ukuran</option>
+                        <option v-for="s in dynamicSizes" :key="s.id" :value="s.id">{{ s.name }}</option>
+                    </select>
+
+                    <!-- Stock Status Logic -->
+                    <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
+
+                    <!-- Filter Chips Stocks -->
+                    <button 
+                         @click="filterStock = filterStock === 'empty' ? '' : 'empty'; applyFilter()"
+                         class="px-3 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap"
+                         :class="filterStock === 'empty' 
+                            ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/30' 
+                            : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 hover:border-gray-300'"
+                    >
+                        Habis
+                    </button>
+                    <button 
+                         @click="filterStock = filterStock === 'low' ? '' : 'low'; applyFilter()"
+                         class="px-3 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap"
+                         :class="filterStock === 'low' 
+                            ? 'bg-yellow-500 text-white border-yellow-500 shadow-md shadow-yellow-500/30' 
+                            : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 hover:border-gray-300'"
+                    >
+                        Menipis
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -186,109 +337,6 @@ const selectItem = (item) => {
                     :cart-qty="getItemInCart(item.id)?.quantity || 0"
                     @select="selectItem"
                 />
-                <!-- <div
-                    v-for="item in products"
-                    :key="item.id"
-                    @click="selectItem(item)"
-                    class="relative flex flex-col overflow-hidden transition-all bg-white border border-gray-200 shadow-sm cursor-pointer group dark:bg-gray-800 dark:border-gray-700 rounded-xl hover:shadow-md"
-                >
-                    <div
-                        class="relative w-full overflow-hidden bg-gray-100 aspect-square dark:bg-gray-700"
-                    >
-                        <img
-                            :src="item.image_url"
-                            loading="lazy"
-                            decoding="async"
-                            class="absolute inset-0 z-10 object-contain w-full h-full transition-transform duration-500 opacity-0 group-hover:scale-110"
-                            onload="this.classList.remove('opacity-0')"
-                            onerror="this.style.display='none'"
-                        />
-                        <div
-                            class="absolute inset-0 z-0 flex flex-col items-center justify-center text-gray-400"
-                        >
-                            <svg
-                                class="w-8 h-8 mb-1 opacity-50"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                                ></path>
-                            </svg>
-                            <span class="text-[10px]">No Image</span>
-                        </div>
-
-                        <div class="absolute z-20 top-2 left-2">
-                            <span
-                                class="bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded font-medium backdrop-blur-sm"
-                            >
-                                Stok: {{ item.stock }}
-                            </span>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col flex-1 p-3">
-                        <div
-                            class="text-[10px] text-gray-500 mb-1 flex justify-between"
-                        >
-                            <span
-                                class="hidden px-1 bg-gray-100 rounded md:block dark:bg-gray-700"
-                                >{{ item.code }}</span
-                            >
-                            <span>{{ item.unit?.name || "Pcs" }}</span>
-                        </div>
-
-                        <h3
-                            class="text-xs md:text-sm font-semibold text-gray-800 dark:text-gray-200 leading-tight mb-2 line-clamp-2 min-h-[2.5em]"
-                        >
-                            {{ item.name }}
-                        </h3>
-                        <p>
-                            Rekomendasi
-                            {{
-                                item.insights.find((i) => i.type === "restock")
-                                    ?.payload?.suggested_qty
-                            }}
-                        </p>
-
-                        <div
-                            class="flex items-center justify-between pt-2 mt-auto border-t border-gray-100 border-dashed dark:border-gray-700"
-                        >
-                            <div class="flex flex-col">
-                                <span class="text-[10px] text-gray-400"
-                                    >Harga Beli</span
-                                >
-                                <span
-                                    class="text-sm font-bold text-blue-600 dark:text-blue-400"
-                                >
-                                    {{ formatRupiah(item.purchase_price) }}
-                                </span>
-                            </div>
-
-                            <button
-                                class="bg-blue-50 text-blue-600 p-1.5 rounded-lg hover:bg-blue-600 hover:text-white transition-colors"
-                            >
-                                <svg
-                                    class="w-5 h-5"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                >
-                                    <path
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                        stroke-width="2"
-                                        d="M12 4v16m8-8H4"
-                                    ></path>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                </div> -->
             </div>
 
             <div
@@ -338,3 +386,8 @@ const selectItem = (item) => {
         </div>
     </div>
 </template>
+<style scoped>
+.mask-fade-right {
+    mask-image: linear-gradient(to right, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+}</style>

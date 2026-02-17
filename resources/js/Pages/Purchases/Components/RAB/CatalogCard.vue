@@ -3,9 +3,9 @@ import { computed } from "vue";
 
 const props = defineProps({
     item: Object,
-    isSelected: Boolean, // Penanda jika item ini sedang diedit/dipilih di form
-    isInCart: Boolean, // Penanda jika item ini sudah ada di keranjang belanja
-    cartQty: Number, // Jumlah qty yang sudah ada di keranjang (opsional)
+    isSelected: Boolean,
+    isInCart: Boolean,
+    cartQty: Number,
 });
 
 const emit = defineEmits(["select"]);
@@ -18,289 +18,124 @@ const formatRupiah = (number) => {
     }).format(number);
 };
 
-// Hitung rekomendasi restok dari data insights
+// Hitung rekomendasi restok
+const restockInsight = computed(() => {
+    return props.item.insights?.find((i) => i.type === "restock");
+});
+
 const restockSuggestion = computed(() => {
-    const insight = props.item.insights?.find((i) => i.type === "restock");
-    return insight?.payload?.suggested_qty || 0;
+    return restockInsight.value?.payload?.suggested_qty || 0;
+});
+
+// Logic Badges (Frontend Calculation based on stats provided by Backend)
+const isBestSeller = computed(() => (props.item.sold_last_90_days || 0) >= 50); 
+const isFastMoving = computed(() => !isBestSeller.value && (props.item.sold_last_90_days || 0) >= 20);
+const isDeadStock = computed(() => (props.item.sold_last_90_days || 0) <= 2 && props.item.stock > 10);
+
+const conditionBadge = computed(() => {
+    if (isBestSeller.value) return { text: 'Best Seller', color: 'bg-orange-100 text-orange-600 border-orange-200', icon: '🔥' };
+    if (isFastMoving.value) return { text: 'Laris', color: 'bg-blue-100 text-blue-600 border-blue-200', icon: '⚡' };
+    if (isDeadStock.value) return { text: 'Stok Mati', color: 'bg-gray-100 text-gray-600 border-gray-200', icon: '📦' };
+    return null;
 });
 </script>
 
 <template>
     <div
         @click="$emit('select', item)"
-        class="relative flex flex-col overflow-hidden transition-all duration-200 border cursor-pointer rounded-xl group hover:shadow-lg"
-        :class="[
-            isSelected
-                ? 'ring-2 ring-lime-500 border-lime-500 bg-lime-50 dark:bg-lime-900/20 z-10'
-                : 'bg-white border-gray-200 dark:bg-gray-800 dark:border-gray-700 hover:border-lime-400 dark:hover:border-lime-500 hover:shadow-md',
-        ]"
+        class="relative flex flex-col overflow-hidden transition-all duration-200 border cursor-pointer rounded-xl group hover:shadow-lg bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-lime-400 dark:hover:border-lime-500"
+        :class="{ 'ring-2 ring-lime-500 border-lime-500 bg-lime-50 dark:bg-lime-900/20 z-10': isSelected }"
     >
+        <!-- In Cart Badge (Bottom Right - like Recom) -->
         <span
             v-if="isInCart"
-            class="absolute top-0 right-0 z-20 bg-lime-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg shadow-sm"
+            class="absolute top-0 left-0 z-20 bg-lime-500 text-white text-[10px] font-bold px-2 py-1 rounded-tl-lg shadow-sm"
         >
             {{ cartQty }} di List
         </span>
-        <div
-            class="relative w-full overflow-hidden bg-gray-100 aspect-[4/3] dark:bg-gray-700"
-        >
+
+        <!-- Image Section -->
+        <div class="relative w-full overflow-hidden bg-gray-100 aspect-square dark:bg-gray-700 border-b border-gray-100 dark:border-gray-700">
+            <!-- Fallback Icon -->
+            <div class="absolute inset-0 flex items-center justify-center text-gray-300">
+                <svg class="w-10 h-10 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            
             <img
-                v-if="item.image_url"
-                :src="item.image_url"
+                v-if="item.image_url || item.image_path"
+                :src="item.image_url || item.image_path"
                 loading="lazy"
-                class="absolute inset-0 z-10 object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
-                alt="Product Image"
+                class="absolute inset-0 z-10 object-contain w-full h-full p-2 transition-transform duration-500 group-hover:scale-110 mix-blend-multiply transition-opacity"
+                alt="Product"
+                onload="this.style.opacity='1'"
+                onerror="this.style.display='none'"
             />
 
-            <div
-                v-else
-                class="absolute inset-0 z-0 flex flex-col items-center justify-center text-gray-400 dark:text-gray-500"
-            >
-                <svg
-                    class="w-8 h-8 mb-1 opacity-50"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    ></path>
-                </svg>
-                <span class="text-[10px] font-medium">No Image</span>
+            <!-- Status Badges (Top Right) -->
+            <div class="absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
+                <span v-if="item.stock <= 0" class="px-2 py-0.5 text-[10px] font-black tracking-wide text-white bg-red-600 rounded shadow-sm">HABIS</span>
+                <span v-else-if="item.stock <= item.min_stock" class="px-2 py-0.5 text-[10px] font-bold text-white bg-yellow-500 rounded shadow-sm">MENIPIS</span>
             </div>
-
-            <div
-                v-if="item.stock <= 0"
-                class="absolute inset-0 z-20 flex items-center justify-center bg-gray-900/60 backdrop-blur-[1px]"
-            >
-                <span
-                    class="px-2 py-1 text-xs font-bold text-white transform border-2 border-white rounded bg-red-600/90 -rotate-12"
-                    >KOSONG</span
-                >
-            </div>
-            <div
-                class="absolute bottom-0 left-0 right-0 z-10 p-2 pt-6 bg-gradient-to-t from-black/70 to-transparent"
-            >
-                <div class="flex items-end justify-between text-white">
-                    <span class="text-[10px] font-light">Sisa Stok</span>
-                    <span :class="['text-xs font-bold']">{{
-                        item.stock > 0
-                            ? item.stock + " " + item.unit?.name || "Unit"
-                            : "Habis"
-                    }}</span>
-                </div>
+            
+            <!-- Condition Badge (Top Left) -->
+            <div v-if="conditionBadge" class="absolute top-2 left-2 z-10">
+                <span class="px-2 py-0.5 text-[10px] font-bold rounded shadow-sm border flex items-center gap-1" :class="conditionBadge.color">
+                    <span>{{ conditionBadge.icon }}</span>
+                    {{ conditionBadge.text }}
+                </span>
             </div>
         </div>
-        <div
-            class="relative flex flex-col flex-1 p-3 overflow-hidden transition-all duration-200"
-            :class="[
-                // LOGIC WARNA KARTU:
-                // Stok Kritis (<= 2): Background merah sangat muda, Border kiri Merah Tebal
-                item.stock <= 2
-                    ? 'bg-red-50/60 dark:bg-red-900/10 border-l-4 border-l-red-500'
-                    : 'bg-white dark:bg-gray-800 border-l-4 border-l-gray-200 dark:border-l-gray-700 opacity-90 hover:opacity-100',
-            ]"
-        >
-            <div class="flex items-center justify-between mb-1.5">
-                <span
-                    class="text-[9px] font-bold tracking-wider text-gray-400 uppercase truncate max-w-[80px]"
-                    :title="item.brand?.name"
-                >
-                    {{ item.brand?.name || "NO BRAND" }}
-                </span>
-                <span
-                    class="text-[9px] font-mono text-gray-400 truncate max-w-[60px]"
-                    :title="item.code"
-                >
-                    #{{ item.code }}
-                </span>
+
+        <!-- Content Section -->
+        <div class="flex flex-col flex-1 p-3 gap-2">
+            <!-- Meta Info -->
+            <div class="text-[10px] text-gray-500 font-mono flex flex-wrap gap-1 leading-none">
+                <span class="font-bold text-gray-600">{{ item.brand?.name || '-' }}</span>
+                <span>•</span>
+                <span>{{ item.category?.name || '-' }}</span>
+                <span v-if="item.size" class="bg-gray-100 px-1 rounded">{{ item.size.name }}</span>
             </div>
 
-            <h3
-                class="text-xs font-bold leading-tight mb-2 line-clamp-2 min-h-[2.5em] transition-colors"
-                :class="
-                    item.stock <= 2
-                        ? 'text-gray-800 dark:text-red-100'
-                        : 'text-gray-700 dark:text-gray-200'
-                "
-                :title="item.name"
-            >
-                {{ item.name }}
-            </h3>
+            <!-- Name & Price -->
+            <div>
+                <h3 class="text-xs font-bold leading-tight line-clamp-2 min-h-[2.5em] mb-1" :title="item.name">
+                    {{ item.name }}
+                </h3>
+                <div class="flex items-center justify-between">
+                     <span class="text-xs font-bold text-lime-600">{{ formatRupiah(item.purchase_price) }}</span>
+                     <span class="text-[10px] text-gray-400">#{{ item.code }}</span>
+                </div>
+            </div>
+            
+            <!-- Sales Stats (From Recom) -->
+            <div v-if="item.sold_last_90_days > 0" class="text-[10px] text-gray-500 bg-gray-50 dark:bg-gray-700/50 p-1 rounded border border-dashed border-gray-200 flex justify-between">
+                <span>Terjual (90H):</span>
+                <strong class="text-gray-800 dark:text-gray-200">{{ item.sold_last_90_days }} {{ item.unit?.name }}</strong>
+            </div>
 
-            <div class="flex flex-col gap-2 mb-3">
-                <!-- <div class="flex items-start">
-                    <span
-                        v-if="item.size || item.unit"
-                        class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border"
-                        :class="
-                            item.stock <= 2
-                                ? 'bg-white border-red-200 text-gray-600 dark:bg-gray-900 dark:border-red-900 dark:text-gray-300'
-                                : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400'
-                        "
-                    >
-                        <svg
-                            class="w-3 h-3 mr-1 opacity-50"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M4 6h16M4 10h16M4 14h16M4 18h16"
-                            ></path>
-                        </svg>
-
-                        {{ item.size?.name || "-" }}
-                        <span class="mx-1 opacity-40">/</span>
-                        {{ item.unit?.name }}
-                    </span>
-                </div> -->
-
-                <div class="flex flex-col gap-2 mb-3">
-                    <div class="flex items-start">
-                        <span
-                            v-if="item.size || item.unit"
-                            class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold border"
-                            :class="
-                                item.restock_qty > 0
-                                    ? 'bg-white border-red-200 text-gray-600 dark:bg-gray-900 dark:border-red-900 dark:text-gray-300'
-                                    : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-400'
-                            "
-                        >
-                            <svg
-                                class="w-3 h-3 mr-1 opacity-50"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M4 6h16M4 10h16M4 14h16M4 18h16"
-                                ></path>
-                            </svg>
-
-                            {{ item.size?.name || "-" }}
-                            <span class="mx-1 opacity-40">/</span>
-                            {{ item.unit?.name }}
-                        </span>
-                    </div>
-
-                    <div>
-                        <div
-                            v-if="restockSuggestion > 0"
-                            class="flex items-center justify-between"
-                        >
-                            <div
-                                class="flex items-center gap-1.5 text-red-600 dark:text-red-400"
-                            >
-                                <span class="relative flex w-2 h-2">
-                                    <span
-                                        class="absolute inline-flex w-full h-full bg-red-400 rounded-full opacity-75 animate-ping"
-                                    ></span>
-                                    <span
-                                        class="relative inline-flex w-2 h-2 bg-red-500 rounded-full"
-                                    ></span>
-                                </span>
-                                <span
-                                    class="text-[10px] font-bold uppercase tracking-tight"
-                                >
-                                    Saran Order
-                                </span>
-                            </div>
-
-                            <span
-                                class="text-[10px] font-mono font-bold text-white bg-red-500 px-1.5 py-0.5 rounded shadow-sm"
-                            >
-                                +{{ restockSuggestion }}
-                            </span>
-                        </div>
-
-                        <div
-                            v-else
-                            class="flex items-center justify-between opacity-40 grayscale"
-                        >
-                            <div
-                                class="flex items-center gap-1.5 text-gray-500"
-                            >
-                                <div
-                                    class="w-1.5 h-1.5 rounded-full bg-green-500"
-                                ></div>
-                                <span class="text-[10px] font-medium"
-                                    >Stok Aman</span
-                                >
-                            </div>
-                            <span class="text-[10px] font-mono text-gray-400">
-                                {{ item.stock }}
-                            </span>
-                        </div>
-                    </div>
+            <!-- Separator -->
+            <!-- Stock Info -->
+            <div class="flex items-center justify-between text-[11px] mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
+                <div class="flex flex-col leading-none gap-0.5">
+                    <span class="text-[9px] text-gray-400 uppercase">Sisa</span>
+                    <span class="font-bold" :class="item.stock <= item.min_stock ? 'text-red-500' : 'text-gray-700'">{{ item.stock }}</span>
+                </div>
+                <div class="flex flex-col leading-none text-right gap-0.5">
+                    <span class="text-[9px] text-gray-400 uppercase">Min</span>
+                    <span class="font-bold text-gray-600">{{ item.min_stock }}</span>
                 </div>
             </div>
 
-            <div
-                class="flex items-center justify-between pt-2 mt-auto border-t border-dashed"
-                :class="
-                    item.stock <= 2
-                        ? 'border-red-200 dark:border-red-900/30'
-                        : 'border-gray-100 dark:border-gray-700'
-                "
-            >
-                <div class="flex flex-col">
-                    <span class="text-[9px] text-gray-400 uppercase"
-                        >Harga Beli</span
-                    >
-                    <span
-                        class="text-xs font-black text-gray-800 dark:text-gray-200"
-                    >
-                        {{ formatRupiah(item.purchase_price) }}
-                    </span>
+            <!-- Restock Suggestion (Only if exists) -->
+            <div v-if="restockSuggestion > 0" class="mt-2 text-[10px]">
+                <div class="flex items-start gap-1 p-1.5 bg-blue-50 text-blue-700 rounded border border-blue-100">
+                    <svg class="w-3 h-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <div class="leading-tight">
+                        <span class="font-bold">Saran: {{ restockSuggestion }} {{ item.unit?.name }}</span>
+                    </div>
                 </div>
-
-                <button
-                    class="p-1.5 rounded-lg transition-all active:scale-95 border"
-                    :class="[
-                        isSelected
-                            ? 'bg-lime-500 text-white border-lime-500 shadow-md'
-                            : 'bg-white border-gray-200 text-gray-300 hover:border-lime-500 hover:text-lime-600 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-500',
-                    ]"
-                >
-                    <svg
-                        v-if="isSelected"
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="3"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M5 13l4 4L19 7"
-                        />
-                    </svg>
-                    <svg
-                        v-else
-                        class="w-4 h-4"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        stroke-width="2"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            d="M12 4v16m8-8H4"
-                        />
-                    </svg>
-                </button>
             </div>
         </div>
     </div>
