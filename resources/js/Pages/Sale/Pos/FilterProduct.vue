@@ -49,6 +49,30 @@ const selectCategory = (val) => {
     emit("update:subCategory", "all"); // Reset sub saat ganti kategori utama
     emit("update:brand", "all"); // Reset brand
     emit("update:size", "all"); // Reset size
+    
+    if (val !== 'all') {
+        emit("update:sort", "recommendation");
+    } else {
+        emit("update:sort", "default");
+    }
+};
+
+const selectSubCategory = (val) => {
+    emit("update:subCategory", val);
+    if (val !== 'all') emit("update:sort", "recommendation");
+    else if (props.category === 'all' && props.brand === 'all' && props.size === 'all') emit("update:sort", "default");
+};
+
+const selectBrand = (val) => {
+    emit("update:brand", val);
+    if (val !== 'all') emit("update:sort", "recommendation");
+    else if (props.category === 'all' && props.subCategory === 'all' && props.size === 'all') emit("update:sort", "default");
+};
+
+const selectSize = (val) => {
+    emit("update:size", val);
+    if (val !== 'all') emit("update:sort", "recommendation");
+    else if (props.category === 'all' && props.subCategory === 'all' && props.brand === 'all') emit("update:sort", "default");
 };
 
 const activeFiltersCount = computed(() => {
@@ -212,7 +236,7 @@ const resetFilters = () => {
                     <h4 class="text-xs font-bold text-gray-400 uppercase mb-3">Tipe Produk</h4>
                     <div class="flex flex-wrap gap-2">
                         <button
-                            @click="$emit('update:subCategory', 'all')"
+                            @click="selectSubCategory('all')"
                             class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                              :class="subCategory === 'all' 
                                 ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
@@ -223,7 +247,7 @@ const resetFilters = () => {
                         <button
                             v-for="sub in activeSubCategories"
                             :key="sub.id"
-                            @click="$emit('update:subCategory', sub.id)"
+                            @click="selectSubCategory(sub.id)"
                             class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                             :class="subCategory === sub.id 
                                 ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
@@ -242,7 +266,7 @@ const resetFilters = () => {
                         <h4 class="text-xs font-bold text-gray-400 uppercase mb-3">Merk / Brand</h4>
                          <div class="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto custom-scroll pr-1">
                             <button
-                                @click="$emit('update:brand', 'all')"
+                                @click="selectBrand('all')"
                                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                                  :class="brand === 'all' 
                                     ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
@@ -253,7 +277,7 @@ const resetFilters = () => {
                             <button
                                 v-for="b in brands"
                                 :key="b.id"
-                                @click="$emit('update:brand', b.id)"
+                                @click="selectBrand(b.id)"
                                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                                 :class="brand === b.id 
                                     ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
@@ -270,7 +294,7 @@ const resetFilters = () => {
                         <h4 class="text-xs font-bold text-gray-400 uppercase mb-3">Ukuran / Size</h4>
                          <div class="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto custom-scroll pr-1">
                             <button
-                                @click="$emit('update:size', 'all')"
+                                @click="selectSize('all')"
                                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                                  :class="size === 'all' 
                                     ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
@@ -281,7 +305,7 @@ const resetFilters = () => {
                             <button
                                 v-for="s in sizes"
                                 :key="s.id"
-                                @click="$emit('update:size', s.id)"
+                                @click="selectSize(s.id)"
                                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                                 :class="size === s.id 
                                     ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 

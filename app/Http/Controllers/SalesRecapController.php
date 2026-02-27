@@ -467,6 +467,7 @@ class SalesRecapController extends Controller
                 'category_id',
                 'product_type_id',
                 'brand_id',
+                'purchase_price',
                 'selling_price',
                 'stock',
                 'image_path',
@@ -483,13 +484,31 @@ class SalesRecapController extends Controller
         }
 
         // 2. Logic Search & Filter Server Side
-        // A. Filter Search
+        // A. Filter Search (SMART SEARCH LOGIC)
         if ($search) {
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+            $searchTerms = array_filter(explode(' ', $search));
+            
+            $query->where(function($q) use ($search, $searchTerms) {
+                // Exact Match Keras (Super Relevan)
+                $q->where('code', $search)
+                  ->orWhere('name', 'like', $search . '%');
+                  
+                // Multi-Word AND Matching (Cari Tiap Kata)
+                $q->orWhere(function ($subQuery) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $subQuery->where('name', 'like', "%{$term}%");
+                    }
+                });
+                
+                // Cross-Column Relational Search
+                $q->orWhereHas('category', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                })->orWhereHas('brand', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                })->orWhereHas('size', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                });
             });
-            $query->orderByDesc('total_sold');
         }
         // B. Filter Kategori
         if ($request->filled('category_id') && $request->input('category_id') !== 'all') {
@@ -508,8 +527,17 @@ class SalesRecapController extends Controller
             $query->where('size_id', $request->input('size_id'));
         }
 
-        // 3. Sorting & Limiting
-        $sort = $request->input('sort', 'default');
+        // 3. Sorting & Limiting (Rekomendasi jadi Default kalau ada Filter)
+        $hasFilters = $request->filled('category_id') && $request->input('category_id') !== 'all' ||
+                      $request->filled('product_type_id') && $request->input('product_type_id') !== 'all' ||
+                      $request->filled('brand_id') && $request->input('brand_id') !== 'all' ||
+                      $request->filled('size_id') && $request->input('size_id') !== 'all';
+                      
+        // Default sort behavior
+        $sort = $request->input('sort');
+        if (empty($sort) || $sort === 'default') {
+             $sort = $hasFilters ? 'recommendation' : 'name';
+        }
         
         if ($request->boolean('only_services')) {
              // LOGIC BARU: Ambil HANYA Jasa/Layanan
@@ -518,38 +546,34 @@ class SalesRecapController extends Controller
              });
              $query->orderBy('name');
         } else {
-             // Logic Sorting Utama
-             if ($sort === 'cheapest') {
+             if ($search) {
+                 // RELEVANCE SORTING PADA SMART SEARCH
+                 // 1. Exact Code (Paling Atas)
+                 // 2. Dimulai dengan nama persis
+                 // 3. Mengandung nama utuh
+                 // 4. Default relasi lain
+                 $query->orderByRaw("
+                    CASE 
+                        WHEN code = ? THEN 1
+                        WHEN name LIKE ? THEN 2
+                        WHEN name LIKE ? THEN 3
+                        ELSE 4
+                    END ASC
+                 ", [$search, $search . '%', '%' . $search . '%']);
+                 // Sebagai secondary sort, pakai best seller biar barang yang sering dicari duluan
+                 $query->orderByDesc('total_sold');
+             } elseif ($sort === 'cheapest') {
                  $query->orderBy('selling_price', 'asc');
              } elseif ($sort === 'bestseller') {
                  $query->orderByDesc('total_sold');
              } elseif ($sort === 'recommendation') {
-                 // LOGIC REKOMENDASI (Weighted Scoring)
-                 // Hanya aktif jika ada kategori spesifik (untuk fairness komparasi)
-                 if ($request->filled('category_id') && $request->input('category_id') !== 'all') {
-                     // Rumus: (Stock * 40%) + ((Margin/1000) * 40%) - (Terjual * 20%)
-                     // Margin = selling_price - original_price (disini kita assume original_price ada di tabel purchase_prices atau kita pakai selling_price saja sebagai simplifikasi jika data kurang lengkap, 
-                     // tapi idealnya kita butuh margin. Jika tidak join tabel purchase, kita simplifikasi pakai Selling Price tinggi saja).
-                     // Catatan: Karena kolom original_price mungkin tidak ada di tabel products (biasanya di purchases), kita pakai asumsi:
-                     // Prioritas = Stock Banyak + Harga Jual Tinggi (Asumsi margin sebanding) - Terjual Sedikit.
-                     
-                     // Revisi Rumus Database Friendly (Tanpa Join Purchase Price dulu biar cepat):
-                     // Score = (Stock * 0.4) + (Selling_Price / 10000 * 0.4) - (Total_Sold * 0.2)
-                     // Update: Tambahkan CAST untuk memastikan tipe data benar (terutama selling_price jika varchar).
-                     // Serta naikkan bobot Margin agar lebih terasa efeknya.
-                     
-                     // New Formula: (Stock * 0.3) + ((SellingPrice / 1000) * 0.5) - (Sold * 0.2)
-                     // Margin/Harga Jual bobot naik jadi 50% dan pembagi diperkecil (1000) agar nilai nominal lebih berpengaruh.
-                     
-                     $query->orderByRaw('( 
-                        (CAST(stock AS DECIMAL(10,2)) * 0.3) + 
-                        ((CAST(selling_price AS DECIMAL(15,2)) / 1000) * 0.5) - 
-                        (COALESCE((SELECT SUM(quantity) FROM sale_items WHERE product_id = products.id), 0) * 0.2) 
-                     ) DESC');
-                 } else {
-                    // Fallback jika user "hack" request tanpa kategori
-                    $query->orderBy('name');
-                 }
+                 // LOGIC REKOMENDASI SORTING
+                 // Rumus: (Stock * 0.3) + (((Selling Price - Purchase Price) / 1000) * 0.5) - (Total Sold * 0.2)
+                 $query->orderByRaw('( 
+                    (CAST(stock AS DECIMAL(10,2)) * 0.3) + 
+                    (((CAST(selling_price AS DECIMAL(15,2)) - CAST(purchase_price AS DECIMAL(15,2))) / 1000) * 0.5) - 
+                    (COALESCE((SELECT SUM(quantity) FROM sale_items WHERE product_id = products.id), 0) * 0.2) 
+                 ) DESC');
              } else {
                  $query->orderBy('name');
              }
@@ -579,11 +603,30 @@ class SalesRecapController extends Controller
             $baseScope->where('stock', '>', 0);
         }
         
-        // Context 1: Current Search Context
+        // Context 1: Current Search Context (SMART SEARCH)
         if ($search) {
-             $baseScope->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%");
+             $searchTerms = array_filter(explode(' ', $search));
+             
+             $baseScope->where(function($q) use ($search, $searchTerms) {
+                // Exact Match Keras (Super Relevan)
+                $q->where('code', $search)
+                  ->orWhere('name', 'like', $search . '%');
+                  
+                // Multi-Word AND Matching (Cari Tiap Kata)
+                $q->orWhere(function ($query) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $query->where('name', 'like', "%{$term}%");
+                    }
+                });
+                
+                // Cross-Column Relational Search
+                $q->orWhereHas('category', function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%");
+                })->orWhereHas('brand', function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%");
+                })->orWhereHas('size', function ($query) use ($search) {
+                    $query->where('name', 'like', "%{$search}%");
+                });
             });
         }
         

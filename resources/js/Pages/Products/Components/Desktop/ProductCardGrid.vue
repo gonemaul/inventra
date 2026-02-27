@@ -16,6 +16,10 @@ const emit = defineEmits([
     "adjustPrice",
 ]);
 const showOptions = ref(false);
+const imageError = ref(false);
+const handleImageError = () => {
+    imageError.value = true;
+};
 // Helper
 const formatRupiah = (val) =>
     new Intl.NumberFormat("id-ID", {
@@ -45,31 +49,21 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
         >
              <!-- Placeholder Icon -->
             <div
-                class="absolute inset-0 flex flex-col items-center justify-center text-gray-300 transition-opacity duration-300"
+                v-if="imageError || !data.image_url"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-lime-50 to-lime-100 dark:from-gray-700 dark:to-gray-800 p-3 transition-opacity duration-300"
             >
-                 <svg
-                    class="w-12 h-12 opacity-30"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="1.5"
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    ></path>
-                </svg>
+                 <span class="text-sm md:text-base font-bold text-center text-gray-500 dark:text-gray-400 line-clamp-3 break-words select-none">{{ data.name }}</span>
             </div>
 
             <!-- Image -->
             <img
+                v-if="!imageError"
                 :src="data.image_url"
                 :alt="data.name"
                 loading="lazy"
                 class="absolute inset-0 object-cover w-full h-full transition-transform duration-700 ease-out opacity-0 group-hover:scale-110"
                 onload="this.classList.remove('opacity-0')"
-                onerror="this.style.display='none'"
+                @error="handleImageError"
             />
             
             <!-- Overlay Gradient (On Hover only or Always subtle?) -->
