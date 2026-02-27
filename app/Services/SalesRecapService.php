@@ -62,6 +62,7 @@ class SalesRecapService
         $perPage = $params['per_page'] ?? 10;
 
         return $query
+            ->with(['items.product.category:id,name']) // FIX: Jasa Indicator (eager loading)
             ->withCount('items')
             ->withSum('items', 'quantity')
             ->orderBy($sortBy, $sortDirection)

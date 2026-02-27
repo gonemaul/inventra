@@ -31,6 +31,7 @@ const tabs = [
     { id: "today", label: "Hari Ini" },
     { id: "week", label: "Minggu Ini" },
     { id: "month", label: "Bulan Ini" },
+    { id: "year", label: "Tahun Ini" },
     { id: "all", label: "Semua Data" },
 ];
 
@@ -51,6 +52,10 @@ const getDateRange = (tab) => {
         const last30Days = new Date(today);
         last30Days.setDate(today.getDate() - 29); // 30 Hari Terakhir
         return { min: formatDate(last30Days), max: formatDate(today) };
+    }
+    if (tab === "year") {
+        const startOfYear = new Date(today.getFullYear(), 0, 1); // 1 Jan Tahun Ini
+        return { min: formatDate(startOfYear), max: formatDate(today) };
     }
     return { min: null, max: null }; // All
 };
@@ -100,10 +105,12 @@ const syncTabWithDate = (min, max) => {
     const today = getDateRange('today');
     const week = getDateRange('week');
     const month = getDateRange('month');
+    const year = getDateRange('year');
 
     if (min === today.min && max === today.max) activeTab.value = 'today';
     else if (min === week.min && max === week.max) activeTab.value = 'week';
     else if (min === month.min && max === month.max) activeTab.value = 'month';
+    else if (min === year.min && max === year.max) activeTab.value = 'year';
     else activeTab.value = 'all'; // Custom range or All
 };
 
@@ -171,6 +178,9 @@ const activePeriodInsight = computed(() => {
         qty = props.summary.best_selling_qty_month;
         chart = props.summary.chart_month;
         label = "Mingguan";
+    } else if (activeTab.value === 'year') {
+        chart = props.summary.chart_year;
+        label = "Bulanan";
     }
     
     return { revenue, qty, chart, label };
@@ -267,16 +277,15 @@ const pagination = computed(() => props.sales);
                 
                 <!-- Insight Cards Grid -->
                 <!-- Show only if activeTab is one of the standard periods AND data exists -->
-                <div v-if="['today', 'week', 'month'].includes(activeTab) && (activePeriodInsight.revenue?.length > 0 || activePeriodInsight.qty?.length > 0)" class="space-y-4">
+                <div v-if="['today', 'week', 'month', 'year'].includes(activeTab) && (activePeriodInsight.revenue?.length > 0 || activePeriodInsight.qty?.length > 0 || activePeriodInsight.chart?.revenues?.length > 0)" class="space-y-4">
                      
                     <!-- GRAFIK PENJUALAN -->
                      <SalesChart 
                         :data="activePeriodInsight.chart" 
-                        :title="`Grafik Omset (${activePeriodInsight.label})`"
-                        color="#84cc16"
+                        :title="`Grafik Omset & Laba Bersih (${activePeriodInsight.label})`"
                     />
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div v-if="activeTab !== 'year'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Card 1: Top Omset -->
                         <div class="bg-gradient-to-br from-lime-600 to-green-700 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
                             <div class="flex items-center justify-between mb-3 relative z-10">

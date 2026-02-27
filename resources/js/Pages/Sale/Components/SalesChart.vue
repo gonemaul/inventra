@@ -7,10 +7,6 @@ const props = defineProps({
     title: {
         type: String,
         default: 'Grafik Penjualan'
-    },
-    color: {
-        type: String,
-        default: '#84cc16'
     }
 });
 
@@ -24,7 +20,7 @@ const chartOptions = computed(() => ({
         fontFamily: 'inherit'
     },
     dataLabels: { enabled: false },
-    stroke: { curve: 'smooth', width: 2 },
+    stroke: { curve: 'smooth', width: [3, 2] },
     xaxis: {
         categories: props.data?.labels || [],
         axisBorder: { show: false },
@@ -52,11 +48,17 @@ const chartOptions = computed(() => ({
             stops: [0, 90, 100]
         }
     },
-    colors: [props.color],
+    colors: ['#3b82f6', '#10b981'], // Omset: Blue, Profit: Emerald
     grid: {
         borderColor: '#f3f4f6',
         strokeDashArray: 4,
         padding: { top: 0, right: 0, bottom: 0, left: 10 }
+    },
+    legend: {
+        position: 'top',
+        horizontalAlign: 'right',
+        offsetY: -20,
+        markers: { radius: 12 }
     },
     tooltip: {
         y: {
@@ -67,17 +69,23 @@ const chartOptions = computed(() => ({
     }
 }));
 
-const series = computed(() => [{
-    name: 'Omset',
-    data: props.data?.values || []
-}]);
+const series = computed(() => [
+    {
+        name: 'Omset',
+        data: props.data?.revenues || []
+    },
+    {
+        name: 'Laba Bersih',
+        data: props.data?.profits || []
+    }
+]);
 </script>
 
 <template>
-    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700">
-        <h3 class="font-bold text-gray-700 dark:text-gray-200 mb-4 text-sm">{{ title }}</h3>
-        <div v-if="data && data.values && data.values.length > 0">
-             <apexchart type="area" height="250" :options="chartOptions" :series="series"></apexchart>
+    <div class="bg-white dark:bg-gray-800 rounded-xl p-4 lg:p-5 shadow-sm border border-gray-100 dark:border-gray-700">
+        <h3 class="font-bold text-gray-700 dark:text-gray-200 text-sm md:text-base border-b border-gray-100 dark:border-gray-700 pb-2 mb-2">{{ title }}</h3>
+        <div v-if="data && data.revenues && data.revenues.length > 0">
+             <apexchart type="area" height="280" :options="chartOptions" :series="series"></apexchart>
         </div>
         <div v-else class="h-[250px] flex items-center justify-center text-gray-400 text-xs italic">
             Belum ada data grafik

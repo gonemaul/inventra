@@ -28,10 +28,21 @@ const formatDate = (dateString, withTime = false) => {
     return new Date(dateString).toLocaleDateString("id-ID", options);
 };
 
-// Helper untuk status warna badge (opsional jika ada status pembayaran)
-const getStatusColor = (sale) => {
-    // Logic sementara, bisa dikembangkan
-    return "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400";
+// Helper untuk icons payment method
+const getPaymentMethodIcon = (method) => {
+    switch (method) {
+        case 'qris':
+            return '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>';
+        case 'e-wallet':
+             return '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>';
+        default: // cash
+            return '<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>';
+    }
+};
+
+const hasServiceItem = (sale) => {
+    console.log(sale)
+    return sale.items?.some(item => ['Jasa', 'Layanan'].includes(item.product?.category?.name));
 };
 
 import { router } from "@inertiajs/vue3";
@@ -52,116 +63,125 @@ const confirmDelete = (sale) => {
 
 <template>
     <DeleteConfirm ref="deleteConfirm" @success="$emit('refresh')" />
-    <div class="space-y-3">
+    <div class="space-y-4">
         <div
             v-for="sale in sales"
             :key="sale.id"
-            class="group relative rounded-2xl p-4 border shadow-sm hover:shadow-md transition-all cursor-pointer"
+            class="group relative rounded-2xl p-4 lg:p-5 border transition-all cursor-pointer bg-white dark:bg-gray-900"
             :class="[
                 sale.deleted_at 
-                    ? 'bg-red-50/50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' 
-                    : 'bg-white dark:bg-gray-800 border-gray-100 dark:border-gray-700'
+                    ? 'border-red-100 ring-1 ring-red-50 dark:border-red-900/40 dark:ring-red-900/20' 
+                    : 'border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700'
             ]"
         >
-            <div class="flex justify-between items-start gap-3" :class="{ 'opacity-60 grayscale': sale.deleted_at }">
-                <!-- Kiri: Icon & Info Utama -->
-                <div class="flex gap-3.5 items-center">
+            <div class="flex justify-between flex-wrap gap-4" :class="{ 'opacity-60 grayscale': sale.deleted_at }">
+                <!-- Kiri: Info Utama -->
+                <div class="flex gap-4 items-start flex-1 min-w-[200px]">
                     <div
-                        class="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0"
+                        class="w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center shrink-0 border"
+                        :class="sale.deleted_at ? 'bg-red-50 border-red-100 text-red-400 dark:bg-red-900/20 dark:border-red-800' : 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800 dark:border-gray-700'"
                     >
-                        <!-- Icon Keranjang / Receipt -->
-                        <span class="text-lg lg:text-xl">🧾</span>
+                        <!-- Icon Premium Monochrome -->
+                        <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     </div>
 
-                <div>
-                        <div class="flex items-center gap-2">
+                <div class="flex flex-col gap-1.5 flex-1 overflow-hidden">
+                        <div class="flex items-center gap-2 flex-wrap">
                              <h4
-                                class="font-bold text-gray-900 dark:text-white text-sm lg:text-base group-hover:text-blue-600 transition-colors"
+                                class="font-bold text-gray-800 dark:text-white text-sm lg:text-base group-hover:text-gray-900 transition-colors tracking-tight"
                             >
                                 {{ sale.reference_no }}
                             </h4>
-                            <span v-if="sale.notes" class="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded">Note</span>
-                            <span v-if="sale.deleted_at" class="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-bold">VOID</span>
+                            
+                            <!-- Premium Monochrome Payment Badge -->
+                            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 text-[10px] sm:text-xs font-medium text-gray-600 dark:text-gray-300 capitalize shadow-sm">
+                                <span v-html="getPaymentMethodIcon(sale.payment_method)"></span>
+                                {{ sale.payment_method || 'Cash' }}
+                            </div>
+                            
+                            <!-- Badges -->
+                            <span v-if="sale.notes" class="text-[10px] border border-orange-200 bg-orange-50 text-orange-600 px-1.5 py-0.5 rounded font-medium dark:bg-orange-900/20 dark:border-orange-800">Note</span>
+                            <span v-if="sale.deleted_at" class="text-[10px] border border-red-200 bg-red-50 text-red-600 px-1.5 py-0.5 rounded font-black tracking-widest dark:bg-red-900/20 dark:border-red-800">VOID</span>
                         </div>
                        
                         <!-- Date Info -->
-                        <div class="text-xs text-gray-500 dark:text-gray-400 mt-1 flex flex-col gap-0.5">
-                            <span class="flex items-center gap-1">
-                                📅 {{ formatDate(sale.transaction_date) }}
+                        <div class="text-xs text-gray-500 dark:text-gray-400 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                            <span>
+                                {{ formatDate(sale.transaction_date) }}
                             </span>
                             
-                            <!-- History Created/Updated -->
-                            <div v-if="sale.updated_at && sale.created_at && sale.updated_at !== sale.created_at" class="text-[10px] text-gray-400 italic">
-                                (Diedit: {{ formatDate(sale.updated_at, true) }})
-                            </div>
+                            <span class="hidden sm:inline text-gray-300 dark:text-gray-600">•</span>
+                            
+                            <!-- Item Stats Premium Text -->
+                            <span class="flex items-center gap-3 font-medium">
+                                <span>{{ sale.items_count || 0 }} Items</span>
+                                <span class="text-gray-300 dark:text-gray-600">|</span>
+                                <span>{{ parseFloat(sale.items_sum_quantity || 0) }} Qty</span>
+                            </span>
+                        </div>
+                        
+                         <!-- Jasa Indicator (Appears below date if includes service) -->
+                        <div v-if="hasServiceItem(sale)" class="flex items-center gap-1.5 mt-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400">
+                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                             Termasuk Jasa/Layanan
                         </div>
 
-                        <!-- Item Stats -->
-                        <div class="mt-1.5 flex items-center gap-2 text-xs font-medium text-gray-600 dark:text-gray-300">
-                            <span class="bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">
-                                📦 {{ sale.items_count || 0 }} Item
-                            </span>
-                            <span class="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 px-2 py-0.5 rounded-md">
-                                🔢 {{ parseFloat(sale.items_sum_quantity || 0) }} Qty
-                            </span>
+                        <!-- History Created/Updated Minimal -->
+                        <div v-if="sale.updated_at && sale.created_at && sale.updated_at !== sale.created_at" class="text-[10px] text-gray-400 mt-0.5">
+                            *Diedit: {{ formatDate(sale.updated_at, true) }}
                         </div>
                     </div>
                 </div>
 
                 <!-- Kanan: Nominal & Status -->
-                <div class="text-right">
+                <div class="text-right flex flex-col justify-between sm:items-end w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-gray-100 dark:border-gray-800">
                     <div
-                        class="font-black text-gray-900 dark:text-white text-sm lg:text-lg"
+                        class="font-black tracking-tight text-gray-900 dark:text-white text-base lg:text-xl"
                     >
                         {{ formatRupiah(sale.total_revenue) }}
                     </div>
-                    <!-- Action Buttons -->
-                    <div class="flex items-center justify-end gap-2 mt-2">
+                    <!-- Action Buttons Minimalist -->
+                    <div class="flex items-center sm:justify-end gap-1.5 mt-2.5">
                          <Link
                             :href="route('sales.show', sale.id)"
-                            class="p-1.5 rounded-full bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-blue-900/30 dark:hover:text-blue-400"
+                            class="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition dark:bg-transparent dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:border-gray-600"
                             title="Lihat Detail Lengkap"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         </Link>
                         
                         <!-- Edit Button (Disabled if Deleted) -->
                         <Link
                             v-if="!sale.deleted_at"
                             :href="route('sales.edit', sale.id)"
-                            class="p-1.5 rounded-full bg-gray-100 text-gray-500 hover:bg-yellow-100 hover:text-yellow-600 transition dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-yellow-900/30 dark:hover:text-yellow-400"
+                            class="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition dark:bg-transparent dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:border-gray-600"
                             title="Edit Transaksi"
                         >
-                             <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                             <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                         </Link>
 
                         <!-- Delete Button (Disabled if Deleted) -->
                         <button
                             v-if="!sale.deleted_at"
                             @click.stop="confirmDelete(sale)"
-                            class="p-1.5 rounded-full bg-gray-100 text-gray-500 hover:bg-red-100 hover:text-red-600 transition dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-red-900/30 dark:hover:text-red-400"
+                            class="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition dark:bg-transparent dark:border-gray-700 dark:text-gray-400 dark:hover:bg-red-900/20 dark:hover:text-red-400 dark:hover:border-red-800"
                             title="Hapus Transaksi"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                         </button>
 
                          <button 
                             v-if="!sale.deleted_at"
                             @click.stop="emit('preview-invoice', sale)"
-                            class="p-1.5 rounded-full bg-gray-100 text-gray-500 hover:bg-orange-100 hover:text-orange-600 transition dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-orange-900/30 dark:hover:text-orange-400"
+                            class="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition dark:bg-transparent dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:border-gray-600 flex items-center gap-1.5"
                             title="Preview Invoice"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <span class="text-[10px] font-bold sm:hidden">Cetak</span>
                         </button>
                     </div>
                 </div>
             </div>
-
-            <!-- Bottom Action (Hidden by default, shown on hover or mobile always accessible via tap) -->
-            <!-- <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700 flex justify-between items-center text-xs">
-                <span class="text-gray-400">{{ sale.user?.name || 'Kasir' }}</span>
-                <span class="text-blue-600 font-bold">Lihat Detail &rarr;</span>
-            </div> -->
         </div>
 
         <!-- Empty State -->

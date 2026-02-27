@@ -37,9 +37,9 @@ class SalesRecapController extends Controller
             // Hapus filter tanggal agar pencarian bersifat global
             unset($filters['min_date']);
             unset($filters['max_date']);
-        } elseif (!$request->has('min_date') && !$request->has('max_date') && $request->input('period') !== 'all') {
-            // FIX: Default ke Hari Ini jika tidak ada filter sama sekali
-            $filters['min_date'] = now()->subDays(1)->format('Y-m-d'); // Mundur 1 hari untuk safety timezone
+        } elseif (!$request->has('min_date') && (!$request->has('max_date')) && $request->input('period') !== 'all') {
+            // FIX: Default ke Hari Ini (strictly Today) jika tidak ada filter sama sekali
+            $filters['min_date'] = now()->format('Y-m-d'); 
             $filters['max_date'] = now()->format('Y-m-d');
         }
         
@@ -109,57 +109,56 @@ class SalesRecapController extends Controller
             });
         };
 
-        // Helper Chart Data
+        // Helper Chart Data (MODIFIED FOR PROFIT & REVENUE)
         $getChartData = function ($type) use ($today, $startOfWeek, $startOfMonth) {
             $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
 
             if ($type === 'today') {
-                // Gunakan updated_at untuk jam karena transaction_date hanya tanggal
-                // Jika update != create, ambil update (logic standar updated_at)
                 $timeColumn = 'updated_at'; 
                 $labelRaw = $isSqlite ? "CAST(strftime('%H', $timeColumn) AS INTEGER)" : "HOUR($timeColumn)";
                 
-                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as value")
+                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
                     ->whereDate('transaction_date', $today)
                     ->groupBy('label')
-                    ->pluck('value', 'label')
-                    ->toArray();
+                    ->get()
+                    ->keyBy('label');
                 
                 // Fill 00-23
-                $result = [];
+                $resultRevenue = [];
+                $resultProfit = [];
                 for ($i = 0; $i <= 23; $i++) {
-                    $result[] = (int)($data[$i] ?? 0);
+                    $resultRevenue[] = (int)($data[$i]->revenue ?? 0);
+                    $resultProfit[] = (int)($data[$i]->profit ?? 0);
                 }
-                return ['labels' => range(0, 23), 'values' => $result];
+                return ['labels' => range(0, 23), 'revenues' => $resultRevenue, 'profits' => $resultProfit];
             }
             
             if ($type === 'week') {
                 $labelRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
 
-                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as value")
+                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue,  SUM(total_profit) as profit")
                     ->where('transaction_date', '>=', $startOfWeek)
                     ->groupBy('label')
-                    ->pluck('value', 'label')
-                    ->toArray();
+                    ->get()
+                    ->keyBy('label');
                 
-                // Fill Last 7 Days
                 $labels = [];
-                $values = [];
+                $revenues = [];
+                $profits = [];
                 for ($i = 6; $i >= 0; $i--) {
                     $date = now()->subDays($i)->format('Y-m-d');
-                    $labels[] = now()->subDays($i)->format('d/m'); // Format tgl
-                    $values[] = (int)($data[$date] ?? 0);
+                    $labels[] = now()->subDays($i)->format('d/m'); 
+                    $revenues[] = (int)($data[$date]->revenue ?? 0);
+                    $profits[] = (int)($data[$date]->profit ?? 0);
                 }
-                return ['labels' => $labels, 'values' => $values];
+                return ['labels' => $labels, 'revenues' => $revenues, 'profits' => $profits];
             }
 
             if ($type === 'month') {
-                // Group by Week (Week Number)
-                // SQLite %W: week of year (00-53)
                 $labelRaw = $isSqlite ? "strftime('%W', transaction_date)" : "WEEK(transaction_date, 1)";
                 $dateRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
 
-                $data = Sale::selectRaw("$labelRaw as label, MIN($dateRaw) as start_date, SUM(total_revenue) as value")
+                $data = Sale::selectRaw("$labelRaw as label, MIN($dateRaw) as start_date, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
                     ->where('transaction_date', '>=', $startOfMonth)
                     ->groupBy('label')
                     ->orderBy('start_date')
@@ -167,7 +166,36 @@ class SalesRecapController extends Controller
                 
                 return [
                     'labels' => $data->map(fn($item) => 'Minggu ' . date('W', strtotime($item->start_date)))->toArray(),
-                    'values' => $data->pluck('value')->toArray()
+                    'revenues' => $data->pluck('revenue')->toArray(),
+                    'profits' => $data->pluck('profit')->toArray(),
+                ];
+            }
+            
+            if ($type === 'year') {
+                $year = now()->year;
+                $labelRaw = $isSqlite ? "strftime('%m', transaction_date)" : "MONTH(transaction_date)";
+
+                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
+                    ->whereYear('transaction_date', $year)
+                    ->groupBy('label')
+                    ->get()
+                    ->keyBy('label');
+                
+                $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+                $revenues = [];
+                $profits = [];
+                
+                for ($i = 1; $i <= 12; $i++) {
+                    // SQLite strftime '%m' returns '01', '02', etc. MySQL MONTH returns 1, 2.
+                    $keyString = $isSqlite ? str_pad($i, 2, '0', STR_PAD_LEFT) : $i;
+                    $revenues[] = (int)($data[$keyString]->revenue ?? 0);
+                    $profits[] = (int)($data[$keyString]->profit ?? 0);
+                }
+                
+                return [
+                    'labels' => $labels,
+                    'revenues' => $revenues,
+                    'profits' => $profits,
                 ];
             }
         };
@@ -176,6 +204,11 @@ class SalesRecapController extends Controller
             'sales_today' => Sale::whereDate('transaction_date', $today)->sum('total_revenue'),
             'sales_week' => Sale::where('transaction_date', '>=', $startOfWeek)->sum('total_revenue'),
             'sales_month' => Sale::where('transaction_date', '>=', $startOfMonth)->sum('total_revenue'),
+            
+            'profit_today' => Sale::whereDate('transaction_date', $today)->sum('total_profit'),
+            'profit_week' => Sale::where('transaction_date', '>=', $startOfWeek)->sum('total_profit'),
+            'profit_month' => Sale::where('transaction_date', '>=', $startOfMonth)->sum('total_profit'),
+            
             'count_today' => Sale::whereDate('transaction_date', $today)->count(),
             
             'period_today' => $todayDate->translatedFormat('d M Y'),
@@ -191,10 +224,11 @@ class SalesRecapController extends Controller
             'best_selling_qty_week' => $getBestSellingQty($startOfWeek),
             'best_selling_qty_month' => $getBestSellingQty($startOfMonth),
 
-            // Charts
+            // charts
             'chart_today' => $getChartData('today'),
             'chart_week' => $getChartData('week'),
             'chart_month' => $getChartData('month'),
+            'chart_year' => $getChartData('year'),
         ];
 
         return Inertia::render('Sale/index', [
