@@ -28,14 +28,14 @@ const restockSuggestion = computed(() => {
 });
 
 // Logic Badges (Frontend Calculation based on stats provided by Backend)
-const isBestSeller = computed(() => (props.item.sold_last_90_days || 0) >= 50); 
-const isFastMoving = computed(() => !isBestSeller.value && (props.item.sold_last_90_days || 0) >= 20);
+const isSedangTren = computed(() => (props.item.sold_last_30_days || 0) >= 15);
+const isFastMoving = computed(() => !isSedangTren.value && (props.item.sold_last_30_days || 0) >= 5);
 const isDeadStock = computed(() => (props.item.sold_last_90_days || 0) <= 2 && props.item.stock > 10);
 
 const conditionBadge = computed(() => {
-    if (isBestSeller.value) return { text: 'Best Seller', color: 'bg-orange-100 text-orange-600 border-orange-200', icon: '🔥' };
-    if (isFastMoving.value) return { text: 'Laris', color: 'bg-blue-100 text-blue-600 border-blue-200', icon: '⚡' };
-    if (isDeadStock.value) return { text: 'Stok Mati', color: 'bg-gray-100 text-gray-600 border-gray-200', icon: '📦' };
+    if (isSedangTren.value) return { text: 'Sedang Tren', color: 'bg-red-100 text-red-600 border-red-200 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800', icon: '🚀' };
+    if (isFastMoving.value) return { text: 'Laris', color: 'bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-800', icon: '⚡' };
+    if (isDeadStock.value) return { text: 'Stok Mati', color: 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700', icon: '📦' };
     return null;
 });
 </script>
@@ -109,10 +109,13 @@ const conditionBadge = computed(() => {
                 </div>
             </div>
             
-            <!-- Sales Stats (From Recom) -->
-            <div v-if="item.sold_last_90_days > 0" class="text-[10px] text-gray-500 bg-gray-50 dark:bg-gray-700/50 p-1 rounded border border-dashed border-gray-200 flex justify-between">
-                <span>Terjual (90H):</span>
-                <strong class="text-gray-800 dark:text-gray-200">{{ item.sold_last_90_days }} {{ item.unit?.name }}</strong>
+            <!-- Sales Stats (30 Days Priority) -->
+            <div v-if="item.sold_last_30_days > 0" class="text-[10px] text-gray-500 bg-gray-50 dark:bg-gray-700/50 p-1.5 rounded border border-dashed border-gray-200 flex justify-between items-center group-hover:bg-lime-50 dark:group-hover:bg-lime-900/20 transition-colors">
+                <span class="flex items-center gap-1 font-medium">
+                    <svg class="w-3 h-3 text-lime-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    Tren (30H):
+                </span>
+                <strong class="text-gray-800 dark:text-gray-200 group-hover:text-lime-700 dark:group-hover:text-lime-400">{{ item.sold_last_30_days }} {{ item.unit?.name }}</strong>
             </div>
 
             <!-- Separator -->
@@ -130,11 +133,12 @@ const conditionBadge = computed(() => {
 
             <!-- Restock Suggestion (Only if exists) -->
             <div v-if="restockSuggestion > 0" class="mt-2 text-[10px]">
-                <div class="flex items-start gap-1 p-1.5 bg-blue-50 text-blue-700 rounded border border-blue-100">
-                    <svg class="w-3 h-3 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <div class="leading-tight">
-                        <span class="font-bold">Saran: {{ restockSuggestion }} {{ item.unit?.name }}</span>
+                <div class="flex items-center justify-between p-2 bg-gradient-to-r from-indigo-50 to-blue-50 text-indigo-700 rounded-lg border border-indigo-100/50 shadow-inner group-hover:from-indigo-100 group-hover:to-blue-100 transition-colors">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-lg">🤖</span>
+                        <span class="font-bold tracking-wide uppercase text-[9px] opacity-80">Saran Restok</span>
                     </div>
+                    <div class="font-black text-sm">{{ restockSuggestion }} {{ item.unit?.name || '' }}</div>
                 </div>
             </div>
         </div>

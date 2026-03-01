@@ -149,6 +149,22 @@ onUnmounted(() => {
     window.removeEventListener("resize", updateScreenSize);
 });
 
+// --- CUSTOM ALERT STATE ---
+const showPremiumAlert = ref(false);
+const alertItemName = ref('');
+const alertItemQty = ref(0);
+let alertTimeout = null;
+
+const triggerPremiumAlert = (name, qty) => {
+    alertItemName.value = name;
+    alertItemQty.value = qty;
+    showPremiumAlert.value = true;
+    if (alertTimeout) clearTimeout(alertTimeout);
+    alertTimeout = setTimeout(() => {
+        showPremiumAlert.value = false;
+    }, 3000);
+};
+
 // --- 8. METHODS: STAGING & CATALOG ---
 
 const fillStagingArea = (product, qty = 1, price = null) => {
@@ -164,7 +180,7 @@ const fillStagingArea = (product, qty = 1, price = null) => {
         size: product.size?.name || product.size || "-",
         brand: product.brand?.name || product.brand || "-",
         type: product.type_name || product.type_name || "-",
-        image_url: product.image_url,
+        image_url: product.image_url || product.image_path,
         current_stock: product.stock || product.current_stock,
         quantity: suggestedQty || qty,
         purchase_price: price !== null ? price : product.purchase_price || 0,
@@ -216,7 +232,7 @@ const handleSaveStaging = () => {
             stagingItem.value.quantity,
             stagingItem.value.purchase_price
         );
-        toast.success("Item ditambahkan.");
+        triggerPremiumAlert(stagingItem.value.name, stagingItem.value.quantity);
     }
     resetStaging();
 };
@@ -301,19 +317,33 @@ function parseRupiah(value) {
 }
 </script>
 <template>
-    <Head title="Rancangan Anggaran Belanja" />
+    <AuthenticatedLayout>
+        <Head title="Buat RAB" />
 
-    <AuthenticatedLayout
-        headerTitle="Rancangan Anggaran Belanja"
-        :showSidebar="false"
-    >
-        <Recom
-            :show="showRecom"
-            :supplierId="formHeader.supplier_id"
-            @close="showRecom = false"
-            @add-items="handleBulkAdd"
-        />
-        <div class="w-full min-h-screen space-y-6">
+        <!-- Custom Premium Alert (Absolute/Fixed) -->
+        <Teleport to="body">
+            <transition
+                enter-active-class="transition duration-500 ease-out transform"
+                enter-from-class="-translate-y-10 opacity-0 scale-95"
+                enter-to-class="translate-y-0 opacity-100 scale-100"
+                leave-active-class="transition duration-300 ease-in transform"
+                leave-from-class="translate-y-0 opacity-100 scale-100"
+                leave-to-class="-translate-y-10 opacity-0 scale-95"
+            >
+                <div v-if="showPremiumAlert" class="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] flex items-center p-4 bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-2xl dark:bg-gray-800/95 dark:border-gray-700 min-w-[320px] max-w-[90vw]">
+                    <div class="flex-shrink-0 w-12 h-12 bg-lime-100 rounded-full flex items-center justify-center dark:bg-lime-900/50 shadow-inner">
+                        <svg class="w-6 h-6 text-lime-600 dark:text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                    </div>
+                    <div class="ml-4 flex-1">
+                        <p class="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">Item Ditambahkan!</p>
+                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5"><span class="font-black text-lime-600 dark:text-lime-400">+{{ alertItemQty }}</span> {{ alertItemName }}</p>
+                    </div>
+                </div>
+            </transition>
+        </Teleport>
+
+        <!-- Hapus div py-12 dan recom duplikat -->
+        <div class="w-full min-h-screen space-y-6 py-6 lg:py-10">
             <HeadRabMobile
                 v-if="isMobile"
                 :form-header="formHeader"
@@ -349,20 +379,21 @@ function parseRupiah(value) {
                 @open-recommendation="showRecom = true"
             />
 
-            <!-- Table -->
+            <!-- Content Container -->
             <div
-                class="p-4 space-y-4 bg-white border border-gray-200 shadow-sm rounded-xl dark:bg-gray-900 dark:border-gray-700"
+                class="p-4 space-y-5 bg-white shadow-xl bg-opacity-90 backdrop-blur-lg border border-gray-100 rounded-2xl dark:bg-gray-900 dark:border-gray-800 transition-all"
             >
+                <!-- iOS Segmented Control -->
                 <div
-                    class="flex p-1 space-x-1 bg-gray-100 rounded-lg dark:bg-gray-700"
+                    class="relative flex p-1.5 bg-gray-100/80 backdrop-blur-md rounded-xl dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700 w-full md:w-fit mx-auto md:mx-0 shadow-inner"
                 >
                     <button
                         type="button"
                         @click="activeView = 'table'"
-                        class="flex items-center justify-center w-1/2 py-2.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none"
+                        class="relative flex items-center justify-center w-1/2 md:w-48 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 z-10"
                         :class="
                             activeView === 'table'
-                                ? 'bg-white text-gray-900 shadow dark:bg-gray-600 dark:text-white'
+                                ? 'text-gray-900 dark:text-gray-100'
                                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         "
                     >
@@ -372,18 +403,12 @@ function parseRupiah(value) {
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                         >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                            ></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                         </svg>
                         Daftar Belanja
-
                         <span
                             v-if="cartItems.length > 0"
-                            class="ml-2 bg-lime-100 text-lime-700 py-0.5 px-2 rounded-full text-xs font-bold"
+                            class="ml-2 bg-lime-500 text-white py-[2px] px-2 rounded-full text-[10px] font-black shadow-sm"
                         >
                             {{ cartItems.length }}
                         </span>
@@ -393,10 +418,10 @@ function parseRupiah(value) {
                         type="button"
                         @click="activeView = 'catalog'"
                         :disabled="!formHeader.supplier_id"
-                        class="flex items-center justify-center w-1/2 py-2.5 text-sm font-medium rounded-md transition-all duration-200 focus:outline-none"
+                        class="relative flex items-center justify-center w-1/2 md:w-56 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 z-10"
                         :class="[
                             activeView === 'catalog'
-                                ? 'bg-white text-gray-900 shadow dark:bg-gray-600 dark:text-white'
+                                ? 'text-gray-900 dark:text-gray-100'
                                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
                             !formHeader.supplier_id
                                 ? 'opacity-50 cursor-not-allowed'
@@ -409,19 +434,17 @@ function parseRupiah(value) {
                             stroke="currentColor"
                             viewBox="0 0 24 24"
                         >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                            ></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path>
                         </svg>
-
-                        <span v-if="!formHeader.supplier_id"
-                            >Pilih Supplier Dulu</span
-                        >
+                        <span v-if="!formHeader.supplier_id">Pilih Supplier</span>
                         <span v-else>Katalog Produk</span>
                     </button>
+                    <!-- Active bg slider -->
+                    <div class="absolute top-1.5 bottom-1.5 w-1/2 transition-transform duration-300 ease-in-out bg-white dark:bg-gray-600 rounded-lg shadow-sm"
+                         :class="[
+                            activeView === 'table' ? 'left-1.5 md:w-48' : 'translate-x-full md:translate-x-0 md:left-[200px] md:w-56',
+                         ]"
+                    ></div>
                 </div>
 
                 <div class="min-h-[400px]">

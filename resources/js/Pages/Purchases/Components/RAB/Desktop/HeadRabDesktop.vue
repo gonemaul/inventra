@@ -53,7 +53,7 @@ const formatRupiah = (number) => {
     <div class="hidden space-y-6 md:block">
         <div class="flex flex-col w-full gap-4 md:flex-row">
             <div
-                class="flex flex-col gap-4 p-4 bg-gray-200 border rounded-lg lg:w-1/2 dark:bg-gray-800 dark:border-gray-700"
+                class="flex flex-col gap-4 p-5 bg-white/70 backdrop-blur-xl border border-gray-200/50 shadow-lg rounded-2xl lg:w-1/2 dark:bg-lime-900/10 dark:border-lime-900/50 dark:shadow-lime-900/20"
             >
                 <div
                     class="flex flex-col-reverse items-start gap-4 md:flex-row"
@@ -251,8 +251,9 @@ const formatRupiah = (number) => {
             </div>
 
             <div
-                class="flex flex-col justify-between p-4 text-sm bg-gray-200 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+                class="flex flex-col justify-between p-5 text-sm bg-white/70 backdrop-blur-xl border border-gray-200/50 shadow-lg rounded-2xl dark:bg-gray-900/90 dark:border-gray-800 relative overflow-hidden group"
             >
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all duration-500"></div>
                 <div
                     class="pb-2 text-base text-gray-800 border-b-2 border-gray-400 dark:border-gray-600 text-semibold dark:text-white"
                 >
@@ -351,9 +352,11 @@ const formatRupiah = (number) => {
             </div>
 
             <div
-                class="flex flex-col justify-between flex-1 w-full p-4 bg-gray-200 border rounded-lg dark:bg-gray-800 dark:border-gray-700"
+                class="flex flex-col justify-between flex-1 w-full p-5 bg-gradient-to-br from-gray-900 to-gray-800 shadow-xl rounded-2xl border border-gray-800 relative overflow-hidden group dark:from-gray-950 dark:to-gray-900 dark:border-gray-900"
             >
-                <div class="flex justify-between text-gray-800 dark:text-white">
+                <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-lime-500/10 rounded-full blur-3xl group-hover:bg-lime-500/20 transition-all duration-500"></div>
+                
+                <div class="flex justify-between text-white/90 relative z-10">
                     <p class="text-lg font-bold">{{ totalUnit }} Unit</p>
                     <p class="text-lg font-bold">{{ totalMacam }} Macam</p>
                 </div>
@@ -364,7 +367,7 @@ const formatRupiah = (number) => {
                         Total Belanja
                     </p>
                     <p
-                        class="text-3xl font-extrabold text-gray-900 dark:text-white"
+                        class="text-4xl font-extrabold text-lime-400 drop-shadow-md"
                     >
                         {{ formatRupiah(totalBelanja) }}
                     </p>

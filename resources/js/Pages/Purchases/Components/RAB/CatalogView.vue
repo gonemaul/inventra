@@ -230,74 +230,90 @@ const selectItem = (item) => {
             </div>
             </div>
 
-            <!-- Filters Scrollable -->
-            <div class="px-3 pb-3 overflow-x-auto no-scrollbar scroll-smooth mask-fade-right">
-                <div class="flex items-center gap-2">
-                    
-                    <!-- Kategori -->
-                    <select 
-                        v-model="filterCategory" 
-                        @change="applyFilter"
-                        class="text-xs font-medium py-1.5 pl-2 pr-8 bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all"
+            <!-- Filters Section -->
+            <div class="flex flex-col gap-3 px-4 pb-3">
+                <!-- Filters Selects Grid -->
+                <!-- Categories Chips - Kept as chips for UX -->
+                <div class="flex items-center gap-2 overflow-x-auto md:overflow-visible md:flex-wrap no-scrollbar scroll-smooth pb-1">
+                    <!-- 🚨 Butuh Restok Filter (Quick Action) -->
+                    <button 
+                         @click="filterStock = filterStock === 'low_empty' ? '' : 'low_empty'; applyFilter()"
+                         class="px-3 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap flex items-center gap-1 shrink-0 shadow-sm"
+                         :class="filterStock === 'low_empty' 
+                            ? 'bg-red-50 text-red-600 border-red-200 dark:bg-red-900/40 dark:text-red-400 dark:border-red-800' 
+                            : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
                     >
-                        <option value="all">Semua Kategori</option>
-                        <option v-for="c in dynamicCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
-                    </select>
+                        <span>🚨</span>
+                        Butuh Restok
+                    </button>
 
-                    <!-- Brand (Level 1/2) -->
+                    <div class="w-px h-5 bg-gray-300 dark:bg-gray-600 shrink-0 mx-1"></div>
+
+                    <!-- Categories Chips -->
+                    <button
+                        @click="filterCategory = 'all'; applyFilter()"
+                        class="px-3 py-1.5 text-xs font-bold rounded-full transition-all whitespace-nowrap shrink-0 border shadow-sm"
+                        :class="filterCategory === 'all' ? 'bg-gray-800 text-white border-gray-800 dark:bg-gray-100 dark:text-gray-900 border-transparent' : 'bg-white text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                    >
+                        Semua Kategori
+                    </button>
+                    <button
+                        v-for="c in dynamicCategories" :key="c.id"
+                        @click="filterCategory = c.id; applyFilter()"
+                        class="px-3 py-1.5 text-xs font-bold rounded-full transition-all whitespace-nowrap shrink-0 border shadow-sm"
+                        :class="filterCategory === c.id ? 'bg-gray-800 text-white border-gray-800 dark:bg-gray-100 dark:text-gray-900 border-transparent' : 'bg-white text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'"
+                    >
+                        {{ c.name }}
+                    </button>
+                </div>
+
+                <!-- Row 2: Secondary Dropdown Filters -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                    <!-- Brand -->
                     <select 
                         v-model="filterBrand" 
                         @change="applyFilter"
-                        class="text-xs font-medium py-1.5 pl-2 pr-8 bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all"
+                        class="w-full text-xs font-medium py-1.5 px-2 bg-white border border-gray-200 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all shadow-sm"
                     >
                         <option value="all">Semua Brand</option>
                         <option v-for="b in dynamicBrands" :key="b.id" :value="b.id">{{ b.name }}</option>
                     </select>
 
-                     <!-- Tipe Produk (Level 2 - Muncul jika Kategori dipilih) -->
+                     <!-- Type (Muncul jika Kategori dipilih) -->
                     <select 
                         v-if="filterCategory !== 'all' && dynamicTypes.length > 0"
                         v-model="filterSubCategory" 
                         @change="applyFilter"
-                        class="text-xs font-medium py-1.5 pl-2 pr-8 bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all duration-300 animate-fade-in"
+                        class="w-full text-xs font-medium py-1.5 px-2 bg-white border border-gray-200 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all shadow-sm"
                     >
                         <option value="all">Semua Tipe</option>
                         <option v-for="t in dynamicTypes" :key="t.id" :value="t.id">{{ t.name }}</option>
                     </select>
 
-                    <!-- Size (Level 3 - Muncul jika ada filter) -->
+                    <!-- Size -->
                     <select 
                         v-if="dynamicSizes.length > 0"
                         v-model="filterSize" 
                         @change="applyFilter"
-                        class="text-xs font-medium py-1.5 pl-2 pr-8 bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all duration-300 animate-fade-in"
+                        class="w-full text-xs font-medium py-1.5 px-2 bg-white border border-gray-200 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all shadow-sm"
                     >
                         <option value="all">Semua Ukuran</option>
                         <option v-for="s in dynamicSizes" :key="s.id" :value="s.id">{{ s.name }}</option>
                     </select>
 
-                    <!-- Stock Status Logic -->
-                    <div class="w-px h-6 bg-gray-300 dark:bg-gray-600 mx-1"></div>
-
-                    <!-- Filter Chips Stocks -->
-                    <button 
-                         @click="filterStock = filterStock === 'empty' ? '' : 'empty'; applyFilter()"
-                         class="px-3 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap"
-                         :class="filterStock === 'empty' 
-                            ? 'bg-red-500 text-white border-red-500 shadow-md shadow-red-500/30' 
-                            : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 hover:border-gray-300'"
+                    <!-- Stock Status -->
+                    <select 
+                        v-model="filterStock" 
+                        @change="applyFilter"
+                        class="w-full text-xs font-medium py-1.5 px-2 bg-white border border-gray-200 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all shadow-sm"
+                        :class="{'border-red-500 ring-1 ring-red-500': filterStock === 'low_empty'}"
                     >
-                        Habis
-                    </button>
-                    <button 
-                         @click="filterStock = filterStock === 'low' ? '' : 'low'; applyFilter()"
-                         class="px-3 py-1.5 text-xs font-bold rounded-full border transition-all whitespace-nowrap"
-                         :class="filterStock === 'low' 
-                            ? 'bg-yellow-500 text-white border-yellow-500 shadow-md shadow-yellow-500/30' 
-                            : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300 hover:border-gray-300'"
-                    >
-                        Menipis
-                    </button>
+                        <option value="">Status Stok (Semua)</option>
+                        <option value="empty">Habis (0)</option>
+                        <option value="low">Menipis (≤ Min)</option>
+                        <option value="safe">Aman</option>
+                        <option value="low_empty">Butuh Restok (Habis/Menipis)</option>
+                    </select>
                 </div>
             </div>
         </div>

@@ -141,7 +141,11 @@ class PurchaseController extends Controller
     public function create()
     {
         // Ambil data untuk Filter Katalog
-        $categories = \App\Models\Category::with('productTypes')->select('id', 'name')->get();
+        $categories = \App\Models\Category::with('productTypes')
+                        ->withCount('products')
+                        ->orderByDesc('products_count')
+                        ->select('id', 'name')
+                        ->get();
         $brands = \App\Models\Brand::select('id', 'name')->get();
 
         return Inertia::render('Purchases/create', [
@@ -230,9 +234,12 @@ class PurchaseController extends Controller
         }
 
         // Add Sales Stats for Badges
-        $productQuery->withSum(['saleItems as sold_last_90_days' => function ($query) {
-            $query->where('created_at', '>=', now()->subDays(90));
-        }], 'quantity');
+    $productQuery->withSum(['saleItems as sold_last_90_days' => function ($query) {
+        $query->where('created_at', '>=', now()->subDays(90));
+    }], 'quantity')
+    ->withSum(['saleItems as sold_last_30_days' => function ($query) {
+        $query->where('created_at', '>=', now()->subDays(30));
+    }], 'quantity');
 
         if ($categoryId && $categoryId !== 'all') $productQuery->where('category_id', $categoryId);
         if ($subCategoryId && $subCategoryId !== 'all') $productQuery->where('product_type_id', $subCategoryId);
@@ -246,8 +253,14 @@ class PurchaseController extends Controller
                 $productQuery->whereColumn('stock', '<=', 'min_stock')->where('stock', '>', 0);
             } elseif ($stockStatus === 'safe') {
                 $productQuery->whereColumn('stock', '>', 'min_stock');
+            } elseif ($stockStatus === 'low_empty') {
+                $productQuery->whereColumn('stock', '<=', 'min_stock');
             }
         }
+
+    // Default Sorting: Stock min ASC, then Sold Last 30 Days DESC
+    $productQuery->orderBy('stock', 'asc')
+                 ->orderBy('sold_last_30_days', 'desc');
 
         // --- 2. FACETED DATA (Smart Filters) ---
         

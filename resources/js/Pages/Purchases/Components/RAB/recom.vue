@@ -17,6 +17,7 @@ const emit = defineEmits(["close", "add-items"]);
 const recommendations = ref([]);
 const loading = ref(false);
 const selectedItems = ref([]);
+const hideInCartItems = ref(false);
 
 // --- HELPER ---
 const formatRupiah = (n) =>
@@ -62,6 +63,24 @@ async function fetchRecommendations() {
     }
 }
 
+// --- COMPUTED ---
+const displayedRecommendations = computed(() => {
+    let list = recommendations.value;
+    if (hideInCartItems.value) {
+        list = list.filter(i => !isOrdered(i.product_id));
+    }
+    
+    // Sort logic: Kritis dahulu, lalu prioritas perhitungan stock.
+    return list.slice().sort((a, b) => {
+        if (a.is_critical && !b.is_critical) return -1;
+        if (!a.is_critical && b.is_critical) return 1;
+
+        const reqA = (a.min_stock || 0) - (a.current_stock || 0);
+        const reqB = (b.min_stock || 0) - (b.current_stock || 0);
+        return reqB - reqA;
+    });
+});
+
 // --- WATCHERS ---
 watch(
     () => props.show,
@@ -79,23 +98,28 @@ watch(
     }
 );
 
-// --- COMPUTED ---
+// --- COMPUTED (Lanjutan) ---
 const allChecked = computed({
     get() {
-        return (
-            recommendations.value.length > 0 &&
-            selectedItems.value.length === recommendations.value.filter(i => !isOrdered(i.product_id)).length
-        );
+        if (displayedRecommendations.value.length === 0) return false;
+        const availableItems = displayedRecommendations.value.filter(i => !isOrdered(i.product_id));
+        if (availableItems.length === 0) return false; 
+        
+        return availableItems.every(i => selectedItems.value.includes(i.product_id));
     },
     set(value) {
-        // Hanya centang yang belum dipesan
-        selectedItems.value = value
-            ? recommendations.value.filter(i => !isOrdered(i.product_id)).map((i) => i.product_id)
-            : [];
+        if (value) {
+            const availableItems = displayedRecommendations.value.filter(i => !isOrdered(i.product_id)).map(i => i.product_id);
+            const toAdd = availableItems.filter(id => !selectedItems.value.includes(id));
+            selectedItems.value.push(...toAdd);
+        } else {
+            const displayedIds = displayedRecommendations.value.map(i => i.product_id);
+            selectedItems.value = selectedItems.value.filter(id => !displayedIds.includes(id));
+        }
     },
 });
 
-const criticalCount = computed(() => recommendations.value.filter(i => i.is_critical).length);
+const criticalCount = computed(() => displayedRecommendations.value.filter(i => i.is_critical).length);
 const selectedCount = computed(() => selectedItems.value.length);
 
 const totalSelectedCost = computed(() => {
@@ -193,7 +217,11 @@ watch(() => props.show, (isOpen) => {
                     </div>
                     
                     <!-- Quick Actions (Desktop) -->
-                    <div class="hidden sm:flex items-center gap-3">
+                    <div class="hidden sm:flex items-center gap-4">
+                         <label class="flex items-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer">
+                             <input type="checkbox" v-model="hideInCartItems" class="w-4 h-4 rounded border-gray-300 text-lime-600 focus:ring-lime-500">
+                             Sembunyikan Item di Keranjang
+                         </label>
                          <button 
                             @click="selectCriticalOnly"
                             class="px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 text-red-600 text-xs font-bold hover:bg-red-100 transition flex items-center gap-1.5"
@@ -207,17 +235,24 @@ watch(() => props.show, (isOpen) => {
 
             <!-- FILTERS BAR (Sticky below Header on Mobile) -->
             <div class="flex-none bg-white/80 backdrop-blur border-b dark:bg-gray-800/80 dark:border-gray-700 z-10 sticky top-0 sm:hidden">
-                 <div class="px-4 py-2 flex items-center justify-between">
-                    <label class="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
-                         <input type="checkbox" v-model="allChecked" class="w-4 h-4 rounded border-gray-300 text-lime-600 focus:ring-lime-500">
-                         Pilih Semua
+                 <div class="px-4 py-3 flex flex-col gap-3 justify-between">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
+                             <input type="checkbox" v-model="allChecked" class="w-4 h-4 rounded border-gray-300 text-lime-600 focus:ring-lime-500">
+                             Pilih Semua
+                        </label>
+                        <button 
+                            @click="selectCriticalOnly"
+                            class="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100"
+                        >
+                            Kritis ({{ criticalCount }})
+                        </button>
+                    </div>
+                    
+                    <label class="flex items-center gap-2 text-xs font-bold text-gray-600 dark:text-gray-300 cursor-pointer w-full">
+                         <input type="checkbox" v-model="hideInCartItems" class="w-4 h-4 rounded border-gray-300 text-lime-600 focus:ring-lime-500">
+                         Sembunyikan Item di Keranjang
                     </label>
-                    <button 
-                        @click="selectCriticalOnly"
-                        class="text-xs font-bold text-red-600 bg-red-50 px-2 py-1 rounded border border-red-100"
-                    >
-                        Kritis ({{ criticalCount }})
-                    </button>
                  </div>
             </div>
 
@@ -252,7 +287,7 @@ watch(() => props.show, (isOpen) => {
                          </div>
 
                          <div 
-                            v-for="item in recommendations" 
+                            v-for="item in displayedRecommendations" 
                             :key="item.product_id"
                             @click="toggleSelection(item.product_id)"
                             class="relative group bg-white dark:bg-gray-800 rounded-xl overflow-hidden border transition-all cursor-pointer hover:shadow-lg select-none"

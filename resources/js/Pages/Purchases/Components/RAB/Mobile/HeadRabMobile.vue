@@ -53,34 +53,35 @@ function parseRupiah(value) {
 <template>
     <div class="flex flex-col gap-4">
         <div
-            class="p-4 transition-colors bg-white border border-gray-100 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700"
+            class="p-5 transition-colors bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-800 rounded-2xl shadow-xl overflow-hidden relative group dark:from-gray-950 dark:to-gray-900 dark:border-gray-900"
         >
+            <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-lime-500/10 rounded-full blur-3xl group-hover:bg-lime-500/20 transition-all duration-500"></div>
             <div
-                class="flex items-center justify-between pb-2 mb-4 border-b border-gray-100 dark:border-gray-700"
+                class="flex items-center justify-between pb-3 mb-4 border-b border-gray-700 relative z-10"
             >
                 <div>
                     <span
-                        class="text-xs font-bold tracking-wide text-gray-500 uppercase dark:text-gray-400"
+                        class="text-xs font-bold tracking-wide text-gray-400 uppercase"
                         >Total Belanja</span
                     >
                     <p
-                        class="text-xl font-extrabold text-lime-600 dark:text-lime-400"
+                        class="text-2xl font-black text-lime-400 drop-shadow-md"
                     >
                         {{ formatRupiah(totalBelanja) }}
                     </p>
                 </div>
                 <div
-                    class="text-xs font-medium text-right text-gray-500 dark:text-gray-400"
+                    class="text-xs font-medium text-right text-gray-300"
                 >
                     <p>{{ totalUnit }} Unit</p>
                     <p>{{ totalMacam }} Macam</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 gap-3">
+            <div class="grid grid-cols-1 gap-3 relative z-10">
                 <div>
                     <label
-                        class="block mb-1 text-xs font-bold text-gray-500 dark:text-gray-400"
+                        class="block mb-1 text-xs font-bold text-gray-300"
                         >Supplier</label
                     >
                     <select
@@ -102,7 +103,7 @@ function parseRupiah(value) {
 
                 <div>
                     <label
-                        class="block mb-1 text-xs font-bold text-gray-500 dark:text-gray-400"
+                        class="block mb-1 text-xs font-bold text-gray-300"
                         >Tanggal</label
                     >
                     <input
@@ -116,7 +117,7 @@ function parseRupiah(value) {
         </div>
 
         <div
-            class="relative p-4 overflow-hidden transition-colors bg-white border border-gray-100 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700"
+            class="relative p-5 overflow-hidden transition-colors bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-lg dark:bg-lime-900/10 dark:border-lime-900/50 dark:shadow-lime-900/20"
         >
             <div class="mb-4">
                 <label
@@ -267,7 +268,7 @@ function parseRupiah(value) {
         </div>
 
         <div
-            class="overflow-hidden transition-colors bg-white border border-gray-100 rounded-lg shadow-sm dark:bg-gray-800 dark:border-gray-700"
+            class="overflow-hidden transition-colors bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-lg dark:bg-gray-900/90 dark:border-gray-800"
         >
             <button
                 @click="showDetails = !showDetails"
