@@ -164,10 +164,14 @@ const chartData = computed(() => {
 
             <!-- 4. Content (List) -->
             <div>
-                 <div class="mb-4 flex items-center justify-between">
-                    <h2 class="text-lg font-bold text-gray-800 dark:text-white">
-                        Daftar Transaksi
+                <div class="mb-4 flex items-center justify-between">
+                    <h2 class="text-xl font-black text-gray-800 dark:text-white tracking-tight">
+                        Riwayat Transaksi & Pembelian
                     </h2>
+                    <span class="text-xs font-semibold py-1 px-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full border border-gray-200 dark:border-gray-700">
+                        Total {{ purchases.total }} Data
+                    </span>
+                </div>
                     <span class="text-xs text-gray-500">
                         Total {{ purchases.total }} Data
                     </span>
@@ -197,7 +201,5 @@ const chartData = computed(() => {
                     </button>
                 </div>
             </div>
-
-        </div>
     </AuthenticatedLayout>
 </template>

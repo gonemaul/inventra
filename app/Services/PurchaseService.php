@@ -39,12 +39,26 @@ class PurchaseService
             $q->onlyTrashed();
         });
 
-        // 2. Filter Search (PENTING: Dibungkus closure agar tidak merusak filter lain)
+        // 2. Filter Search (Smart Search: Cari No Ref, Nama Supplier, ATAU Nama Produk di History)
         $query->when($params['search'] ?? null, function ($q, $search) {
-            $q->where(function ($subQuery) use ($search) {
+             $searchTerms = array_filter(explode(' ', $search));
+             
+             $q->where(function ($subQuery) use ($search, $searchTerms) {
+                // Exact Match
                 $subQuery->where('reference_no', 'like', "%{$search}%")
                     ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
                         $supplierQuery->where('name', 'like', "%{$search}%");
+                    })
+                    // Smart Search: Multi-keyword matching di JSON / Relasi (Produk)
+                    // Karena product_snapshot->name di DB, kita cek product_snapshot
+                    ->orWhereHas('items', function ($itemsQuery) use ($searchTerms) {
+                         $itemsQuery->where(function ($itemsSubQuery) use ($searchTerms) {
+                             foreach ($searchTerms as $term) {
+                                  // Asumsikan database support ->json search (MySQL/PostgreSQL)
+                                  // atau fallback jika MySQL < 5.7 pakai string like sederhana
+                                  $itemsSubQuery->where('product_snapshot', 'like', "%{$term}%");
+                             }
+                         });
                     });
             });
         });

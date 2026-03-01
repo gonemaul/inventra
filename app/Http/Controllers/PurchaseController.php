@@ -52,22 +52,29 @@ class PurchaseController extends Controller
         // --- Summary Statistics (Dashboard) ---
         $now = now();
         
-        // 1. Belanja Bulan Ini vs Bulan Lalu
-        $spendThisMonth = Purchase::whereYear('transaction_date', $now->year)
+        // 1. Belanja Bulan Ini vs Bulan Lalu (Hanya yang Selesai/Berhasil)
+        $spendThisMonth = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->whereYear('transaction_date', $now->year)
             ->whereMonth('transaction_date', $now->month)
             ->sum('grand_total');
             
         $lastMonthDate = $now->copy()->subMonth();
-        $spendLastMonth = Purchase::whereYear('transaction_date', $lastMonthDate->year)
+        $spendLastMonth = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->whereYear('transaction_date', $lastMonthDate->year)
             ->whereMonth('transaction_date', $lastMonthDate->month)
             ->sum('grand_total');
 
-        // 2. Belanja Tahun Ini
-        $spendThisYear = Purchase::whereYear('transaction_date', $now->year)->sum('grand_total');
-        $spendLastYear = Purchase::whereYear('transaction_date', $now->copy()->subYear()->year)->sum('grand_total');
+        // 2. Belanja Tahun Ini (Hanya yang Selesai/Berhasil)
+        $spendThisYear = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->whereYear('transaction_date', $now->year)
+            ->sum('grand_total');
+        $spendLastYear = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->whereYear('transaction_date', $now->copy()->subYear()->year)
+            ->sum('grand_total');
 
-        // 3. Top Supplier Bulan Ini
+        // 3. Top Supplier Bulan Ini (Berdasarkan nilai transaksi Selesai)
         $topSupplier = Purchase::selectRaw('supplier_id, SUM(grand_total) as total')
+            ->where('status', Purchase::STATUS_COMPLETED)
             ->whereYear('transaction_date', $now->year)
             ->whereMonth('transaction_date', $now->month)
             ->whereNotNull('supplier_id')
@@ -84,14 +91,15 @@ class PurchaseController extends Controller
             Purchase::STATUS_CHECKING
         ])->count();
 
-        // 5. Chart 12 Bulan Terakhir
+        // 5. Chart 12 Bulan Terakhir (Pengeluaran Aktual)
         $chartLabels = [];
         $chartValues = [];
         for ($i = 11; $i >= 0; $i--) {
              $d = $now->copy()->subMonths($i);
              $chartLabels[] = $d->translatedFormat('M y'); // Jan 24
              
-             $val = Purchase::whereYear('transaction_date', $d->year)
+             $val = Purchase::where('status', Purchase::STATUS_COMPLETED)
+                    ->whereYear('transaction_date', $d->year)
                     ->whereMonth('transaction_date', $d->month)
                     ->sum('grand_total');
              $chartValues[] = (int) $val;
