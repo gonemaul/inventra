@@ -145,6 +145,24 @@ function handleAdd() {
     emit("add-items", itemsToAdd);
     emit("close");
 }
+
+// Tambahkan logika blur on scroll
+import { throttle } from "lodash";
+const handleGlobalScroll = throttle(() => {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+        document.activeElement.blur();
+    }
+}, 150);
+
+// Gunakan watcher untuk add/remove event listener karena ini tampil sebagai overlay/modal
+watch(() => props.show, (isOpen) => {
+    if (isOpen) {
+        window.addEventListener('scroll', handleGlobalScroll, true); // true for capture phase if it's a scrollable container
+         // atau attach ke elemen scroll specific
+    } else {
+        window.removeEventListener('scroll', handleGlobalScroll, true);
+    }
+});
 </script>
 
 <template>
@@ -204,7 +222,7 @@ function handleAdd() {
             </div>
 
             <!-- MAIN CONTENT (Scrollable) -->
-            <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 custom-scroll">
+            <div class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900 p-4 custom-scroll" @scroll="handleGlobalScroll">
                 <div class="max-w-7xl mx-auto">
                     
                     <!-- Loading -->

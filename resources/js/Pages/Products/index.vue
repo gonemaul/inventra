@@ -237,8 +237,22 @@ const resetFilter = () => {
         }
     );
 };
-onMounted(() => window.addEventListener("resize", updateScreenSize));
-onUnmounted(() => window.removeEventListener("resize", updateScreenSize));
+
+// Blur on Scroll (Untuk menyembunyikan keyboard di HP saat scroll produk)
+const handleGlobalScroll = throttle(() => {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+        document.activeElement.blur();
+    }
+}, 150);
+
+onMounted(() => {
+    window.addEventListener("resize", updateScreenSize);
+    window.addEventListener("scroll", handleGlobalScroll, { passive: true });
+});
+onUnmounted(() => {
+    window.removeEventListener("resize", updateScreenSize);
+    window.removeEventListener("scroll", handleGlobalScroll);
+});
 </script>
 <template>
     <ImageModal

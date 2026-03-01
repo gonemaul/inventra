@@ -194,11 +194,30 @@ class PurchaseController extends Controller
             ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_url', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'product_type_id', 'supplier_id')
             ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'productType:id,name', 'insights']);
 
-        // Apply Search (Global)
+        // Apply Search (Global - SMART SEARCH LOGIC)
         if ($search) {
-             $productQuery->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
+             $searchTerms = array_filter(explode(' ', $search));
+             
+             $productQuery->where(function ($q) use ($search, $searchTerms) {
+                // Exact Match Keras (Super Relevan)
+                $q->where('code', $search)
+                  ->orWhere('name', 'like', $search . '%');
+                  
+                // Multi-Word AND Matching (Cari Tiap Kata)
+                $q->orWhere(function ($subQuery) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $subQuery->where('name', 'like', "%{$term}%");
+                    }
+                });
+                
+                // Cross-Column Relational Search
+                $q->orWhereHas('category', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                })->orWhereHas('brand', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                })->orWhereHas('size', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                });
             });
         }
 
@@ -228,8 +247,26 @@ class PurchaseController extends Controller
         $getScope = function($excludeKeys = []) use ($baseQuery, $request, $search) {
             $q = $baseQuery->clone();
             if ($search) {
-                 $q->where(function ($sq) use ($search) {
-                    $sq->where('name', 'like', "%{$search}%")->orWhere('code', 'like', "%{$search}%");
+                 $searchTerms = array_filter(explode(' ', $search));
+                 $q->where(function ($sq) use ($search, $searchTerms) {
+                    // Exact Match Keras (Super Relevan)
+                    $sq->where('code', $search)
+                      ->orWhere('name', 'like', $search . '%');
+                      
+                    // Multi-Word AND Matching (Cari Tiap Kata)
+                    $sq->orWhere(function ($subQuery) use ($searchTerms) {
+                        foreach ($searchTerms as $term) {
+                            $subQuery->where('name', 'like', "%{$term}%");
+                        }
+                    });
+                     // Cross-Column Relational Search
+                    $sq->orWhereHas('category', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', "%{$search}%");
+                    })->orWhereHas('brand', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', "%{$search}%");
+                    })->orWhereHas('size', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', "%{$search}%");
+                    });
                 });
             }
             // Apply filter jika TIDAK di-exclude
@@ -285,10 +322,28 @@ class PurchaseController extends Controller
         }
 
         // 3. SORTING DEFAULT
-        $productsForAutocomplete = $productQuery
-            ->orderBy('stock', 'asc') 
-            ->orderBy('name', 'asc')
-            ->paginate(20); 
+        if ($search) {
+            // RELEVANCE SORTING PADA SMART SEARCH
+            // 1. Exact Code (Paling Atas)
+            // 2. Dimulai dengan nama persis
+            // 3. Mengandung nama utuh
+            // 4. Default relasi lain
+            $productQuery->orderByRaw("
+                CASE 
+                    WHEN code = ? THEN 1
+                    WHEN name LIKE ? THEN 2
+                    WHEN name LIKE ? THEN 3
+                    ELSE 4
+                END ASC
+            ", [$search, $search . '%', '%' . $search . '%']);
+            // Sebagai secondary sort
+            $productQuery->orderBy('stock', 'asc')->orderBy('name', 'asc');
+        } else {
+             $productQuery->orderBy('stock', 'asc') 
+                          ->orderBy('name', 'asc');
+        }
+        
+        $productsForAutocomplete = $productQuery->paginate(20); 
 
         // Return Data + Dynamic Filters
         return response()->json([

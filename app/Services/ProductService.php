@@ -57,14 +57,33 @@ class ProductService
             $q->where('is_read', false);
         }])->withSum('saleItems as total_sold_all_time', 'quantity');
 
-        // 1. SEARCH GLOBAL
-        $query->when($params['search'] ?? null, function ($q, $search) {
-            $keyword = Str::lower($search) ?? null;
-            $q->where(function ($sub) use ($keyword) {
-                $sub->where('name', 'like', "%{$keyword}%")
-                    ->orWhere('code', 'like', "%{$keyword}%");
+        // 1. SEARCH GLOBAL (SMART SEARCH LOGIC)
+        $search = $params['search'] ?? null;
+        if ($search) {
+             $searchTerms = array_filter(explode(' ', $search));
+             
+             $query->where(function ($q) use ($search, $searchTerms) {
+                // Exact Match Keras (Super Relevan)
+                $q->where('code', $search)
+                  ->orWhere('name', 'like', $search . '%');
+                  
+                // Multi-Word AND Matching (Cari Tiap Kata)
+                $q->orWhere(function ($subQuery) use ($searchTerms) {
+                    foreach ($searchTerms as $term) {
+                        $subQuery->where('name', 'like', "%{$term}%");
+                    }
+                });
+                
+                // Cross-Column Relational Search
+                $q->orWhereHas('category', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                })->orWhereHas('brand', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                })->orWhereHas('size', function ($subQuery) use ($search) {
+                    $subQuery->where('name', 'like', "%{$search}%");
+                });
             });
-        });
+        }
 
         // 2. FILTER RELASI (Foreign Keys)
         $query->when($params['category_id'] ?? null, fn ($q, $v) => $q->where('category_id', $v));
@@ -106,15 +125,44 @@ class ProductService
             }
         });
 
-        // 5. SORTING
         $sortField = $params['sort'] ?? 'created_at';
         $sortDirection = $params['order'] ?? 'desc';
 
-        if($sortField === 'cheapest'){
+        // Tentukan default sort jika query kosong (Biar produk dengan pencarian smart ada di atas)
+        if (empty($sortField) || $sortField === 'default') {
+            $hasFilters = isset($params['category_id']) || isset($params['brand_id']) || isset($params['size_id']) || isset($params['product_type_id']);
+            $sortField = $hasFilters ? 'recommendation' : 'name';
+            $sortDirection = 'asc';
+        }
+
+        if ($search) {
+             // RELEVANCE SORTING PADA SMART SEARCH
+             // 1. Exact Code (Paling Atas)
+             // 2. Dimulai dengan nama persis
+             // 3. Mengandung nama utuh
+             // 4. Default relasi lain
+             $query->orderByRaw("
+                CASE 
+                    WHEN code = ? THEN 1
+                    WHEN name LIKE ? THEN 2
+                    WHEN name LIKE ? THEN 3
+                    ELSE 4
+                END ASC
+             ", [$search, $search . '%', '%' . $search . '%']);
+             // Sebagai secondary sort, pakai best seller biar barang yang sering dicari duluan
+             $query->orderByDesc('total_sold_all_time');
+        } elseif ($sortField === 'cheapest') {
             $query->orderBy('selling_price', 'asc');
-        }else if($sortField === 'bestseller'){
+        } else if ($sortField === 'bestseller') {
             $query->orderBy('total_sold_all_time', 'desc');
-        }else{
+        } else if ($sortField === 'recommendation') {
+             // LOGIC REKOMENDASI SORTING (Formula Internal POS)
+             $query->orderByRaw('( 
+                (CAST(stock AS DECIMAL(10,2)) * 0.3) + 
+                (((CAST(selling_price AS DECIMAL(15,2)) - CAST(purchase_price AS DECIMAL(15,2))) / 1000) * 0.5) - 
+                (CAST(COALESCE(sale_items_sum_quantity, 0) AS DECIMAL(10,2)) * 0.2)
+             ) DESC');
+        } else {
             $allowedSorts = ['name', 'selling_price', 'purchase_price', 'stock', 'created_at', 'code', 'total_sold_all_time'];
             if (in_array($sortField, $allowedSorts)) {
                 $query->orderBy($sortField, $sortDirection);
