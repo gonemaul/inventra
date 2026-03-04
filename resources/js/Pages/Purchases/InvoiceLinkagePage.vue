@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { Head, Link, useForm, router } from "@inertiajs/vue3";
 import ImageModal from "@/Components/ImageModal.vue";
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import { throttle } from "lodash";
 
@@ -20,7 +20,7 @@ const props = defineProps({
 });
 // --- STATE LINKAGE & MODE ---
 const { isActionLoading } = useActionLoading();
-const toast = useToast();
+const toast = usePremiumAlert();
 const isProcessing = ref(false);
 const isMobile = ref(window.innerWidth < 1024);
 const updateScreenSize = () => {

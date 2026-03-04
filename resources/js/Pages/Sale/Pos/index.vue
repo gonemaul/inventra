@@ -4,7 +4,7 @@ import { ref, watch, nextTick } from "vue";
 import { usePosRealtime } from "@/Composable/usePosRealtime";
 import { useWakeLock } from "@/Composable/useWakeLock";
 
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 import ConfirmSubmit from "./ConfirmSubmit.vue";
 import Cart from "./Cart.vue";
 import BarcodeScanner from "@/Components/BarcodeScanner.vue";
@@ -57,7 +57,7 @@ const {
 } = pos;
 
 // --- STATE LOKAL UI (Client Side Search) ---
-const toast = useToast();
+const toast = usePremiumAlert();
 const showMobileCart = ref(false);
 const showScanner = ref(false);
 const showConfirmModal = ref(false);

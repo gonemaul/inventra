@@ -1,9 +1,9 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { useForm } from "@inertiajs/vue3";
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 
 export function usePosRecap(props) {
-    const toast = useToast();
+    const toast = usePremiumAlert();
     const STORAGE_KEY = "POS_RECAP_DRAFT_V2";
 
     // --- STATE ---

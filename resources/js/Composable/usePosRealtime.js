@@ -1,11 +1,11 @@
 import { ref, computed, watch, onMounted } from "vue";
 import { useForm } from "@inertiajs/vue3";
 import axios from "axios";
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 import debounce from "lodash/debounce";
 
 export function usePosRealtime(props) {
-    const toast = useToast();
+    const toast = usePremiumAlert();
     const STORAGE_KEY = "POS_REALTIME_DRAFT_V3";
 
     // =========================================================================

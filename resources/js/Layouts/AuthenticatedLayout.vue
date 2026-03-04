@@ -5,7 +5,7 @@ import { useSidebar } from "@/Composable/useSidebar";
 import { useExtended } from "@/Composable/useExtended";
 import { useDarkMode } from "@/Composable/useDarkMode";
 import { usePage } from "@inertiajs/vue3";
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 import { watch } from "vue";
 import { Link } from "@inertiajs/vue3";
 import ActionLoader from "@/Components/ActionLoader.vue";
@@ -13,7 +13,7 @@ import PremiumAlert from "@/Components/PremiumAlert.vue";
 import ScrollToTop from "@/Components/ScrollToTop.vue";
 
 const page = usePage();
-const toast = useToast();
+const toast = usePremiumAlert();
 const { isSidebarOpen, closeSidebar } = useSidebar();
 const { isExtended } = useExtended();
 const { isDarkMode } = useDarkMode();

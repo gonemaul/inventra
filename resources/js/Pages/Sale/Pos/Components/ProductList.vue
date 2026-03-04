@@ -135,9 +135,9 @@ const handleTouchStart = () => {
                         
                         <div
                             v-if="!product.image_url"
-                            class="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-300 to-gray-50 dark:from-gray-700 dark:to-gray-800 p-2"
+                            class="flex items-center justify-center p-3 w-full h-full bg-gradient-to-br from-gray-200 to-gray-50 dark:from-gray-700 dark:to-gray-800"
                         >
-                            <span class="text-[12px] md:text-[15px] font-bold text-center text-gray-600 dark:text-gray-400 line-clamp-3 break-words select-none">{{ product.name }}</span>
+                            <span class="text-xs sm:text-sm font-bold text-center text-gray-500 dark:text-gray-400 line-clamp-3 break-words select-none leading-tight">{{ product.name }}</span>
                         </div>
 
                         <!-- Overlay Stock 0 -->
@@ -166,7 +166,7 @@ const handleTouchStart = () => {
                     <div class="flex flex-col flex-1 p-3">
                         <div class="mb-1 flex justify-between items-start gap-2">
                             <span
-                                class="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide truncate"
+                                class="text-[10px] sm:text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wide truncate"
                             >
                                 {{ product.brand?.name || "No Brand" }}
                             </span>
@@ -176,7 +176,7 @@ const handleTouchStart = () => {
                         </div>
 
                         <h3
-                            class="text-xs font-bold leading-snug text-gray-800 dark:text-gray-100 line-clamp-2 min-h-[2.5em] mb-2"
+                            class="text-xs sm:text-sm font-bold leading-snug text-gray-800 dark:text-gray-100 line-clamp-2 min-h-[2.5em] mb-2"
                             :title="product.name"
                         >
                             {{ product.name }}
@@ -211,7 +211,7 @@ const handleTouchStart = () => {
                                     }}
                                 </span>
                             </div>
-                            <span v-if="product.total_sold > 0" class="text-[9px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
+                            <span v-if="product.total_sold > 0" class="text-[9px] sm:text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
                                 {{ product.total_sold }} Terjual
                             </span>
                         </div>
@@ -220,7 +220,7 @@ const handleTouchStart = () => {
                             class="flex items-center justify-between pt-2 mt-auto border-t border-gray-100 dark:border-gray-700"
                         >
                             <span
-                                class="text-sm font-black text-lime-600 dark:text-lime-400"
+                                class="text-sm sm:text-base font-black text-lime-600 dark:text-lime-400"
                             >
                                 {{
                                     rp(
