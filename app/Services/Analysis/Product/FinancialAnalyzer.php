@@ -31,12 +31,16 @@ class FinancialAnalyzer
         // 5. Analisa Kontribusi (Cash Cow: Seberapa besar sumbangan uangnya?)
         $contribution = $this->analyzeProfitContribution($product, $salesTrend['qty_this_month']);
 
+        // 6. Smart Pricing Assistant (AI Feature 3)
+        $smartPricing = $this->analyzeSmartPricing($product, $marginMetrics, $salesTrend);
+
         return [
             'margin' => $marginMetrics,
             'lifecycle' => $lifecycle,
             'price_trend' => $priceTrend,
             'sales_trend' => $salesTrend,
             'contribution' => $contribution,
+            'smart_pricing' => $smartPricing,
 
             // Kesimpulan Singkat untuk UI
             'financial_status' => $this->determineFinancialStatus($marginMetrics, $priceTrend, $salesTrend),
@@ -243,5 +247,76 @@ class FinancialAnalyzer
         } // Prioritas 3: Lagi laris
 
         return 'neutral';
+    }
+
+    /**
+     * =========================================================================
+     * AI FEATURE 3: SMART PRICING ASSISTANT
+     * =========================================================================
+     * Menganalisa apakah ada peluang optimal untuk menaikkan atau menurunkan
+     * harga jual berdasarkan tren penjualan dan kondisi margin saat ini.
+     * Menghasilkan rekomendasi konkret dengan angka rupiah yang presisi.
+     */
+    private function analyzeSmartPricing(Product $product, array $margin, array $salesTrend): array
+    {
+        $currentPrice = (float) $product->selling_price;
+        $currentBuy   = (float) $product->purchase_price;
+        $targetMargin = (float) $product->target_margin_percent;
+        $currentMarginPct = (float) $margin['percent'];
+
+        $action = 'none';        // 'raise', 'lower', 'none'
+        $suggestion = '';
+        $recommendedPrice = $currentPrice;
+        $potentialGain = 0;
+
+        // -------------------------------------------------------
+        // Skenario A: Naikkan Harga — Produk Terlaris & Margin Masih Rendah
+        // Syarat: Penjualan tumbuh > 30% DAN margin belum melampaui high_margin threshold (target+15%)
+        // -------------------------------------------------------
+        $highMarginThreshold = $targetMargin + 15;
+        if ($salesTrend['is_trending'] && $currentMarginPct < $highMarginThreshold) {
+            // Naikkan harga 5% jika laris tapi margin belum tinggi
+            $raiseRate = 0.05;
+            $newPrice = ceil($currentPrice * (1 + $raiseRate) / 100) * 100; // Bulatkan ke ratusan terdekat
+            $newMargin = (($newPrice - $currentBuy) / $newPrice) * 100;
+            $potentialExtraProfit = ($newPrice - $currentPrice) * $salesTrend['qty_this_month'];
+
+            $action = 'raise';
+            $recommendedPrice = $newPrice;
+            $potentialGain = round($potentialExtraProfit);
+            $suggestion = "Produk ini LARIS (tren naik {$salesTrend['growth_percent']}%). "
+                . "Naikkan harga dari Rp " . number_format($currentPrice, 0, ',', '.')
+                . " → Rp " . number_format($newPrice, 0, ',', '.')
+                . ". Estimasi tambahan profit: Rp " . number_format($potentialExtraProfit, 0, ',', '.')  . "/bulan.";
+        }
+
+        // -------------------------------------------------------
+        // Skenario B: Turunkan Harga — Produk Mangkrak & Margin Sangat Tebal
+        // Syarat: Tidak terjual bulan ini DAN margin sangat tebal (> target + 20%)
+        // -------------------------------------------------------
+        $isStagnant = ($salesTrend['qty_this_month'] == 0);
+        $isVeryHighMargin = ($currentMarginPct > ($targetMargin + 20));
+        if ($action === 'none' && $isStagnant && $isVeryHighMargin) {
+            // Rekomendasikan diskon 10% untuk memancing penjualan
+            $lowerRate = 0.10;
+            $newPrice = floor($currentPrice * (1 - $lowerRate) / 100) * 100; // Bulatkan ke ratusan terdekat
+            // Jangan sarankan di bawah harga beli
+            if ($newPrice > $currentBuy * 1.05) { // Harus tetap ada margin minimal 5%
+                $action = 'lower';
+                $recommendedPrice = $newPrice;
+                $suggestion = "Produk ini MANGKRAK (0 terjual sebulan) tapi margin masih tebal ({$currentMarginPct}%). "
+                    . "Pertimbangkan diskon 10%: Rp " . number_format($currentPrice, 0, ',', '.')
+                    . " → Rp " . number_format($newPrice, 0, ',', '.') . " untuk menggerakkan stok.";
+            }
+        }
+
+        return [
+            'action'            => $action,       // 'raise', 'lower', 'none'
+            'current_price'     => $currentPrice,
+            'recommended_price' => $recommendedPrice,
+            'potential_gain'    => $potentialGain,
+            'suggestion'        => $suggestion,
+            'has_recommendation' => $action !== 'none',
+        ];
     }
 }

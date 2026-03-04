@@ -22,36 +22,48 @@ class InventoryAnalyzer
         $stock = (int) $product->stock;
         $minStock = (int) ($product->min_stock ?? 0);
 
-        // 2. HITUNG VELOCITY (KECEPATAN JUAL SAAT INI)
-        // Mengambil data 30 hari terakhir sebagai patokan dasar (Short-term trend)
-        if (isset($product->qty_this_month)) {
-            $sales30Days = (int) $product->qty_this_month;
-        } else {
-            // Fallback query ganda (teroptimasi) jika lazy-loaded
-            $sales30Days = SaleItem::where('sale_items.product_id', $product->id)
-                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-                ->where('sales.transaction_date', '>=', now()->subDays(30))
-                ->sum('sale_items.quantity') ?? 0;
-        }
+        // 2. HITUNG VELOCITY (KECEPATAN JUAL SAAT INI) BERTENAGA AI
+        // Menggeser dari Simple Moving Average ke Weighted Average
+        // Cek 7 hari terakhir (Tren Panas), 14 hari terakhir (Tren Sedang), 30 hari terakhir (Tren Dasar)
+        
+        $today = now()->endOfDay();
+        $days7Ago = now()->subDays(7)->startOfDay();
+        $days14Ago = now()->subDays(14)->startOfDay();
+        $days30Ago = now()->subDays(30)->startOfDay();
 
-        $avgDailyRaw = $sales30Days > 0 ? ($sales30Days / 30) : 0;
+        $velocityStats = SaleItem::where('sale_items.product_id', $product->id)
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.transaction_date', '>=', $days30Ago)
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN sales.transaction_date >= ? THEN sale_items.quantity ELSE 0 END), 0) as qty_7_days,
+                COALESCE(SUM(CASE WHEN sales.transaction_date >= ? THEN sale_items.quantity ELSE 0 END), 0) as qty_14_days,
+                COALESCE(SUM(CASE WHEN sales.transaction_date >= ? THEN sale_items.quantity ELSE 0 END), 0) as qty_30_days
+            ", [$days7Ago, $days14Ago, $days30Ago])
+            ->first();
+
+        // Kecepatan harian berdasarkan periode
+        $velocity7D = ($velocityStats->qty_7_days ?? 0) / 7;
+        $velocity14D = ($velocityStats->qty_14_days ?? 0) / 14;
+        $velocity30D = ($velocityStats->qty_30_days ?? 0) / 30;
+
+        // Weighted Average Algorithm: Lebih menitikberatkan tren yang paling baru
+        // 50% bobot untuk 1 minggu terakhir, 30% untuk 2 minggu terakhir, 20% untuk 1 bulan terakhir
+        $weightedAvgDaily = ($velocity7D * 0.5) + ($velocity14D * 0.3) + ($velocity30D * 0.2);
 
         // 3. PANGGIL KECERDASAN BUATAN (PRIVATE METHODS)
 
         // A. Cek Faktor Musiman (Apakah bulan ini tahun lalu ramai?)
         $seasonalFactor = $this->calculateSeasonalFactor($product);
 
-        // B. Sesuaikan Rata-rata dengan Prediksi Musim
-        // Jika seasonalFactor 1.5 (Ramai), maka avgDaily dinaikkan 50% untuk persiapan.
-        $avgDailyPredicted = $avgDailyRaw * $seasonalFactor;
+        // B. Sesuaikan velocity dengan Prediksi Musim
+        $avgDailyPredicted = $weightedAvgDaily * $seasonalFactor;
 
         // C. Cek Kesehatan Aset (Dead Stock Analysis)
         $deadStockMetrics = $this->getDeadStockMetrics($product);
         $daysInactive = $deadStockMetrics['days_inactive'];
         $isDeadStock = $deadStockMetrics['is_dead_stock'];
 
-        // 4. FORECASTING (PREDIKSI HABIS)
-        // Menghitung berapa hari lagi stok akan nol berdasarkan kecepatan yang sudah disesuaikan musim
+        // 4. FORECASTING & DYNAMIC MIN STOCK (AI Feature 2)
         $daysLeft = 999;
         $stockoutDate = null;
         if ($avgDailyPredicted > 0) {
@@ -59,11 +71,20 @@ class InventoryAnalyzer
             $stockoutDate = now()->addDays($daysLeft);
         }
 
+        // Kalkulasi Dynamic Min Stock: 
+        // Waktu Lead Time Supplier rata-rata 7 hari + 30% buffer keamanan
+        $leadTimeDays = 7; 
+        $safetyBuffer = 1.3;
+        $dynamicMinStock = ceil($avgDailyPredicted * $leadTimeDays * $safetyBuffer);
+
         // 5. STATUS DETERMINATION (WATERFALL PRIORITY)
         // Menentukan tingkat urgensi berdasarkan "3 Lapisan Pertahanan"
         $status = SmartInsight::SEVERITY_SAFE;
         $message = '';
         $priorityScore = 0;
+        
+        // Peringatan Dynamic Stock
+        $isDynamicStockWarning = false;
 
         if ($stock <= 0) {
             $status = SmartInsight::SEVERITY_CRITICAL;
@@ -71,20 +92,26 @@ class InventoryAnalyzer
             $priorityScore = 100;
         } elseif ($stock <= 2 && $avgDailyPredicted > 0) {
             $status = SmartInsight::SEVERITY_CRITICAL;
-            $message = "Stok Sisa {$stock} (Danger Zone)";
+            $message = "Stok Kritis Sisa {$stock}";
             $priorityScore = 90;
         } elseif ($daysLeft <= 3 && $avgDailyPredicted > 0) {
             $status = SmartInsight::SEVERITY_CRITICAL;
-            $message = 'Habis < 3 Hari (Laris)';
+            $message = "Prediksi Habis ".floor($daysLeft)." Hari Lagi";
             $priorityScore = 80;
-        } elseif ($stock <= $minStock) {
-            $status = SmartInsight::SEVERITY_WARNING;
-            $message = 'Di bawah Min. Stock User';
-            $priorityScore = 60;
         } elseif ($daysLeft <= 7 && $avgDailyPredicted > 0) {
             $status = SmartInsight::SEVERITY_WARNING;
-            $message = 'Habis < 1 Minggu';
-            $priorityScore = 50;
+            $message = "Prediksi Habis < 1 Minggu";
+            $priorityScore = 70;
+        } elseif ($stock <= $minStock) {
+            $status = SmartInsight::SEVERITY_WARNING;
+            $message = "Menyentuh Min. Stok Manual ({$minStock})";
+            $priorityScore = 60;
+        } elseif ($dynamicMinStock > $minStock && $stock <= $dynamicMinStock) {
+            // Ini Trigger AI Feature #2: Dynamic Safety Stock
+            $status = SmartInsight::SEVERITY_WARNING;
+            $message = "Peringatan AI: Tren penjualan tinggi, batas min stok ({$minStock}) kurang aman.";
+            $priorityScore = 55;
+            $isDynamicStockWarning = true;
         } elseif ($isDeadStock) {
             $status = 'dead';
             $message = "Barang Mati (Tidak laku {$daysInactive} hari)";
@@ -120,27 +147,22 @@ class InventoryAnalyzer
 
             if ($userTarget > $dataDrivenTarget) {
                 // KONFLIK: User minta banyak (5), Data bilang sepi (butuh 1).
-                // Cek apakah Slow Moving? (< 1 item per 3 hari)
                 $isSlowMoving = $avgDailyPredicted < 0.3;
 
                 if ($isSlowMoving) {
-                    // KEPUTUSAN: Tolak keinginan User demi Cashflow.
-                    $targetStock = $dataDrivenTarget; // Ambil angka kecil (2)
-
+                    $targetStock = $dataDrivenTarget; 
                     if ($stock < $targetStock) {
-                        $restockReason = "Target dibatasi ke {$targetStock} (Display Only). Min Stock ({$userTarget}) diabaikan karena Slow Moving.";
+                        $restockReason = "Target dibatasi ke {$targetStock} (Display Only). Min Stock ({$userTarget}) diabaikan karena penjualan lambat.";
                         $isOverstockRisk = true;
                     }
                 } else {
-                    // Barang lumayan jalan, turuti user.
                     $targetStock = $userTarget;
-                    $restockReason = "Mengikuti Min Stock User ({$userTarget}).";
+                    $restockReason = "Mengikuti Min Stock Manual ({$userTarget}).";
                 }
             } else {
-                // KASUS NORMAL / FAST MOVING
-                // Data butuh lebih banyak dari user, ikuti Data.
+                // KASUS AI: Data butuh lebih banyak dari manual user.
                 $targetStock = max($dataDrivenTarget, $userTarget);
-                $restockReason = "Target stok optimal: {$targetStock} pcs (Cover {$targetDays} hari).";
+                $restockReason = "AI Suggestion: Beli ".($targetStock - $stock)." pcs untuk cover {$targetDays} hari kedepan berdasar Tren Velocity.";
             }
 
             // Hitung selisih yang harus dibeli
@@ -176,16 +198,20 @@ class InventoryAnalyzer
             'status' => $status, // critical, warning, safe, dead
             'message' => $message,
             'avg_daily' => round($avgDailyPredicted, 2),
+            'velocity_7d' => round($velocity7D ?? 0, 2),
+            'velocity_30d' => round($velocity30D ?? 0, 2),
             'seasonal_factor' => $seasonalFactor,
             'days_left' => floor($daysLeft),
             'stockout_date' => $stockoutDate ? $stockoutDate->isoFormat('D MMM Y') : '-',
             'current_stock' => $stock,
+            'dynamic_min_stock' => $dynamicMinStock ?? 0,
+            'is_dynamic_warning' => $isDynamicStockWarning ?? false,
             'suggested_qty' => $suggestedQty,
             'target_stock' => $targetStock,
             'restock_reason' => $restockReason,
             'is_dead_stock' => $isDeadStock,
             'days_inactive' => $daysInactive,
-            'frozen_asset' => $deadStockMetrics['frozen_asset'],
+            'frozen_asset' => $deadStockMetrics['frozen_asset'] ?? 0,
             'substitute_stock' => $substituteStock,
         ];
     }
@@ -322,7 +348,7 @@ class InventoryAnalyzer
             $daysInactive = $product->created_at->diffInDays(now());
         }
 
-        $isDead = ($product->stock > 0 && $daysInactive > $THRESHOLD_DAYS);
+        $isDead = ($product->stock > 0 && $daysInactive >= $THRESHOLD_DAYS);
 
         return [
             'is_dead_stock' => $isDead,

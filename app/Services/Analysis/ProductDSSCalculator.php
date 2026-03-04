@@ -5,6 +5,7 @@ namespace App\Services\Analysis;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\SmartInsight;
+use App\Services\Analysis\Product\ClassificationAnalyzer;
 use App\Services\Analysis\Product\FinancialAnalyzer;
 use App\Services\Analysis\Product\InventoryAnalyzer;
 use App\Services\TelegramService;
@@ -13,13 +14,17 @@ use Illuminate\Support\Facades\Cache;
 class ProductDSSCalculator
 {
     protected $inventoryAnalyzer;
-
     protected $financialAnalyzer;
+    protected $classificationAnalyzer;
 
-    public function __construct(InventoryAnalyzer $inventoryAnalyzer, FinancialAnalyzer $financialAnalyzer)
-    {
+    public function __construct(
+        InventoryAnalyzer $inventoryAnalyzer,
+        FinancialAnalyzer $financialAnalyzer,
+        ClassificationAnalyzer $classificationAnalyzer
+    ) {
         $this->inventoryAnalyzer = $inventoryAnalyzer;
         $this->financialAnalyzer = $financialAnalyzer;
+        $this->classificationAnalyzer = $classificationAnalyzer;
     }
     /**
      * =========================================================================
@@ -57,53 +62,24 @@ class ProductDSSCalculator
     }
 
     /**
-     * LOGIC 3: TREND WATCHER
-     * (Fast Moving Detection)
+     * LOGIC 3: CLASSIFICATION (ABC/XYZ)
      */
-    public function calculateTrendHealth(Product $product): array
+    public function getClassification(Product $product, float $productRevenue, float $totalRevenue, array $monthlyQtys): array
     {
-        $thisMonthStart = now()->subDays(value: 30);
-        $lastMonthStart = now()->subDays(60);
-
-        // Hitung Qty Bulan Ini & Bulan Lalu (Dioptimasi 1 Query menggunakan Join)
-        $stats = SaleItem::where('sale_items.product_id', $product->id)
-            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
-            ->where('sales.transaction_date', '>=', $lastMonthStart)
-            ->selectRaw("
-                COALESCE(SUM(CASE WHEN sales.transaction_date >= ? THEN sale_items.quantity ELSE 0 END), 0) as qty_this_month,
-                COALESCE(SUM(CASE WHEN sales.transaction_date < ? THEN sale_items.quantity ELSE 0 END), 0) as qty_last_month
-            ", [$thisMonthStart, $thisMonthStart])
-            ->first();
-
-        $qtyThisMonth = $stats->qty_this_month ?? 0;
-        $qtyLastMonth = $stats->qty_last_month ?? 0;
-
-        $isTrending = false;
-        $growth = 0;
-        $message = '';
-
-        // Rule Trending: Laku > 10 pcs & Kenaikan > 30%
-        if ($qtyThisMonth >= 10 && $qtyThisMonth > ($qtyLastMonth * 1.3)) {
-            $isTrending = true;
-            $growth = $qtyLastMonth > 0
-                ? round((($qtyThisMonth - $qtyLastMonth) / $qtyLastMonth) * 100)
-                : 100; // New star
-
-            $message = "Penjualan naik {$growth}% (Total: {$qtyThisMonth} pcs).";
-        }
-
-        return [
-            'is_trending' => $isTrending,
-            'growth_percent' => $growth,
-            'qty_now' => $qtyThisMonth,
-            'qty_prev' => $qtyLastMonth,
-            'message' => $message,
-        ];
+        return $this->classificationAnalyzer->classify($product, $productRevenue, $totalRevenue, $monthlyQtys);
     }
 
     /**
-     * LOGIC 4: ACTION MARGIN ALERT
-     * (Rekomendasi Naikkan Harga Jika Margin Terlalu Rendah)
+     * Expose ClassificationAnalyzer for batch queries in InsightService
+     */
+    public function getClassificationAnalyzer(): ClassificationAnalyzer
+    {
+        return $this->classificationAnalyzer;
+    }
+
+    /**
+     * LOGIC 3: ACTION MARGIN ALERT
+     * (Notifikasi Telegram Jika Margin Terlalu Rendah)
      */
     public function sendMarginAlert($product)
     {
@@ -134,23 +110,10 @@ class ProductDSSCalculator
             // B. Kirim Telegram Langsung
             TelegramService::send($msg);
 
-            SmartInsight::updateOrCreate(
-                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_MARGIN], // TYPE MARGIN
-                [
-                    'severity' => SmartInsight::SEVERITY_WARNING, // HARDCODED CONSTANT
-                    'title' => 'Margin Menipis: '.$product->name,
-                    'message' => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
-                    'payload' => [
-                        'purchase_price' => $product->purchase_price,
-                        'selling_price' => $product->selling_price,
-                        'current_margin' => $product->current_margin,
-                    ],
-                    'action_url' => '/products/'.$product->slug.'/edit',
-                    'updated_at' => now(),
-                    'is_read' => false,
-                    'is_notified' => true,
-                ]
-            );
+            // DB Saving dihapus untuk menjaga Single Source of Truth.
+            // Biarkan InsightService yang menghandle DB saving-nya berdasarkan
+            // hasil dari FinancialAnalyzer
+
             Cache::put($cacheKey, true, now()->addHours(6));
         }
     }

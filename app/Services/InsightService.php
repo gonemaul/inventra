@@ -7,7 +7,10 @@ use App\Models\Purchase;
 use App\Models\PurchaseInvoice;
 use App\Models\Sale;
 use App\Models\SmartInsight;
+use App\Services\Analysis\Product\ClassificationAnalyzer;
 use App\Services\Analysis\ProductDSSCalculator;
+use App\Services\TelegramService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 // Pastikan model ini sesuai dengan model Penjualan Anda
@@ -30,8 +33,14 @@ class InsightService
      */
     public function runScheduledAnalysis()
     {
+        // Pre-load batch stats agar ClassificationAnalyzer tidak N+1 query
+        $classificationAnalyzer = $this->calculator->getClassificationAnalyzer();
+        $batchRevenue    = $classificationAnalyzer->getBatchRevenue();
+        $batchMonthlyQty = $classificationAnalyzer->getBatchMonthlyQtys();
+        $totalRevenue    = $batchRevenue->sum();
+
         Product::with(['category', 'unit'])
-            ->chunk(100, function ($products) {
+            ->chunk(100, function ($products) use ($batchRevenue, $batchMonthlyQty, $totalRevenue) {
                 foreach ($products as $product) {
 
                     // 1. HITUNG SEMUA DATA
@@ -48,6 +57,15 @@ class InsightService
                     $this->processTrendInsight($product, $analysis['financial']);
                     $this->processNewProductInsight($product, $analysis['financial']);
                     $this->processHighMarginInsight($product, $analysis['financial']);
+
+                    // Group AI Pricing
+                    $this->processPricingInsight($product, $analysis['financial']);
+
+                    // Group Classification (ABC/XYZ)
+                    $productRevenue = (float) ($batchRevenue->get($product->id, 0));
+                    $monthlyQtys    = $batchMonthlyQty->get($product->id, array_fill(0, 12, 0));
+                    $classification = $this->calculator->getClassification($product, $productRevenue, $totalRevenue, $monthlyQtys);
+                    $this->processClassificationInsight($product, $classification);
                 }
             });
     }
@@ -265,15 +283,19 @@ class InsightService
      */
     private function processRestockInsight(Product $product, array $metrics)
     {
-        // Cek status menggunakan Konstanta Severity
         if ($metrics['status'] === SmartInsight::SEVERITY_CRITICAL || $metrics['status'] === SmartInsight::SEVERITY_WARNING) {
+            // Build a descriptive title with velocity info
+            $velocityHint = $metrics['avg_daily'] > 0
+                ? " (~{$metrics['avg_daily']} pcs/hari)"
+                : '';
+
             SmartInsight::updateOrCreate(
-                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_RESTOCK], // TYPE RESTOCK
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_RESTOCK],
                 [
-                    'severity' => $metrics['status'], // Ini sudah return 'critical' atau 'warning' dari calculator
-                    'title' => 'Perlu Restock: '.$product->name,
+                    'severity' => $metrics['status'],
+                    'title' => 'Perlu Restock: '.$product->name.$velocityHint,
                     'message' => $metrics['message'],
-                    'payload' => $metrics,
+                    'payload' => $metrics,  // Seluruh payload termasuk velocity_7d, dynamic_min_stock, dll.
                     'action_url' => '/purchases/create?product_slug='.$product->slug,
                     'updated_at' => now(),
                 ]
@@ -310,17 +332,42 @@ class InsightService
             $currentMargin = round($metrics['margin']['percent'], 2);
             $targetMargin = $product->target_margin_percent;
             $beli = number_format($product->purchase_price, 0, ',', '.');
+
+            // Smart Pricing context jika ada
+            $smartHint = '';
+            if (isset($metrics['smart_pricing']['has_recommendation']) && $metrics['smart_pricing']['has_recommendation']) {
+                $recPrice = number_format($metrics['smart_pricing']['recommended_price'], 0, ',', '.');
+                $smartHint = " AI Pricing: Harga rekomendasi Rp {$recPrice}.";
+            }
+
             SmartInsight::updateOrCreate(
-                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_MARGIN], // TYPE MARGIN
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_MARGIN],
                 [
-                    'severity' => SmartInsight::SEVERITY_WARNING, // HARDCODED CONSTANT
+                    'severity' => SmartInsight::SEVERITY_WARNING,
                     'title' => 'Margin Menipis: '.$product->name,
-                    'message' => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
-                    'payload' => $metrics['margin'],
+                    'message' => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.{$smartHint}",
+                    'payload' => array_merge($metrics['margin'], [
+                        'smart_pricing' => $metrics['smart_pricing'] ?? null,
+                    ]),
                     'action_url' => '/products/'.$product->slug.'/edit',
                     'updated_at' => now(),
                 ]
             );
+
+            // Kirim Notifikasi Telegram (sekali per 6 jam, pakai Cache Guard)
+            $cacheKey = 'notif_margin_low_'.$product->id;
+            if (! Cache::has($cacheKey)) {
+                $msg = "\u26a0\ufe0f <b>ALERT: PROFIT MARGIN RENDAH!</b>\n\n";
+                $msg .= "\ud83d\udce6 <b>{$product->name}</b>\n";
+                $msg .= "\ud83d\udd3b Margin Saat Ini: <b>{$currentMargin}%</b>\n";
+                $msg .= "\ud83c\udfaf Target Margin: <b>{$targetMargin}%</b>\n";
+                if ($smartHint) {
+                    $msg .= "\n\ud83e\udd16 {$smartHint}";
+                }
+                TelegramService::send($msg);
+                Cache::put($cacheKey, true, now()->addHours(6));
+            }
+
         } else {
             SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_MARGIN)->delete();
         }
@@ -371,9 +418,9 @@ class InsightService
 
         if ($salesTrend['is_trending']) {
             SmartInsight::updateOrCreate(
-                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_TREND], // TYPE TREND
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_TREND],
                 [
-                    'severity' => SmartInsight::SEVERITY_INFO, // Gunakan INFO untuk kabar baik (Success biasanya tidak ada di konstanta standar)
+                    'severity' => SmartInsight::SEVERITY_INFO,
                     'title' => 'Lagi Laris: '.$product->name,
                     'message' => "Penjualan naik {$salesTrend['growth_percent']}% bulan ini.",
                     'payload' => $salesTrend,
@@ -382,6 +429,73 @@ class InsightService
             );
         } else {
             SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_TREND)->delete();
+        }
+    }
+
+    /**
+     * =========================================================================
+     * PROCESSOR BARU: AI SMART PRICING INSIGHT
+     * =========================================================================
+     * Menyimpan rekomendasi harga ke SmartInsight hanya jika ada action konkret.
+     */
+    private function processPricingInsight(Product $product, array $metrics)
+    {
+        $pricing = $metrics['smart_pricing'] ?? null;
+
+        if ($pricing && $pricing['has_recommendation']) {
+            $actionLabel = $pricing['action'] === 'raise' ? 'Peluang Naikkan Harga' : 'Saran Diskon Stok';
+            $severity = $pricing['action'] === 'raise' ? SmartInsight::SEVERITY_INFO : SmartInsight::SEVERITY_WARNING;
+
+            SmartInsight::updateOrCreate(
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_PRICE_RECOMMENDATION],
+                [
+                    'severity' => $severity,
+                    'title' => "{$actionLabel}: {$product->name}",
+                    'message' => $pricing['suggestion'],
+                    'payload' => $pricing,
+                    'action_url' => '/products/'.$product->slug.'/edit',
+                    'updated_at' => now(),
+                ]
+            );
+        } else {
+            SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_PRICE_RECOMMENDATION)->delete();
+        }
+    }
+
+    /**
+     * PROCESSOR: ABC/XYZ PRODUCT CLASSIFICATION
+     * Menyimpan klasifikasi matriks produk ke SmartInsight.
+     * Hanya menyimpan produk yang berklasifikasi menonjol (A-class atau Z-class)
+     * sebagai insight actionable. Produk B-X / C-X tidak perlu notifikasi.
+     */
+    private function processClassificationInsight(Product $product, array $classification): void
+    {
+        $matrix = $classification['matrix'] ?? 'C-Z';
+        $abcClass = $classification['abc_class'] ?? 'C';
+        $xyzClass = $classification['xyz_class'] ?? 'Z';
+
+        // Tentukan apakah insight ini layak disimpan
+        $isActionable = $abcClass === 'A' || $xyzClass === 'Z';
+
+        if ($isActionable) {
+            $severity = SmartInsight::SEVERITY_INFO;
+            if ($matrix === 'A-Z') $severity = SmartInsight::SEVERITY_WARNING;
+            if ($matrix === 'C-Z') $severity = SmartInsight::SEVERITY_WARNING;
+
+            SmartInsight::updateOrCreate(
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_ABC_XYZ],
+                [
+                    'severity'   => $severity,
+                    'title'      => "Klasifikasi {$matrix}: {$product->name}",
+                    'message'    => $classification['recommendation'],
+                    'payload'    => $classification,
+                    'action_url' => '/products/'.$product->slug.'/edit',
+                    'updated_at' => now(),
+                ]
+            );
+        } else {
+            // Hapus insight klasifikasi lama jika tidak lagi actionable
+            SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_ABC_XYZ)->delete();
         }
     }
 }

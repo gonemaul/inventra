@@ -38,6 +38,12 @@ class SmartInsight extends Model
 
     public const TYPE_NEW = 'new';
 
+    // AI Feature 3: Smart Pricing Recommendation
+    public const TYPE_PRICE_RECOMMENDATION = 'price_recommendation';
+
+    // AI Feature 4: ABC/XYZ Product Classification
+    public const TYPE_ABC_XYZ = 'abc_xyz_classification';
+
     // type dss notif
     public const TYPE_DAILY_STRATEGY = 'daily_strategy';
 
