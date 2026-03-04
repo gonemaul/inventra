@@ -172,34 +172,41 @@ class ProductService
         }
 
         $perPage = $params['per_page'] ?? 10;
-        // Helper finansial Analis Pertumbuhan
-        // 1. Tentukan Range Tanggal yang PRESISI (00:00:00 s/d 23:59:59)
-        // Periode A: 30 Hari Terakhir (H-29 s/d Hari Ini = 30 Hari)
-        $today = now()->endOfDay();
-        $startThisMonth = now()->subDays(29)->startOfDay();
-        // Periode B: 30 Hari Sebelumnya (H-59 s/d H-30 = 30 Hari)
-        $endLastMonth = now()->subDays(30)->endOfDay();
-        $startLastMonth = now()->subDays(59)->startOfDay();
-        // --- A. Hitung Penjualan Bulan Ini (30 Hari Terakhir) ---
-        // Hasilnya akan masuk ke atribut: 'qty_this_month'
-        $query->withSum(['saleItems as qty_this_month' => function ($query) use ($startThisMonth, $today) {
-            $query->whereHas('sale', function ($q) use ($startThisMonth, $today) {
-                $q->whereBetween('transaction_date', [$startThisMonth, $today]);
-            });
-        }], 'quantity')
-
-            // --- B. Hitung Penjualan Bulan Lalu (30 Hari Sebelumnya) ---
-            // Hasilnya akan masuk ke atribut: 'qty_last_month'
-            ->withSum(['saleItems as qty_last_month' => function ($query) use ($startLastMonth, $endLastMonth) {
-                $query->whereHas('sale', function ($q) use ($startLastMonth, $endLastMonth) {
-                    $q->whereBetween('transaction_date', [$startLastMonth, $endLastMonth]);
-                });
-            }], 'quantity'); // 1. Total Selamanya
-
+        
         $products = $query->paginate($perPage)
             ->withQueryString();
+            
         $products->getCollection()->transform(function ($product) {
-            $product->financials = $this->calculator->calculateFinancialHealth($product);
+            // Membaca dari eager load SmartInsight alih-alih calculateFinancialHealth
+            $financials = [
+                'margin' => [
+                    'rp' => $product->selling_price - $product->purchase_price,
+                    'is_critical' => false,
+                    'is_high_margin' => false,
+                    'percent' => 0
+                ],
+                'sales_trend' => [
+                    'is_trending' => false,
+                    'is_declining' => false,
+                    'growth_percent' => 0
+                ]
+            ];
+
+            if ($product->insights) {
+                // Mapping Insight Margin
+                $marginInsight = $product->insights->whereIn('type', [SmartInsight::TYPE_MARGIN, SmartInsight::TYPE_HIGH_MARGIN])->first();
+                if ($marginInsight) {
+                    $financials['margin'] = array_merge($financials['margin'], $marginInsight->payload ?? []);
+                }
+                
+                // Mapping Insight Trend
+                $trendInsight = $product->insights->where('type', SmartInsight::TYPE_TREND)->first();
+                if ($trendInsight) {
+                     $financials['sales_trend'] = array_merge($financials['sales_trend'], $trendInsight->payload ?? []);
+                }
+            }
+
+            $product->financials = $financials;
 
             return $product;
         });

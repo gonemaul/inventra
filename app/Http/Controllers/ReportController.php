@@ -10,6 +10,7 @@ use App\Models\PurchaseItem;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockMovement;
+use App\Models\SmartInsight;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -93,54 +94,64 @@ class ReportController extends Controller
         }
         $netMargin = $currentRevenue > 0 ? ($netProfit / $currentRevenue) * 100 : 0;
 
-        // --- BARU: KESEHATAN STOK ---
-        // 1. Produk Menipis (Stock <= min_stock atau default 5)
-        $lowStockQuery = Product::where('stock', '>', 0)
-            ->where(function ($q) {
-                $q->whereColumn('stock', '<=', 'min_stock')
-                  ->orWhere(function ($sub) {
-                      $sub->whereNull('min_stock')->where('stock', '<=', 5);
-                  });
-            });
-
-        $lowStockCount = $lowStockQuery->count();
-        $lowStockItems = $lowStockQuery->select('name', 'stock', 'unit_id')
-            ->with('unit:id,name')
-            ->orderBy('stock', 'asc')
-            ->limit(5)
+        // --- BARU: KESEHATAN STOK (Membaca dari Smart Insight sbg Single Source of Truth) ---
+        // 1. Produk Menipis
+        $lowStockInsights = SmartInsight::with(['product:id,name,unit_id', 'product.unit:id,name'])
+            ->where('type', SmartInsight::TYPE_RESTOCK)
+            ->where('is_read', false)
             ->get();
 
-        // 2. Dead Stock Value (90 Hari tanpa penjualan)
-        $deadStockThreshold = now()->subDays(90);
-        $deadStockQuery = Product::where('stock', '>', 0)
-            ->whereDoesntHave('saleItems', function ($q) use ($deadStockThreshold) {
-                $q->whereHas('sale', function ($s) use ($deadStockThreshold) {
-                    $s->where('transaction_date', '>=', $deadStockThreshold);
-                });
-            });
+        $lowStockCount = $lowStockInsights->count();
+        $lowStockItems = $lowStockInsights->sortBy(function($insight) {
+            return $insight->payload['current_stock'] ?? 999;
+        })->take(5)->map(function($insight) {
+            return [
+                'name' => $insight->product->name ?? '-',
+                'stock' => $insight->payload['current_stock'] ?? 0,
+                'unit' => $insight->product->unit ?? null,
+            ];
+        })->values();
 
-        $deadStockValue = $deadStockQuery->sum(DB::raw('stock * purchase_price'));
-        $deadStockItems = $deadStockQuery->select('name', 'stock', 'purchase_price', 'unit_id')
-            ->with('unit:id,name')
-            ->orderBy(DB::raw('stock * purchase_price'), 'desc') // Urutkan berdasarkan nilai uang mati terbesar
-            ->limit(5)
+        // 2. Dead Stock Value
+        $deadStockInsights = SmartInsight::with(['product:id,name,purchase_price,unit_id', 'product.unit:id,name'])
+            ->where('type', SmartInsight::TYPE_DEAD_STOCK)
+            ->where('is_read', false)
             ->get();
 
-        // 3. Top Movers (5 Produk Terlaris Bulan Ini)
-        $topMovers = SaleItem::query()
-            ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
-            ->join('products', 'products.id', '=', 'sale_items.product_id')
-            ->whereBetween('sales.transaction_date', [$startOfMonth, $endOfMonth])
-            ->select(
-                'products.name',
-                'products.code',
-                DB::raw('SUM(sale_items.quantity) as total_qty'),
-                DB::raw('SUM(sale_items.subtotal) as total_revenue')
-            )
-            ->groupBy('sale_items.product_id', 'products.name', 'products.code')
-            ->orderByDesc('total_qty')
-            ->limit(5)
-            ->get();
+        $deadStockValue = $deadStockInsights->sum(function($insight) {
+            return $insight->payload['frozen_asset'] ?? 0;
+        });
+
+        // Urutkan berdasarkan nilai uang mati terbesar
+        $deadStockItems = $deadStockInsights->sortByDesc(function($insight) {
+            return $insight->payload['frozen_asset'] ?? 0;
+        })->take(5)->map(function($insight) {
+             return [
+                 'name' => $insight->product->name ?? '-',
+                 'stock' => $insight->payload['current_stock'] ?? ($insight->product->stock ?? 0),
+                 'purchase_price' => $insight->product->purchase_price ?? 0,
+                 'unit' => $insight->product->unit ?? null,
+             ];
+        })->values();
+
+        // 3. Top Movers (Produk Terlaris)
+        $topMoversInsights = SmartInsight::with(['product:id,name,code'])
+             ->where('type', SmartInsight::TYPE_TREND)
+             ->where('is_read', false)
+             ->get();
+
+        $topMovers = $topMoversInsights->sortByDesc(function($insight) {
+             return $insight->payload['qty_this_month'] ?? 0;
+        })->take(5)->map(function($insight) {
+             return [
+                  'name' => $insight->product->name ?? '-',
+                  'code' => $insight->product->code ?? '-',
+                  'total_qty' => $insight->payload['qty_this_month'] ?? 0,
+                  'total_revenue' => 0, // Not tracked in trend payload natively, can be mapped if needed
+                  'growth_percent' => $insight->payload['growth_percent'] ?? 0,
+             ];
+        })->values();
+
 
         // Render tampilan Menu Laporan
         return Inertia::render('Reports/Index', [

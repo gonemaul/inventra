@@ -87,7 +87,8 @@ class DashboardController extends Controller
         // 4. INSIGHTS & RECENT SALES
         // ==========================================
         // Action Cards
-        $insights = SmartInsight::where('is_read', false)
+        $insights = SmartInsight::with('product:id,name,slug,image_path')
+            ->where('is_read', false)
             ->orderByRaw("CASE
             WHEN severity = 'critical' THEN 1
             WHEN severity = 'warning' THEN 2
@@ -95,7 +96,7 @@ class DashboardController extends Controller
             ELSE 4 END")
             ->latest()
             ->limit(5)
-            ->get(); // Tetap get() karena mungkin butuh akses accessor di frontend
+            ->get();
 
         // Recent Sales
         $recentSales = Sale::with(['items.product:id,name,code']) // Optimasi: Select kolom spesifik produk

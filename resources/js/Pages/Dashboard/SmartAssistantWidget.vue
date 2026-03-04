@@ -1,5 +1,7 @@
 <script setup>
-import { router } from "@inertiajs/vue3";
+import { router, Link } from "@inertiajs/vue3";
+import { format } from "date-fns";
+import { id } from "date-fns/locale";
 
 // Menerima data insights dari parent
 defineProps({
@@ -8,6 +10,35 @@ defineProps({
         default: () => [],
     },
 });
+
+const severityMap = {
+    critical: { label: "Kritis", class: "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-800" },
+    warning: { label: "Peringatan", class: "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/50 dark:text-amber-300 dark:border-amber-800" },
+    info: { label: "Info", class: "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/50 dark:text-blue-300 dark:border-blue-800" },
+};
+
+const formatTypeLabel = (type) => {
+    // Basic mapping, could be expanded if needed or imported from constants
+    const labels = {
+        'dead_stock': 'Stok Mati',
+        'margin_alert': 'Peringatan Margin',
+        'restock': 'Perlu Restock',
+        'trend': 'Sedang Tren',
+        'high_margin': 'Margin Tinggi',
+        'new_product': 'Produk Baru',
+    };
+    return labels[type] || (type ? type.replace(/_/g, " ").toUpperCase() : 'UNKNOWN');
+};
+
+const formatDate = (dateString) => {
+    if (!dateString) return "-";
+    const date = new Date(dateString);
+    return new Intl.DateTimeFormat("id-ID", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+    }).format(date);
+};
 
 // Action Handler
 const handleInsight = (url) => {
@@ -49,55 +80,64 @@ const handleInsight = (url) => {
                 v-for="insight in insights"
                 :key="insight.id"
                 @click="handleInsight(insight.action_url)"
-                class="relative p-3 overflow-hidden transition-all border cursor-pointer group rounded-xl hover:shadow-md dark:hover:shadow-none"
-                :class="{
-                    'bg-red-50 dark:bg-red-900/20 border-red-100 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700':
-                        insight.severity === 'critical',
-                    'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-100 dark:border-yellow-800 hover:border-yellow-300 dark:hover:border-yellow-700':
-                        insight.severity === 'warning',
-                    'bg-blue-50 dark:bg-blue-900/20 border-blue-100 dark:border-blue-800 hover:border-blue-300 dark:hover:border-blue-700':
-                        insight.severity === 'info',
-                }"
+                class="relative p-4 overflow-hidden transition-all bg-white border cursor-pointer group rounded-2xl hover:shadow-md dark:bg-gray-800 dark:border-gray-700"
             >
-                <div class="flex gap-3">
-                    <div class="flex-shrink-0 mt-1">
-                        <span
-                            v-if="insight.severity === 'critical'"
-                            class="text-xl"
-                            >🚨</span
-                        >
-                        <span
-                            v-else-if="insight.severity === 'warning'"
-                            class="text-xl"
-                            >⚡</span
-                        >
-                        <span v-else class="text-xl">💡</span>
-                    </div>
+                <!-- Severity Line Indicator on Left -->
+                <div 
+                    class="absolute inset-y-0 left-0 w-1"
+                    :class="{
+                        'bg-red-500': insight.severity === 'critical',
+                        'bg-amber-500': insight.severity === 'warning',
+                        'bg-blue-500': insight.severity === 'info'
+                    }"
+                ></div>
 
+                <div class="flex gap-4">
+                    <!-- Image / Icon Fallback -->
+                    <div v-if="insight.product" class="flex-shrink-0 w-16 h-16 bg-gray-50 border border-gray-100 rounded-xl overflow-hidden shadow-sm dark:bg-gray-700 dark:border-gray-600 flex items-center justify-center relative">
+                        <img v-if="insight.product.image_url" :src="insight.product.image_url" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300">
+                        <div v-else class="text-gray-300 dark:text-gray-500">
+                            <!-- SVG Icons Matching Severity -->
+                            <svg v-if="insight.severity === 'critical'" class="w-8 h-8 text-red-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <svg v-else-if="insight.severity === 'warning'" class="w-8 h-8 text-amber-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            <svg v-else class="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                    </div>
+                    
                     <div class="flex-1 min-w-0">
-                        <h4
-                            class="text-sm font-bold truncate"
-                            :class="{
-                                'text-red-800 dark:text-red-300':
-                                    insight.severity === 'critical',
-                                'text-yellow-800 dark:text-yellow-300':
-                                    insight.severity === 'warning',
-                                'text-blue-800 dark:text-blue-300':
-                                    insight.severity === 'info',
-                            }"
-                        >
-                            {{ insight.title }}
-                        </h4>
-                        <p
-                            class="mt-1 text-xs leading-relaxed text-gray-600 dark:text-gray-400 line-clamp-2"
-                        >
+                        <!-- Top Row: Type Label & Date -->
+                        <div class="flex items-center justify-between mb-1">
+                            <span 
+                                class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold border rounded-md uppercase tracking-wider"
+                                :class="(severityMap[insight.severity] || severityMap.info).class">
+                                {{ formatTypeLabel(insight.type) }}
+                            </span>
+                            <span class="text-[10px] font-bold text-gray-400">
+                                {{ formatDate(insight.created_at) }}
+                            </span>
+                        </div>
+                        
+                        <!-- Header & Product Name -->
+                        <div class="mb-1">
+                            <h4 class="text-sm font-bold text-gray-800 dark:text-gray-200 line-clamp-1 group-hover:text-blue-600 transition truncate">
+                                {{ insight.product ? insight.product.name : insight.title }}
+                            </h4>
+                        </div>
+
+                        <!-- Message Muted -->
+                        <p class="text-xs font-medium leading-relaxed text-gray-500 dark:text-gray-400 line-clamp-2">
                             {{ insight.message }}
                         </p>
 
-                        <div
-                            class="mt-2 text-[10px] font-bold uppercase tracking-wider opacity-60 group-hover:opacity-100 transition text-gray-500 dark:text-gray-400"
-                        >
-                            Klik untuk proses &rarr;
+                        <!-- Hover Action Text -->
+                        <div class="mt-2 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider opacity-0 group-hover:opacity-100 transition-all transform translate-x-[-10px] group-hover:translate-x-0"
+                             :class="{
+                                'text-red-600 dark:text-red-400': insight.severity === 'critical',
+                                'text-amber-600 dark:text-amber-400': insight.severity === 'warning',
+                                'text-blue-600 dark:text-blue-400': insight.severity === 'info',
+                             }">
+                            <span>Ambil Tindakan</span>
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                         </div>
                     </div>
                 </div>
