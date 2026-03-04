@@ -57,7 +57,7 @@ class FinancialAnalyzer
         $marginPercent = $product->current_margin['percent'];
         // Logic Alert:
         $isCritical = ($marginPercent < $product->target_margin_percent && $buy > 0);
-        $isHighMargin = ($marginPercent > ($product->target_margin_percent + 15)); // Lebih dari 30% di atas target
+        $isHighMargin = ($marginPercent > ($product->target_margin_percent + 15)); // Lebih dari 15% di atas target
 
         return [
             'rp' => $marginRp,
@@ -150,11 +150,9 @@ class FinancialAnalyzer
             $endPeriodB = now()->subDays(30)->endOfDay();
             $startPeriodB = now()->subDays(59)->startOfDay(); // 30 Hari Sebelumnya
 
-            $stats = SaleItem::where('product_id', $product->id)
-                ->whereHas('sale', function ($q) use ($startPeriodB, $today) {
-                    $q->whereBetween('transaction_date', [$startPeriodB, $today]);
-                })
+            $stats = SaleItem::where('sale_items.product_id', $product->id)
                 ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->whereBetween('sales.transaction_date', [$startPeriodB, $today])
                 ->selectRaw("
                     COALESCE(SUM(CASE
                         WHEN sales.transaction_date >= ?

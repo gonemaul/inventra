@@ -65,15 +65,18 @@ class ProductDSSCalculator
         $thisMonthStart = now()->subDays(value: 30);
         $lastMonthStart = now()->subDays(60);
 
-        // Hitung Qty Bulan Ini
-        $qtyThisMonth = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn ($q) => $q->where('transaction_date', '>=', $thisMonthStart))
-            ->sum('quantity');
+        // Hitung Qty Bulan Ini & Bulan Lalu (Dioptimasi 1 Query menggunakan Join)
+        $stats = SaleItem::where('sale_items.product_id', $product->id)
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.transaction_date', '>=', $lastMonthStart)
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN sales.transaction_date >= ? THEN sale_items.quantity ELSE 0 END), 0) as qty_this_month,
+                COALESCE(SUM(CASE WHEN sales.transaction_date < ? THEN sale_items.quantity ELSE 0 END), 0) as qty_last_month
+            ", [$thisMonthStart, $thisMonthStart])
+            ->first();
 
-        // Hitung Qty Bulan Lalu
-        $qtyLastMonth = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn ($q) => $q->whereBetween('transaction_date', [$lastMonthStart, $thisMonthStart]))
-            ->sum('quantity');
+        $qtyThisMonth = $stats->qty_this_month ?? 0;
+        $qtyLastMonth = $stats->qty_last_month ?? 0;
 
         $isTrending = false;
         $growth = 0;

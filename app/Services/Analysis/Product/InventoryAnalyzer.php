@@ -24,10 +24,15 @@ class InventoryAnalyzer
 
         // 2. HITUNG VELOCITY (KECEPATAN JUAL SAAT INI)
         // Mengambil data 30 hari terakhir sebagai patokan dasar (Short-term trend)
-        // $sales30Days = SaleItem::where('product_id', $product->id)
-        //     ->whereHas('sale', fn($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
-        //     ->sum('quantity');
-        $sales30Days = $product->qty_this_month ?? 0;
+        if (isset($product->qty_this_month)) {
+            $sales30Days = (int) $product->qty_this_month;
+        } else {
+            // Fallback query ganda (teroptimasi) jika lazy-loaded
+            $sales30Days = SaleItem::where('sale_items.product_id', $product->id)
+                ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+                ->where('sales.transaction_date', '>=', now()->subDays(30))
+                ->sum('sale_items.quantity') ?? 0;
+        }
 
         $avgDailyRaw = $sales30Days > 0 ? ($sales30Days / 30) : 0;
 
@@ -209,14 +214,18 @@ class InventoryAnalyzer
         $startPrevLastYear = now()->subYear()->subMonth()->startOfMonth();
         $endPrevLastYear = now()->subYear()->subMonth()->endOfMonth();
 
-        // Query Statistik
-        $salesLastYear = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn ($q) => $q->whereBetween('transaction_date', [$startLastYear, $endLastYear]))
-            ->sum('quantity');
+        // Query Statistik Musiman (Dioptimasi jadi 1 Query menggunakan Inner Join)
+        $stats = SaleItem::where('sale_items.product_id', $product->id)
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->whereBetween('sales.transaction_date', [$startPrevLastYear, $endLastYear])
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN sales.transaction_date >= ? THEN sale_items.quantity ELSE 0 END), 0) as sales_last_year,
+                COALESCE(SUM(CASE WHEN sales.transaction_date <= ? THEN sale_items.quantity ELSE 0 END), 0) as sales_prev_last_year
+            ", [$startLastYear, $endPrevLastYear])
+            ->first();
 
-        $salesPrevLastYear = SaleItem::where('product_id', $product->id)
-            ->whereHas('sale', fn ($q) => $q->whereBetween('transaction_date', [$startPrevLastYear, $endPrevLastYear]))
-            ->sum('quantity');
+        $salesLastYear = $stats->sales_last_year ?? 0;
+        $salesPrevLastYear = $stats->sales_prev_last_year ?? 0;
 
         // Analisa Lonjakan
         if ($salesPrevLastYear > 0) {
@@ -255,16 +264,25 @@ class InventoryAnalyzer
         }
 
         $candidates = $query->get();
+        if ($candidates->isEmpty()) {
+            return 0;
+        }
+
         $availableStock = 0;
+        $subIds = $candidates->pluck('id');
+
+        // Optimasi Performa DB: Hitung performa kandidat substitusi dalam 1 Query (Menghindari N+1 Query Loop)
+        $subSalesData = SaleItem::whereIn('sale_items.product_id', $subIds)
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->where('sales.transaction_date', '>=', now()->subDays(30))
+            ->selectRaw('sale_items.product_id, SUM(sale_items.quantity) as total_qty')
+            ->groupBy('sale_items.product_id')
+            ->pluck('total_qty', 'sale_items.product_id');
 
         foreach ($candidates as $sub) {
-            // Cek performa barang pengganti
             // Kita hanya menghitungnya sebagai substitusi valid jika dia KURANG LAKU.
             // (Kalau substitusinya laris juga, ya jangan diganggu).
-
-            $subSales = SaleItem::where('product_id', $sub->id)
-                ->whereHas('sale', fn ($q) => $q->where('transaction_date', '>=', now()->subDays(30)))
-                ->sum('quantity');
+            $subSales = $subSalesData->get($sub->id, 0);
 
             // Batasan: Dianggap "Nganggur" jika laku < 5 pcs sebulan
             if ($subSales <= 5) {
