@@ -138,6 +138,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/smart-insights', [SmartInsightController::class, 'index'])->name('smart-insights');
         Route::post('/smart-insights/analyze', [SmartInsightController::class, 'analyze'])->name('smart-insights.analyze');
         Route::get('/smart-insights/export', [SmartInsightController::class, 'export'])->name('smart-insights.export');
+        // PILAR 6 AI INTELLIGENCE DOCUMENTATION
+        Route::get('/ai-intelligence', [ReportController::class, 'aiIntelligence'])->name('ai-intelligence');
     });
 
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);

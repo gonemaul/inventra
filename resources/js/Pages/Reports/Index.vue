@@ -157,6 +157,13 @@ const reportGroups = [
                 canExport: true,
                 icon: "🧠",
             },
+            {
+                title: "AI Intelligence Center",
+                desc: "Dokumentasi kecerdasan + bundling, ABC/XYZ, pricing, modal & musiman.",
+                route: "reports.ai-intelligence",
+                canExport: false,
+                icon: "🤖",
+            },
         ],
     },
 ];

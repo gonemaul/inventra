@@ -66,6 +66,12 @@ const typeMap = {
     daily_restock_plan: "Rencana Restock Harian",
     weekly_dss_deadstock: "Mingguan: Deadstock",
     weekly_dss_trending: "Mingguan: Trending",
+    // AI Phase 7 Types
+    price_recommendation: "💡 AI Pricing",
+    abc_xyz_classification: "🏷️ Klasifikasi ABC/XYZ",
+    seasonal_restock: "📅 Stok Musiman",
+    capital_efficiency: "📊 Efisiensi Modal",
+    bundling_recommendation: "🔗 Bundling Produk",
 };
 
 const formatTypeLabel = (type) => {
@@ -90,18 +96,50 @@ const getFormattedPayloadData = (type, payload) => {
         if (payload.avg_daily) items.push({ label: 'Rata-rata Terjual', value: `${payload.avg_daily}/hari` });
         if (payload.estimasi_biaya) items.push({ label: 'Estimasi Biaya', value: formatCurrency(payload.estimasi_biaya) });
         if (payload.days_left) items.push({ label: 'Sisa Hari', value: `${payload.days_left} hari lagi` });
+        if (payload.stockout_date) items.push({ label: 'Prediksi Habis', value: payload.stockout_date });
+        if (payload.dynamic_min_stock) items.push({ label: 'Batas Aman AI', value: `${payload.dynamic_min_stock} pcs` });
+        if (payload.is_dynamic_warning) items.push({ label: 'Status', value: '⚠️ Di bawah batas aman dinamis' });
     } else if (type === 'dead_stock') {
         items.push({ label: 'Mandek Selama', value: `${payload.days_inactive || 0} hari` });
         if (payload.frozen_asset) items.push({ label: 'Uang Tertahan', value: formatCurrency(payload.frozen_asset) });
     } else if (type === 'margin_alert' || type === 'high_margin') {
         if (payload.percent) items.push({ label: 'Persentase Profit', value: `${payload.percent}%` });
         if (payload.rp) items.push({ label: 'Margin (Rp)', value: formatCurrency(payload.rp) });
+        if (payload.smart_pricing?.recommended_price) items.push({ label: '💡 Harga Rekomendasi AI', value: formatCurrency(payload.smart_pricing.recommended_price) });
     } else if (type === 'trend') {
         items.push({ label: 'Laku Bulan Ini', value: `${payload.qty_this_month || 0} pcs` });
         items.push({ label: 'Laku Bulan Lalu', value: `${payload.qty_last_month || 0} pcs` });
         if (payload.growth_percent) items.push({ label: 'Lonjakan', value: `${payload.growth_percent}%` });
     } else if (type === 'new') {
         items.push({ label: 'Umur Produk', value: `${payload.days_active || 0} hari` });
+    } else if (type === 'price_recommendation') {
+        items.push({ label: 'Aksi AI', value: payload.action === 'raise' ? '📈 Naikkan Harga' : '📉 Pertimbangkan Diskon' });
+        if (payload.recommended_price) items.push({ label: 'Harga Rekomendasi', value: formatCurrency(payload.recommended_price) });
+        if (payload.potential_gain) items.push({ label: 'Potensi Gain/Bulan', value: formatCurrency(payload.potential_gain) });
+        if (payload.suggestion) items.push({ label: 'Alasan', value: payload.suggestion });
+    } else if (type === 'abc_xyz_classification') {
+        if (payload.abc_class) items.push({ label: 'Kelas ABC', value: `Kelas ${payload.abc_class}` });
+        if (payload.xyz_class) items.push({ label: 'Kelas XYZ', value: `Kelas ${payload.xyz_class}` });
+        if (payload.matrix) items.push({ label: 'Matriks', value: payload.matrix });
+        if (payload.revenue_share !== undefined) items.push({ label: 'Revenue Share', value: `${payload.revenue_share}%` });
+        if (payload.cv !== undefined) items.push({ label: 'Coefficient of Variation', value: payload.cv });
+    } else if (type === 'seasonal_restock') {
+        items.push({ label: 'Puncak Diprediksi', value: payload.peak_month || '-' });
+        items.push({ label: 'Perlu Beli', value: `${payload.restock_needed || 0} pcs` });
+        items.push({ label: 'Estimasi Biaya', value: formatCurrency(payload.estimated_cost) });
+        items.push({ label: 'Deadline Beli', value: `${payload.buy_deadline_days || 0} hari lagi` });
+        items.push({ label: 'Peak Factor', value: `${payload.peak_factor}x` });
+    } else if (type === 'capital_efficiency') {
+        if (payload.capital_locked) items.push({ label: 'Modal Terkunci', value: formatCurrency(payload.capital_locked) });
+        if (payload.itr !== undefined) items.push({ label: 'Turnover Rate (ITR)', value: `${payload.itr}x/tahun` });
+        if (payload.dsi !== undefined) items.push({ label: 'Hari Simpan (DSI)', value: `${payload.dsi} hari` });
+        if (payload.efficiency_score) items.push({ label: 'Skor Efisiensi', value: `Grade ${payload.efficiency_score}` });
+        if (payload.holding_cost_monthly) items.push({ label: 'Biaya Simpan/Bulan', value: formatCurrency(payload.holding_cost_monthly) });
+    } else if (type === 'bundling_recommendation') {
+        if (payload.support_pct !== undefined) items.push({ label: 'Support', value: `${payload.support_pct}%` });
+        if (payload.confidence_pct !== undefined) items.push({ label: 'Confidence', value: `${payload.confidence_pct}%` });
+        if (payload.lift) items.push({ label: 'Lift Score', value: `${payload.lift} (${payload.lift_label || '-'})` });
+        if (payload.pair_count) items.push({ label: 'Frekuensi Bersamaan', value: `${payload.pair_count}x` });
     } else {
         // Fallback generic
         Object.entries(payload).forEach(([key, val]) => {
@@ -289,6 +327,13 @@ const formatDate = (dateStr) => {
                             <option value="daily_restock_plan">Rencana Restock Harian</option>
                             <option value="weekly_dss_deadstock">Mingguan: Rekap Deadstock</option>
                             <option value="weekly_dss_trending">Mingguan: Rekap Trending</option>
+                            <optgroup label="── AI Intelligence (Phase 7) ──">
+                                <option value="price_recommendation">💡 AI Pricing Assistant</option>
+                                <option value="abc_xyz_classification">🏷️ Klasifikasi ABC/XYZ</option>
+                                <option value="seasonal_restock">📅 Stok Musiman</option>
+                                <option value="capital_efficiency">📊 Efisiensi Modal (ITR)</option>
+                                <option value="bundling_recommendation">🔗 Bundling Produk (Apriori)</option>
+                            </optgroup>
                         </select>
 
                         <select v-model="sortFilter" class="block w-full py-2 pl-3 pr-10 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-xl dark:bg-gray-900 dark:border-gray-700 dark:text-white">

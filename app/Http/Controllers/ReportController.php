@@ -895,4 +895,65 @@ class ReportController extends Controller
             'customers' => $customers,
         ]);
     }
+
+    /**
+     * AI Intelligence Documentation Page
+     * Menampilkan daftar kecerdasan yang tertanam di sistem beserta statistik live.
+     */
+    public function aiIntelligence()
+    {
+        // Live stats per insight type dari SmartInsight
+        $liveStats = SmartInsight::select('type', DB::raw('count(*) as total'))
+            ->groupBy('type')
+            ->pluck('total', 'type')
+            ->toArray();
+
+        // Stats untuk bundling (asosiasi produk)
+        $bundlingPairs = SmartInsight::where('type', SmartInsight::TYPE_BUNDLING)
+            ->with('product:id,name,slug')
+            ->orderByDesc('updated_at')
+            ->take(10)
+            ->get(['id', 'product_id', 'title', 'message', 'payload', 'severity', 'updated_at']);
+
+        // Stats ABC/XYZ — PHP-side grouping to avoid MySQL-specific json_unquote
+        $abcRaw = SmartInsight::where('type', SmartInsight::TYPE_ABC_XYZ)
+            ->get(['payload']);
+        $abcStats = $abcRaw->groupBy(fn($i) => $i->payload['abc_class'] ?? 'Unknown')
+            ->map(fn($group) => $group->count())
+            ->toArray();
+
+        // Capital Efficiency — top locked capital
+        $capitalInsights = SmartInsight::where('type', SmartInsight::TYPE_CAPITAL_EFFICIENCY)
+            ->with('product:id,name,slug')
+            ->orderByDesc('updated_at')
+            ->take(5)
+            ->get(['id', 'product_id', 'title', 'message', 'payload', 'severity', 'updated_at']);
+
+        // Seasonal Restock — PHP-side sort to avoid MySQL FIELD() function
+        $seasonalInsights = SmartInsight::where('type', SmartInsight::TYPE_SEASONAL_RESTOCK)
+            ->with('product:id,name,slug')
+            ->get(['id', 'product_id', 'title', 'message', 'payload', 'severity', 'updated_at'])
+            ->sortBy(fn($i) => match($i->severity) { 'critical' => 0, 'warning' => 1, default => 2 })
+            ->take(5)
+            ->values();
+
+        // Price Recommendation
+        $pricingInsights = SmartInsight::where('type', SmartInsight::TYPE_PRICE_RECOMMENDATION)
+            ->with('product:id,name,slug')
+            ->orderByDesc('updated_at')
+            ->take(5)
+            ->get(['id', 'product_id', 'title', 'message', 'payload', 'severity', 'updated_at']);
+
+        $lastAnalysis = SmartInsight::max('updated_at');
+
+        return Inertia::render('Reports/AIIntelligence', [
+            'liveStats'       => $liveStats,
+            'bundlingPairs'   => $bundlingPairs,
+            'abcStats'        => $abcStats,
+            'capitalInsights' => $capitalInsights,
+            'seasonalInsights' => $seasonalInsights,
+            'pricingInsights' => $pricingInsights,
+            'lastAnalysis'    => $lastAnalysis,
+        ]);
+    }
 }
