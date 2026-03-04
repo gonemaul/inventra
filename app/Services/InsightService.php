@@ -66,6 +66,11 @@ class InsightService
                     $monthlyQtys    = $batchMonthlyQty->get($product->id, array_fill(0, 12, 0));
                     $classification = $this->calculator->getClassification($product, $productRevenue, $totalRevenue, $monthlyQtys);
                     $this->processClassificationInsight($product, $classification);
+
+                    // Group Seasonal Restocking
+                    $avgVelocity = (float) ($analysis['inventory']['avg_daily'] ?? 0);
+                    $seasonal = $this->calculator->getSeasonalRestock($product, $avgVelocity);
+                    $this->processSeasonalRestockInsight($product, $seasonal);
                 }
             });
     }
@@ -474,7 +479,6 @@ class InsightService
         $abcClass = $classification['abc_class'] ?? 'C';
         $xyzClass = $classification['xyz_class'] ?? 'Z';
 
-        // Tentukan apakah insight ini layak disimpan
         $isActionable = $abcClass === 'A' || $xyzClass === 'Z';
 
         if ($isActionable) {
@@ -494,8 +498,36 @@ class InsightService
                 ]
             );
         } else {
-            // Hapus insight klasifikasi lama jika tidak lagi actionable
             SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_ABC_XYZ)->delete();
+        }
+    }
+
+    /**
+     * PROCESSOR: SEASONAL RESTOCKING PLANNER
+     */
+    private function processSeasonalRestockInsight(Product $product, array $seasonal): void
+    {
+        if ($seasonal['has_seasonal_peak'] && $seasonal['restock_needed'] > 0) {
+            $severityMap = [
+                'critical' => SmartInsight::SEVERITY_CRITICAL,
+                'warning'  => SmartInsight::SEVERITY_WARNING,
+                'info'     => SmartInsight::SEVERITY_INFO,
+            ];
+            $severity = $severityMap[$seasonal['urgency']] ?? SmartInsight::SEVERITY_INFO;
+
+            SmartInsight::updateOrCreate(
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_SEASONAL_RESTOCK],
+                [
+                    'severity'   => $severity,
+                    'title'      => "Stok Musiman: {$product->name} (+{$seasonal['restock_needed']} pcs)",
+                    'message'    => $seasonal['recommendation'],
+                    'payload'    => $seasonal,
+                    'action_url' => '/purchases/create?product_slug='.$product->slug,
+                    'updated_at' => now(),
+                ]
+            );
+        } else {
+            SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_SEASONAL_RESTOCK)->delete();
         }
     }
 }

@@ -44,6 +44,9 @@ class SmartInsight extends Model
     // AI Feature 4: ABC/XYZ Product Classification
     public const TYPE_ABC_XYZ = 'abc_xyz_classification';
 
+    // AI Feature 5: Seasonal Restocking Planner
+    public const TYPE_SEASONAL_RESTOCK = 'seasonal_restock';
+
     // type dss notif
     public const TYPE_DAILY_STRATEGY = 'daily_strategy';
 

@@ -8,6 +8,7 @@ use App\Models\SmartInsight;
 use App\Services\Analysis\Product\ClassificationAnalyzer;
 use App\Services\Analysis\Product\FinancialAnalyzer;
 use App\Services\Analysis\Product\InventoryAnalyzer;
+use App\Services\Analysis\Product\SeasonalRestockAnalyzer;
 use App\Services\TelegramService;
 use Illuminate\Support\Facades\Cache;
 
@@ -16,15 +17,18 @@ class ProductDSSCalculator
     protected $inventoryAnalyzer;
     protected $financialAnalyzer;
     protected $classificationAnalyzer;
+    protected $seasonalRestockAnalyzer;
 
     public function __construct(
         InventoryAnalyzer $inventoryAnalyzer,
         FinancialAnalyzer $financialAnalyzer,
-        ClassificationAnalyzer $classificationAnalyzer
+        ClassificationAnalyzer $classificationAnalyzer,
+        SeasonalRestockAnalyzer $seasonalRestockAnalyzer
     ) {
         $this->inventoryAnalyzer = $inventoryAnalyzer;
         $this->financialAnalyzer = $financialAnalyzer;
         $this->classificationAnalyzer = $classificationAnalyzer;
+        $this->seasonalRestockAnalyzer = $seasonalRestockAnalyzer;
     }
     /**
      * =========================================================================
@@ -75,6 +79,16 @@ class ProductDSSCalculator
     public function getClassificationAnalyzer(): ClassificationAnalyzer
     {
         return $this->classificationAnalyzer;
+    }
+
+    /**
+     * LOGIC: SEASONAL RESTOCK PLAN
+     * Generates a pre-season restocking recommendation based on historical peak detection.
+     * Requires avgDailyVelocity from InventoryAnalyzer to avoid duplicate DB queries.
+     */
+    public function getSeasonalRestock(Product $product, float $avgDailyVelocity): array
+    {
+        return $this->seasonalRestockAnalyzer->analyze($product, $avgDailyVelocity);
     }
 
     /**
