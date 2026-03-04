@@ -50,6 +50,9 @@ class SmartInsight extends Model
     // AI Feature 6: Capital Efficiency Advisor
     public const TYPE_CAPITAL_EFFICIENCY = 'capital_efficiency';
 
+    // AI Feature 7: Product Bundling & Association
+    public const TYPE_BUNDLING = 'bundling_recommendation';
+
     // type dss notif
     public const TYPE_DAILY_STRATEGY = 'daily_strategy';
 

@@ -8,6 +8,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\Sale;
 use App\Models\SmartInsight;
 use App\Services\Analysis\Product\ClassificationAnalyzer;
+use App\Services\Analysis\ProductAssociationAnalyzer;
 use App\Services\Analysis\ProductDSSCalculator;
 use App\Services\TelegramService;
 use Illuminate\Support\Facades\Cache;
@@ -18,10 +19,12 @@ use Illuminate\Support\Facades\DB;
 class InsightService
 {
     protected $calculator;
+    protected $associationAnalyzer;
 
-    public function __construct(ProductDSSCalculator $calculator)
+    public function __construct(ProductDSSCalculator $calculator, ProductAssociationAnalyzer $associationAnalyzer)
     {
         $this->calculator = $calculator;
+        $this->associationAnalyzer = $associationAnalyzer;
     }
 
     /**
@@ -77,6 +80,46 @@ class InsightService
                     $this->processCapitalEfficiencyInsight($product, $capital);
                 }
             });
+
+        // Jalankan analisa bundling secara global (tidak per-produk)
+        $this->runBundlingAnalysis();
+    }
+
+    /**
+     * Analisa bundling/asosiasi produk — dijalankan setelah per-produk selesai.
+     * Membersihkan pair lama dan menyimpan pair baru yang memenuhi threshold.
+     */
+    public function runBundlingAnalysis(): void
+    {
+        // Hapus semua bundling rekomendasi lama agar tidak stale
+        SmartInsight::where('type', SmartInsight::TYPE_BUNDLING)->delete();
+
+        $pairs = $this->associationAnalyzer->findTopPairs();
+        if ($pairs->isEmpty()) return;
+
+        // Load data produk yang terlibat saja (efisiensi)
+        $productIds = $pairs->flatMap(fn($p) => [$p['product_id_a'], $p['product_id_b']])->unique()->values();
+        $products = Product::whereIn('id', $productIds)->get();
+
+        $recommendations = $this->associationAnalyzer->buildBundlingRecommendations($pairs, $products);
+
+        // Simpan top 20 rekomendasi bundling (hindari noise)
+        foreach ($recommendations->take(20) as $rec) {
+            $productA = $rec['product_a'];
+            $productB = $rec['product_b'];
+
+            // Insight dikaitkan ke produk A dengan referensi ke produk B di payload
+            SmartInsight::create([
+                'product_id' => $productA->id,
+                'type'       => SmartInsight::TYPE_BUNDLING,
+                'severity'   => SmartInsight::SEVERITY_INFO,
+                'title'      => "Bundling: {$productA->name} + {$productB->name}",
+                'message'    => $rec['recommendation'],
+                'payload'    => $rec,
+                'action_url' => '/products/'.$productA->slug,
+                'updated_at' => now(),
+            ]);
+        }
     }
 
     /**
