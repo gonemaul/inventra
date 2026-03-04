@@ -53,8 +53,8 @@ class SendMorningReport extends Command
         // ==========================================
 
         $message = "☀️ <b>MORNING BRIEFING</b>\n";
-        $message .= '🗓 '.now()->isoFormat('dddd, D MMMM Y')."\n\n";
-        $message .= "------------------------------------------------------------\n\n";
+        $message .= '🗓 '.now()->isoFormat('dddd, D MMMM Y')."\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         // ------------------------------------------
         // BLOK 1: PERHATIAN KHUSUS (MERAH)
         // Gabungan Tagihan Supplier & Alert Harga Naik
@@ -102,7 +102,7 @@ class SendMorningReport extends Command
                 $message .= "   <i>{$priceAlertMsg}</i>\n";
             }
 
-            $message .= "\n------------------------------------------------------------\n\n";
+            $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         }
 
         // ------------------------------------------
@@ -130,7 +130,7 @@ class SendMorningReport extends Command
             $message .= "📦 <b>Restock:</b> Stok Aman.\n";
         }
 
-        $message .= "\n------------------------------------------------------------\n\n";
+        $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
         // ------------------------------------------
         // BLOK 3: STRATEGI CUAN (HIJAU)
@@ -176,11 +176,12 @@ class SendMorningReport extends Command
                 ->whereYear('created_at', $lastMonth->year)
                 ->count();
 
-            $msgBulanan = '🗓 <b>REKAP BULANAN ('.$lastMonth->isoFormat('MMMM Y').")</b>\n";
-            $msgBulanan .= 'Total Omzet: <b>Rp '.number_format($omzetBulanLalu, 0, ',', '.')."</b>\n";
-            $msgBulanan .= 'Total Profit: <b>Rp '.number_format($profitBulanLalu, 0, ',', '.')."</b>\n";
-            $msgBulanan .= "Total Transaksi: {$totalTrx} struk\n";
-            $msgBulanan .= "<i>Performance review bulan baru dimulai!</i> 🚀\n\n";
+            $msgBulanan = '📋 <b>REKAP BULANAN ('.strtoupper($lastMonth->isoFormat('MMMM Y')).")</b>\n\n";
+            $msgBulanan .= "Matahari baru, target baru! Berikut hasil bulan lalu:\n\n";
+            $msgBulanan .= '💰 Total Omzet: <b>Rp '.number_format($omzetBulanLalu, 0, ',', '.')."</b>\n";
+            $msgBulanan .= '📈 Total Profit: <b>Rp '.number_format($profitBulanLalu, 0, ',', '.')."</b>\n";
+            $msgBulanan .= "🧾 Total Transaksi: <b>{$totalTrx} struk</b>\n\n";
+            $msgBulanan .= "<i>Performance review bulan baru dimulai! Mari lampaui target sebelumnya.</i> 🚀\n";
 
             // Kirim terpisah atau gabung ke laporan pagi
             TelegramService::send($msgBulanan);

@@ -18,20 +18,20 @@ class SendFinancialReport extends Command
     {
         $message = "💰 <b>FINANCIAL UPDATE (12:30)</b>\n";
         $message .= '🗓 '.now()->isoFormat('dddd, D MMMM Y')."\n\n";
-        // $message .= "------------------------------------------------------------\n\n";
+        // $message .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         // ==========================================
         // 1. LAPORAN BULANAN (Khusus Tanggal 1)
         // ==========================================
         if (now()->day === 1) {
             $this->appendMonthlyReport($message);
-            // $message .= "\n------------------------------------------------------------\n\n";
+            // $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         }
         // ==========================================
         // 2. LAPORAN MINGGUAN (Khusus Hari Senin)
         // ==========================================
         if (now()->isMonday()) {
             $this->appendWeeklyReport($message);
-            // $message .= "\n------------------------------------------------------------\n\n";
+            // $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         }
         // ==========================================
         // 3. LAPORAN HARIAN (Snapshot Siang Ini)
@@ -70,7 +70,7 @@ class SendFinancialReport extends Command
         // 5. Render Pesan
         $msg .= '📊 <b>REKAP BULAN '.$targetDate->isoFormat('MMMM Y')."</b>\n";
 
-        $msg .= "------------------------------------------------------------\n\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
         // Render Baris Pemasukan (False = Makin tinggi makin bagus)
         $msg .= $this->renderComparisonBlock('Pemasukan', $incTarget, $incMoM, $incYoY, false, $momDate, $yoyDate);
@@ -78,7 +78,7 @@ class SendFinancialReport extends Command
         $msg .= $this->renderComparisonBlock('Pembelian', $expTarget, $expMoM, $expYoY, true, $momDate, $yoyDate);
 
         $msg .= '💵 <b>Cashflow Bersih: Rp '.number_format($profit, 0, ',', '.')."</b>\n\n";
-        // $msg .= "------------------------------------------------------------\n\n";
+        // $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
     }
 
     /**
@@ -103,7 +103,7 @@ class SendFinancialReport extends Command
         $expPrev = Purchase::whereBetween('transaction_date', [$startPrevWeek, $endPrevWeek])->sum('grand_total');
 
         $msg .= "📈 <b>REKAP MINGGU LALU</b>\n";
-        $msg .= "------------------------------------------------------------\n\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         $msg .= $this->formatGrowthLine('Omzet', $incCurrent, $incPrev);
         $msg .= $this->formatGrowthLine('Belanja', $expCurrent, $expPrev, true);
         $msg .= "\n";
@@ -123,15 +123,14 @@ class SendFinancialReport extends Command
         $belanja = Purchase::whereDate('transaction_date', $today)->sum('grand_total');
 
         $msg .= "🌤 <b>SNAPSHOT HARI INI (12:30)</b>\n";
-        $msg .= "------------------------------------------------------------\n\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         $msg .= '🟢 Omzet: <b>Rp '.number_format($omzet, 0, ',', '.')."</b>\n";
         $msg .= '🔴 Belanja: <b>Rp '.number_format($belanja, 0, ',', '.')."</b>\n";
 
-        // Indikator sederhana
         if ($belanja > $omzet) {
-            $msg .= "⚠️ <i>Warning: Pengeluaran > Pemasukan hari ini.</i>\n";
+            $msg .= "⚠️ <i>Warning: Pengeluaran lebih besar dari pemasukan hari ini. Hati-hati overspending!</i>\n";
         } else {
-            $msg .= "✅ <i>Cashflow harian aman.</i>\n";
+            $msg .= "✅ <i>Cashflow harian aman dan terkendali.</i>\n";
         }
     }
 

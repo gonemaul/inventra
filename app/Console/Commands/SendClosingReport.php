@@ -30,26 +30,27 @@ class SendClosingReport extends Command
         // Hitung Data
         $totalOmzet = $transactions->sum('total_revenue'); // Total Penjualan
         $totalTrx = $transactions->count();
-
-        // Asumsi Anda punya cara hitung profit (Gross Profit)
-        // Misal: $trx->total - $trx->modal
         $totalProfit = $transactions->sum('total_profit');
+        $margin = $totalOmzet > 0 ? round(($totalProfit / $totalOmzet) * 100, 1) : 0;
 
         // Rangkai Pesan
         $msg = "🌙 <b>LAPORAN TUTUP TOKO</b>\n";
-        $msg .= '🗓 '.now()->isoFormat('D MMM Y')."\n\n";
+        $msg .= '🗓 '.now()->isoFormat('dddd, D MMMM Y')."\n\n";
 
-        $msg .= "💰 <b>FINANSIAL</b>\n";
-        $msg .= 'Omzet: <b>Rp '.number_format($totalOmzet, 0, ',', '.')."</b>\n";
-        $msg .= 'Profit: <b>Rp '.number_format($totalProfit, 0, ',', '.')."</b>\n";
-        $msg .= "Trx: {$totalTrx} struk\n\n";
+        $msg .= "💰 <b>RINGKASAN FINANSIAL</b>\n";
+        $msg .= '🔹 Omzet: <b>Rp '.number_format($totalOmzet, 0, ',', '.')."</b>\n";
+        $msg .= '🔹 Profit: <b>Rp '.number_format($totalProfit, 0, ',', '.')."</b> ({$margin}%)\n";
+        $msg .= "🔹 Transaksi: <b>{$totalTrx} struk</b>\n\n";
 
-        // Breakdown Pembayaran (Opsional, sesuaikan kolom di DB Anda)
+        // Breakdown Pembayaran
         $tunai = $transactions->where('payment_method', 'cash')->sum('total_revenue');
-        $msg .= '💵 Tunai: Rp '.number_format($tunai)."\n";
+        $nonTunai = $totalOmzet - $tunai;
+        $msg .= "💳 <b>METODE PEMBAYARAN</b>\n";
+        $msg .= '💵 Tunai: <b>Rp '.number_format($tunai, 0, ',', '.')."</b>\n";
+        $msg .= '🏧 Non-Tunai: <b>Rp '.number_format($nonTunai, 0, ',', '.')."</b>\n\n";
 
-        $msg .= "Sistem melakukan analisa malam dan backup sebentar lagi...\n";
-        $msg .= 'Selamat istirahat! 😴';
+        $msg .= "<i>Sistem melakukan analisa malam dan backup sebentar lagi...</i>\n";
+        $msg .= '<b>Selamat istirahat!</b> 😴';
 
         TelegramService::send($msg);
         $this->info('Laporan Closing Terkirim');
