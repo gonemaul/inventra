@@ -54,7 +54,7 @@ class SendMorningReport extends Command
 
         $message = "☀️ <b>MORNING BRIEFING</b>\n";
         $message .= '🗓 '.now()->isoFormat('dddd, D MMMM Y')."\n";
-        $message .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         // ------------------------------------------
         // BLOK 1: PERHATIAN KHUSUS (MERAH)
         // Gabungan Tagihan Supplier & Alert Harga Naik
@@ -102,7 +102,7 @@ class SendMorningReport extends Command
                 $message .= "   <i>{$priceAlertMsg}</i>\n";
             }
 
-            $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+            $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         }
 
         // ------------------------------------------
@@ -130,7 +130,7 @@ class SendMorningReport extends Command
             $message .= "📦 <b>Restock:</b> Stok Aman.\n";
         }
 
-        $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+        $message .= "\n━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
         // ------------------------------------------
         // BLOK 3: STRATEGI CUAN (HIJAU)

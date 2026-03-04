@@ -70,7 +70,7 @@ class SendFinancialReport extends Command
         // 5. Render Pesan
         $msg .= '📊 <b>REKAP BULAN '.$targetDate->isoFormat('MMMM Y')."</b>\n";
 
-        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
 
         // Render Baris Pemasukan (False = Makin tinggi makin bagus)
         $msg .= $this->renderComparisonBlock('Pemasukan', $incTarget, $incMoM, $incYoY, false, $momDate, $yoyDate);
@@ -103,7 +103,7 @@ class SendFinancialReport extends Command
         $expPrev = Purchase::whereBetween('transaction_date', [$startPrevWeek, $endPrevWeek])->sum('grand_total');
 
         $msg .= "📈 <b>REKAP MINGGU LALU</b>\n";
-        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         $msg .= $this->formatGrowthLine('Omzet', $incCurrent, $incPrev);
         $msg .= $this->formatGrowthLine('Belanja', $expCurrent, $expPrev, true);
         $msg .= "\n";
@@ -123,7 +123,7 @@ class SendFinancialReport extends Command
         $belanja = Purchase::whereDate('transaction_date', $today)->sum('grand_total');
 
         $msg .= "🌤 <b>SNAPSHOT HARI INI (12:30)</b>\n";
-        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";
+        $msg .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
         $msg .= '🟢 Omzet: <b>Rp '.number_format($omzet, 0, ',', '.')."</b>\n";
         $msg .= '🔴 Belanja: <b>Rp '.number_format($belanja, 0, ',', '.')."</b>\n";
 
