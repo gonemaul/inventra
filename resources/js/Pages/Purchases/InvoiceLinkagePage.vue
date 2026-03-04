@@ -376,7 +376,7 @@ const actions = {
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
 import { Head, Link, useForm, router } from "@inertiajs/vue3";
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import { throttle } from "lodash";
 import ImageModal from "@/Components/ImageModal.vue";
@@ -396,7 +396,7 @@ const props = defineProps({
 });
 // --- STATE ---
 const { isActionLoading } = useActionLoading();
-const toast = useToast();
+const toast = usePremiumAlert();
 const isProcessing = ref(false);
 // Gambar Nota
 const showImageModal = ref(false);

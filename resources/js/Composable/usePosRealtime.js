@@ -450,6 +450,7 @@ export function usePosRealtime(props) {
 
     // Filtered Products sekarang MURNI dari server (No Client Side Sort)
     const filteredProducts = computed(() => {
+        console.log(allProducts.value)
         return allProducts.value;
     });
 

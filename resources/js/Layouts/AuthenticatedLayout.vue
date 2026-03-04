@@ -9,6 +9,7 @@ import { useToast } from "vue-toastification";
 import { watch } from "vue";
 import { Link } from "@inertiajs/vue3";
 import ActionLoader from "@/Components/ActionLoader.vue";
+import PremiumAlert from "@/Components/PremiumAlert.vue";
 import ScrollToTop from "@/Components/ScrollToTop.vue";
 
 const page = usePage();
@@ -72,6 +73,7 @@ defineProps({
 
 <template>
     <ActionLoader />
+    <PremiumAlert />
     <div class="flex min-h-screen pb-12 lg:pb-0">
         <!-- Sidebar -->
         <Sidebar v-if="showSidebar" />

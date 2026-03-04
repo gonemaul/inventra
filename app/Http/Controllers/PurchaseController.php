@@ -258,12 +258,21 @@ class PurchaseController extends Controller
         }
 
     // Default Sorting (Smart Sort): 
-    // 1. Sold Last 30 Days DESC (Tren tertinggi)
-    // 2. Kebutuhan Stok DESC (Seberapa kurang dari min_stock)
-    // 3. Stock ASC (Paling sedikit)
-    $productQuery->orderBy('sold_last_30_days', 'desc')
-                 ->orderByRaw('(min_stock - stock) DESC')
-                 ->orderBy('stock', 'asc');
+    // Group 1: Habis & Fast Move (sold_last_30_days > 0)
+    // Group 2: Menipis & Fast Move (stock <= min_stock)
+    // Group 3: Masih banyak & Fast Move
+    // Group 4: Habis/Menipis (Tidak fast move)
+    // Group 5: Masih banyak (Deadstock)
+    $productQuery->orderByRaw('
+        CASE
+            WHEN stock <= 0 AND COALESCE(sold_last_30_days, 0) > 0 THEN 1
+            WHEN stock > 0 AND stock <= min_stock AND COALESCE(sold_last_30_days, 0) > 0 THEN 2
+            WHEN stock > min_stock AND COALESCE(sold_last_30_days, 0) > 0 THEN 3
+            WHEN stock <= min_stock AND COALESCE(sold_last_30_days, 0) <= 0 THEN 4
+            ELSE 5
+        END ASC
+    ')->orderBy('sold_last_30_days', 'desc')
+      ->orderBy('stock', 'asc');
 
         // --- 2. FACETED DATA (Smart Filters) ---
         

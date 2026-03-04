@@ -23,7 +23,6 @@ const props = defineProps({
         default: () => [],
     },
 });
-
 const emit = defineEmits(["addToCart", "openDetail", "toggleCompare", "loadMore"]);
 
 const productGridRef = ref(null);
@@ -105,7 +104,7 @@ const handleTouchStart = () => {
                                 v-if="product.unit"
                                 class="text-[10px] font-bold px-2 py-0.5 rounded shadow-sm backdrop-blur text-gray-700 bg-white/90 dark:text-gray-200 dark:bg-gray-900/80 border border-gray-200 dark:border-gray-600"
                             >
-                                {{ product.unit?.name }}
+                                {{ product.product_type?.name }}
                             </span>
                             <span
                                 v-if="product.size"
@@ -172,7 +171,7 @@ const handleTouchStart = () => {
                                 {{ product.brand?.name || "No Brand" }}
                             </span>
                             <span v-if="product.purchase_price" class="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400 px-1.5 py-0.5 rounded shadow-sm border border-emerald-100 dark:border-emerald-800 shrink-0 whitespace-nowrap">
-                               Untung: {{ rp((product.selling_price || product.price) - product.purchase_price) }}
+                               {{ rp((product.selling_price || product.price) - product.purchase_price) }}
                             </span>
                         </div>
 
@@ -205,10 +204,10 @@ const handleTouchStart = () => {
                                         product.stock <= 5
                                             ? `Sisa ${parseFloat(
                                                     product.stock
-                                                )}`
+                                                )} ` + product.unit?.name
                                             : `Stok ${parseFloat(
                                                     product.stock
-                                                )}`
+                                                )} ` + product.unit?.name
                                     }}
                                 </span>
                             </div>

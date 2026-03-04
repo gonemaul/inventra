@@ -8,6 +8,7 @@ import TextInput from "@/Components/TextInput.vue";
 import InputRupiah from "@/Components/InputRupiah.vue";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import BottomSheet from "@/Components/BottomSheet.vue";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 
 const props = defineProps({
     show: Boolean,
@@ -18,6 +19,7 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "invoice-saved"]);
 const { isActionLoading } = useActionLoading();
+const toast = usePremiumAlert();
 
 // Kita gunakan useForm khusus untuk menangani file upload (multipart/form-data)
 const form = useForm({

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed } from "vue";
 import { router } from "@inertiajs/vue3";
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 import { useActionLoading } from "@/Composable/useActionLoading"; // Jika Anda menggunakan ini
 
 const props = defineProps({
@@ -9,7 +9,7 @@ const props = defineProps({
     purchase: Object,
 });
 const { isActionLoading } = useActionLoading();
-const toast = useToast();
+const toast = usePremiumAlert();
 
 const showStatusModal = ref(false);
 const data = ref({});

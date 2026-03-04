@@ -5,14 +5,14 @@ import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 import { useActionLoading } from "@/Composable/useActionLoading";
 import { ref, watch, computed, reactive } from "vue";
 import BottomSheet from "@/Components/BottomSheet.vue";
 import InputRupiah from "@/Components/InputRupiah.vue";
 
 const { isActionLoading } = useActionLoading();
-const toast = useToast();
+const toast = usePremiumAlert();
 const props = defineProps({
     show: Boolean,
     purchase: Object, // Data purchase untuk kalkulasi preview

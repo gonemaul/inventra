@@ -205,7 +205,18 @@ const selectItem = (item) => {
         <div
             class="sticky top-0 z-20 bg-white border-b shadow-sm dark:bg-gray-800 dark:border-gray-700"
         >
-            <!-- Search Bar -->
+        <!-- Sort Info Banner -->
+        <div class="px-4 pt-3 pb-0">
+            <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-800/50 rounded-xl p-2.5 flex items-start gap-2.5 text-indigo-700 dark:text-indigo-300 shadow-sm">
+                <svg class="w-4 h-4 mt-0.5 shrink-0 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div class="text-[11px] leading-relaxed">
+                    <span class="font-bold">Urutan Relevansi:</span> 
+                    Berdasarkan status <span class="font-bold text-red-600 dark:text-red-400">Habis Terjual (Laris)</span> ➔ <span class="font-bold text-yellow-600 dark:text-yellow-400">Menipis (Laris)</span> ➔ <span class="font-bold text-lime-600 dark:text-lime-400">Tersedia (Laris)</span> ➔ <span class="font-bold text-gray-500">Stok Mati / Kurang Laris</span>.
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
             <div class="pb-2 px-4 py-3 flex items-center gap-3">
                 <div class="relative flex-1">
                 <input

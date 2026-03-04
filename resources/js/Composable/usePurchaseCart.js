@@ -48,7 +48,6 @@ export function usePurchaseCart(isEdit = false, purchase = {}) {
     // 2. Tambah Item Baru (Mode: ADD)
     // Jika barang sudah ada, kita tambahkan jumlahnya (merge)
     function addToCart(product, quantity, price) {
-        console.log(product);
         const targetId = product.product_id;
         const qty = parseInt(quantity);
         const buyPrice = parseFloat(price);

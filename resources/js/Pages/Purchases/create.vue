@@ -10,7 +10,7 @@ import {
     onMounted,
     onUnmounted,
 } from "vue";
-import { useToast } from "vue-toastification";
+import { usePremiumAlert } from "@/Composable/usePremiumAlert";
 
 // Custom Composables
 import { useActionLoading } from "@/Composable/useActionLoading";
@@ -37,7 +37,7 @@ const props = defineProps({
     brands: Array, // Filter Brand
 });
 
-const toast = useToast();
+const toast = usePremiumAlert();
 const { isActionLoading } = useActionLoading();
 const SUPPLIER_KEY = "inventra_draft_supplier_id";
 
@@ -149,21 +149,7 @@ onUnmounted(() => {
     window.removeEventListener("resize", updateScreenSize);
 });
 
-// --- CUSTOM ALERT STATE ---
-const showPremiumAlert = ref(false);
-const alertItemName = ref('');
-const alertItemQty = ref(0);
-let alertTimeout = null;
-
-const triggerPremiumAlert = (name, qty) => {
-    alertItemName.value = name;
-    alertItemQty.value = qty;
-    showPremiumAlert.value = true;
-    if (alertTimeout) clearTimeout(alertTimeout);
-    alertTimeout = setTimeout(() => {
-        showPremiumAlert.value = false;
-    }, 3000);
-};
+// Removed local custom alert state since it's now global
 
 // --- 8. METHODS: STAGING & CATALOG ---
 
@@ -232,7 +218,7 @@ const handleSaveStaging = () => {
             stagingItem.value.quantity,
             stagingItem.value.purchase_price
         );
-        triggerPremiumAlert(stagingItem.value.name, stagingItem.value.quantity);
+        toast.custom('success', 'Item Ditambahkan!', `<span class="font-black text-lime-600 dark:text-lime-400">+${stagingItem.value.quantity}</span> ${stagingItem.value.name}`);
     }
     resetStaging();
 };
@@ -320,29 +306,6 @@ function parseRupiah(value) {
     <AuthenticatedLayout>
         <Head title="Buat RAB" />
 
-        <!-- Custom Premium Alert (Absolute/Fixed) -->
-        <Teleport to="body">
-            <transition
-                enter-active-class="transition duration-500 ease-out transform"
-                enter-from-class="-translate-y-10 opacity-0 scale-95"
-                enter-to-class="translate-y-0 opacity-100 scale-100"
-                leave-active-class="transition duration-300 ease-in transform"
-                leave-from-class="translate-y-0 opacity-100 scale-100"
-                leave-to-class="-translate-y-10 opacity-0 scale-95"
-            >
-                <div v-if="showPremiumAlert" class="fixed top-24 left-1/2 transform -translate-x-1/2 z-[100] flex items-center p-4 bg-white/90 backdrop-blur-xl border border-white/50 rounded-2xl shadow-2xl dark:bg-gray-800/95 dark:border-gray-700 min-w-[320px] max-w-[90vw]">
-                    <div class="flex-shrink-0 w-12 h-12 bg-lime-100 rounded-full flex items-center justify-center dark:bg-lime-900/50 shadow-inner">
-                        <svg class="w-6 h-6 text-lime-600 dark:text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
-                    </div>
-                    <div class="ml-4 flex-1">
-                        <p class="text-sm font-black text-gray-900 dark:text-white uppercase tracking-wider">Item Ditambahkan!</p>
-                        <p class="text-xs font-medium text-gray-500 dark:text-gray-400 mt-0.5"><span class="font-black text-lime-600 dark:text-lime-400">+{{ alertItemQty }}</span> {{ alertItemName }}</p>
-                    </div>
-                </div>
-            </transition>
-        </Teleport>
-
-        <!-- Hapus div py-12 dan recom duplikat -->
         <div class="w-full min-h-screen space-y-6 py-6 lg:py-10">
             <HeadRabMobile
                 v-if="isMobile"
@@ -459,6 +422,7 @@ function parseRupiah(value) {
                             :items="cartItems"
                             :stagingItem="stagingItem"
                             :isDraft="isDraft"
+                            :isEditMode="isEditMode"
                             :categories="categories"
                             :brands="brands"
                             @remove="handleRemoveItem"
