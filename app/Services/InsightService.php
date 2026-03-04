@@ -71,6 +71,10 @@ class InsightService
                     $avgVelocity = (float) ($analysis['inventory']['avg_daily'] ?? 0);
                     $seasonal = $this->calculator->getSeasonalRestock($product, $avgVelocity);
                     $this->processSeasonalRestockInsight($product, $seasonal);
+
+                    // Group Capital Efficiency
+                    $capital = $this->calculator->getCapitalEfficiency($product);
+                    $this->processCapitalEfficiencyInsight($product, $capital);
                 }
             });
     }
@@ -530,4 +534,39 @@ class InsightService
             SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_SEASONAL_RESTOCK)->delete();
         }
     }
+
+    /**
+     * PROCESSOR: CAPITAL EFFICIENCY ADVISOR
+     * Hanya menyimpan produk dengan efisiensi modal buruk (score D atau F).
+     * Threshold: hanya warning jika modal tertahan > Rp 200.000 (tidak worth-notif untuk stok receh).
+     */
+    private function processCapitalEfficiencyInsight(Product $product, array $capital): void
+    {
+        $isLowEfficiency = $capital['is_actionable'] && in_array($capital['efficiency_score'], ['D', 'F']);
+        $isSignificantCapital = $capital['capital_locked'] >= 200000;
+
+        if ($isLowEfficiency && $isSignificantCapital) {
+            $severity = $capital['efficiency_score'] === 'F'
+                ? SmartInsight::SEVERITY_WARNING
+                : SmartInsight::SEVERITY_INFO;
+
+            $capitalFmt = 'Rp ' . number_format($capital['capital_locked'], 0, ',', '.');
+            $holdingFmt = 'Rp ' . number_format($capital['holding_cost_monthly'], 0, ',', '.');
+
+            SmartInsight::updateOrCreate(
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_CAPITAL_EFFICIENCY],
+                [
+                    'severity'   => $severity,
+                    'title'      => "Modal Kurang Efisien: {$product->name} ({$capitalFmt} Terkunci)",
+                    'message'    => $capital['recommendation'] . " Biaya menyimpan: ~{$holdingFmt}/bulan.",
+                    'payload'    => $capital,
+                    'action_url' => '/products/'.$product->slug.'/edit',
+                    'updated_at' => now(),
+                ]
+            );
+        } else {
+            SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_CAPITAL_EFFICIENCY)->delete();
+        }
+    }
 }
+

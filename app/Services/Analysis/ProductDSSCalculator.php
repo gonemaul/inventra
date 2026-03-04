@@ -5,6 +5,7 @@ namespace App\Services\Analysis;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\SmartInsight;
+use App\Services\Analysis\Product\CapitalEfficiencyAnalyzer;
 use App\Services\Analysis\Product\ClassificationAnalyzer;
 use App\Services\Analysis\Product\FinancialAnalyzer;
 use App\Services\Analysis\Product\InventoryAnalyzer;
@@ -18,17 +19,20 @@ class ProductDSSCalculator
     protected $financialAnalyzer;
     protected $classificationAnalyzer;
     protected $seasonalRestockAnalyzer;
+    protected $capitalEfficiencyAnalyzer;
 
     public function __construct(
         InventoryAnalyzer $inventoryAnalyzer,
         FinancialAnalyzer $financialAnalyzer,
         ClassificationAnalyzer $classificationAnalyzer,
-        SeasonalRestockAnalyzer $seasonalRestockAnalyzer
+        SeasonalRestockAnalyzer $seasonalRestockAnalyzer,
+        CapitalEfficiencyAnalyzer $capitalEfficiencyAnalyzer
     ) {
         $this->inventoryAnalyzer = $inventoryAnalyzer;
         $this->financialAnalyzer = $financialAnalyzer;
         $this->classificationAnalyzer = $classificationAnalyzer;
         $this->seasonalRestockAnalyzer = $seasonalRestockAnalyzer;
+        $this->capitalEfficiencyAnalyzer = $capitalEfficiencyAnalyzer;
     }
     /**
      * =========================================================================
@@ -89,6 +93,14 @@ class ProductDSSCalculator
     public function getSeasonalRestock(Product $product, float $avgDailyVelocity): array
     {
         return $this->seasonalRestockAnalyzer->analyze($product, $avgDailyVelocity);
+    }
+
+    /**
+     * LOGIC: CAPITAL EFFICIENCY
+     */
+    public function getCapitalEfficiency(Product $product): array
+    {
+        return $this->capitalEfficiencyAnalyzer->analyze($product);
     }
 
     /**

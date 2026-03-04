@@ -47,6 +47,9 @@ class SmartInsight extends Model
     // AI Feature 5: Seasonal Restocking Planner
     public const TYPE_SEASONAL_RESTOCK = 'seasonal_restock';
 
+    // AI Feature 6: Capital Efficiency Advisor
+    public const TYPE_CAPITAL_EFFICIENCY = 'capital_efficiency';
+
     // type dss notif
     public const TYPE_DAILY_STRATEGY = 'daily_strategy';
 
