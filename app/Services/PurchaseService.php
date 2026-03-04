@@ -396,9 +396,9 @@ class PurchaseService
         $query = Product::query()
             ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'supplier_id')
             ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'insights']) // Eager load insights
-            ->withSum(['saleItems as sold_last_90_days' => function ($query) {
-                $query->where('created_at', '>=', now()->subDays(90));
-            }], 'quantity') // Hitung total terjual 90 hari terakhir
+            ->withSum(['saleItems as sold_last_30_days' => function ($query) {
+                $query->where('created_at', '>=', now()->subDays(30));
+            }], 'quantity') // Hitung total terjual 30 hari terakhir
             ->where('status', 'active');
 
         // Filter Supplier
@@ -448,25 +448,39 @@ class PurchaseService
                 'brand' => $item->brand->name ?? '-',
                 'image_path' => $item->image_path,
                 'image_url' => $item->image_url,
-                'sold_90d' => (int) $item->sold_last_90_days ?? 0,
+                'sold_30d' => (int) $item->sold_last_30_days ?? 0,
             ];
         });
 
-        // Sortir: 
+        // Sortir Cerdas (Smart Sort Recommendations): 
         // 1. Critical (Stok Habis / Insight Critical)
-        // 2. Stok Paling Sedikit (ASC)
-        // 3. Terlaris (Sold 90d DESC)
+        // 2. Terlaris (Sold 30d DESC)
+        // 3. Kebutuhan Stok terbanyak (Min - Stock) DESC
+        // 4. Deadstock dilempar ke paling bawah
         return $formattedRecommendations->sort(function ($a, $b) {
-            // Prioritas 1: Critical
+            $reqA = $a['min_stock'] - $a['current_stock'];
+            $reqB = $b['min_stock'] - $b['current_stock'];
+            
+            $isDeadA = $a['sold_30d'] <= 0 && $a['current_stock'] > 5;
+            $isDeadB = $b['sold_30d'] <= 0 && $b['current_stock'] > 5;
+
+            // Prioritas -1: Deadstock di paling bawah
+            if ($isDeadA !== $isDeadB) {
+                return $isDeadA ? 1 : -1;
+            }
+
+            // Prioritas 1: Critical (True selalu di atas)
             if ($a['is_critical'] !== $b['is_critical']) {
                 return $b['is_critical'] ? 1 : -1;
             }
-            // Prioritas 2: Stok (ASC)
-            if ($a['current_stock'] !== $b['current_stock']) {
-                return $a['current_stock'] <=> $b['current_stock'];
+            
+            // Prioritas 2: Terlaris / Tren
+            if ($a['sold_30d'] !== $b['sold_30d']) {
+                 return $b['sold_30d'] <=> $a['sold_30d'];
             }
-            // Prioritas 3: Terlaris (DESC)
-            return $b['sold_90d'] <=> $a['sold_90d'];
+
+            // Prioritas 3: Kebutuhan Stok (Tertinggi)
+            return $reqB <=> $reqA;
         })->values();
     }
 

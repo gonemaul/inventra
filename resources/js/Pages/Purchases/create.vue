@@ -393,7 +393,7 @@ function parseRupiah(value) {
                         class="relative flex items-center justify-center w-1/2 md:w-48 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 z-10"
                         :class="
                             activeView === 'table'
-                                ? 'text-gray-900 dark:text-gray-100'
+                                ? 'text-lime-700 dark:text-gray-100'
                                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200'
                         "
                     >
@@ -421,7 +421,7 @@ function parseRupiah(value) {
                         class="relative flex items-center justify-center w-1/2 md:w-56 py-2.5 text-sm font-bold rounded-lg transition-all duration-300 z-10"
                         :class="[
                             activeView === 'catalog'
-                                ? 'text-gray-900 dark:text-gray-100'
+                                ? 'text-lime-700 dark:text-gray-100'
                                 : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200',
                             !formHeader.supplier_id
                                 ? 'opacity-50 cursor-not-allowed'

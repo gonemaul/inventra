@@ -117,7 +117,8 @@ function parseRupiah(value) {
         </div>
 
         <div
-            class="relative p-5 overflow-hidden transition-colors bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-lg dark:bg-lime-900/10 dark:border-lime-900/50 dark:shadow-lime-900/20"
+            v-if="stagingItem.product_id"
+            class="relative p-5 overflow-hidden transition-colors bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-lg dark:bg-lime-900/10 dark:border-lime-900/50 dark:shadow-lime-900/20 animate-fade-in-up"
         >
             <div class="mb-4">
                 <label
@@ -127,11 +128,7 @@ function parseRupiah(value) {
                 <div
                     class="text-base font-bold text-gray-800 break-words dark:text-white"
                 >
-                    {{
-                        stagingItem.name
-                            ? stagingItem.name
-                            : "Belum ada barang dipilih"
-                    }}
+                    {{ stagingItem.name }}
                 </div>
                 <div
                     v-if="stagingItem.code"
@@ -180,14 +177,13 @@ function parseRupiah(value) {
                             >Qty</label
                         >
                         <input
-                            @@keydown.enter.prevent="$emit('saveStaging')"
+                            @keydown.enter.prevent="$emit('saveStaging')"
                             ref="qtyInputMobile"
                             v-model.number="stagingItem.quantity"
                             type="number"
                             min="1"
                             placeholder="0"
-                            :disabled="!stagingItem.product_id"
-                            class="w-full px-3 py-2 text-sm transition-colors bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+                            class="w-full px-3 py-2 text-sm transition-colors bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                         />
                     </div>
                     <div class="flex justify-between gap-3">
@@ -214,8 +210,7 @@ function parseRupiah(value) {
                                     "
                                     type="text"
                                     placeholder="0"
-                                    :disabled="!stagingItem.product_id"
-                                    class="w-full py-2 pl-8 pr-3 font-mono text-sm text-right transition-colors bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 disabled:bg-gray-100 dark:disabled:bg-gray-800 dark:disabled:text-gray-600"
+                                    class="w-full py-2 pl-8 pr-3 font-mono text-sm text-right transition-colors bg-white border border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
                                 />
                             </div>
                         </div>
@@ -254,21 +249,22 @@ function parseRupiah(value) {
                     type="button"
                     class="col-span-1 py-2.5 text-xs font-bold text-red-600 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900/30 dark:hover:bg-red-900/40"
                 >
-                    RESET
+                    BATAL
                 </button>
                 <button
                     @click="$emit('saveStaging')"
-                    :disabled="!stagingItem.product_id"
                     type="button"
-                    class="col-span-2 py-2.5 text-xs font-bold text-white bg-lime-600 rounded-lg hover:bg-lime-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 dark:disabled:text-gray-500 shadow-sm"
+                    class="col-span-2 py-2.5 text-xs font-bold text-white bg-lime-600 rounded-lg hover:bg-lime-700 shadow-sm"
                 >
                     {{ isEditingMode ? "UPDATE ITEM" : "TAMBAH KE LIST" }}
                 </button>
             </div>
         </div>
 
+        <!-- Rincian Tersembunyi (Hanya tampil saat item disorot) -->
         <div
-            class="overflow-hidden transition-colors bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-lg dark:bg-gray-900/90 dark:border-gray-800"
+            v-if="stagingItem.product_id"
+            class="overflow-hidden transition-colors bg-white/80 backdrop-blur-xl border border-gray-200/50 rounded-2xl shadow-lg dark:bg-gray-900/90 dark:border-gray-800 animate-fade-in-up"
         >
             <button
                 @click="showDetails = !showDetails"
@@ -391,7 +387,7 @@ function parseRupiah(value) {
             <button
                 @click="$emit('openRecommendation')"
                 type="button"
-                class="flex items-center justify-center gap-2 py-3 text-xs font-bold text-white uppercase transition bg-yellow-500 rounded-lg shadow-sm hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+                class="flex items-center justify-center gap-2 py-3 text-xs font-bold text-white uppercase transition bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-lg shadow-sm hover:from-yellow-600 hover:to-yellow-700"
             >
                 <svg
                     class="w-4 h-4"
@@ -412,7 +408,7 @@ function parseRupiah(value) {
             <Link :href="route('purchases.index')" class="w-full">
                 <button
                     type="button"
-                    class="w-full py-3 text-xs font-bold text-gray-700 uppercase transition bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600"
+                    class="w-full flex items-center justify-center py-3 text-xs font-bold text-gray-700 uppercase transition bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 dark:bg-gray-700 dark:text-white dark:border-gray-600 dark:hover:bg-gray-600"
                 >
                     Kembali
                 </button>
@@ -423,7 +419,7 @@ function parseRupiah(value) {
             @click="$emit('submitTransaction')"
             :disabled="formHeader.processing || cartItems.length === 0"
             type="button"
-            class="w-full py-4 text-sm font-extrabold tracking-widest text-white uppercase transition-all bg-blue-600 rounded-lg shadow-md hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
+            class="w-full py-4 mt-2 text-sm font-extrabold tracking-widest text-white uppercase transition-all bg-lime-600 rounded-lg shadow-md hover:bg-lime-700 disabled:bg-gray-400 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
         >
             {{
                 formHeader.processing

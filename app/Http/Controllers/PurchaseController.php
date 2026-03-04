@@ -182,7 +182,6 @@ class PurchaseController extends Controller
     {
         if ($request->ajax()) {
             $res = $this->purchaseService->getRecomendations($supplierId);
-
             return response()->json($res);
         }
     }
@@ -258,9 +257,13 @@ class PurchaseController extends Controller
             }
         }
 
-    // Default Sorting: Stock min ASC, then Sold Last 30 Days DESC
-    $productQuery->orderBy('stock', 'asc')
-                 ->orderBy('sold_last_30_days', 'desc');
+    // Default Sorting (Smart Sort): 
+    // 1. Sold Last 30 Days DESC (Tren tertinggi)
+    // 2. Kebutuhan Stok DESC (Seberapa kurang dari min_stock)
+    // 3. Stock ASC (Paling sedikit)
+    $productQuery->orderBy('sold_last_30_days', 'desc')
+                 ->orderByRaw('(min_stock - stock) DESC')
+                 ->orderBy('stock', 'asc');
 
         // --- 2. FACETED DATA (Smart Filters) ---
         

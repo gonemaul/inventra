@@ -19,16 +19,49 @@ const formatRupiah = (number) => {
     }).format(number);
 };
 
-// SORTING: Name ASC
-const sortedItems = computed(() => {
-    return [...props.items].sort((a, b) => {
-        const nameA = a.name?.toLowerCase() || "";
-        const nameB = b.name?.toLowerCase() || "";
-        if (nameA < nameB) return -1;
-        if (nameA > nameB) return 1;
-        return 0;
+// SEARCH & FILTER STATE
+const searchQuery = ref("");
+const sortOption = ref("name_asc"); // default
+
+// FILTERED & SORTED ITEMS
+const filteredAndSortedItems = computed(() => {
+    // 1. Search Logic
+    let result = props.items;
+    
+    if (searchQuery.value.trim() !== '') {
+        const terms = searchQuery.value.toLowerCase().split(' ').filter(t => t);
+        result = result.filter(item => {
+            const searchString = `${item.name || ''} ${item.code || ''} ${item.brand || ''} ${item.category || ''}`.toLowerCase();
+            return terms.every(term => searchString.includes(term));
+        });
+    }
+
+    // 2. Sort Logic
+    return result.sort((a, b) => {
+        switch (sortOption.value) {
+            case 'price_desc':
+                return (b.purchase_price || 0) - (a.purchase_price || 0);
+            case 'price_asc':
+                return (a.purchase_price || 0) - (b.purchase_price || 0);
+            case 'qty_desc':
+                return (b.quantity || 0) - (a.quantity || 0);
+            case 'qty_asc':
+                return (a.quantity || 0) - (b.quantity || 0);
+            case 'total_desc':
+                return ((b.purchase_price || 0) * (b.quantity || 0)) - ((a.purchase_price || 0) * (a.quantity || 0));
+            case 'name_asc':
+            default:
+                const nameA = a.name?.toLowerCase() || "";
+                const nameB = b.name?.toLowerCase() || "";
+                if (nameA < nameB) return -1;
+                if (nameA > nameB) return 1;
+                return 0;
+        }
     });
 });
+
+// For backward compatibility in template and keeping total logic correct based on UI
+const currentDisplayItems = computed(() => filteredAndSortedItems.value);
 
 const totalAmount = computed(() => {
     return props.items.reduce((sum, item) => sum + (item.purchase_price * item.quantity), 0);
@@ -38,16 +71,22 @@ const totalAmount = computed(() => {
 const selectedItems = ref([]); // Stores IDs of selected items
 const allSelected = computed({
     get() {
-        return props.items.length > 0 && selectedItems.value.length === props.items.length;
+        return currentDisplayItems.value.length > 0 && 
+            currentDisplayItems.value.every(i => selectedItems.value.includes(i.product_id || i.id));
     },
     set(value) {
         if (value) {
-            selectedItems.value = props.items.map(i => i.product_id || i.id);
+            // Only select visible items
+            const currentIds = currentDisplayItems.value.map(i => i.product_id || i.id);
+            // Merge unique
+            selectedItems.value = [...new Set([...selectedItems.value, ...currentIds])];
         } else {
-            selectedItems.value = [];
+            // Deselect visible items only
+            const currentIds = currentDisplayItems.value.map(i => i.product_id || i.id);
+            selectedItems.value = selectedItems.value.filter(id => !currentIds.includes(id));
         }
     }
-});
+})
 
 const showConfirmModal = ref(false);
 
@@ -100,8 +139,35 @@ watch(() => props.items, (newItems) => {
 
             <!-- Right: Total -->
             <div class="text-right mt-2 sm:mt-0 w-full sm:w-auto border-t sm:border-t-0 pt-2 sm:pt-0 flex justify-between sm:block">
-                <span class="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Est.</span>
+                <span class="text-xs text-gray-500 uppercase font-bold tracking-wider">Total Semua</span>
                 <div class="text-xl font-black text-lime-600 dark:text-lime-400">{{ formatRupiah(totalAmount) }}</div>
+            </div>
+        </div>
+
+        <!-- SEARCH & FILTER TOOLBAR -->
+        <div class="flex flex-col gap-3 sm:flex-row mb-4">
+            <div class="relative flex-1">
+                <div class="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                    <svg class="w-5 h-5 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <input 
+                    v-model="searchQuery"
+                    type="search" 
+                    placeholder="Cari barang di daftar belanja..." 
+                    class="block w-full p-2.5 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:placeholder-gray-400 dark:text-white dark:focus:ring-lime-500 dark:focus:border-lime-500 shadow-sm"
+                >
+            </div>
+            <div class="sm:w-48">
+                <select 
+                    v-model="sortOption"
+                    class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-lime-500 focus:border-lime-500 block w-full p-2.5 dark:bg-gray-800 dark:border-gray-700 dark:placeholder-gray-400 dark:text-white dark:focus:ring-lime-500 dark:focus:border-lime-500 shadow-sm font-medium"
+                >
+                    <option value="name_asc">A-Z (Nama)</option>
+                    <option value="total_desc">Total Harga Tertinggi</option>
+                    <option value="price_desc">Harga Satuan Termahal</option>
+                    <option value="price_asc">Harga Satuan Termurah</option>
+                    <option value="qty_desc">Kuantitas Terbanyak</option>
+                </select>
             </div>
         </div>
 
@@ -122,11 +188,13 @@ watch(() => props.items, (newItems) => {
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-gray-700">
-                    <tr v-if="sortedItems.length === 0">
-                        <td colspan="7" class="px-6 py-10 text-center text-gray-500">Belum ada item dipilih.</td>
+                    <tr v-if="currentDisplayItems.length === 0">
+                        <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                            {{ props.items.length === 0 ? 'Belum ada item dipilih.' : 'Tidak ada produk yang cocok dengan pencarian.' }}
+                        </td>
                     </tr>
                     <tr 
-                        v-for="item in sortedItems" 
+                        v-for="item in currentDisplayItems" 
                         :key="item.product_id || item.id" 
                         class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition cursor-pointer"
                         :class="selectedItems.includes(item.product_id || item.id) ? 'bg-lime-50/50 dark:bg-lime-900/10' : ''"
@@ -188,12 +256,12 @@ watch(() => props.items, (newItems) => {
 
         <!-- MOBILE CARDS (Visible on Mobile) -->
         <div class="md:hidden space-y-3 pb-20">
-            <div v-if="sortedItems.length === 0" class="text-center py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                Belum ada item dipilih.
+            <div v-if="currentDisplayItems.length === 0" class="text-center py-10 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-300 dark:bg-gray-800 dark:border-gray-700">
+                 {{ props.items.length === 0 ? 'Belum ada item dipilih.' : 'Tidak ada pencarian cocok.' }}
             </div>
 
             <div 
-                v-for="item in sortedItems" 
+                v-for="item in currentDisplayItems" 
                 :key="item.product_id || item.id" 
                 class="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-sm p-3 flex gap-3 relative overflow-hidden transition-all"
                 :class="selectedItems.includes(item.product_id || item.id) ? 'ring-2 ring-lime-500 bg-lime-50/20' : ''"
@@ -219,6 +287,9 @@ watch(() => props.items, (newItems) => {
                 <div class="flex-1 min-w-0 pl-1">
                     <div class="flex justify-between items-start">
                         <h4 class="text-sm font-bold text-gray-900 dark:text-white line-clamp-2 leading-tight mb-1" :title="item.name">{{ item.name }}</h4>
+                        <button @click.stop="$emit('remove', item)" class="text-gray-400 hover:text-red-600 transition p-1 rounded-full hover:bg-red-50 -mt-1 -mr-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
                     </div>
                     
                     <div class="text-[10px] text-gray-500 font-mono mb-2 flex items-center gap-1">

@@ -104,7 +104,9 @@ const formatRupiah = (number) => {
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                        <!-- BARIS FORM: Qty & Harga Beli -->
+                        <!-- Hanya tampil jika ada produk yang dipilih -->
+                        <div v-if="stagingItem.product_id" class="grid grid-cols-1 gap-4 md:grid-cols-3 animate-fade-in-up">
                             <div class="md:col-span-1">
                                 <label
                                     class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
@@ -119,8 +121,7 @@ const formatRupiah = (number) => {
                                     type="number"
                                     min="1"
                                     placeholder="0"
-                                    :disabled="!stagingItem.product_id"
-                                    class="w-full px-3 py-2 transition-colors bg-white border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 disabled:bg-gray-100 disabled:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 sm:text-sm"
+                                    class="w-full px-3 py-2 transition-colors bg-white border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 sm:text-sm"
                                 />
                             </div>
 
@@ -151,15 +152,15 @@ const formatRupiah = (number) => {
                                         "
                                         type="text"
                                         placeholder="0"
-                                        :disabled="!stagingItem.product_id"
-                                        class="w-full px-3 py-2 pl-10 font-mono text-right transition-colors bg-white border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 disabled:bg-gray-100 disabled:text-gray-400 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 dark:disabled:bg-gray-800 dark:disabled:text-gray-500 sm:text-sm"
+                                        class="w-full px-3 py-2 pl-10 font-mono text-right transition-colors bg-white border border-gray-300 rounded-md shadow-sm focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400 sm:text-sm"
                                     />
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="flex-shrink-0 w-full md:w-32">
+                    <!-- PREVIEW GAMBAR -->
+                    <div v-if="stagingItem.product_id" class="flex-shrink-0 w-full md:w-32 animate-fade-in-up">
                         <label
                             class="block mb-1 text-sm font-medium text-center text-gray-700 dark:text-gray-300 md:text-left"
                             >Preview</label
@@ -201,6 +202,7 @@ const formatRupiah = (number) => {
                     </div>
                 </div>
 
+                <!-- BUTTON ACTIONS -->
                 <div
                     class="flex flex-wrap justify-center gap-2 lg:justify-start"
                 >
@@ -212,21 +214,23 @@ const formatRupiah = (number) => {
                         >
                     </Link>
 
+                    <!-- Add or Edit Button (Only when product selected) -->
                     <PrimaryButton
+                        v-if="stagingItem.product_id"
                         type="button"
                         @click="$emit('saveStaging')"
-                        :disabled="!stagingItem.product_id"
-                        class="dark:bg-lime-600 dark:hover:bg-lime-700 dark:focus:bg-lime-700"
+                        class="dark:bg-lime-600 dark:hover:bg-lime-700 dark:focus:bg-lime-700 animate-fade-in-up"
                     >
                         {{ isEditingMode ? "Update Item" : "Tambah Item" }}
                     </PrimaryButton>
 
                     <button
+                        v-if="stagingItem.product_id"
                         @click="$emit('resetStaging')"
                         type="button"
-                        class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-red-500 border border-transparent rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-700"
+                        class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-red-500 border border-transparent rounded-md hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-700 animate-fade-in-up"
                     >
-                        Reset
+                        Reset / Batal
                     </button>
 
                     <PrimaryButton
@@ -235,17 +239,18 @@ const formatRupiah = (number) => {
                         :disabled="
                             formHeader.processing || cartItems.length === 0
                         "
-                        class="dark:bg-lime-600 dark:hover:bg-lime-700 dark:focus:bg-lime-700"
+                        class="dark:bg-lime-600 dark:hover:bg-lime-700 dark:focus:bg-lime-700 ml-auto"
                     >
-                        {{ formHeader.processing ? "Menyimpan..." : "Simpan" }}
+                        {{ formHeader.processing ? "Menyimpan..." : "Simpan Pesanan (" + cartItems.length + ")" }}
                     </PrimaryButton>
 
                     <button
+                        v-if="!stagingItem.product_id"
                         @click="$emit('openRecommendation')"
                         type="button"
-                        class="inline-flex items-center px-4 py-2 text-xs font-semibold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-yellow-500 border border-transparent rounded-md hover:bg-yellow-600 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 dark:bg-yellow-600 dark:hover:bg-yellow-700"
+                        class="inline-flex items-center px-4 py-2 text-xs font-bold tracking-widest text-white uppercase transition duration-150 ease-in-out bg-gradient-to-r from-yellow-500 to-yellow-600 border border-transparent rounded-md hover:from-yellow-600 hover:to-yellow-700 shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 ml-2"
                     >
-                        Rekomendasi
+                        💡 Cek Rekomendasi
                     </button>
                 </div>
             </div>
