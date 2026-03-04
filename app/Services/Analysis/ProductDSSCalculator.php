@@ -145,7 +145,7 @@ class ProductDSSCalculator
                         'selling_price' => $product->selling_price,
                         'current_margin' => $product->current_margin,
                     ],
-                    'action_url' => '/products/'.$product->id.'/edit',
+                    'action_url' => '/products/'.$product->slug.'/edit',
                     'updated_at' => now(),
                     'is_read' => false,
                     'is_notified' => true,

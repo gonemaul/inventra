@@ -274,7 +274,7 @@ class InsightService
                     'title' => 'Perlu Restock: '.$product->name,
                     'message' => $metrics['message'],
                     'payload' => $metrics,
-                    'action_url' => '/purchases/create?product_id='.$product->id,
+                    'action_url' => '/purchases/create?product_slug='.$product->slug,
                     'updated_at' => now(),
                 ]
             );
@@ -295,7 +295,7 @@ class InsightService
                     'title' => 'Barang Mati: '.$product->name,
                     'message' => "Tidak laku {$metrics['days_inactive']} hari. Uang mandek Rp {$frozenRp}",
                     'payload' => $metrics,
-                    'action_url' => '/products/'.$product->id,
+                    'action_url' => '/products/'.$product->slug.'/edit',
                     'updated_at' => now(),
                 ]
             );
@@ -317,7 +317,7 @@ class InsightService
                     'title' => 'Margin Menipis: '.$product->name,
                     'message' => "Margin drop ke {$currentMargin}% (Target: {$targetMargin}%). Modal naik menjadi Rp {$beli}.",
                     'payload' => $metrics['margin'],
-                    'action_url' => '/products/'.$product->id.'/edit',
+                    'action_url' => '/products/'.$product->slug.'/edit',
                     'updated_at' => now(),
                 ]
             );
@@ -336,7 +336,7 @@ class InsightService
                     'title' => 'Produk High Margin: '.$product->name,
                     'message' => "Profit tebal ({$metrics['margin']['percent']}%). Prioritaskan stok agar tidak kosong.",
                     'payload' => $metrics['margin'],
-                    'action_url' => '/products/'.$product->id,
+                    'action_url' => '/products/'.$product->slug.'/edit',
                     'updated_at' => now(),
                 ]
             );
@@ -355,7 +355,7 @@ class InsightService
                     'title' => 'Produk Baru: '.$product->name,
                     'message' => "Produk baru ditambahkan {$metrics['lifecycle']['days_active']} hari lalu.",
                     'payload' => $metrics['lifecycle'],
-                    'action_url' => '/products/'.$product->id,
+                    'action_url' => '/products/'.$product->slug.'/edit',
                     'updated_at' => now(),
                 ]
             );

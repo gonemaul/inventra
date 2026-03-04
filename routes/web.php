@@ -10,6 +10,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SalesRecapController;
 use App\Http\Controllers\ShopSettingController;
+use App\Http\Controllers\SmartInsightController;
 use App\Services\Analysis\ProductDSSCalculator;
 use App\Services\InsightService;
 use Illuminate\Support\Facades\Http;
@@ -133,6 +134,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/cash-flow', [ReportController::class, 'cashFlow'])->name('cash-flow');
         Route::get('/expense-summary', [ReportController::class, 'expenseSummary'])->name('expense-summary');
         Route::get('/top-customers', [ReportController::class, 'topCustomers'])->name('top-customers');
+        // PILAR 5 SMART DSS
+        Route::get('/smart-insights', [SmartInsightController::class, 'index'])->name('smart-insights');
+        Route::post('/smart-insights/analyze', [SmartInsightController::class, 'analyze'])->name('smart-insights.analyze');
+        Route::get('/smart-insights/export', [SmartInsightController::class, 'export'])->name('smart-insights.export');
     });
 
     Route::resource('products', \App\Http\Controllers\ProductController::class)->except(['destroy']);

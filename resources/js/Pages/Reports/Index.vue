@@ -144,6 +144,21 @@ const reportGroups = [
             },
         ],
     },
+    {
+        title: "SMART DSS",
+        subtitle: "AI & Analisa",
+        color: "text-rose-600 bg-rose-50 border-rose-200",
+        borderColor: "hover:border-rose-400",
+        items: [
+            {
+                title: "Smart Insights",
+                desc: "Rekomendasi otomatis AI tentang stok & harga.",
+                route: "reports.smart-insights",
+                canExport: true,
+                icon: "🧠",
+            },
+        ],
+    },
 ];
 
 // Placeholder aksi export (Nanti diintegrasikan ke Backend)
