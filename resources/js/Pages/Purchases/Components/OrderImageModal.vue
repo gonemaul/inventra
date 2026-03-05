@@ -34,7 +34,7 @@ const getWhatsappUrl = () => {
     text += `Detail pesanan ada di gambar terlampir.`;
 
     // Jika ada item yang terpotong di gambar, ingatkan di teks
-    const message = customMessage.value != "" ? customMessage.value : text;
+    let message = customMessage.value != "" ? customMessage.value : text;
     if (remainingCount.value > 0) {
         message += `\n(Catatan: Ada ${remainingCount.value} barang lagi yang tidak muat di gambar. Mohon cek detail lengkapnya).`;
     }

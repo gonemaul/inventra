@@ -28,6 +28,34 @@ const showScanModal = ref(false); // Kontrol modal verifikasi
 const showSearch = ref(false); // Kontrol overlay pencarian manual
 const searchQuery = ref("");
 
+// --- SMART SEARCH (Persistent) ---
+const searchKeywords = ref("");
+const searchWords = computed(() => searchKeywords.value.toLowerCase().split(' ').filter(w => w));
+
+const matchesSearch = (productName, productCode) => {
+    if (searchWords.value.length === 0) return true;
+    const nameLower = (productName || '').toLowerCase();
+    const codeLower = (productCode || '').toLowerCase();
+    const textToSearch = nameLower + ' ' + codeLower;
+    
+    // Semua kata (potongan kata) harus ada
+    return searchWords.value.every(word => textToSearch.includes(word));
+};
+
+const filteredUnlinked = computed(() => {
+    if (!props.unlinkedItems) return null;
+    return props.unlinkedItems.filter(item => 
+        matchesSearch(item.product?.name, item.product?.code)
+    );
+});
+
+const filteredLinked = computed(() => {
+    if (!props.linkedItems) return [];
+    return props.linkedItems.filter(item => 
+        matchesSearch(item.product?.name, item.product?.code)
+    );
+});
+
 // State Item yang sedang diproses di Modal
 const currentItem = ref({
     // Identitas
@@ -267,8 +295,9 @@ const handleTotalChange = (event) => {
         // Rumus: Harga = Total / Qty
         const newPrice = newTotal / qty;
 
-        // Bulatkan agar rapi (pilih salah satu)
-        currentItem.value.price = Math.round(newPrice);
+        // Simpan sebagai nilai pecahan (float) agar ketika dikalikan ulang hasilnya pas 100%
+        // tanpa ada selisih pembulatan (misal 10000/3 = 3333.33)
+        currentItem.value.price = newPrice;
     } else {
         // Jika Qty 0, anggap harga = total
         currentItem.value.price = newTotal;
@@ -342,15 +371,40 @@ const adjustQty = (amount) => {
         </div>
 
         <div class="px-4 space-y-3">
+            <!-- BILAH PENCARIAN PERSISTENT (SMART SEARCH) -->
+            <div class="relative mt-1 mb-2">
+                <svg
+                    class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-3 top-1/2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input
+                    v-model="searchKeywords"
+                    type="text"
+                    placeholder="Cari bagian nama / kode produk..."
+                    class="w-full pl-10 pr-9 py-2.5 text-sm bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all"
+                />
+                <button
+                    v-if="searchKeywords"
+                    @click="searchKeywords = ''"
+                    class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 right-3 top-1/2 hover:text-gray-600"
+                >
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
             <UnlinkMobile
                 v-if="activeTab === 'unlinked'"
-                :unlinked-items="unlinkedItems"
+                :unlinked-items="filteredUnlinked"
                 :handleProductSelection="onSelectUnlinked"
             />
 
             <LinkedMobile
                 v-if="activeTab === 'linked'"
-                :linkedItems="linkedItems"
+                :linkedItems="filteredLinked"
                 :openEditModal="onSelectLinked"
             />
         </div>
@@ -376,14 +430,8 @@ const adjustQty = (amount) => {
         >
             <div class="flex gap-3">
                 <button
-                    @click="showSearch = true"
-                    class="flex-1 py-4 font-bold text-gray-800 bg-white border border-gray-100 rounded-full shadow-lg dark:bg-gray-800 dark:text-white dark:border-gray-700"
-                >
-                    CARI
-                </button>
-                <button
                     @click="showScanner = true"
-                    class="flex-[2] flex items-center justify-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-4 rounded-full shadow-xl font-bold text-lg active:scale-95 transition"
+                    class="w-full flex items-center justify-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-4 rounded-full shadow-xl font-bold text-lg active:scale-95 transition"
                 >
                     <svg
                         xmlns="http://www.w3.org/2000/svg"

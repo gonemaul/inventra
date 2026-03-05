@@ -1,6 +1,6 @@
 <script setup>
 import { Link } from "@inertiajs/vue3";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
@@ -78,6 +78,36 @@ const localSearchKeyword = computed({
     get: () => props.searchKeyword,
     set: (val) => emit("update:searchKeyword", val),
 });
+
+// --- SMART SEARCH DESKTOP ---
+const searchKeywordsDesk = ref("");
+const searchWordsDesk = computed(() =>
+    searchKeywordsDesk.value
+        .toLowerCase()
+        .split(" ")
+        .filter((w) => w)
+);
+
+const matchesDeskSearch = (name, code) => {
+    if (searchWordsDesk.value.length === 0) return true;
+    const text = `${(name || "").toLowerCase()} ${(code || "").toLowerCase()}`;
+    return searchWordsDesk.value.every((w) => text.includes(w));
+};
+
+const filteredLinkedItems = computed(() =>
+    props.editableLinkedItems.filter((item) =>
+        matchesDeskSearch(
+            item.product_snapshot?.name,
+            item.product_snapshot?.code
+        )
+    )
+);
+
+const filteredUnlinkedItems = computed(() =>
+    (props.unlinkedItems || []).filter((item) =>
+        matchesDeskSearch(item.product?.name, item.product?.code)
+    )
+);
 </script>
 <template>
     <AuthenticatedLayout
@@ -110,6 +140,22 @@ const localSearchKeyword = computed({
                             <p class="text-xs text-gray-500 dark:text-gray-400">
                                 Sesuaikan Qty dan Harga sesuai fisik barang.
                             </p>
+                        </div>
+
+                        <!-- SMART SEARCH INPUT DESKTOP -->
+                        <div class="relative w-56">
+                            <svg class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                            </svg>
+                            <input
+                                v-model="searchKeywordsDesk"
+                                type="text"
+                                placeholder="Cari nama / kode..."
+                                class="w-full pl-9 pr-8 py-1.5 text-xs bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all"
+                            />
+                            <button v-if="searchKeywordsDesk" @click="searchKeywordsDesk = ''" class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 right-2.5 top-1/2 hover:text-gray-600">
+                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                            </button>
                         </div>
 
                         <span
@@ -193,7 +239,12 @@ const localSearchKeyword = computed({
                                     class="divide-y divide-gray-100 dark:divide-gray-700"
                                 >
                                     <tr
-                                        v-for="item in editableLinkedItems"
+                                        v-if="filteredLinkedItems.length === 0 && searchKeywordsDesk"
+                                    >
+                                        <td colspan="4" class="px-4 py-8 text-xs text-center text-gray-400">Tidak ada item yang cocok dengan pencarian "<strong>{{ searchKeywordsDesk }}</strong>"</td>
+                                    </tr>
+                                    <tr
+                                        v-for="item in filteredLinkedItems"
                                         :key="item.id"
                                         class="transition group hover:bg-gray-50 dark:hover:bg-gray-700/50"
                                     >
@@ -377,12 +428,9 @@ const localSearchKeyword = computed({
                                                 >
                                                 <input
                                                     type="number"
-                                                    v-model.number="
-                                                        item.purchase_price
-                                                    "
-                                                    :disabled="
-                                                        pageMode !== 'edit'
-                                                    "
+                                                    v-model.number="item.purchase_price"
+                                                    :disabled="pageMode !== 'edit'"
+                                                    step="any"
                                                     class="w-full pl-7 pr-2 py-1.5 text-right text-sm font-medium border-gray-300 rounded-lg focus:ring-lime-500 focus:border-lime-500 disabled:bg-gray-100 disabled:text-gray-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                                                 />
                                             </div>
@@ -799,6 +847,18 @@ const localSearchKeyword = computed({
                     <h4 class="mb-3 font-bold dark:text-gray-200">
                         Produk Belum Tertaut
                     </h4>
+                    <!-- Smart Search untuk Unlinked -->
+                    <div class="relative mb-3">
+                        <svg class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        <input
+                            v-model="searchKeywordsDesk"
+                            type="text"
+                            placeholder="Filter produk..."
+                            class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                        />
+                    </div>
                     <form @submit.prevent="actions.submitLinkage">
                         <p
                             v-if="
@@ -815,7 +875,7 @@ const localSearchKeyword = computed({
                         >
                             <ul class="p-2 space-y-1">
                                 <li
-                                    v-for="item in unlinkedItems"
+                                    v-for="item in filteredUnlinkedItems"
                                     :key="item.id"
                                     class="flex items-center justify-between w-full p-2 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
                                 >

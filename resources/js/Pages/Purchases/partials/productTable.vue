@@ -1,10 +1,23 @@
 <script setup>
 import DataTable from "@/Components/DataTable.vue";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { Link } from "@inertiajs/vue3";
 
 const props = defineProps({
     items: { type: Array, required: true },
+});
+
+// --- SMART SEARCH ---
+const searchKeywords = ref("");
+const searchWords = computed(() =>
+    searchKeywords.value.toLowerCase().split(" ").filter((w) => w)
+);
+const filteredItems = computed(() => {
+    if (searchWords.value.length === 0) return props.items;
+    return props.items.filter((item) => {
+        const text = `${(item.product_snapshot?.name || "").toLowerCase()} ${(item.product_snapshot?.code || "").toLowerCase()}`;
+        return searchWords.value.every((w) => text.includes(w));
+    });
 });
 
 const columns = [
@@ -113,14 +126,31 @@ const statuses = ref({
     <div
         class="p-4 space-y-5 bg-white border rounded-lg shadow-md dark:bg-gray-800"
     >
-        <h3 class="text-lg font-bold dark:text-white">
-            Daftar Produk yang dibeli
-        </h3>
+        <div class="flex items-center justify-between">
+            <h3 class="text-lg font-bold dark:text-white">
+                Daftar Produk yang dibeli
+            </h3>
+            <!-- SMART SEARCH -->
+            <div class="relative w-64">
+                <svg class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                <input
+                    v-model="searchKeywords"
+                    type="text"
+                    placeholder="Cari nama / kode produk..."
+                    class="w-full pl-9 pr-8 py-2 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all"
+                />
+                <button v-if="searchKeywords" @click="searchKeywords = ''" class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 right-2.5 top-1/2 hover:text-gray-600">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+        </div>
         <DataTable
             :columns="columns"
             :serverSide="false"
             :perPageOptions="[5, 10, 20]"
-            :data="items"
+            :data="filteredItems"
         >
             <!-- Slot aksi -->
             <template #invoice="{ row }">

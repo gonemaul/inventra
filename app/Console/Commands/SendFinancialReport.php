@@ -6,6 +6,7 @@ use App\Models\Purchase;
 use App\Models\Sale;
 // Model Pembelian/Belanja
 use App\Services\TelegramService;
+use App\Services\InsightService;
 use Illuminate\Console\Command;
 
 class SendFinancialReport extends Command
@@ -14,8 +15,9 @@ class SendFinancialReport extends Command
 
     protected $description = 'Laporan Finansial (Harian, Mingguan, Bulanan)';
 
-    public function handle()
+    public function handle(InsightService $insightService)
     {
+        $insightService->runScheduledAnalysis();
         $message = "💰 <b>FINANCIAL UPDATE (12:30)</b>\n";
         $message .= '🗓 '.now()->isoFormat('dddd, D MMMM Y')."\n\n";
         // $message .= "━━━━━━━━━━━━━━━━━━━━━━━━\n\n";

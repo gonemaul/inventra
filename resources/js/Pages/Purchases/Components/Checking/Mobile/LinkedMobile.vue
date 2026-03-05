@@ -11,7 +11,6 @@ const rp = (n) =>
     }).format(n || 0);
 </script>
 <template>
-    <div>
         <div
             v-if="linkedItems.length === 0"
             class="py-10 text-sm text-center text-gray-400"
@@ -169,32 +168,21 @@ const rp = (n) =>
                         </div>
                     </div>
 
+                <div class="flex items-center justify-between mt-3 p-2.5 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-700/50 shadow-inner">
                     <div class="flex flex-col">
-                        <span class="text-[10px] text-gray-400">Kalkulasi</span>
-                        <div
-                            class="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400"
-                        >
-                            <span
-                                class="font-bold text-gray-800 dark:text-gray-200"
-                                >{{ item.quantity }}</span
-                            >
-                            <span>x</span>
-                            <span>{{ rp(item.purchase_price) }}</span>
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Qty Fisik & Harga</span>
+                        <div class="flex items-baseline gap-1.5">
+                            <span class="font-black text-blue-600 dark:text-blue-400 text-lg">{{ item.quantity }}</span>
+                            <span class="text-gray-400 text-[10px] font-bold">x</span>
+                            <span class="font-bold text-gray-700 dark:text-gray-200 text-sm">{{ rp(item.purchase_price) }}</span>
                         </div>
                     </div>
-                </div>
-
-                <div
-                    class="flex items-end justify-between pt-2 mt-2 border-t border-gray-100 border-dashed dark:border-gray-700"
-                >
-                    <span class="text-[10px] text-gray-400"
-                        >Total Subtotal</span
-                    >
-                    <span
-                        class="font-mono text-sm font-black text-gray-800 dark:text-gray-100"
-                    >
-                        {{ rp(item.purchase_price * item.quantity) }}
-                    </span>
+                    <div class="flex flex-col items-end border-l-2 border-dashed border-gray-200 dark:border-gray-700 pl-3">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Fixed</span>
+                        <span class="font-black text-xl text-gray-900 dark:text-white leading-none tracking-tight">
+                            {{ rp(item.purchase_price * item.quantity) }}
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>

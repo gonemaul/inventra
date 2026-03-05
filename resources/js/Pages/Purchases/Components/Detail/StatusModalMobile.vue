@@ -91,7 +91,7 @@ const getConfig = (status) => {
 <template>
     <div
         v-if="showStatusModal"
-        class="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm"
+        class="fixed inset-0 z-[60] flex items-center justify-center px-4 bg-black/50 backdrop-blur-sm"
     >
         <div class="w-full max-w-sm p-6 bg-white dark:bg-gray-900 rounded-2xl">
             <h3

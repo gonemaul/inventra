@@ -715,11 +715,19 @@ const saveCorrections = (product = null) => {
 
 // 5. Validate Invoice (Finalisasi)
 const validateInvoice = () => {
-    if (props.invoice.status === "validated") return;
+    if (props.invoice.status === "validated") {
+        toast.warning("Invoice ini sudah divalidasi sebelumnya.");
+        return;
+    }
 
-    if (computedTotalNominal.value !== props.invoice.total_amount) {
+    // Gunakan toleransi Rp 1 untuk mengakomodasi floating-point imprecision
+    // (misal: 3333.33 x 3 = 9999.99 vs 10000, selisih < Rp 1 masih diterima)
+    const selisih = Math.abs(
+        computedTotalNominal.value - props.invoice.total_amount
+    );
+    if (selisih > 1) {
         toast.error(
-            `Total nominal (${computedTotalNominal.value}) tidak sesuai dengan Target Nota (${props.invoice.total_amount}).`
+            `Selisih Rp ${Math.round(selisih).toLocaleString('id-ID')} — Total item (${formatRupiah(computedTotalNominal.value)}) tidak cocok dengan Nota (${formatRupiah(props.invoice.total_amount)}). Koreksi Qty/Harga terlebih dahulu.`
         );
         return;
     }
@@ -743,11 +751,19 @@ const validateInvoice = () => {
         {
             preserveScroll: true,
             onSuccess: () => {
-                toast.success("Invoice Validated!");
-                router.visit(route("purchases.validate", props.purchase.id), {
-                    preserveScroll: true,
-                    preserveState: false,
-                });
+                toast.success("✅ Invoice berhasil divalidasi!");
+                setTimeout(() => {
+                    router.visit(
+                        route("purchases.validate", props.purchase.id),
+                        {
+                            preserveScroll: true,
+                            preserveState: false,
+                        }
+                    );
+                }, 800); // Beri jeda agar toast sempat tampil
+            },
+            onError: (err) => {
+                toast.error(`Gagal validasi: ${JSON.stringify(err)}`);
             },
             onFinish: () => {
                 isProcessing.value = false;

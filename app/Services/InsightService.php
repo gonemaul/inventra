@@ -36,6 +36,7 @@ class InsightService
      */
     public function runScheduledAnalysis()
     {
+        try{
         // Pre-load batch stats agar ClassificationAnalyzer tidak N+1 query
         $classificationAnalyzer = $this->calculator->getClassificationAnalyzer();
         $batchRevenue    = $classificationAnalyzer->getBatchRevenue();
@@ -83,6 +84,9 @@ class InsightService
 
         // Jalankan analisa bundling secara global (tidak per-produk)
         $this->runBundlingAnalysis();
+        }catch(\Exception $e){
+            TelegramService::send("ERROR: {$e->getMessage()}");
+        }
     }
 
     /**

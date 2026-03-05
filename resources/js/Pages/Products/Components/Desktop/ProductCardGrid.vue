@@ -50,7 +50,7 @@ const isTrashed = computed(() => props.data.deleted_at !== null);
              <!-- Placeholder Icon -->
             <div
                 v-if="imageError || !data.image_url"
-                class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-300 to-gray-50 dark:from-gray-700 dark:to-gray-800 p-3 transition-opacity duration-300"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-300 dark:from-gray-700 dark:to-gray-800 p-3 transition-opacity duration-300"
             >
                  <span class="text-sm md:text-base font-bold text-center text-gray-500 dark:text-gray-400 line-clamp-3 break-words select-none">{{ data.name }}</span>
             </div>

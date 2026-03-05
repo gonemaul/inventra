@@ -37,7 +37,7 @@ const isStockLow = computed(() => {
             <!-- Placeholder / No Image -->
             <div
                 v-if="!data.image_url"
-                class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-lime-50 to-lime-100 dark:from-gray-700 dark:to-gray-800 p-2"
+                class="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-400 dark:from-gray-700 dark:to-gray-800 p-2"
             >
                 <span class="text-[10px] md:text-xs font-bold text-center text-gray-500 dark:text-gray-400 line-clamp-3 break-words select-none">{{ data.name }}</span>
             </div>

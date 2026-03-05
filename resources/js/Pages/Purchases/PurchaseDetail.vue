@@ -7,7 +7,7 @@ import {
     defineAsyncComponent,
 } from "vue";
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
-import { Head } from "@inertiajs/vue3";
+import { Head, router } from "@inertiajs/vue3";
 
 import DeleteConfirm from "@/Components/DeleteConfirm.vue";
 import ConfirmModal from "@/Components/ConfirmModal.vue";
