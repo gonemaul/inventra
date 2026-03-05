@@ -347,11 +347,28 @@ class InsightService
                     'severity' => $metrics['status'],
                     'title' => 'Perlu Restock: '.$product->name.$velocityHint,
                     'message' => $metrics['message'],
-                    'payload' => $metrics,  // Seluruh payload termasuk velocity_7d, dynamic_min_stock, dll.
+                    'payload' => $metrics,
                     'action_url' => '/purchases/create?product_slug='.$product->slug,
                     'updated_at' => now(),
                 ]
             );
+
+            // Telegram — hanya untuk CRITICAL (stok < safety stock, akan habis < 3 hari)
+            if ($metrics['status'] === SmartInsight::SEVERITY_CRITICAL) {
+                $cacheKey = 'notif_restock_critical_'.$product->id;
+                if (! Cache::has($cacheKey)) {
+                    $daysLeft = $metrics['days_left'] ?? '?';
+                    $stockNow = $metrics['stock'] ?? $product->stock ?? '?';
+                    $msg  = "🚨 <b>STOK KRITIS: PERLU BELI SEKARANG!</b>\n\n";
+                    $msg .= "📦 <b>{$product->name}</b>\n";
+                    $msg .= "📉 Stok Sekarang: <b>{$stockNow} pcs</b>\n";
+                    $msg .= "⏰ Sisa: <b>~{$daysLeft} hari</b>\n";
+                    $msg .= "📈 Kecepatan jual: <b>{$metrics['avg_daily']} pcs/hari</b>\n\n";
+                    $msg .= "👉 Segera lakukan pembelian di aplikasi.";
+                    TelegramService::send($msg);
+                    Cache::put($cacheKey, true, now()->addHours(6));
+                }
+            }
         } else {
             SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_RESTOCK)->delete();
         }
@@ -363,9 +380,9 @@ class InsightService
             $frozenRp = number_format($metrics['frozen_asset'], 0, ',', '.');
 
             SmartInsight::updateOrCreate(
-                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_DEAD_STOCK], // TYPE DEAD STOCK
+                ['product_id' => $product->id, 'type' => SmartInsight::TYPE_DEAD_STOCK],
                 [
-                    'severity' => SmartInsight::SEVERITY_WARNING, // HARDCODED CONSTANT
+                    'severity' => SmartInsight::SEVERITY_WARNING,
                     'title' => 'Barang Mati: '.$product->name,
                     'message' => "Tidak laku {$metrics['days_inactive']} hari. Uang mandek Rp {$frozenRp}",
                     'payload' => $metrics,
@@ -373,6 +390,20 @@ class InsightService
                     'updated_at' => now(),
                 ]
             );
+
+            // Telegram — hanya jika mandek > 180 hari DAN frozen_asset signifikan (> 500rb)
+            if ($metrics['days_inactive'] > 180 && $metrics['frozen_asset'] >= 500000) {
+                $cacheKey = 'notif_deadstock_'.$product->id;
+                if (! Cache::has($cacheKey)) {
+                    $msg  = "💀 <b>DEAD STOCK: ASET MEMBEKU!</b>\n\n";
+                    $msg .= "📦 <b>{$product->name}</b>\n";
+                    $msg .= "💤 Tidak terjual: <b>{$metrics['days_inactive']} hari</b>\n";
+                    $msg .= "💰 Modal terkunci: <b>Rp {$frozenRp}</b>\n\n";
+                    $msg .= "💡 Pertimbangkan: flash sale, diskon, atau retur ke supplier.";
+                    TelegramService::send($msg);
+                    Cache::put($cacheKey, true, now()->addDays(3)); // Re-notify tiap 3 hari
+                }
+            }
         } else {
             SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_DEAD_STOCK)->delete();
         }
@@ -573,6 +604,25 @@ class InsightService
                     'updated_at' => now(),
                 ]
             );
+
+            // Telegram — hanya untuk urgency critical (deadline beli < 3 hari)
+            if ($seasonal['urgency'] === 'critical') {
+                $cacheKey = 'notif_seasonal_'.$product->id;
+                if (! Cache::has($cacheKey)) {
+                    $deadlineDays = $seasonal['buy_deadline_days'] ?? '?';
+                    $restockQty   = $seasonal['restock_needed'] ?? '?';
+                    $peakMonth    = $seasonal['peak_month'] ?? '?';
+                    $costFmt      = 'Rp '.number_format($seasonal['estimated_cost'] ?? 0, 0, ',', '.');
+                    $msg  = "📅 <b>BELI MUSIMAN MENDESAK!</b>\n\n";
+                    $msg .= "📦 <b>{$product->name}</b>\n";
+                    $msg .= "⏰ Deadline beli: <b>{$deadlineDays} hari lagi</b>\n";
+                    $msg .= "📈 Peak musiman: <b>{$peakMonth}</b>\n";
+                    $msg .= "🛒 Perlu beli: <b>{$restockQty} pcs</b> ({$costFmt})\n\n";
+                    $msg .= "👉 Segera lakukan pembelian sebelum terlambat!";
+                    TelegramService::send($msg);
+                    Cache::put($cacheKey, true, now()->addHours(12));
+                }
+            }
         } else {
             SmartInsight::where('product_id', $product->id)->where('type', SmartInsight::TYPE_SEASONAL_RESTOCK)->delete();
         }

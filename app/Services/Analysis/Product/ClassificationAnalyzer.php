@@ -105,7 +105,7 @@ class ClassificationAnalyzer
         $rows = SaleItem::where('sale_items.product_id', $product->id)
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('sales.transaction_date', '>=', now()->subMonths(12)->startOfMonth())
-            ->selectRaw("DATE_FORMAT(sales.transaction_date, '%Y-%m') as month, SUM(sale_items.quantity) as qty")
+            ->selectRaw("strftime('%Y-%m', sales.transaction_date) as month, SUM(sale_items.quantity) as qty")
             ->groupBy('month')
             ->pluck('qty', 'month')
             ->toArray();
@@ -145,7 +145,7 @@ class ClassificationAnalyzer
     {
         $rows = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('sales.transaction_date', '>=', now()->subMonths(12)->startOfMonth())
-            ->selectRaw("sale_items.product_id, DATE_FORMAT(sales.transaction_date, '%Y-%m') as month, SUM(sale_items.quantity) as qty")
+            ->selectRaw("sale_items.product_id, strftime('%Y-%m', sales.transaction_date) as month, SUM(sale_items.quantity) as qty")
             ->groupBy('sale_items.product_id', 'month')
             ->get();
 
