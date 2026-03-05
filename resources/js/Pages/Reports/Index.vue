@@ -164,6 +164,20 @@ const reportGroups = [
                 canExport: false,
                 icon: "🤖",
             },
+            {
+                title: "Smart Pricing AI",
+                desc: "Laporan detail rekomendasi harga — produk mana yang perlu naik/turun.",
+                route: "reports.smart-pricing",
+                canExport: false,
+                icon: "💡",
+            },
+            {
+                title: "Klasifikasi ABC/XYZ",
+                desc: "Matriks klasifikasi produk berdasarkan revenue dan prediktabilitas.",
+                route: "reports.abc-xyz",
+                canExport: false,
+                icon: "🏷️",
+            },
         ],
     },
 ];

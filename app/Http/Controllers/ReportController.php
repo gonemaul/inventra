@@ -956,4 +956,47 @@ class ReportController extends Controller
             'lastAnalysis'    => $lastAnalysis,
         ]);
     }
+
+    /**
+     * Smart Pricing AI — Laporan Detail Rekomendasi Harga
+     */
+    public function smartPricing()
+    {
+        $insights = SmartInsight::where('type', SmartInsight::TYPE_PRICE_RECOMMENDATION)
+            ->with('product:id,name,slug')
+            ->orderByDesc('updated_at')
+            ->get(['id', 'product_id', 'title', 'message', 'payload', 'severity', 'updated_at']);
+
+        $raiseCount = $insights->where('payload.action', 'raise')->count();
+        $lowerCount = $insights->where('payload.action', 'lower')->count();
+        $totalGain  = $insights->sum(fn($i) => $i->payload['potential_gain'] ?? 0);
+
+        return Inertia::render('Reports/SmartPricing', [
+            'insights' => $insights,
+            'summary'  => [
+                'total'      => $insights->count(),
+                'raiseCount' => $raiseCount,
+                'lowerCount' => $lowerCount,
+                'totalGain'  => $totalGain,
+            ],
+        ]);
+    }
+
+    /**
+     * ABC/XYZ Classification — Laporan Lengkap Matriks Produk
+     */
+    public function abcXyz()
+    {
+        $insights = SmartInsight::where('type', SmartInsight::TYPE_ABC_XYZ)
+            ->with('product:id,name,slug')
+            ->orderBy('title')
+            ->get(['id', 'product_id', 'title', 'message', 'payload', 'severity', 'updated_at']);
+
+        $lastAnalysis = SmartInsight::where('type', SmartInsight::TYPE_ABC_XYZ)->max('updated_at');
+
+        return Inertia::render('Reports/AbcXyz', [
+            'insights'     => $insights,
+            'lastAnalysis' => $lastAnalysis,
+        ]);
+    }
 }

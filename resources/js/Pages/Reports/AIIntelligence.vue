@@ -78,18 +78,24 @@ const triggerAnalysis = () => {
     });
 };
 
-// Intelligence feature docs
+// Intelligence feature docs — all 16
 const intelligenceFeatures = [
     {
         id: 1,
-        name: "Prediksi Kehabisan Stok",
+        name: "Prediksi Kehabisan Stok (Velocity)",
         type: "Predictive Analytics",
         typeColor: "bg-purple-100 text-purple-800",
         file: "InventoryAnalyzer.php",
+        insightType: "restock",
         inputKeys: ["stock", "sales 7/14/30 hari"],
         outputKeys: ["avg_daily (terbobot)", "days_left", "stockout_date", "status"],
-        logic: "Weighted Average: (7d×50%) + (14d×30%) + (30d×20%). Prediksi tanggal habis = stok / velocitas harian.",
-        usedIn: ["Smart Insights", "Product List", "Dashboard Widget"],
+        logic: "Weighted Average: (7d×50%) + (14d×30%) + (30d×20%). days_left = stock / velocity.",
+        problem: "Penjual sering kehabisan stok tiba-tiba karena hanya mengandalkan feeling, bukan data historis.",
+        solution: "Kalkulasi velocitas terbobot yang memberi bobot lebih pada penjualan terbaru, lalu prediksi tanggal habis stok secara akurat.",
+        tips: "Cek produk dengan days_left < 7 setiap minggu. Set min_stock minimal = velocity × lead_time.",
+        usedIn: ["Smart Insights", "Product List", "Dashboard"],
+        detailRoute: "reports.smart-insights",
+        outputUrl: "reports.smart-insights",
         icon: "📦",
     },
     {
@@ -98,10 +104,16 @@ const intelligenceFeatures = [
         type: "Adaptive Logic",
         typeColor: "bg-indigo-100 text-indigo-800",
         file: "InventoryAnalyzer.php",
-        inputKeys: ["velocitas terbobot", "lead_time (7 hari)", "safety_buffer (1.3x)"],
+        insightType: "restock",
+        inputKeys: ["velocitas terbobot", "lead_time=7", "safety_buffer=1.3"],
         outputKeys: ["dynamic_min_stock", "is_dynamic_warning"],
-        logic: "dynamic_min = ceil(velocity × lead_time × safety_buffer). Warning jika stok ≤ dynamic_min meski di atas min_stock manual.",
-        usedIn: ["Smart Insights", "Restock Insight"],
+        logic: "dynamic_min = ceil(velocity × lead_time × 1.3). Warning jika stok ≤ dynamic_min meski ≥ min_stock manual.",
+        problem: "Min stock yang diset manual tidak berubah meski laju penjualan berubah musiman — terlalu statis.",
+        solution: "Hitung batas aman dinamis berbasis velocitas aktual × lead time × buffer faktor, dan beri peringatan bila stok sudah mendekati batas ini.",
+        tips: "Jika is_dynamic_warning sering muncul, naikkan min_stock manual sesuai rekomendasi dynamic_min_stock.",
+        usedIn: ["Smart Insights (restock)"],
+        detailRoute: "reports.smart-insights",
+        outputUrl: "reports.smart-insights",
         icon: "🛡️",
     },
     {
@@ -110,83 +122,251 @@ const intelligenceFeatures = [
         type: "Prescriptive AI",
         typeColor: "bg-emerald-100 text-emerald-800",
         file: "FinancialAnalyzer.php",
-        inputKeys: ["margin_percent", "growth_percent", "qty_this_month", "purchase_price"],
-        outputKeys: ["action (raise/lower)", "recommended_price", "potential_gain", "suggestion"],
-        logic: "Raise: tren naik >30% & margin masih bisa naik → saran +5%. Lower: 0 terjual & margin besar → saran diskon 10%.",
-        usedIn: ["Smart Insights (price_recommendation)", "Margin Alert"],
+        insightType: "price_recommendation",
+        inputKeys: ["margin_percent", "growth_percent", "qty_this_month", "sell_price"],
+        outputKeys: ["action", "recommended_price", "potential_gain", "suggestion"],
+        logic: "Raise: tren naik >30% & margin < target → +5%. Lower: qty=0 & margin tebal → diskon 10%.",
+        problem: "Pemilik toko menentukan harga berdasarkan insting. Produk hot sering dijual terlalu murah; produk stagnan tidak digerakkan.",
+        solution: "AI membaca data tren penjualan dan margin, lalu merekomendasikan penyesuaian harga spesifik dengan estimasi potensi keuntungan tambahan.",
+        tips: "Rekomendasi 'naikkan harga' paling efektif di akhir bulan. Validasi dulu ke harga kompetitor sebelum naik.",
+        usedIn: ["Smart Insights", "AI Intelligence Center"],
+        detailRoute: "reports.smart-pricing",
+        outputUrl: "reports.smart-pricing",
         icon: "💡",
     },
     {
         id: 4,
-        name: "ABC/XYZ Classification",
-        type: "Statistical Analysis",
-        typeColor: "bg-blue-100 text-blue-800",
-        file: "ClassificationAnalyzer.php",
-        inputKeys: ["revenue 3 bulan", "qty per bulan (12 bulan)"],
-        outputKeys: ["abc_class (A/B/C)", "xyz_class (X/Y/Z)", "matrix", "cv", "recommendation"],
-        logic: "ABC: revenue share Pareto. XYZ: Coefficient of Variation dari 12 bulan qty. CV<0.5=X, <1.0=Y, ≥1.0=Z.",
-        usedIn: ["Smart Insights (abc_xyz_classification)", "Halaman AI Intelligence"],
-        icon: "🏷️",
+        name: "Margin Health Monitor",
+        type: "Rule-Based Alert",
+        typeColor: "bg-orange-100 text-orange-800",
+        file: "FinancialAnalyzer.php",
+        insightType: "margin_alert",
+        inputKeys: ["sell_price", "purchase_price"],
+        outputKeys: ["margin_percent", "margin_rp", "severity"],
+        logic: "margin = (sell - purchase) / sell × 100. Alert: margin < 10% → critical. margin < 20% → warning.",
+        problem: "Beberapa produk dijual dengan margin sangat tipis atau bahkan rugi tanpa pemilik sadar.",
+        solution: "Monitor margin tiap produk secara otomatis dan eskalasi peringatan berdasarkan ambang batas kritis/warning.",
+        tips: "Margin <10% untuk produk fisik biasanya tidak sehat. Pertimbangkan naik HPP atau negosiasi harga beli ke supplier.",
+        usedIn: ["Smart Insights (margin_alert)", "Product List badge"],
+        detailRoute: "reports.smart-insights",
+        outputUrl: "reports.smart-insights",
+        icon: "⚠️",
     },
     {
         id: 5,
-        name: "Seasonal Restocking Planner",
-        type: "Predictive Analytics",
-        typeColor: "bg-amber-100 text-amber-800",
-        file: "SeasonalRestockAnalyzer.php",
-        inputKeys: ["avg_daily_velocity", "histori bulan sama tahun lalu", "lead_time (7 hari)"],
-        outputKeys: ["peak_factor", "restock_needed", "buy_deadline_days", "urgency", "estimated_cost"],
-        logic: "Bandingkan penjualan bulan depan vs bulan sebelumnya tahun lalu. Jika naik >30% → peak. Buffer = velocity×peak_factor×30hari×1.2.",
-        usedIn: ["Smart Insights (seasonal_restock)", "Halaman AI Intelligence"],
-        icon: "📅",
+        name: "Sales Trend Analyzer",
+        type: "Trend Detection",
+        typeColor: "bg-cyan-100 text-cyan-800",
+        file: "FinancialAnalyzer.php",
+        insightType: "trend",
+        inputKeys: ["qty_this_month", "qty_last_month"],
+        outputKeys: ["growth_percent", "is_trending", "rank"],
+        logic: "growth = (qty_this - qty_last) / qty_last × 100. trending jika growth > 30%.",
+        problem: "Produk yang tiba-tiba laris tidak terdeteksi → stok terlambat diisi → kehilangan momen penjualan.",
+        solution: "Deteksi lonjakan penjualan secara otomatis dan beri sinyal untuk segera menambah stok atau menaikkan harga.",
+        tips: "Gunakan insight 'trend' bersama Seasonal Planner untuk mempersiapkan stok lonjakan lebih awal.",
+        usedIn: ["Smart Insights (trend)", "Dashboard Top Sales"],
+        detailRoute: "reports.top-products",
+        outputUrl: "reports.top-products",
+        icon: "📈",
     },
     {
         id: 6,
-        name: "Capital Efficiency Advisor",
-        type: "Financial Analytics",
-        typeColor: "bg-red-100 text-red-800",
-        file: "CapitalEfficiencyAnalyzer.php",
-        inputKeys: ["stock × purchase_price", "qty terjual 90 hari"],
-        outputKeys: ["itr", "dsi", "capital_locked", "holding_cost_monthly", "efficiency_score (A-F)"],
-        logic: "ITR = (COGS annualized) / (Nilai Stok). DSI = 365/ITR. Holding cost = 1%/bulan dari capital_locked.",
-        usedIn: ["Smart Insights (capital_efficiency)", "Halaman AI Intelligence"],
-        icon: "📊",
-    },
-    {
-        id: 7,
-        name: "Product Bundling (Apriori)",
-        type: "Machine Learning",
-        typeColor: "bg-pink-100 text-pink-800",
-        file: "ProductAssociationAnalyzer.php",
-        inputKeys: ["transaksi penjualan 90 hari (sale_items)"],
-        outputKeys: ["support", "confidence", "lift", "pair_count", "recommendation"],
-        logic: "Market Basket Analysis. Threshold: support≥1%, confidence≥25%, lift≥1.2. Simpan top 20 pasangan terkuat.",
-        usedIn: ["Smart Insights (bundling_recommendation)", "Halaman AI Intelligence"],
-        icon: "🔗",
-    },
-    {
-        id: 8,
         name: "Dead Stock Detection",
         type: "Rule-Based",
         typeColor: "bg-gray-100 text-gray-700",
         file: "InventoryAnalyzer.php",
-        inputKeys: ["stock > 0", "last_sale_date"],
+        insightType: "dead_stock",
+        inputKeys: ["stock > 0", "hari_tidak_terjual"],
         outputKeys: ["days_inactive", "frozen_asset", "status=dead_stock"],
-        logic: "Stok > 0 DAN tidak terjual ≥ 90 hari → dead stock. frozen_asset = stock × purchase_price.",
-        usedIn: ["Smart Insights (dead_stock)", "Reports/DeadStock", "Dashboard"],
+        logic: "Stok > 0 AND tidak terjual ≥ 90 hari → dead stock. frozen_asset = stock × purchase_price.",
+        problem: "Modal terjebak di produk yang tidak diminati, memakan tempat dan uang tanpa menghasilkan pendapatan.",
+        solution: "Identifikasi produk mandek otomatis dan hitung nilai aset yang terestriksi, sehingga bisa diambil tindakan (clearance, retur, dll).",
+        tips: "Produk dead stock > 180 hari pertimbangkan flash sale atau retur ke supplier. Cek apakah ada produk serupa yang lebih laku.",
+        usedIn: ["Smart Insights", "Reports/DeadStock", "Dashboard"],
+        detailRoute: "reports.dead-stock",
+        outputUrl: "reports.dead-stock",
         icon: "🕸️",
     },
     {
+        id: 7,
+        name: "ABC/XYZ Classification",
+        type: "Statistical Analysis",
+        typeColor: "bg-blue-100 text-blue-800",
+        file: "ClassificationAnalyzer.php",
+        insightType: "abc_xyz_classification",
+        inputKeys: ["revenue 3 bulan", "qty per bulan (12 bulan)"],
+        outputKeys: ["abc_class", "xyz_class", "matrix", "cv", "recommendation"],
+        logic: "ABC: revenue share Pareto (top 80%=A, next 15%=B, rest=C). XYZ: CV dari data qty 12 bulan.",
+        problem: "Tidak semua produk sama pentingnya. Tanpa klasifikasi, energi manajemen terbagi sama rata ke semua produk.",
+        solution: "Segmentasikan produk menjadi 9 kombinasi matriks berdasarkan revenue dan prediktabilitas permintaan untuk prioritas yang tepat.",
+        tips: "Fokus perhatian pada A-X dan A-Y. Produk C-Z adalah kandidat diskontinuasi — evaluasi dulu profit margin-nya.",
+        usedIn: ["Smart Insights", "AI Intelligence Center", "Laporan ABC/XYZ"],
+        detailRoute: "reports.abc-xyz",
+        outputUrl: "reports.abc-xyz",
+        icon: "🏷️",
+    },
+    {
+        id: 8,
+        name: "Seasonal Restocking Planner",
+        type: "Predictive Analytics",
+        typeColor: "bg-amber-100 text-amber-800",
+        file: "SeasonalRestockAnalyzer.php",
+        insightType: "seasonal_restock",
+        inputKeys: ["avg_daily_velocity", "histori bulan=tahun lalu", "lead_time=7"],
+        outputKeys: ["peak_factor", "restock_needed", "buy_deadline_days", "urgency", "estimated_cost"],
+        logic: "Banding penjualan bulan depan vs tahun lalu. Jika naik >30% → peak_factor aktif. Buffer = velocity × peak × 30 × 1.2.",
+        problem: "Penjual kehabisan stok saat permintaan puncak (Lebaran, tahun baru, dll) karena tidak ada perencanaan berbasis data historis.",
+        solution: "Prediksi kapan permintaan akan melonjak berdasarkan tren tahun lalu, dan hitung berapa yang harus dibeli serta kapan deadline belinya.",
+        tips: "Beli sebelum deadline agar ada waktu pengiriman. Anggaran beli dari kolom 'estimated_cost' bisa dijadikan dasar negosiasi kredit ke supplier.",
+        usedIn: ["Smart Insights", "AI Intelligence Center"],
+        detailRoute: "reports.smart-insights",
+        outputUrl: "reports.smart-insights",
+        icon: "📅",
+    },
+    {
         id: 9,
+        name: "Capital Efficiency Advisor",
+        type: "Financial Analytics",
+        typeColor: "bg-red-100 text-red-800",
+        file: "CapitalEfficiencyAnalyzer.php",
+        insightType: "capital_efficiency",
+        inputKeys: ["stock × purchase_price", "qty terjual 90 hari"],
+        outputKeys: ["itr", "dsi", "capital_locked", "holding_cost_monthly", "efficiency_score"],
+        logic: "ITR = (COGS × 4) / stok_value. DSI = 365 / ITR. Holding = 1%/bln dari modal terkunci. Score A=terbaik, F=terburuk.",
+        problem: "Modal terikat di stok berlebih yang perputarannya lambat — uang yang harusnya bisa dipakai bisnis malah 'diam' di gudang.",
+        solution: "Hitung efisiensi perputaran modal tiap produk dan beri score A-F untuk diprioritaskan dalam keputusan pembelian berikutnya.",
+        tips: "Produk dengan DSI > 120 hari (score D-F) sebaiknya tidak diorder besar dulu. Habiskan stok lama sebelum beli baru.",
+        usedIn: ["Smart Insights", "AI Intelligence Center"],
+        detailRoute: "reports.smart-insights",
+        outputUrl: "reports.smart-insights",
+        icon: "📊",
+    },
+    {
+        id: 10,
+        name: "Product Bundling (Apriori)",
+        type: "Machine Learning",
+        typeColor: "bg-pink-100 text-pink-800",
+        file: "ProductAssociationAnalyzer.php",
+        insightType: "bundling_recommendation",
+        inputKeys: ["transaksi 90 hari (sale_items)"],
+        outputKeys: ["support", "confidence", "lift", "pair_count", "recommendation"],
+        logic: "Market Basket Analysis. Min: support≥1%, confidence≥25%, lift≥1.2. Simpan top 20 pasangan.",
+        problem: "Peluang cross-selling terlewat karena tidak ada data tentang produk mana yang sering dibeli bersamaan.",
+        solution: "Algoritma Apriori mendeteksi pasangan produk yang sering muncul bersamaan dalam satu transaksi dan merekomendasikan bundling.",
+        tips: "Mulai bundling dari pasangan dengan lift ≥ 2.0 (strong positive correlation). Tawarkan bundle dengan harga slightly lebih hemat.",
+        usedIn: ["Smart Insights", "AI Intelligence Center"],
+        detailRoute: "reports.smart-insights",
+        outputUrl: "reports.smart-insights",
+        icon: "🔗",
+    },
+    {
+        id: 11,
         name: "Shop Health Score",
         type: "Composite Index",
         typeColor: "bg-teal-100 text-teal-800",
         file: "InsightService.php",
+        insightType: null,
         inputKeys: ["critical_count", "total_products", "overdue_invoices"],
         outputKeys: ["health_score (0-100)"],
-        logic: "stock_health = (total - critical) / total × 70. finance_health berdasarkan hutang jatuh tempo × 30.",
+        logic: "stock_health = (total-critical)/total × 70. finance_health dari hutang jatuh tempo × 30.",
+        problem: "Sulit melihat kondisi toko secara holistik dalam satu angka — biasanya harus cek banyak laporan berbeda.",
+        solution: "Gabungkan faktor kesehatan stok dan keuangan menjadi satu angka kesehatan 0-100 yang mudah dipantau setiap hari.",
+        tips: "Score < 60 artinya ada masalah serius. Cek komponen yang menarik score turun: critical stocks atau hutang jatuh tempo.",
         usedIn: ["Dashboard SmartAssistantWidget"],
+        detailRoute: "dashboard",
+        outputUrl: "dashboard",
         icon: "💚",
+    },
+    {
+        id: 12,
+        name: "Price Trend Alert",
+        type: "Monitoring",
+        typeColor: "bg-yellow-100 text-yellow-800",
+        file: "ReportController.php (priceWatch)",
+        insightType: null,
+        inputKeys: ["purchase_price history per produk"],
+        outputKeys: ["price_increase_pct", "avg_old_price", "new_price", "is_significant"],
+        logic: "Bandingkan harga beli invoice terbaru vs rata-rata 3 invoice sebelumnya. Trigger alert jika naik > 5%.",
+        problem: "Harga beli dari supplier naik tapi tidak terdeteksi, sehingga margin produk turun tanpa disadari.",
+        solution: "Pantau otomatis perubahan harga beli tiap produk antar invoice dan beri sinyal jika ada kenaikan signifikan.",
+        tips: "Gunakan laporan Price Watch untuk renegoisasi dengan supplier yang harganya naik konsisten.",
+        usedIn: ["Reports/PriceWatch"],
+        detailRoute: "reports.price-watch",
+        outputUrl: "reports.price-watch",
+        icon: "📡",
+    },
+    {
+        id: 13,
+        name: "Cash Flow Forecast",
+        type: "Predictive Finance",
+        typeColor: "bg-violet-100 text-violet-800",
+        file: "ReportController.php (cashFlow)",
+        insightType: null,
+        inputKeys: ["revenue bulanan", "beban tetap", "hutang jatuh tempo"],
+        outputKeys: ["net_cashflow", "projected_next_month"],
+        logic: "Net cashflow = total pemasukan - total pengeluaran. Proyeksi = rata-rata 3 bulan terakhir ± trend.",
+        problem: "Bisnis bisa profit di atas kertas tapi kesulitan kas nyata karena tidak ada proyeksi uang masuk/keluar.",
+        solution: "Laporan arus kas riil dengan proyeksi bulan depan berbasis tren historis — bukan sekedar catatan transaksional.",
+        tips: "Jika projected cashflow negatif, tunda pembelian besar dan prioritaskan tagih piutang.",
+        usedIn: ["Reports/CashFlow"],
+        detailRoute: "reports.cash-flow",
+        outputUrl: "reports.cash-flow",
+        icon: "💸",
+    },
+    {
+        id: 14,
+        name: "Profit Contribution Analyzer",
+        type: "Financial Analytics",
+        typeColor: "bg-lime-100 text-lime-800",
+        file: "FinancialAnalyzer.php",
+        insightType: "high_margin",
+        inputKeys: ["margin_percent", "qty_sold", "sell_price"],
+        outputKeys: ["profit_contribution", "cash_cow_status"],
+        logic: "Produk dengan margin tinggi DAN laku banyak → cash cow. Insight high_margin tersimpan di SmartInsight.",
+        problem: "Tidak jelas produk mana yang paling berkontribusi ke profit bersih — bisa saja produk terlaris justru marginnya tipis.",
+        solution: "Identifikasi 'cash cow' produk yang memberi profit kontribusi tertinggi, untuk diprioritaskan stok dan marketing-nya.",
+        tips: "Cash cow = produk yang harus selalu ada stok. Jangan biarkan kehabisan karena ini adalah mesin profit utama.",
+        usedIn: ["Smart Insights (high_margin)", "Reports/GrossProfit"],
+        detailRoute: "reports.gross-profit",
+        outputUrl: "reports.gross-profit",
+        icon: "🐄",
+    },
+    {
+        id: 15,
+        name: "Substitute Stock Analyzer",
+        type: "Inventory Logic",
+        typeColor: "bg-sky-100 text-sky-800",
+        file: "InventoryAnalyzer.php",
+        insightType: null,
+        inputKeys: ["product category", "stock=0", "related products"],
+        outputKeys: ["substitute_available", "suggested_products"],
+        logic: "Jika produk kehabisan stok, cari produk dalam kategori / tipe yang sama dengan stok tersedia.",
+        problem: "Saat produk habis, kasir tidak tahu harus menawarkan alternatif apa, sehingga pelanggan pergi tanpa beli.",
+        solution: "Sugesti substitusi produk dari kategori yang sama ketika stok habis — terintegrasi di halaman produk.",
+        tips: "Pastikan produk dalam kategori yang sama sudah diisi harga dan deskripsi yang baik agar rekomendasi bermakna.",
+        usedIn: ["Product Detail page"],
+        detailRoute: "products.index",
+        outputUrl: "products.index",
+        icon: "🔄",
+    },
+    {
+        id: 16,
+        name: "DSS Daily & Weekly Summary",
+        type: "Automated Reporting",
+        typeColor: "bg-slate-100 text-slate-800",
+        file: "InsightService.php",
+        insightType: "daily_strategy",
+        inputKeys: ["semua data stok, penjualan, keuangan"],
+        outputKeys: ["daily_restock_plan", "weekly_dss_deadstock", "weekly_dss_trending"],
+        logic: "Agregasi otomatis insight terpenting per hari/minggu menjadi satu ringkasan prioritas yang bisa langsung dieksekusi.",
+        problem: "Terlalu banyak data membuat pemilik tidak tahu harus fokus ke mana setiap hari.",
+        solution: "Generate laporan ringkasan harian (apa yang harus dibeli hari ini) dan mingguan (rekap deadstock & trending) secara otomatis.",
+        tips: "Buka Smart Insights setiap pagi, filter 'Strategi Harian' untuk daftar aksi prioritas hari ini.",
+        usedIn: ["Smart Insights (daily_strategy, weekly_dss)"],
+        detailRoute: "reports.smart-insights",
+        outputUrl: "reports.smart-insights",
+        icon: "📋",
     },
 ];
 </script>
@@ -280,7 +460,7 @@ const intelligenceFeatures = [
 
                     <!-- TAB: OVERVIEW -->
                     <div v-if="activeTab === 'overview'" class="space-y-4">
-                        <h3 class="text-lg font-black text-gray-800 dark:text-white">9 Kecerdasan Tertanam di Sistem</h3>
+                        <h3 class="text-lg font-black text-gray-800 dark:text-white">16 Kecerdasan Tertanam di Sistem</h3>
                         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                             <div v-for="feat in intelligenceFeatures" :key="feat.id"
                                 class="p-4 border border-gray-100 dark:border-gray-700 rounded-xl hover:border-purple-300 dark:hover:border-purple-700 transition-all group">
@@ -295,6 +475,9 @@ const intelligenceFeatures = [
                                         <p class="text-xs text-gray-600 dark:text-gray-300 mt-2">{{ feat.logic }}</p>
                                         <div class="mt-2 flex flex-wrap gap-1">
                                             <span v-for="loc in feat.usedIn" :key="loc" class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{{ loc }}</span>
+                                        </div>
+                                        <div class="mt-3" v-if="feat.outputUrl">
+                                            <Link :href="route(feat.outputUrl)" class="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline">Lihat Output →</Link>
                                         </div>
                                     </div>
                                 </div>
@@ -511,7 +694,9 @@ const intelligenceFeatures = [
 
                     <!-- TAB: DOCS -->
                     <div v-if="activeTab === 'docs'" class="space-y-4">
-                        <h3 class="text-lg font-black text-gray-800 dark:text-white">Dokumentasi Teknis & Pedoman</h3>
+                        <div class="flex items-center justify-between">
+                            <h3 class="text-lg font-black text-gray-800 dark:text-white">Dokumentasi Teknis & Pedoman — 16 Kecerdasan</h3>
+                        </div>
                         <div class="space-y-4">
                             <div v-for="feat in intelligenceFeatures" :key="feat.id"
                                 class="p-5 border border-gray-100 dark:border-gray-700 rounded-xl">
@@ -519,6 +704,7 @@ const intelligenceFeatures = [
                                     <div class="text-2xl">{{ feat.icon }}</div>
                                     <div class="flex-1">
                                         <div class="flex items-center gap-2 flex-wrap mb-2">
+                                            <span class="text-xs text-gray-400 font-bold">#{{ feat.id }}</span>
                                             <h4 class="font-black text-gray-900 dark:text-white">{{ feat.name }}</h4>
                                             <span :class="['text-xs px-2 py-0.5 rounded-full font-bold', feat.typeColor]">{{ feat.type }}</span>
                                         </div>
@@ -544,11 +730,32 @@ const intelligenceFeatures = [
                                                 <p class="text-xs text-gray-600 dark:text-gray-300">{{ feat.logic }}</p>
                                             </div>
                                         </div>
-                                        <div class="mt-2">
-                                            <p class="text-xs font-bold text-gray-400 uppercase mb-1">📍 Digunakan di</p>
-                                            <div class="flex flex-wrap gap-1">
-                                                <span v-for="loc in feat.usedIn" :key="loc" class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{{ loc }}</span>
+                                        <!-- Problem / Solution / Tips -->
+                                        <div v-if="feat.problem" class="mt-3 grid md:grid-cols-3 gap-2">
+                                            <div class="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900 rounded-lg p-3">
+                                                <p class="text-xs font-bold text-red-600 dark:text-red-400 mb-1">❌ Masalah</p>
+                                                <p class="text-xs text-gray-600 dark:text-gray-300">{{ feat.problem }}</p>
                                             </div>
+                                            <div class="bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900 rounded-lg p-3">
+                                                <p class="text-xs font-bold text-green-600 dark:text-green-400 mb-1">✅ Solusi AI</p>
+                                                <p class="text-xs text-gray-600 dark:text-gray-300">{{ feat.solution }}</p>
+                                            </div>
+                                            <div class="bg-amber-50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-900 rounded-lg p-3">
+                                                <p class="text-xs font-bold text-amber-600 dark:text-amber-400 mb-1">💡 Tips Penggunaan</p>
+                                                <p class="text-xs text-gray-600 dark:text-gray-300">{{ feat.tips }}</p>
+                                            </div>
+                                        </div>
+                                        <div class="mt-3 flex items-center justify-between">
+                                            <div>
+                                                <p class="text-xs font-bold text-gray-400 uppercase mb-1">📍 Digunakan di</p>
+                                                <div class="flex flex-wrap gap-1">
+                                                    <span v-for="loc in feat.usedIn" :key="loc" class="text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-0.5 rounded-full">{{ loc }}</span>
+                                                </div>
+                                            </div>
+                                            <Link v-if="feat.outputUrl" :href="route(feat.outputUrl)"
+                                                class="flex-shrink-0 text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                                Lihat Output →
+                                            </Link>
                                         </div>
                                     </div>
                                 </div>
