@@ -131,7 +131,7 @@ class ClassificationAnalyzer
     {
         return SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('sales.transaction_date', '>=', now()->subMonths(3)->startOfMonth())
-            ->selectRaw('sale_items.product_id, SUM(sale_items.quantity * sale_items.price) as total_revenue')
+            ->selectRaw('sale_items.product_id, SUM(sale_items.quantity * sale_items.selling_price) as total_revenue')
             ->groupBy('sale_items.product_id')
             ->pluck('total_revenue', 'sale_items.product_id');
     }
