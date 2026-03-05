@@ -214,19 +214,18 @@ const formatDate = (dateStr) => {
             
             <!-- HEADER ACTIONS -->
             <div class="flex flex-col gap-4 md:flex-row md:items-center justify-between">
-                 <div>
+                <div>
                     <h2 class="text-2xl font-black tracking-tight text-gray-800 dark:text-white">Pusat Rekomendasi AI</h2>
                     <p class="text-sm text-gray-500 dark:text-gray-400">Analisa cerdas sistem untuk stok dan keuangan.</p>
                 </div>
-                <!-- Buttons -->
-                <div class="flex items-center gap-3">
-                    <Link
+                <!-- <Link
                         :href="route('reports.index')"
                         class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-gray-600 transition bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 hover:text-blue-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:text-white"
                     >
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                        Kembali
-                    </Link>
+                    </Link> -->
+                <!-- Buttons -->
+                <div class="flex items-center justify-end gap-3">
                     <button @click="exportData" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-gray-700 transition bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                         Ekspor CSV

@@ -5,6 +5,7 @@ namespace App\Services\Analysis\Product;
 use App\Models\Product;
 use App\Models\SaleItem;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * =========================================================================
@@ -106,7 +107,7 @@ class ClassificationAnalyzer
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('sales.transaction_date', '>=', now()->subMonths(12)->startOfMonth())
             ->selectRaw("strftime('%Y-%m', sales.transaction_date) as month, SUM(sale_items.quantity) as qty")
-            ->groupBy('month')
+            ->groupBy(DB::raw("strftime('%Y-%m', sales.transaction_date)"))
             ->pluck('qty', 'month')
             ->toArray();
 
@@ -146,7 +147,7 @@ class ClassificationAnalyzer
         $rows = SaleItem::join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->where('sales.transaction_date', '>=', now()->subMonths(12)->startOfMonth())
             ->selectRaw("sale_items.product_id, strftime('%Y-%m', sales.transaction_date) as month, SUM(sale_items.quantity) as qty")
-            ->groupBy('sale_items.product_id', 'month')
+            ->groupBy('sale_items.product_id', DB::raw("strftime('%Y-%m', sales.transaction_date)"))
             ->get();
 
         // Konversi ke format [product_id => ['2024-01' => qty, '2024-02' => qty, ...]]

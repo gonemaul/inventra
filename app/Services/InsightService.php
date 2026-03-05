@@ -440,12 +440,12 @@ class InsightService
             // Kirim Notifikasi Telegram (sekali per 6 jam, pakai Cache Guard)
             $cacheKey = 'notif_margin_low_'.$product->id;
             if (! Cache::has($cacheKey)) {
-                $msg = "\u26a0\ufe0f <b>ALERT: PROFIT MARGIN RENDAH!</b>\n\n";
-                $msg .= "\ud83d\udce6 <b>{$product->name}</b>\n";
-                $msg .= "\ud83d\udd3b Margin Saat Ini: <b>{$currentMargin}%</b>\n";
-                $msg .= "\ud83c\udfaf Target Margin: <b>{$targetMargin}%</b>\n";
+                $msg = "<b>ALERT: PROFIT MARGIN RENDAH!</b>\n\n";
+                $msg .= "<b>{$product->name}</b>\n";
+                $msg .= "Margin Saat Ini: <b>{$currentMargin}%</b>\n";
+                $msg .= "Target Margin: <b>{$targetMargin}%</b>\n";
                 if ($smartHint) {
-                    $msg .= "\n\ud83e\udd16 {$smartHint}";
+                    $msg .= "\n{$smartHint}";
                 }
                 TelegramService::send($msg);
                 Cache::put($cacheKey, true, now()->addHours(6));
