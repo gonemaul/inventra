@@ -9,8 +9,8 @@ const props = defineProps({
 });
 // Hitung Realisasi (Total item yang sudah discan/link)
 const totalScanned = computed(() => {
-    return props.linkedItems.reduce((acc, item) => {
-        return acc + (item.quantity || 0) * (item.purchase_price || 0);
+    return (props.linkedItems || []).reduce((acc, item) => {
+        return acc + (item.subtotal || 0);
     }, 0);
 });
 
@@ -18,7 +18,7 @@ const invoiceBalance = computed(() => {
     const target = props.invoice.total_amount || 0;
     // Hitung total dari linkedItems (karena parent me-refresh props ini setelah save)
     const current = props.linkedItems.reduce((acc, item) => {
-        return acc + (item.quantity || 0) * (item.purchase_price || 0);
+        return acc + (item.subtotal || 0);
     }, 0);
     return target - current;
 });

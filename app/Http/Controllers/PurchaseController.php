@@ -619,7 +619,7 @@ class PurchaseController extends Controller
         if ($invoice->items()->count() === 0) {
             return redirect()->back()->with('error', 'Tidak dapat memvalidasi invoice tanpa item yang ditautkan.');
         }
-
+        
         try {
             // Panggil Service untuk validasi invoice
             $this->invoiceService->validateInvoice($invoice);

@@ -43,8 +43,7 @@ const pageMode = computed(() =>
 const isReadyToValidate = computed(() => {
     // Balance 0 (toleransi floating point < 100 perak) DAN ada item yg discan
     return (
-        Math.abs(props.invoice.total_amount - computedTotalNominal) < 100 &&
-        props.editableLinkedItems.length > 0
+        Math.abs(props.invoice.total_amount - computedTotalNominal.value) < 100
     );
 });
 const computedTotalQty = computed(() => {
@@ -56,8 +55,7 @@ const computedTotalQty = computed(() => {
 const computedTotalNominal = computed(() => {
     // Menghitung total subtotal dari semua item yang dapat diedit
     return props.editableLinkedItems.reduce((sum, item) => {
-        // [PENTING]: Hitung subtotal (Qty * Price) untuk setiap baris, lalu jumlahkan
-        const subtotal = (item.quantity || 0) * (item.purchase_price || 0);
+        const subtotal = item.subtotal || 0;
         return sum + subtotal;
     }, 0);
 });

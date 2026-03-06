@@ -180,7 +180,7 @@ const rp = (n) =>
                     <div class="flex flex-col items-end border-l-2 border-dashed border-gray-200 dark:border-gray-700 pl-3">
                         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Total Fixed</span>
                         <span class="font-black text-xl text-gray-900 dark:text-white leading-none tracking-tight">
-                            {{ rp(item.purchase_price * item.quantity) }}
+                            {{ rp(item.subtotal) }}
                         </span>
                     </div>
                 </div>

@@ -456,8 +456,8 @@ watch(
 
 // --- COMPUTED HELPERS ---
 const computedTotalNominal = computed(() => {
-    return editableLinkedItems.value.reduce((sum, item) => {
-        const subtotal = (item.quantity || 0) * (item.purchase_price || 0);
+    return props.linkedItems.reduce((sum, item) => {
+        const subtotal = item.subtotal || 0;
         return sum + subtotal;
     }, 0);
 });
@@ -750,7 +750,12 @@ const validateInvoice = (bypassConfirm = false) => {
         {},
         {
             preserveScroll: true,
-            onSuccess: () => {
+            onSuccess: (page) => {
+                if (page.props.flash && page.props.flash.error) {
+                    toast.error(page.props.flash.error);
+                    return;
+                }
+                
                 toast.success("✅ Invoice berhasil divalidasi!");
                 setTimeout(() => {
                     router.visit(

@@ -845,7 +845,7 @@ const adjustQty = (amount) => {
                     <div class="flex justify-between items-center bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 p-2.5 rounded-lg shadow-sm">
                         <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Nilai Barang</span>
                         <span class="text-base font-black text-lime-600 drop-shadow-sm">
-                            {{ actions.formatRupiah(linkedItems?.reduce((acc, item) => acc + (item.quantity * item.purchase_price), 0)) }}
+                            {{ actions.formatRupiah(linkedItems?.reduce((acc, item) => acc + (item.subtotal || 0), 0)) }}
                         </span>
                     </div>
                 </div>

@@ -172,7 +172,8 @@ class InvoiceService
 
             // UPDATE ITEM
             $item->update([
-                'item_status' => $status, // <--- SIMPAN STATUS DISINI
+                'item_status' => $status,
+                'subtotal'    => $receivedQty * $item->purchase_price // Ensure fresh calculation
             ]);
         }
     }
@@ -180,12 +181,16 @@ class InvoiceService
     public function validateInvoice(PurchaseInvoice $invoice)
     {
         $totalReceived = $invoice->items()->sum('subtotal');
-        if ($totalReceived != $invoice->total_amount) {
+        if (abs($totalReceived - $invoice->total_amount) > 1) {
             throw new \Exception("Total amount pada nota ({$invoice->total_amount}) tidak sesuai dengan jumlah subtotal item yang diterima ({$totalReceived}). Silakan periksa kembali item yang tertaut.");
         }
 
         // Jika lolos semua pengecekan
-        $invoice->update(['status' => PurchaseInvoice::STATUS_VALIDATED]);
+        try{
+            $invoice->update(['status' => PurchaseInvoice::STATUS_VALIDATED]);
+        } catch(\Exception $e){
+            throw new \Exception('Gagal memvalidasi invoice: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -234,9 +239,9 @@ class InvoiceService
                     }
                     if (is_numeric($payload['newPrice']) && $payload['newPrice'] !== $item->purchase_price) {
                         $newPrice = $payload['newPrice'];
-                        $subtotal = $newQty * $newPrice;
                         $status = PurchaseItem::STATUS_PRICE_CORRECTED; // Set status ke Pending saat ditautkan
                     }
+                    $subtotal = $newQty * $newPrice;
                     $item->update([
                         'quantity' => $newQty,
                         'purchase_price' => $newPrice,
