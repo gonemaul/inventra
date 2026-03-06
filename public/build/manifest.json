@@ -377,7 +377,7 @@
     ]
   },
   "resources/js/Pages/Dashboard/Dashboard.vue": {
-    "file": "assets/Dashboard-DR324QnM.js",
+    "file": "assets/Dashboard-DLoW-EtL.js",
     "name": "Dashboard",
     "src": "resources/js/Pages/Dashboard/Dashboard.vue",
     "isDynamicEntry": true,
@@ -402,7 +402,7 @@
       "resources/js/Components/Charts/SalesChart.vue"
     ],
     "css": [
-      "assets/Dashboard-DCwm1ElA.css"
+      "assets/Dashboard-BJVLaoCo.css"
     ]
   },
   "resources/js/Pages/Dashboard/DashboardFinanceWidget.vue": {
@@ -999,7 +999,7 @@
     ]
   },
   "resources/js/Pages/Purchases/Components/Checking/Mobile/MobileChecking.vue": {
-    "file": "assets/MobileChecking-2djfhmmb.js",
+    "file": "assets/MobileChecking-DX6tKCNr.js",
     "name": "MobileChecking",
     "src": "resources/js/Pages/Purchases/Components/Checking/Mobile/MobileChecking.vue",
     "isDynamicEntry": true,
@@ -1018,7 +1018,7 @@
       "_vendor-scanner-og__AIM6.js"
     ],
     "css": [
-      "assets/MobileChecking-tK05OBeh.css"
+      "assets/MobileChecking-D4f06BPY.css"
     ]
   },
   "resources/js/Pages/Purchases/Components/Checking/Mobile/SearchMobile.vue": {
@@ -1321,7 +1321,7 @@
     ]
   },
   "resources/js/Pages/Purchases/InvoiceLinkagePage.vue": {
-    "file": "assets/InvoiceLinkagePage-9oL-YLDO.js",
+    "file": "assets/InvoiceLinkagePage-DVAN1HY1.js",
     "name": "InvoiceLinkagePage",
     "src": "resources/js/Pages/Purchases/InvoiceLinkagePage.vue",
     "isDynamicEntry": true,
@@ -1347,7 +1347,7 @@
     ]
   },
   "resources/js/Pages/Purchases/PurchaseDetail.vue": {
-    "file": "assets/PurchaseDetail-CQF6Oz03.js",
+    "file": "assets/PurchaseDetail-B6d8szWr.js",
     "name": "PurchaseDetail",
     "src": "resources/js/Pages/Purchases/PurchaseDetail.vue",
     "isDynamicEntry": true,
@@ -1380,7 +1380,7 @@
     ]
   },
   "resources/js/Pages/Purchases/create.vue": {
-    "file": "assets/create-4tjHUfPz.js",
+    "file": "assets/create-4CNfdNJl.js",
     "name": "create",
     "src": "resources/js/Pages/Purchases/create.vue",
     "isDynamicEntry": true,
@@ -2351,7 +2351,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-BKZv4Mmb.js",
+    "file": "assets/app-Cf7vWusH.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,

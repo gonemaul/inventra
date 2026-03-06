@@ -52,6 +52,7 @@ const filteredUnlinked = computed(() => {
         matchesSearch(item.product?.name, item.product?.code)
     );
 });
+console.log(filteredUnlinked.value)
 
 // Sort by updated_at (descending) so newest linked is at the top
 const filteredLinked = computed(() => {
@@ -59,7 +60,7 @@ const filteredLinked = computed(() => {
     let items = [...props.linkedItems].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
     if (localSearchQuery.value) {
-        const queryLower = localSearchQuery.value.toLowerCase();
+        const queryLower = localSearchQuery.value.toLowerCase().trim().split(' ')
         items = items.filter(item => 
             (item.product?.name || '').toLowerCase().includes(queryLower) ||
             (item.product?.code || '').toLowerCase().includes(queryLower)
@@ -378,13 +379,13 @@ const adjustQty = (amount) => {
         <div class="px-4 space-y-3" @touchmove="blurSearchInput">
             <!-- BILAH PENCARIAN (Lokal & Global) -->
             <div class="relative mt-1 mb-2">
-                <svg class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg v-if="filteredUnlinked !== null" class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
                 
                 <!-- Global Search (Unlinked Tab) -->
                 <input
-                    v-if="activeTab === 'unlinked'"
+                    v-if="activeTab === 'unlinked' && filteredUnlinked !== null"
                     v-model="searchKeywords"
                     @input="actions.handleSearchNewItem($event.target.value)"
                     type="text"
@@ -394,7 +395,7 @@ const adjustQty = (amount) => {
 
                 <!-- Local Search (Linked Tab) -->
                 <input
-                    v-else
+                    v-else-if="activeTab === 'linked'"
                     v-model="localSearchQuery"
                     type="text"
                     placeholder="Cari dalam item tertaut..."

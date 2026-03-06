@@ -24,20 +24,6 @@ const props = defineProps({
     purchases: Object, // { total_spend_month: 0, count_pending: 0, recent: [] }
     finance: Object, // { total_debt: 0, due_soon_count: 0, recent_bills: [] }
 });
-console.log(props.cashflow);
-// --- HELPERS ---
-const formatRupiah = (val) =>
-    new Intl.NumberFormat("id-ID", {
-        style: "currency",
-        currency: "IDR",
-        minimumFractionDigits: 0,
-    }).format(val);
-const formatDate = (date) =>
-    new Date(date).toLocaleDateString("id-ID", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-    });
 
 // Scale Chart Bar
 const maxChartValue = computed(() => {
