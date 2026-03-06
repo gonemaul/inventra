@@ -572,17 +572,10 @@ class PurchaseService
 
         return DB::transaction(function () use ($extraCosts, $purchase, $costPerUnitAllocation) {
 
-            // A. Update Header Transaksi
-            $purchase->update([
-                'status' => Purchase::STATUS_COMPLETED,
-                'shipping_cost' => $extraCosts['shipping_cost'] ?? 0,
-                'other_costs' => $extraCosts['other_costs'] ?? 0,
-                'notes' => $extraCosts['note'] ?? null,
-                // Opsional: set tanggal selesai
-                // 'completed_at' => now(),
-            ]);
-
+            // A. PENTING: Update semua Subtotal Item & Kumpulkan di variabel Total Akumulatif
+            $finalTotalItemPrice = 0;
             $marginAlerts = [];
+
             // B. Proses Setiap Item
             foreach ($purchase->items as $item) {
                 // KASUS 1: ITEM TIDAK TERTAUT (Batal/Tidak Dikirim)
@@ -617,8 +610,11 @@ class PurchaseService
                 // Jika ada Qty Bersih, proses sebagai stok masuk
                 $finalHpp = $item->purchase_price + $costPerUnitAllocation;
 
+                $subtotalFix = $netQty * $finalHpp;
+                $finalTotalItemPrice += $subtotalFix; // Kumpulkan Total Murni
+                
                 $item->update([
-                    'subtotal' => $netQty * $finalHpp,
+                    'subtotal' => $subtotalFix,
                 ]);
 
                 // Update Master Data Produk (Harga Beli Baru)
@@ -646,7 +642,7 @@ class PurchaseService
 
                 // Jika Margin < 10% (Bahaya) atau Negatif (Rugi)
                 if ($product->is_margin_low) {
-                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp ".number_format($newCost)."\nJual: Rp ".number_format($currentSelling)."\nMargin: <b>".$product->current['percent'].'%</b> (Tipis!)';
+                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp ".number_format($newCost)."\nJual: Rp ".number_format($currentSelling)."\nMargin: <b>".round($marginPercent, 2).'%</b> (Tipis!)';
                 }
             }
             if (! empty($marginAlerts)) {
@@ -656,6 +652,20 @@ class PurchaseService
 
                 $this->telegramService->send($msg);
             }
+
+            // C. UPDATE HEADER TRANSAKSI SECARA AKURAT
+            // Rekam `sum(subtotal)` hasil final perhitungan ke struct master Purchase
+            $shippingCost = $extraCosts['shipping_cost'] ?? 0;
+            $otherCosts = $extraCosts['other_costs'] ?? 0;
+            
+            $purchase->update([
+                'status' => Purchase::STATUS_COMPLETED,
+                'total_item_price' => $finalTotalItemPrice,
+                'shipping_cost' => $shippingCost,
+                'other_costs' => $otherCosts,
+                'grand_total' => $finalTotalItemPrice + $shippingCost + $otherCosts,
+                'notes' => $extraCosts['note'] ?? null,
+            ]);
 
             return true;
         });

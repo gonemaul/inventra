@@ -637,9 +637,9 @@ class PurchaseController extends Controller
     {
         // Validasi Input Biaya Tambahan (Boleh 0)
         $validated = $request->validate([
-            'shipping_cost' => 'required|numeric|min:0',
-            'other_costs' => 'required|numeric|min:0',
-            'notes' => 'nullable',
+            'shipping_cost' => 'nullable|numeric|min:0',
+            'other_costs' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|max:255|string',
         ]);
 
         try {

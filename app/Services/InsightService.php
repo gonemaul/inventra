@@ -187,7 +187,7 @@ class InsightService
             ->join('purchases', 'purchase_invoices.purchase_id', '=', 'purchases.id') // Join Manual
             ->where('purchases.status', Purchase::STATUS_COMPLETED)
             ->where('purchase_invoices.payment_status', '!=', PurchaseInvoice::PAYMENT_STATUS_PAID)
-            ->whereBetween('purchase_invoices.due_date', [now(), now()->addDays(7)])
+            ->where('purchase_invoices.due_date', '<=', now()->addDays(7))
             ->sum(DB::raw('purchase_invoices.total_amount - purchase_invoices.amount_paid'));
 
         $balance = $projectedIn - $projectedOut;

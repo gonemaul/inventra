@@ -62,9 +62,9 @@ class SendFinancialReport extends Command
         $incYoY = Sale::whereMonth('created_at', $yoyDate->month)->whereYear('created_at', $yoyDate->year)->sum('total_revenue');
 
         // 3. Query PENGELUARAN (Purchases)
-        $expTarget = Purchase::whereMonth('transaction_date', $targetDate->month)->whereYear('transaction_date', $targetDate->year)->sum('grand_total');
-        $expMoM = Purchase::whereMonth('transaction_date', $momDate->month)->whereYear('transaction_date', $momDate->year)->sum('grand_total');
-        $expYoY = Purchase::whereMonth('transaction_date', $yoyDate->month)->whereYear('transaction_date', $yoyDate->year)->sum('grand_total');
+        $expTarget = Purchase::where('status', Purchase::STATUS_COMPLETED)->whereMonth('transaction_date', $targetDate->month)->whereYear('transaction_date', $targetDate->year)->sum('grand_total');
+        $expMoM = Purchase::where('status', Purchase::STATUS_COMPLETED)->whereMonth('transaction_date', $momDate->month)->whereYear('transaction_date', $momDate->year)->sum('grand_total');
+        $expYoY = Purchase::where('status', Purchase::STATUS_COMPLETED)->whereMonth('transaction_date', $yoyDate->month)->whereYear('transaction_date', $yoyDate->year)->sum('grand_total');
 
         // 4. Hitung Laba Bersih Bulan Ini
         $profit = $incTarget - $expTarget;
@@ -101,8 +101,8 @@ class SendFinancialReport extends Command
         $incPrev = Sale::whereBetween('created_at', [$startPrevWeek, $endPrevWeek])->sum('total_revenue');
 
         // B. PENGELUARAN
-        $expCurrent = Purchase::whereBetween('transaction_date', [$startLastWeek, $endLastWeek])->sum('grand_total');
-        $expPrev = Purchase::whereBetween('transaction_date', [$startPrevWeek, $endPrevWeek])->sum('grand_total');
+        $expCurrent = Purchase::where('status', Purchase::STATUS_COMPLETED)->whereBetween('transaction_date', [$startLastWeek, $endLastWeek])->sum('grand_total');
+        $expPrev = Purchase::where('status', Purchase::STATUS_COMPLETED)->whereBetween('transaction_date', [$startPrevWeek, $endPrevWeek])->sum('grand_total');
 
         $msg .= "📈 <b>REKAP MINGGU LALU</b>\n";
         $msg .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";
@@ -122,7 +122,7 @@ class SendFinancialReport extends Command
         $omzet = Sale::whereDate('created_at', $today)->sum('total_revenue');
 
         // Belanja/Restock hari ini
-        $belanja = Purchase::whereDate('transaction_date', $today)->sum('grand_total');
+        $belanja = Purchase::where('status', Purchase::STATUS_COMPLETED)->whereDate('transaction_date', $today)->sum('grand_total');
 
         $msg .= "🌤 <b>SNAPSHOT HARI INI (12:30)</b>\n";
         $msg .= "━━━━━━━━━━━━━━━━━━━━━━━\n\n";

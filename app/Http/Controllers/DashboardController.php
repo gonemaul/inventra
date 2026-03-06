@@ -110,6 +110,7 @@ class DashboardController extends Controller
         $purchases = [
             // Gunakan toBase() untuk agregat sederhana
             'total_spend_month' => Purchase::toBase()
+                ->where('status', Purchase::STATUS_COMPLETED)
                 ->whereDate('transaction_date', '>=', $startOfMonth)
                 ->sum('grand_total'),
 
