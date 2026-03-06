@@ -7,7 +7,7 @@ import { ref, watch, computed } from "vue";
 import { throttle } from "lodash";
 import PurchaseStatsGrid from "./Components/PurchaseStatsGrid.vue";
 import PurchaseTransactionList from "./Components/PurchaseTransactionList.vue";
-import SalesChart from "../Sale/Components/SalesChart.vue"; // Reuse Chart
+import { onMounted, onUnmounted } from "vue";
 
 const props = defineProps({
     dropdowns: Object, 
@@ -80,10 +80,19 @@ watch(search, (val) => {
     params.value.page = 1;
 });
 
-// COMPUTED
-const chartData = computed(() => {
-    // Format for SalesChart: { labels: [], values: [] }
-    return props.summary?.chart || { labels: [], values: [] };
+// AUTO BLUR PADA SAAT SCROLL (Smart Search UX)
+const blurInputs = () => {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+        document.activeElement.blur();
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('scroll', blurInputs, { passive: true });
+});
+
+onUnmounted(() => {
+    window.removeEventListener('scroll', blurInputs);
 });
 </script>
 
@@ -96,28 +105,50 @@ const chartData = computed(() => {
             <!-- 1. Stats Grid (Selalu Muncul) -->
             <PurchaseStatsGrid :summary="summary" />
 
-            <!-- 2. Chart (Ringkasan Tahunan/Bulanan) -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2">
-                     <SalesChart 
-                        :data="chartData" 
-                        title="Grafik Belanja 12 Bulan Terakhir"
-                        color="#84cc16" 
-                    />
-                </div>
-                <!-- Mini Panel: Quick Actions / Supplier Shortcuts? -->
-                 <div class="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-100 dark:border-gray-700 shadow-sm flex flex-col justify-center items-center text-center">
-                    <p class="text-xs text-gray-500 font-bold uppercase mb-2">Shortcut Filter</p>
-                    <div class="flex flex-wrap gap-2 justify-center">
+            <!-- 2. Top Summary Cards (Pengganti Chart) -->
+             <div v-if="summary.top_supplier_name" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <!-- Card 1: Top Supplier -->
+                 <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
+                     <div class="flex items-center justify-between mb-3 relative z-10">
+                         <div class="flex items-center gap-2">
+                             <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
+                                 <span class="text-sm">🏭</span>
+                             </div>
+                             <h3 class="font-bold text-base leading-tight">Top Supplier Bulan Ini</h3>
+                         </div>
+                         <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Mitra Utama</span>
+                     </div>
+
+                     <div class="space-y-2 relative z-10">
+                         <div class="flex items-center gap-2 p-1.5 rounded-lg bg-white/10">
+                             <div class="w-8 h-8 flex items-center justify-center font-bold text-indigo-700 bg-white rounded-full text-xs shadow-sm">
+                                 1
+                             </div>
+                             <div class="flex-1 min-w-0">
+                                 <p class="text-sm font-bold truncate">{{ summary.top_supplier_name }}</p>
+                             </div>
+                             <div class="font-bold text-sm">
+                                 {{ new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(summary.top_supplier_amount) }}
+                             </div>
+                         </div>
+                     </div>
+                     <div class="absolute -right-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">🏭</div>
+                 </div>
+
+                 <!-- Card 2: Quick Search Action -->
+                 <div class="bg-gradient-to-br from-slate-700 to-slate-900 rounded-xl p-4 text-white shadow-lg relative overflow-hidden flex flex-col justify-center items-center text-center">
+                     <p class="text-sm text-gray-300 font-bold uppercase mb-3 relative z-10">Banyak Vendor?</p>
+                     <div class="relative z-10">
                          <button 
-                            @click="showFilterModal = true"
-                            class="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg text-sm font-bold hover:bg-indigo-100 transition"
-                        >
-                            🔍 Cari per Supplier
-                        </button>
-                    </div>
-                </div>
-            </div>
+                             @click="showFilterModal = true"
+                             class="px-5 py-2.5 bg-white text-slate-900 rounded-lg text-sm font-bold hover:bg-gray-100 transition shadow-md flex gap-2 items-center"
+                         >
+                             <span>✅</span> Buka Filter Lanjutan
+                         </button>
+                     </div>
+                     <div class="absolute -left-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">🔍</div>
+                 </div>
+             </div>
 
             <!-- 3. Controls & Tabs -->
              <div class="flex flex-col gap-4 mt-4">

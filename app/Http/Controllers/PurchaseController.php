@@ -91,20 +91,6 @@ class PurchaseController extends Controller
             Purchase::STATUS_CHECKING
         ])->count();
 
-        // 5. Chart 12 Bulan Terakhir (Pengeluaran Aktual)
-        $chartLabels = [];
-        $chartValues = [];
-        for ($i = 11; $i >= 0; $i--) {
-             $d = $now->copy()->subMonths($i);
-             $chartLabels[] = $d->translatedFormat('M y'); // Jan 24
-             
-             $val = Purchase::where('status', Purchase::STATUS_COMPLETED)
-                    ->whereYear('transaction_date', $d->year)
-                    ->whereMonth('transaction_date', $d->month)
-                    ->sum('grand_total');
-             $chartValues[] = (int) $val;
-        }
-
         $summary = [
             'spend_this_month' => $spendThisMonth,
             'spend_growth_month' => $spendLastMonth > 0 ? round((($spendThisMonth - $spendLastMonth) / $spendLastMonth) * 100, 1) : 0,
@@ -116,11 +102,6 @@ class PurchaseController extends Controller
             'top_supplier_amount' => $topSupplier->total ?? 0,
             
             'active_orders' => $activeOrderCount,
-
-            'chart' => [
-                'labels' => $chartLabels,
-                'values' => $chartValues
-            ]
         ];
 
         return Inertia::render('Purchases/index', [

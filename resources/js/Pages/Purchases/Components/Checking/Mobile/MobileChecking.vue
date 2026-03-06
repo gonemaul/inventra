@@ -60,11 +60,14 @@ const filteredLinked = computed(() => {
     let items = [...props.linkedItems].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
 
     if (localSearchQuery.value) {
-        const queryLower = localSearchQuery.value.toLowerCase().trim().split(' ')
-        items = items.filter(item => 
-            (item.product?.name || '').toLowerCase().includes(queryLower) ||
-            (item.product?.code || '').toLowerCase().includes(queryLower)
-        );
+        const queryLower = localSearchQuery.value.toLowerCase().trim().split(' ').filter(word => word.length > 0);
+        items = items.filter(item => {
+            const itemName = (item.product?.name || '').toLowerCase();
+            const itemCode = (item.product?.code || '').toLowerCase();
+            const fullText = itemName + ' ' + itemCode;
+            
+            return queryLower.every(word => fullText.includes(word));
+        });
     }
     
     return items;

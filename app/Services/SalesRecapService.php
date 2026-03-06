@@ -41,10 +41,25 @@ class SalesRecapService
             $query->onlyTrashed();
         }
 
-        // 2. Filter Search (PENTING: Dibungkus closure agar tidak merusak filter lain)
+        // 2. Filter Search (Smart Search: Cari No Ref, Nama Pelanggan, ATAU Nama Produk di History)
         $query->when($params['search'] ?? null, function ($q, $search) {
-            $q->where(function ($subQuery) use ($search) {
-                $subQuery->where('reference_no', 'like', "%{$search}%");
+             $searchTerms = array_filter(explode(' ', $search));
+             
+             $q->where(function ($subQuery) use ($search, $searchTerms) {
+                // Exact Match
+                $subQuery->where('reference_no', 'like', "%{$search}%")
+                    ->orWhereHas('customer', function ($customerQuery) use ($search) {
+                        $customerQuery->where('name', 'like', "%{$search}%");
+                    })
+                    // Smart Search: Multi-keyword matching di JSON / Relasi (Produk)
+                    ->orWhereHas('items', function ($itemsQuery) use ($searchTerms) {
+                         $itemsQuery->where(function ($itemsSubQuery) use ($searchTerms) {
+                             foreach ($searchTerms as $term) {
+                                  // SQLite/MySQL compatible broad search inside JSON text
+                                  $itemsSubQuery->whereRaw('LOWER(product_snapshot) LIKE ?', ["%".strtolower($term)."%"]);
+                             }
+                         });
+                    });
             });
         });
 

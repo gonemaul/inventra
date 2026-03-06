@@ -55,8 +55,8 @@ class PurchaseService
                          $itemsQuery->where(function ($itemsSubQuery) use ($searchTerms) {
                              foreach ($searchTerms as $term) {
                                   // Asumsikan database support ->json search (MySQL/PostgreSQL)
-                                  // atau fallback jika MySQL < 5.7 pakai string like sederhana
-                                  $itemsSubQuery->where('product_snapshot', 'like', "%{$term}%");
+                                  // SQLite/MySQL compatible broad search inside JSON text
+                                  $itemsSubQuery->whereRaw('LOWER(product_snapshot) LIKE ?', ["%".strtolower($term)."%"]);
                              }
                          });
                     });
