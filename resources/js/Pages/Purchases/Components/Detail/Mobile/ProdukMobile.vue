@@ -33,9 +33,15 @@ const filteredItems = computed(() => {
         return searchWords.value.every((w) => text.includes(w));
     });
 });
+
+const blurSearchInput = () => {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+        document.activeElement.blur();
+    }
+};
 </script>
 <template>
-    <div class="space-y-3">
+    <div class="space-y-3" @touchmove="blurSearchInput">
         <!-- SMART SEARCH BAR -->
         <div class="relative">
             <svg class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">

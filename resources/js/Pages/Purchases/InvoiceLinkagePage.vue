@@ -508,10 +508,10 @@ const submitLinkage = (specificIds = null, newQty = 0, newPrice = 0) => {
                     });
                     resolve(true);
                 },
-                onError: (err) => {
-                    toast.error("Terjadi kesalahan pada server.");
-                    console.error(err);
-                    reject(err);
+                onError: (errors) => {
+                    console.error("Kesalahan Sistem/Server:", errors);
+                    toast.error("Gagal menautkan item. Periksa koneksi atau hubungi admin.");
+                    reject(errors);
                 },
                 onFinish: () => {
                     isProcessing.value = false;
@@ -561,7 +561,8 @@ const submitUnlinkage = (specificIds = null) => {
                     resolve(true);
                 },
                 onError: (errors) => {
-                    // Beritahu promise jika gagal
+                    console.error("Kesalahan Sistem/Server:", errors);
+                    toast.error("Gagal melepaskan tautan item. Periksa koneksi atau hubungi admin.");
                     reject(errors);
                 },
                 onFinish: () => {
@@ -614,10 +615,10 @@ const addNewSubstituteItem = (product) => {
                     });
                     resolve(true);
                 },
-                onError: (error) => {
-                    toast.error(`Terdapat kesalahan : ${error}`);
-                    console.log(error);
-                    reject(error);
+                onError: (errors) => {
+                    console.error("Kesalahan Sistem/Server:", errors);
+                    toast.error("Gagal menambahkan produk baru. Periksa koneksi atau hubungi admin.");
+                    reject(errors);
                 },
                 onFinish: () => {
                     isProcessing.value = false;
@@ -698,9 +699,11 @@ const saveCorrections = (product = null) => {
                     resolve(true);
                 },
                 onError: (errors) => {
-                    // Tampilkan error validasi dari backend jika ada
+                    console.error("Kesalahan Sistem/Server:", errors);
                     if (errors.items) {
                         toast.error(errors.items);
+                    } else {
+                        toast.error("Gagal menyimpan perubahan. Periksa koneksi atau hubungi admin.");
                     }
                     reject(errors);
                 },
@@ -714,7 +717,7 @@ const saveCorrections = (product = null) => {
 };
 
 // 5. Validate Invoice (Finalisasi)
-const validateInvoice = () => {
+const validateInvoice = (bypassConfirm = false) => {
     if (props.invoice.status === "validated") {
         toast.warning("Invoice ini sudah divalidasi sebelumnya.");
         return;
@@ -732,12 +735,9 @@ const validateInvoice = () => {
         return;
     }
 
-    if (
-        !confirm(
-            "Apakah Anda yakin data sudah benar? Aksi ini tidak bisa dibatalkan."
-        )
-    )
-        return;
+    if (!bypassConfirm) {
+        if (!confirm("Apakah Anda yakin data sudah benar? Aksi ini tidak bisa dibatalkan.")) return;
+    }
 
     isActionLoading.value = true;
     isProcessing.value = true;
@@ -754,7 +754,7 @@ const validateInvoice = () => {
                 toast.success("✅ Invoice berhasil divalidasi!");
                 setTimeout(() => {
                     router.visit(
-                        route("purchases.validate", props.purchase.id),
+                        route("purchases.checking", props.purchase.id),
                         {
                             preserveScroll: true,
                             preserveState: false,
@@ -763,7 +763,8 @@ const validateInvoice = () => {
                 }, 800); // Beri jeda agar toast sempat tampil
             },
             onError: (err) => {
-                toast.error(`Gagal validasi: ${JSON.stringify(err)}`);
+                console.error("Kesalahan Sistem/Server:", err);
+                toast.error(`Gagal validasi: Periksa koneksi atau hubungi admin.`);
             },
             onFinish: () => {
                 isProcessing.value = false;
@@ -794,9 +795,9 @@ const handleSearchNewItem = throttle(async (keyword) => {
         });
         
         searchResults.value = response.data;
-        console.log(searchResults.value);
     } catch (error) {
         console.error("Gagal melakukan pencarian produk:", error);
+        toast.error("Gagal melakukan pencarian produk karena kesalahan jaringan atau server.");
         searchResults.value = [];
     } finally {
         isSearching.value = false;

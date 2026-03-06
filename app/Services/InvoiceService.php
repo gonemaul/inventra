@@ -287,6 +287,9 @@ class InvoiceService
                 } else {
                     $product = Product::with(['unit:id,name', 'size:id,name', 'brand:id,name', 'category:id,name'])->findOrFail($productId);
 
+                    $newQty = isset($payload['newQty']) && is_numeric($payload['newQty']) && $payload['newQty'] > 0 ? $payload['newQty'] : 1;
+                    $newPrice = isset($payload['newPrice']) && is_numeric($payload['newPrice']) ? $payload['newPrice'] : $product->purchase_price;
+
                     $snapshot = [
                         'name' => $product->name,
                         'code' => $product->code,
@@ -306,9 +309,9 @@ class InvoiceService
                         'purchase_invoice_id' => $invoice->id, // Auto-taut
                         'product_id' => $product->id,
                         'product_snapshot' => $snapshot,
-                        'quantity' => 1, // Default Qty
-                        'purchase_price' => $product->purchase_price, // Default Harga Master
-                        'subtotal' => $product->purchase_price, // Subtotal default 1 * purchase_price
+                        'quantity' => $newQty,
+                        'purchase_price' => $newPrice,
+                        'subtotal' => $newQty * $newPrice,
                         'item_status' => PurchaseItem::STATUS_PENDING,
                     ]);
                     $createdItemsCount++;

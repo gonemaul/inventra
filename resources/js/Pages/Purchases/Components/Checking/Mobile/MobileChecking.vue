@@ -27,6 +27,7 @@ const activeTab = ref("unlinked");
 const showScanner = ref(false); // Kontrol kamera
 const showScanModal = ref(false); // Kontrol modal verifikasi
 const showSearch = ref(false); // Kontrol overlay pencarian manual
+const showValidationSheet = ref(false); // Kontrol konfirmasi BottomSheet
 const searchQuery = ref("");
 
 // --- SMART SEARCH (Persistent) ---
@@ -43,6 +44,8 @@ const matchesSearch = (productName, productCode) => {
     return searchWords.value.every(word => textToSearch.includes(word));
 };
 
+const localSearchQuery = ref("");
+
 const filteredUnlinked = computed(() => {
     if (!props.unlinkedItems) return null;
     return props.unlinkedItems.filter(item => 
@@ -50,12 +53,27 @@ const filteredUnlinked = computed(() => {
     );
 });
 
+// Sort by updated_at (descending) so newest linked is at the top
 const filteredLinked = computed(() => {
     if (!props.linkedItems) return [];
-    return props.linkedItems.filter(item => 
-        matchesSearch(item.product?.name, item.product?.code)
-    );
+    let items = [...props.linkedItems].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+
+    if (localSearchQuery.value) {
+        const queryLower = localSearchQuery.value.toLowerCase();
+        items = items.filter(item => 
+            (item.product?.name || '').toLowerCase().includes(queryLower) ||
+            (item.product?.code || '').toLowerCase().includes(queryLower)
+        );
+    }
+    
+    return items;
 });
+
+const blurSearchInput = () => {
+    if (document.activeElement && document.activeElement.tagName === 'INPUT') {
+        document.activeElement.blur();
+    }
+};
 
 // State Item yang sedang diproses di Modal
 const currentItem = ref({
@@ -328,7 +346,7 @@ const adjustQty = (amount) => {
                 :purchase="purchase"
                 :invoice="invoice"
                 :linked-items="linkedItems"
-                :validateInvoice="actions.validateInvoice"
+                :validateInvoice="() => showValidationSheet = true"
             />
             <div class="flex p-1 bg-gray-200 rounded-lg dark:bg-gray-800">
                 <button
@@ -357,26 +375,41 @@ const adjustQty = (amount) => {
             </div>
         </div>
 
-        <div class="px-4 space-y-3">
+        <div class="px-4 space-y-3" @touchmove="blurSearchInput">
             <!-- BILAH PENCARIAN (Lokal & Global) -->
             <div class="relative mt-1 mb-2">
                 <svg class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
+                
+                <!-- Global Search (Unlinked Tab) -->
                 <input
+                    v-if="activeTab === 'unlinked'"
                     v-model="searchKeywords"
                     @input="actions.handleSearchNewItem($event.target.value)"
                     type="text"
                     placeholder="Cari nama / kode produk global..."
                     class="w-full pl-10 pr-9 py-2.5 text-sm bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all"
                 />
-                <button v-if="searchKeywords" @click="searchKeywords = ''; actions.handleSearchNewItem('')" class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 right-3 top-1/2 hover:text-gray-600">
+
+                <!-- Local Search (Linked Tab) -->
+                <input
+                    v-else
+                    v-model="localSearchQuery"
+                    type="text"
+                    placeholder="Cari dalam item tertaut..."
+                    class="w-full pl-10 pr-9 py-2.5 text-sm bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all"
+                />
+
+                <button v-if="activeTab === 'unlinked' ? searchKeywords : localSearchQuery" 
+                    @click="activeTab === 'unlinked' ? (searchKeywords = '', actions.handleSearchNewItem('')) : (localSearchQuery = '')" 
+                    class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 right-3 top-1/2 hover:text-gray-600">
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
 
             <!-- HASIL PENCARIAN GLOBAL CARD VIEW TAMPIL MENGGANTIKAN TAB -->
-            <template v-if="searchKeywords">
+            <template v-if="activeTab === 'unlinked' && searchKeywords">
                 <div v-if="isSearching" class="py-10 text-center">
                     <i class="mb-2 text-2xl text-lime-500 fas fa-spinner fa-spin"></i>
                     <p class="text-sm text-gray-500 dark:text-gray-400">Mencari produk...</p>
@@ -697,10 +730,11 @@ const adjustQty = (amount) => {
                                     Rp
                                 </span>
                                 <InputRupiah
-                                    v-model.number="currentItem.price"
-                                    min="1"
-                                    class="w-full h-10 pr-3 text-base font-bold text-left transition-all bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-900 dark:border-gray-600 dark:text-white"
+                                    id="price"
+                                    v-model="currentItem.price"
+                                    class="w-full h-12 text-sm text-gray-800 bg-white border border-gray-300 rounded-xl form-input dark:bg-gray-800 dark:border-gray-600 dark:text-gray-100 placeholder:text-gray-400 focus:border-lime-500 focus:ring-lime-500"
                                     placeholder="0"
+                                    :disabled="currentItem.type === 'link'"
                                 />
                             </div>
                             <p
@@ -794,6 +828,40 @@ const adjustQty = (amount) => {
                     </button>
                 </div>
             </template>
+        </BottomSheet>
+
+        <!-- Bottom Sheet Konfirmasi Validasi Khusus Mobile -->
+        <BottomSheet :show="showValidationSheet" @close="showValidationSheet = false" title="Konfirmasi Validasi Nota">
+            <div class="px-4 pb-6 space-y-4">
+                <div class="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl space-y-3">
+                    <div class="flex justify-between items-center bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 p-2.5 rounded-lg shadow-sm">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Item</span>
+                        <span class="text-sm font-black text-gray-800 dark:text-gray-100">{{ linkedItems?.length || 0 }} Produk</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 p-2.5 rounded-lg shadow-sm">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Tagihan (Nota)</span>
+                        <span class="text-sm font-black text-gray-800 dark:text-gray-100">{{ actions.formatRupiah(invoice.total_amount) }}</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 p-2.5 rounded-lg shadow-sm">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Total Nilai Barang</span>
+                        <span class="text-base font-black text-lime-600 drop-shadow-sm">
+                            {{ actions.formatRupiah(linkedItems?.reduce((acc, item) => acc + (item.quantity * item.purchase_price), 0)) }}
+                        </span>
+                    </div>
+                </div>
+                
+                <p class="text-xs text-center text-red-500 bg-red-50 dark:bg-red-900/30 dark:border-red-900/50 border border-red-100 p-3 rounded-lg font-medium leading-relaxed">
+                    <i class="fas fa-exclamation-triangle mr-1"></i>
+                    Pastikan fisik barang dan nota Supplier sudah sesuai. Validasi yang telah disetujui tidak dapat dibatalkan.
+                </p>
+                
+                <button @click="showValidationSheet = false; actions.validateInvoice(true)" class="w-full flex justify-center items-center py-4 bg-lime-500 hover:bg-lime-600 active:scale-95 text-white font-black text-sm uppercase tracking-wider rounded-xl shadow-xl shadow-lime-500/30 transition-all border border-lime-400">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 -ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Validasi Sekarang
+                </button>
+            </div>
         </BottomSheet>
     </div>
 </template>
