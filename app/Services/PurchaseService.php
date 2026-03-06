@@ -574,7 +574,7 @@ class PurchaseService
 
             // A. PENTING: Update semua Subtotal Item & Kumpulkan di variabel Total Akumulatif
             $finalTotalItemPrice = 0;
-            $marginAlerts = [];
+            $updatedProductIds = [];
 
             // B. Proses Setiap Item
             foreach ($purchase->items as $item) {
@@ -634,23 +634,8 @@ class PurchaseService
                     $product->updateWithSnapshot([
                         'purchase_price' => $finalHpp,
                     ], 'purchase');
+                    $updatedProductIds[] = $product->id;
                 }
-
-                // hitung margin baru
-                $marginRp = $currentSelling - $newCost;
-                $marginPercent = $currentSelling > 0 ? ($marginRp / $currentSelling) * 100 : 0;
-
-                // Jika Margin < 10% (Bahaya) atau Negatif (Rugi)
-                if ($product->is_margin_low) {
-                    $marginAlerts[] = "⚠️ <b>{$product->name}</b>\nBeli: Rp ".number_format($newCost)."\nJual: Rp ".number_format($currentSelling)."\nMargin: <b>".round($marginPercent, 2).'%</b> (Tipis!)';
-                }
-            }
-            if (! empty($marginAlerts)) {
-                $msg = "🚨 <b>MARGIN GUARDIAN ALERT!</b>\n";
-                $msg .= "Ada kenaikan harga modal di pembelian {$purchase->reference_no}, segera update harga jual!\n\n";
-                $msg .= implode("\n\n", $marginAlerts);
-
-                $this->telegramService->send($msg);
             }
 
             // C. UPDATE HEADER TRANSAKSI SECARA AKURAT
@@ -666,6 +651,11 @@ class PurchaseService
                 'grand_total' => $finalTotalItemPrice + $shippingCost + $otherCosts,
                 'notes' => $extraCosts['note'] ?? null,
             ]);
+
+            // D. Dispatch background job untuk hitung insights & tembak Telegram
+            if (!empty($updatedProductIds)) {
+                \App\Jobs\AnalyzePostPurchaseJob::dispatch($updatedProductIds);
+            }
 
             return true;
         });

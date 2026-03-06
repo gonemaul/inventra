@@ -99,6 +99,7 @@ class SalesRecapService
             $totalProfit = 0;
             $itemsCount = 0;
             $totalQty = 0;
+            $soldProductIds = [];
 
             // 2. Loop Items dari Frontend
             foreach ($data['items'] as $itemData) {
@@ -172,12 +173,8 @@ class SalesRecapService
                 $totalProfit += $rowProfit;
                 $itemsCount++;
                 $totalQty += $inputQty;
-
-                $analysis = $this->inventoryAnalyzer->calculateInventoryHealth($product);
-
-                if (in_array($analysis['status'], [SmartInsight::SEVERITY_CRITICAL, SmartInsight::SEVERITY_WARNING])) {
-                    $this->stockService->sendLowStock($product, $analysis);
-                }
+                
+                $soldProductIds[] = $product->id;
             }
 
             if (! empty($data['discount_value']) && $data['discount_value'] > 0) {
@@ -216,6 +213,11 @@ class SalesRecapService
                     'change_amount' => $data['change_amount'] ?? 0,       // Kembalian
                 ],
             ]);
+
+            // Dispatch asynchronous stock analysis to prevent checkout lag
+            if (!empty($soldProductIds)) {
+                \App\Jobs\AnalyzePostSaleJob::dispatch($soldProductIds);
+            }
 
             return $sale;
         });

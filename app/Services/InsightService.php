@@ -337,7 +337,7 @@ class InsightService
      * Bagian ini yang melakukan Create/Update/Delete ke tabel smart_insights.
      * Menerima $product dan $metrics (hasil hitungan) sebagai parameter.
      */
-    private function processRestockInsight(Product $product, array $metrics)
+    public function processRestockInsight(Product $product, array $metrics, $muteNotification = false)
     {
         if ($metrics['status'] === SmartInsight::SEVERITY_CRITICAL || $metrics['status'] === SmartInsight::SEVERITY_WARNING) {
             // Build a descriptive title with velocity info
@@ -358,7 +358,7 @@ class InsightService
             );
 
             // Telegram — hanya untuk CRITICAL (stok < safety stock, akan habis < 3 hari)
-            if ($metrics['status'] === SmartInsight::SEVERITY_CRITICAL) {
+            if (!$muteNotification && $metrics['status'] === SmartInsight::SEVERITY_CRITICAL) {
                 $cacheKey = 'notif_restock_critical_'.$product->id;
                 if (! Cache::has($cacheKey)) {
                     $daysLeft = $metrics['days_left'] ?? '?';
@@ -413,7 +413,7 @@ class InsightService
         }
     }
 
-    private function processMarginInsight(Product $product, array $metrics)
+    public function processMarginInsight(Product $product, array $metrics, $muteNotification = false)
     {
         if ($metrics['margin']['is_critical']) {
             $currentMargin = round($metrics['margin']['percent'], 2);
@@ -443,7 +443,7 @@ class InsightService
 
             // Kirim Notifikasi Telegram (sekali per 6 jam, pakai Cache Guard)
             $cacheKey = 'notif_margin_low_'.$product->id;
-            if (! Cache::has($cacheKey)) {
+            if (!$muteNotification && ! Cache::has($cacheKey)) {
                 $msg = "<b>ALERT: PROFIT MARGIN RENDAH!</b>\n\n";
                 $msg .= "<b>{$product->name}</b>\n";
                 $msg .= "Margin Saat Ini: <b>{$currentMargin}%</b>\n";
