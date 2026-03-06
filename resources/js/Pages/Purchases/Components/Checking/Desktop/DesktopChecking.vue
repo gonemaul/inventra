@@ -21,16 +21,14 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
-    searchResults: Object,
+    searchResults: Array,
     isSearching: Boolean,
-    searchKeyword: String,
     isProcessing: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
     "update:selectedLinkItemIds",
     "update:selectedUnlinkItemIds",
-    "update:searchKeyword",
     "back", // Event kembali
     "save", // Event simpan perubahan item
     "unlink", // Event lepas tautan
@@ -74,40 +72,21 @@ const localSelectedUnlinkIds = computed({
     set: (val) => emit("update:selectedUnlinkItemIds", val),
 });
 
-const localSearchKeyword = computed({
-    get: () => props.searchKeyword,
-    set: (val) => emit("update:searchKeyword", val),
-});
+const localSearchKeyword = ref("");
 
-// --- SMART SEARCH DESKTOP ---
-const searchKeywordsDesk = ref("");
-const searchWordsDesk = computed(() =>
-    searchKeywordsDesk.value
-        .toLowerCase()
-        .split(" ")
-        .filter((w) => w)
-);
+// 6. Helper untuk menentukan status produk dari hasil pencarian
+const getProductStatus = (product) => {
+    // Check if it's currently linked (exists in editableLinkedItems array)
+    const isLinked = props.editableLinkedItems?.some(item => item.product_id === product.id);
+    if (isLinked) return { label: 'Tertaut', color: 'bg-green-100 text-green-700 border-green-200' };
 
-const matchesDeskSearch = (name, code) => {
-    if (searchWordsDesk.value.length === 0) return true;
-    const text = `${(name || "").toLowerCase()} ${(code || "").toLowerCase()}`;
-    return searchWordsDesk.value.every((w) => text.includes(w));
+    // Check if it's currently unlinked (in the PO but not linked)
+    const isUnlinked = props.unlinkedItems?.some(item => item.product_id === product.id);
+    if (isUnlinked) return { label: 'Sisa PO', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+
+    // Otherwise it's outside the PO (baru / substitute)
+    return { label: 'Luar PO', color: 'bg-purple-100 text-purple-700 border-purple-200' };
 };
-
-const filteredLinkedItems = computed(() =>
-    props.editableLinkedItems.filter((item) =>
-        matchesDeskSearch(
-            item.product_snapshot?.name,
-            item.product_snapshot?.code
-        )
-    )
-);
-
-const filteredUnlinkedItems = computed(() =>
-    (props.unlinkedItems || []).filter((item) =>
-        matchesDeskSearch(item.product?.name, item.product?.code)
-    )
-);
 </script>
 <template>
     <AuthenticatedLayout
@@ -125,7 +104,98 @@ const filteredUnlinkedItems = computed(() =>
 
         <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div class="space-y-6 lg:col-span-2">
+                
+                <!-- SMART SEARCH INPUT DESKTOP (Dipindah ke atas) -->
+                <div class="relative w-full shadow-sm">
+                    <svg class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-4 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input
+                        v-model="localSearchKeyword"
+                        @input="actions.handleSearchNewItem($event.target.value)"
+                        type="text"
+                        placeholder="Cari bagian nama / kode produk global untuk ditambahkan ke Nota..."
+                        class="w-full pl-12 pr-10 py-3 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all shadow-sm font-medium placeholder-gray-400"
+                    />
+                    <button v-if="localSearchKeyword" @click="localSearchKeyword = ''; actions.handleSearchNewItem('')" class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 right-4 top-1/2 hover:text-gray-600">
+                        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+
+                <!-- DESKTOP SEARCH RESULTS GRID -->
+                <div v-if="localSearchKeyword" class="space-y-4">
+                    <div v-if="isSearching" class="py-12 text-center bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-800 dark:border-gray-700">
+                        <i class="mb-3 text-3xl text-lime-500 fas fa-spinner fa-spin"></i>
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Menyortir Katalog Produk...</h4>
+                    </div>
+                    <div v-else-if="!searchResults?.length" class="py-12 text-center bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-800 dark:border-gray-700">
+                        <i class="mb-3 text-4xl text-gray-300 fas fa-box-open dark:text-gray-600"></i>
+                        <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-200">Tidak ada produk ditemukan</h4>
+                        <p class="text-xs text-gray-500 mt-1">Coba gunakan kata kunci berbeda.</p>
+                    </div>
+                    <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto max-h-[60vh] custom-scrollbar p-1">
+                        <div
+                            v-for="res in searchResults"
+                            :key="res.id"
+                            @click="actions.addNewSubstituteItem(res); localSearchKeyword = ''; actions.handleSearchNewItem('')"
+                            class="relative flex flex-col h-full overflow-hidden transition-all bg-white border-2 border-gray-200 border-dashed cursor-pointer group dark:bg-gray-900 dark:border-gray-700 rounded-xl hover:border-lime-400 dark:hover:border-lime-500 shadow-sm"
+                        >
+                            <div class="relative w-full aspect-square bg-gray-100 dark:bg-gray-800 shrink-0 overflow-hidden">
+                                <img
+                                    v-if="res.image_url"
+                                    :src="res.image_url"
+                                    alt="Product"
+                                    class="object-cover w-full h-full transition-opacity opacity-90 group-hover:opacity-100 hover:scale-105"
+                                />
+                                <div
+                                    v-else
+                                    class="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-gray-300 to-gray-50 dark:from-gray-700 dark:to-gray-800"
+                                >
+                                    <span class="text-3xl font-black text-gray-300 dark:text-gray-600 uppercase select-none">
+                                        {{ res.name?.substring(0, 2).toUpperCase() }}
+                                    </span>
+                                </div>
+                                <div
+                                    class="absolute top-2 left-2 px-2 py-0.5 backdrop-blur-sm text-[10px] font-bold uppercase rounded border shadow-sm max-w-[80%] truncate"
+                                    :class="getProductStatus(res).color"
+                                >
+                                    {{ getProductStatus(res).label }}
+                                </div>
+                                <div class="absolute p-1.5 text-gray-500 transition-colors rounded-full shadow-sm top-2 right-2 bg-white/80 dark:bg-gray-900/60 backdrop-blur group-hover:text-lime-600 group-hover:bg-white">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                    </svg>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col flex-grow px-3 py-2 text-center justify-center items-center">
+                                <h4 class="text-xs font-bold leading-snug text-gray-800 dark:text-gray-100 line-clamp-2 group-hover:text-lime-700 transition-colors">
+                                    {{ res.name }}
+                                </h4>
+                                <span class="text-[10px] text-gray-500 font-medium mt-1 truncate border px-1.5 rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                                    {{ res.code }}
+                                </span>
+                            </div>
+
+                            <div class="px-3 py-2 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center text-[11px] text-gray-500 bg-white dark:bg-gray-900 font-medium">
+                                <span class="text-gray-600 dark:text-gray-400">Stok: <strong class="text-gray-800 dark:text-gray-200">{{ res.stock || 0 }}</strong></span>
+                                <span class="truncate max-w-[60%] bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                                    {{ res.unit?.name || 'Pcs' }}<template v-if="res.size?.name"> - {{ res.size.name }}</template>
+                                </span>
+                            </div>
+
+                            <div class="border-t border-gray-200/80 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-3 py-2 flex items-center justify-between">
+                                <span class="text-[10px] text-gray-500">Harga Beli:</span>
+                                <span class="text-[11px] font-bold text-gray-700 dark:text-gray-300">
+                                    Rp {{ (res.purchase_price || 0).toLocaleString('id-ID') }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div
+                    v-else
                     class="flex flex-col h-full bg-white border border-gray-200 shadow-sm rounded-2xl dark:bg-gray-800 dark:border-gray-700"
                 >
                     <div
@@ -140,22 +210,6 @@ const filteredUnlinkedItems = computed(() =>
                             <p class="text-xs text-gray-500 dark:text-gray-400">
                                 Sesuaikan Qty dan Harga sesuai fisik barang.
                             </p>
-                        </div>
-
-                        <!-- SMART SEARCH INPUT DESKTOP -->
-                        <div class="relative w-56">
-                            <svg class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                            </svg>
-                            <input
-                                v-model="searchKeywordsDesk"
-                                type="text"
-                                placeholder="Cari nama / kode..."
-                                class="w-full pl-9 pr-8 py-1.5 text-xs bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white transition-all"
-                            />
-                            <button v-if="searchKeywordsDesk" @click="searchKeywordsDesk = ''" class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 right-2.5 top-1/2 hover:text-gray-600">
-                                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
                         </div>
 
                         <span
@@ -239,12 +293,12 @@ const filteredUnlinkedItems = computed(() =>
                                     class="divide-y divide-gray-100 dark:divide-gray-700"
                                 >
                                     <tr
-                                        v-if="filteredLinkedItems.length === 0 && searchKeywordsDesk"
+                                        v-if="editableLinkedItems?.length === 0 && searchKeywordsDesk"
                                     >
                                         <td colspan="4" class="px-4 py-8 text-xs text-center text-gray-400">Tidak ada item yang cocok dengan pencarian "<strong>{{ searchKeywordsDesk }}</strong>"</td>
                                     </tr>
                                     <tr
-                                        v-for="item in filteredLinkedItems"
+                                        v-for="item in editableLinkedItems"
                                         :key="item.id"
                                         class="transition group hover:bg-gray-50 dark:hover:bg-gray-700/50"
                                     >
@@ -821,131 +875,6 @@ const filteredUnlinkedItems = computed(() =>
                     </div>
                 </div>
 
-                <div
-                    v-if="pageMode === 'edit'"
-                    class="p-4 border-2 rounded-lg shadow-lg border-lime-100 bg-lime-50 dark:bg-lime-900/30"
-                >
-                    <h4
-                        class="mb-3 font-bold text-yellow-800 dark:text-yellow-200"
-                    >
-                        Tambah Item Baru / Pengganti
-                    </h4>
-                    <!-- <Search
-                        :isSearching="isSearching"
-                        v-model:model-value="localSearchKeyword"
-                        :modelValue="searchKeyword"
-                        :results="searchResults"
-                        @select="actions.addNewSubstituteItem"
-                        placeholder="Cari produk ..."
-                    /> -->
-                </div>
-
-                <div
-                    v-if="pageMode === 'edit'"
-                    class="p-6 bg-white border-2 border-gray-100 rounded-lg shadow-lg dark:bg-gray-800"
-                >
-                    <h4 class="mb-3 font-bold dark:text-gray-200">
-                        Produk Belum Tertaut
-                    </h4>
-                    <!-- Smart Search untuk Unlinked -->
-                    <div class="relative mb-3">
-                        <svg class="absolute w-4 h-4 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                        </svg>
-                        <input
-                            v-model="searchKeywordsDesk"
-                            type="text"
-                            placeholder="Filter produk..."
-                            class="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-gray-200 rounded-lg shadow-sm focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white"
-                        />
-                    </div>
-                    <form @submit.prevent="actions.submitLinkage">
-                        <p
-                            v-if="
-                                pageMode === 'edit' &&
-                                unlinkedItems?.length == 0
-                            "
-                            class="py-4 text-center text-gray-500"
-                        >
-                            Semua produk sudah ditautkan.
-                        </p>
-                        <div
-                            v-else
-                            class="overflow-y-auto border rounded max-h-48 dark:border-gray-700"
-                        >
-                            <ul class="p-2 space-y-1">
-                                <li
-                                    v-for="item in filteredUnlinkedItems"
-                                    :key="item.id"
-                                    class="flex items-center justify-between w-full p-2 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                                >
-                                    <label
-                                        :for="'link_item_' + item.id"
-                                        class="flex items-start w-full gap-2 text-sm cursor-pointer dark:text-gray-300"
-                                    >
-                                        <input
-                                            :id="'link_item_' + item.id"
-                                            type="checkbox"
-                                            :value="item.id"
-                                            v-model="localSelectedLinkIds"
-                                            class="rounded text-lime-600 mt-1.5"
-                                        />
-
-                                        <div class="flex flex-col flex-1">
-                                            <div
-                                                class="font-medium text-gray-900 dark:text-white"
-                                            >
-                                                {{ item.product.name }} ({{
-                                                    item.product.code
-                                                }})
-                                            </div>
-
-                                            <div
-                                                class="flex items-center justify-between mt-1 text-xs"
-                                            >
-                                                <span
-                                                    class="text-gray-600 dark:text-gray-400"
-                                                >
-                                                    ({{ item.quantity }}x) @{{
-                                                        actions.formatRupiah(
-                                                            item.purchase_price
-                                                        )
-                                                    }}
-                                                </span>
-
-                                                <span
-                                                    class="font-bold text-gray-800 dark:text-gray-200"
-                                                >
-                                                    Subtotal:
-                                                    {{
-                                                        actions.formatRupiah(
-                                                            item.subtotal
-                                                        )
-                                                    }}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </label>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div
-                            v-if="unlinkedItems?.length > 0"
-                            class="flex justify-end mt-4"
-                        >
-                            <PrimaryButton
-                                type="submit"
-                                :disabled="
-                                    localSelectedLinkIds.length === 0 ||
-                                    isProcessing
-                                "
-                            >
-                                Tautkan {{ localSelectedLinkIds.length }} Item
-                            </PrimaryButton>
-                        </div>
-                    </form>
-                </div>
             </div>
         </div>
     </AuthenticatedLayout>

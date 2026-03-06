@@ -83,7 +83,7 @@ const props = defineProps({
                     />
                     <div
                         v-else
-                        class="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-gray-50 to-gray-200 dark:from-gray-800 dark:to-gray-700"
+                        class="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-gray-300 to-gray-50 dark:from-gray-700 dark:to-gray-800"
                     >
                         <span class="text-2xl font-black text-gray-300 dark:text-gray-600 uppercase select-none">
                             {{ item.product?.name?.substring(0, 2).toUpperCase() }}

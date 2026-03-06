@@ -215,6 +215,63 @@ class ProductService
     }
 
     /**
+     * Pencarian pintar produk untuk digunakan secara global (Server-side Smart Search)
+     *
+     * @param string|null $keyword
+     * @param int $limit
+     * @param int|null $supplierId
+     * @return \Illuminate\Database\Eloquent\Collection
+     */
+    public function smartSearch(?string $keyword, int $limit = 20, ?int $supplierId = null)
+    {
+        $query = Product::query()
+            ->with('category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insights', 'movements');
+
+        if ($keyword) {
+            // Memecah kata kunci menjadi array kata (Word Sliced Search)
+            $words = array_filter(explode(' ', trim(strtolower($keyword))));
+
+            if (!empty($words)) {
+                $query->where(function ($q) use ($words) {
+                    foreach ($words as $word) {
+                        $q->where(function ($subQ) use ($word) {
+                            $subQ->where('name', 'LIKE', "%{$word}%")
+                                ->orWhere('code', 'LIKE', "%{$word}%")
+                                ->orWhere('slug', 'LIKE', "%{$word}%")
+                                ->orWhereHas('productType', fn ($s) => $s->where('name', 'LIKE', "%{$word}%"))
+                                ->orWhereHas('category', fn ($s) => $s->where('name', 'LIKE', "%{$word}%"))
+                                ->orWhereHas('supplier', fn ($s) => $s->where('name', 'LIKE', "%{$word}%"))
+                                ->orWhereHas('brand', fn ($s) => $s->where('name', 'LIKE', "%{$word}%"))
+                                ->orWhereHas('size', fn ($s) => $s->where('name', 'LIKE', "%{$word}%"));
+                        });
+                    }
+                });
+            }
+        }
+
+        if ($supplierId) {
+            $query->where('supplier_id', $supplierId);
+        }
+
+        $products = $query->limit($limit)->get();
+        
+        $products->makeHidden([
+            'created_at',
+            'updated_at',
+            'deleted_at',
+            'category_id',
+            'unit_id',
+            'size_id',
+            'supplier_id',
+            'brand_id',
+            'product_type_id',
+            'inventory_type',
+        ]);
+
+        return $products;
+    }
+
+    /**
      * Mendapatkan jumlah total produk yang aktif (tidak di-sampah).
      *
      * @return int

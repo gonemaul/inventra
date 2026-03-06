@@ -70,37 +70,11 @@ class ProductController extends Controller
 
     public function searchProducts(Request $request)
     {
-        $keyword = $request->input('q'); // misal frontend kirim parameter ?q=nama_produk
-        $limit = $request->input('limit', 20); // Default ambil 20 item saja agar ringan
+        $keyword = $request->input('q'); // frontend mengirim parameter ?q=nama_produk
+        $limit = $request->input('limit', 20); // Default ambil 20 item
+        $supplierId = $request->input('supplier_id'); // Optional filter
 
-        $query = Product::query()
-            ->with('category:id,name', 'unit:id,name', 'size:id,name', 'supplier:id,name', 'brand:id,name', 'productType:id,name', 'insights', 'movements');
-
-        if ($keyword) {
-            $query->where(function ($q) use ($keyword) {
-                $q->where('name', 'LIKE', "%{$keyword}%")
-                    ->orWhere('code', 'LIKE', "%{$keyword}%")
-                    ->orWhere('slug', 'LIKE', "%{$keyword}%")
-                    ->orWhereHas('productType', fn ($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
-                    ->orWhereHas('supplier', fn ($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
-                    ->orWhereHas('brand', fn ($s) => $s->where('name', 'LIKE', "%{$keyword}%"))
-                    ->orWhereHas('size', fn ($s) => $s->where('name', 'LIKE', "%{$keyword}%"));
-            });
-        }
-
-        $products = $query->limit($limit)->get();
-        $products->makeHidden([
-            'created_at',
-            'updated_at',
-            'deleted_at',
-            'category_id',
-            'unit_id',
-            'size_id',
-            'supplier_id',
-            'brand_id',
-            'product_type_id',
-            'inventory_type',
-        ]);
+        $products = $this->productService->smartSearch($keyword, $limit, $supplierId);
 
         return response()->json($products);
     }

@@ -251,39 +251,68 @@ class InvoiceService
                 if (! $productId) {
                     throw new \InvalidArgumentException('Produk harus dipilih untuk ditambahkan.');
                 }
-                $isDuplicate = PurchaseItem::where('purchase_id', $invoice->purchase_id)
+                $existingItem = PurchaseItem::where('purchase_id', $invoice->purchase_id)
                     ->where('product_id', $productId)
-                    ->exists();
-                if ($isDuplicate) {
-                    throw new \Exception('Gagal! Produk ini SUDAH ADA di daftar pesanan (PO). Mohon jangan buat baru. Silakan cari item tersebut di daftar kanan (Belum Tertaut) dan tautkan.');
+                    ->first();
+
+                if ($existingItem) {
+                    if ($existingItem->purchase_invoice_id === $invoice->id) {
+                        throw new \Exception("Produk '{$existingItem->product_snapshot['name']}' sudah tertaut di nota ini.");
+                    }
+                    if ($existingItem->purchase_invoice_id) {
+                        throw new \Exception("Produk '{$existingItem->product_snapshot['name']}' sudah tertaut di nota lain. Unlink dulu jika ingin memindahkan.");
+                    }
+
+                    $newQty = $existingItem->quantity;
+                    $newPrice = $existingItem->purchase_price;
+                    $status = PurchaseItem::STATUS_SESUAI;
+
+                    if (isset($payload['newQty']) && is_numeric($payload['newQty']) && $payload['newQty'] !== $existingItem->quantity) {
+                        $newQty = $payload['newQty'];
+                        $status = ($payload['newQty'] > $existingItem->quantity) ? PurchaseItem::STATUS_OVER : PurchaseItem::STATUS_PARTIAL;
+                    }
+                    if (isset($payload['newPrice']) && is_numeric($payload['newPrice']) && $payload['newPrice'] !== $existingItem->purchase_price) {
+                        $newPrice = $payload['newPrice'];
+                        $status = PurchaseItem::STATUS_PRICE_CORRECTED;
+                    }
+
+                    $existingItem->update([
+                        'quantity' => $newQty,
+                        'purchase_price' => $newPrice,
+                        'item_status' => $status,
+                        'purchase_invoice_id' => $invoice->id,
+                        'subtotal' => $newQty * $newPrice,
+                    ]);
+                    $linkedItemsCount++;
+                } else {
+                    $product = Product::with(['unit:id,name', 'size:id,name', 'brand:id,name', 'category:id,name'])->findOrFail($productId);
+
+                    $snapshot = [
+                        'name' => $product->name,
+                        'code' => $product->code,
+                        'category' => $product->category?->name ?? null,
+                        'productType' => $product->productType?->name ?? null,
+                        'unit' => $product->unit?->name ?? null,
+                        'size' => $product->size?->name ?? null,
+                        'brand' => $product->brand?->name ?? null,
+                        'purchase_price' => $product->purchase_price,
+                        'selling_price' => $product->selling_price,
+                        'stock' => $product->stock ?? 0,
+                        'inventory_type' => $product->inventory_type ?? '-',
+                        'quantity' => 0,
+                    ];
+
+                    $invoice->purchase->items()->create([
+                        'purchase_invoice_id' => $invoice->id, // Auto-taut
+                        'product_id' => $product->id,
+                        'product_snapshot' => $snapshot,
+                        'quantity' => 1, // Default Qty
+                        'purchase_price' => $product->purchase_price, // Default Harga Master
+                        'subtotal' => $product->purchase_price, // Subtotal default 1 * purchase_price
+                        'item_status' => PurchaseItem::STATUS_PENDING,
+                    ]);
+                    $createdItemsCount++;
                 }
-                $product = Product::with(['unit:id,name', 'size:id,name', 'brand:id,name', 'category:id,name'])->findOrFail($productId);
-
-                $snapshot = [
-                    'name' => $product->name,
-                    'code' => $product->code,
-                    'category' => $product->category?->name ?? null,
-                    'productType' => $product->productType?->name ?? null,
-                    'unit' => $product->unit?->name ?? null,
-                    'size' => $product->size?->name ?? null,
-                    'brand' => $product->brand?->name ?? null,
-                    'purchase_price' => $product->purchase_price,
-                    'selling_price' => $product->selling_price,
-                    'stock' => $product->stock ?? 0,
-                    'inventory_type' => $product->inventory_type ?? '-',
-                    'quantity' => 0,
-                ];
-
-                $invoice->purchase->items()->create([
-                    'purchase_invoice_id' => $invoice->id, // Auto-taut
-                    'product_id' => $product->id,
-                    'product_snapshot' => $snapshot,
-                    'quantity' => 1, // Default Qty
-                    'purchase_price' => $product->purchase_price, // Default Harga Master
-                    'subtotal' => $product->purchase_price,
-                    'item_status' => PurchaseItem::STATUS_PENDING,
-                ]);
-                $createdItemsCount++;
             } else {
                 throw new \InvalidArgumentException("Tipe aksi tidak dikenali (harus 'link' atau 'create').");
             }

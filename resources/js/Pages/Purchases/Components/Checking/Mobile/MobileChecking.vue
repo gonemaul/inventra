@@ -16,8 +16,9 @@ const props = defineProps({
     invoice: Object, // Data Invoice
     unlinkedItems: Array, // Sisa PO (Purchase Items yang belum link)
     linkedItems: Array, // Barang yang sudah masuk (Pivot Items)
-    products: Array, // Master Produk (untuk pencarian barang baru)
     actions: Object, // Kumpulan fungsi dari parent (submitLinkage, addNewSubstituteItem, dll)
+    searchResults: Array,
+    isSearching: Boolean,
 });
 
 // --- STATE ---
@@ -237,18 +238,6 @@ const handleUnlink = async () => {
     }
 };
 
-// Filter Pencarian Lokal (Cepat, tanpa request server)
-const filteredProducts = computed(() => {
-    if (searchQuery.value.length < 2) return [];
-    const lower = searchQuery.value.toLowerCase();
-    return props.products
-        .filter(
-            (p) =>
-                p.name.toLowerCase().includes(lower) ||
-                p.code.toLowerCase().includes(lower)
-        )
-        .slice(0, 10);
-});
 
 // 5. Callback dari BarcodeScanner
 const onScanResult = (decodedText) => {
@@ -258,26 +247,24 @@ const onScanResult = (decodedText) => {
     if (match) {
         onSelectUnlinked(match);
     } else {
-        // SearchProduct()
-        const res = props.product.find((q) => q.code === decodedText);
-        currentItem.value = {
-            type: "create",
-            id: null,
-            product_id: res.id,
-            name: res.name,
-            code: res.code,
-            unit: res.unit?.name || "Pcs",
-            is_po_match: false,
-            po_qty: 0,
-            po_price: 0,
-            quantity: 1,
-            price: res.purchase_price,
-            total: res.purchase_price,
-        };
-        showScanModal.value = true;
+        searchKeywords.value = decodedText;
+        props.actions.handleSearchNewItem(decodedText);
     }
 };
 
+// 6. Helper untuk menentukan status produk dari hasil pencarian
+const getProductStatus = (product) => {
+    // Check if it's currently linked (exists in linkedItems array)
+    const isLinked = props.linkedItems?.some(item => item.product_id === product.id);
+    if (isLinked) return { label: 'Tertaut', color: 'bg-green-100 text-green-700 border-green-200' };
+
+    // Check if it's currently unlinked (in the PO but not linked)
+    const isUnlinked = props.unlinkedItems?.some(item => item.product_id === product.id);
+    if (isUnlinked) return { label: 'Sisa PO', color: 'bg-blue-100 text-blue-700 border-blue-200' };
+
+    // Otherwise it's outside the PO (baru / substitute)
+    return { label: 'Luar PO', color: 'bg-purple-100 text-purple-700 border-purple-200' };
+};
 // 1. Auto Calculate Total
 // Writable Computed: Bisa membaca Total, dan jika diedit, dia mengupdate Harga Satuan
 const calculatedTotal = computed(() => {
@@ -371,52 +358,115 @@ const adjustQty = (amount) => {
         </div>
 
         <div class="px-4 space-y-3">
-            <!-- BILAH PENCARIAN PERSISTENT (SMART SEARCH) -->
+            <!-- BILAH PENCARIAN (Lokal & Global) -->
             <div class="relative mt-1 mb-2">
-                <svg
-                    class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-3 top-1/2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
+                <svg class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 left-3 top-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                 </svg>
                 <input
                     v-model="searchKeywords"
+                    @input="actions.handleSearchNewItem($event.target.value)"
                     type="text"
-                    placeholder="Cari bagian nama / kode produk..."
+                    placeholder="Cari nama / kode produk global..."
                     class="w-full pl-10 pr-9 py-2.5 text-sm bg-white border border-gray-200 rounded-xl shadow-sm focus:ring-2 focus:ring-lime-500 focus:border-lime-500 dark:bg-gray-800 dark:border-gray-700 dark:text-white transition-all"
                 />
-                <button
-                    v-if="searchKeywords"
-                    @click="searchKeywords = ''"
-                    class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 right-3 top-1/2 hover:text-gray-600"
-                >
+                <button v-if="searchKeywords" @click="searchKeywords = ''; actions.handleSearchNewItem('')" class="absolute w-5 h-5 text-gray-400 -translate-y-1/2 right-3 top-1/2 hover:text-gray-600">
                     <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
 
-            <UnlinkMobile
-                v-if="activeTab === 'unlinked'"
-                :unlinked-items="filteredUnlinked"
-                :handleProductSelection="onSelectUnlinked"
-            />
+            <!-- HASIL PENCARIAN GLOBAL CARD VIEW TAMPIL MENGGANTIKAN TAB -->
+            <template v-if="searchKeywords">
+                <div v-if="isSearching" class="py-10 text-center">
+                    <i class="mb-2 text-2xl text-lime-500 fas fa-spinner fa-spin"></i>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">Mencari produk...</p>
+                </div>
+                <div v-else-if="!searchResults?.length" class="py-10 text-center">
+                    <i class="mb-2 text-3xl text-gray-300 fas fa-box-open dark:text-gray-600"></i>
+                    <p class="text-sm font-medium text-gray-500 dark:text-gray-400">Tidak ada produk ditemukan</p>
+                </div>
+                <div v-else class="grid grid-cols-2 gap-2.5 pb-6 overflow-y-auto max-h-[65vh] custom-scrollbar p-1">
+                    <div
+                        v-for="res in searchResults"
+                        :key="res.id"
+                        @click="onSelectSearch(res); searchKeywords = ''; actions.handleSearchNewItem('')"
+                        class="relative flex flex-col h-full overflow-hidden transition-all bg-white border-2 border-gray-200 border-dashed cursor-pointer group dark:bg-gray-900 dark:border-gray-700 rounded-xl hover:border-lime-400 dark:hover:border-lime-500 shadow-sm"
+                    >
+                        <!-- 1:1 Image -->
+                        <div class="relative w-full aspect-square bg-gray-100 dark:bg-gray-800 shrink-0 overflow-hidden">
+                            <img
+                                v-if="res.image_url"
+                                :src="res.image_url"
+                                alt="Product Image"
+                                class="object-cover w-full h-full transition-opacity opacity-90 group-hover:opacity-100 hover:scale-105"
+                            />
+                            <div
+                                v-else
+                                class="flex flex-col items-center justify-center w-full h-full bg-gradient-to-br from-gray-300 to-gray-50 dark:from-gray-700 dark:to-gray-800"
+                            >
+                                <span class="text-2xl font-black text-gray-300 dark:text-gray-600 uppercase select-none">
+                                    {{ res.name?.substring(0, 2).toUpperCase() }}
+                                </span>
+                            </div>
 
-            <LinkedMobile
-                v-if="activeTab === 'linked'"
-                :linkedItems="filteredLinked"
-                :openEditModal="onSelectLinked"
-            />
+                            <!-- Status badge -->
+                            <div
+                                class="absolute top-1.5 left-1.5 px-1.5 py-0.5 backdrop-blur-sm text-[9px] font-bold uppercase rounded-md border shadow-sm max-w-[70%] truncate"
+                                :class="getProductStatus(res).color"
+                            >
+                                {{ getProductStatus(res).label }}
+                            </div>
+
+                            <!-- Add icon -->
+                            <div class="absolute p-1 text-gray-500 transition-colors rounded-full shadow-sm top-1.5 right-1.5 bg-white/80 dark:bg-gray-900/60 backdrop-blur group-hover:text-lime-600 group-hover:bg-white">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" />
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Product name & code -->
+                        <div class="flex flex-col flex-grow px-2 py-1.5 text-center items-center justify-center">
+                            <h4 class="text-[11px] font-bold leading-snug text-gray-800 dark:text-gray-100 line-clamp-2 group-hover:text-lime-700 transition-colors">
+                                {{ res.name }}
+                            </h4>
+                            <span class="text-[9px] text-gray-400 font-medium mt-0.5 truncate border px-1 rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                                {{ res.code }}
+                            </span>
+                        </div>
+
+                        <!-- Info Stok & Unit (New) -->
+                        <div class="px-2 pt-1 pb-1.5 border-t border-gray-100 dark:border-gray-800 flex justify-between items-center text-[9px] text-gray-500 bg-white dark:bg-gray-900 font-medium">
+                            <span class="text-gray-600 dark:text-gray-400">Stok: <strong class="text-gray-800 dark:text-gray-200">{{ res.stock || 0 }}</strong></span>
+                            <span class="truncate max-w-[50%] bg-gray-100 dark:bg-gray-800 px-1 py-[1px] rounded">{{ res.unit?.name || 'Pcs' }}</span>
+                        </div>
+
+                        <!-- Harga Nominal Info -->
+                        <div class="border-t border-gray-200/80 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60 px-2 py-1.5 flex items-center justify-between">
+                            <span class="text-[9px] text-gray-400">H.Beli:</span>
+                            <span class="text-[10px] font-bold text-gray-700 dark:text-gray-300">
+                                Rp {{ (res.purchase_price || 0).toLocaleString('id-ID') }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- TAMPILAN DEFAULT JIKA TIDAK ADA PENCARIAN -->
+            <template v-else>
+                <UnlinkMobile
+                    v-if="activeTab === 'unlinked'"
+                    :unlinked-items="filteredUnlinked"
+                    :handleProductSelection="onSelectUnlinked"
+                />
+
+                <LinkedMobile
+                    v-if="activeTab === 'linked'"
+                    :linkedItems="filteredLinked"
+                    :openEditModal="onSelectLinked"
+                />
+            </template>
         </div>
-
-        <SearchMobile
-            v-if="showSearch"
-            v-model="searchQuery"
-            :filtered-products="filteredProducts"
-            :unlinked-items="unlinkedItems"
-            @close="showSearch = false"
-            @onSelectSearch="onSelectSearch"
-        />
 
         <BarcodeScanner
             v-if="showScanner"
@@ -426,7 +476,7 @@ const adjustQty = (amount) => {
 
         <div
             class="fixed z-30 w-full max-w-xs px-4 -translate-x-1/2 bottom-6 left-1/2"
-            v-if="!showSearch && !showScanner && unlinkedItems"
+            v-if="!showScanner && unlinkedItems"
         >
             <div class="flex gap-3">
                 <button

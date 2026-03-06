@@ -773,23 +773,35 @@ const validateInvoice = () => {
     );
 };
 
-// 6. Handle Search (Watcher logic dipindah ke sini agar bisa dipakai desktop juga jika perlu)
-const handleSearchNewItem = throttle((keyword) => {
-    if (keyword.length < 2) {
+// 6. Handle Search (Server-Side)
+const handleSearchNewItem = throttle(async (keyword) => {
+    // keyword is passed from child or v-model
+    const keywordStr = typeof keyword === 'string' ? keyword : searchKeyword.value;
+    
+    if (keywordStr.length < 2) {
         searchResults.value = [];
         return;
     }
     isSearching.value = true;
-    // Filter dari props.products (Client side filtering agar cepat)
-    searchResults.value = props.products
-        .filter(
-            (p) =>
-                p.name.toLowerCase().includes(keyword.toLowerCase()) ||
-                p.code.toLowerCase().includes(keyword.toLowerCase())
-        )
-        .slice(0, 5);
-    isSearching.value = false;
-}, 300);
+    
+    try {
+        const response = await axios.get(route('api.products.search'), {
+            params: {
+                q: keywordStr,
+                limit: 10,
+                supplier_id: props.purchase?.supplier_id // Hanya cari produk untuk supplier po ini
+            }
+        });
+        
+        searchResults.value = response.data;
+        console.log(searchResults.value);
+    } catch (error) {
+        console.error("Gagal melakukan pencarian produk:", error);
+        searchResults.value = [];
+    } finally {
+        isSearching.value = false;
+    }
+}, 500);
 
 // --- COMPUTED DATA & HELPERS ---
 const formatRupiah = (value) =>
@@ -836,8 +848,9 @@ const actions = {
             :invoice="invoice"
             :unlinkedItems="unlinkedItems"
             :linkedItems="linkedItems"
-            :products="products"
             :actions="actions"
+            :searchResults="searchResults"
+            :isSearching="isSearching"
         />
     </div>
     <div v-else>
@@ -852,12 +865,6 @@ const actions = {
             v-model:selectedUnlinkItemIds="selectedUnlinkItemIds"
             :searchResults="searchResults"
             :is-searching="isSearching"
-            @update:search-keyword="
-                (val) => {
-                    searchKeyword = val;
-                    handleSearchNewItem(val);
-                }
-            "
         />
     </div>
 </template>
