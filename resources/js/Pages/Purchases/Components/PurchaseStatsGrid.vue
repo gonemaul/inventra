@@ -11,7 +11,7 @@ const formatCurrency = (val) => new Intl.NumberFormat('id-ID', { style: 'currenc
 </script>
 
 <template>
-    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+    <div class="grid grid-cols-2 md:grid-cols-2 xl:grid-cols-4 gap-5">
         <!-- Card 1: Monthly Spend -->
         <div class="group relative bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden">
             <!-- Background Glow/Gradient -->

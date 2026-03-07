@@ -67,22 +67,22 @@ const confirmDelete = (sale) => {
         <div
             v-for="sale in sales"
             :key="sale.id"
-            class="group relative rounded-2xl p-4 lg:p-5 border transition-all cursor-pointer bg-white dark:bg-gray-900"
+            class="group relative rounded-2xl p-4 lg:p-5 border transition-all duration-300 cursor-pointer bg-white dark:bg-gray-800 overflow-hidden"
             :class="[
                 sale.deleted_at 
-                    ? 'border-red-100 ring-1 ring-red-50 dark:border-red-900/40 dark:ring-red-900/20' 
-                    : 'border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700'
+                    ? 'border-red-100 bg-red-50/30 dark:border-red-900/40 dark:bg-red-900/10' 
+                    : 'border-gray-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)] hover:-translate-y-0.5 hover:border-blue-100 dark:border-gray-700 dark:hover:border-gray-600'
             ]"
         >
             <div class="flex justify-between flex-wrap gap-4" :class="{ 'opacity-60 grayscale': sale.deleted_at }">
                 <!-- Kiri: Info Utama -->
                 <div class="flex gap-4 items-start flex-1 min-w-[200px]">
                     <div
-                        class="w-10 h-10 lg:w-11 lg:h-11 rounded-xl flex items-center justify-center shrink-0 border"
-                        :class="sale.deleted_at ? 'bg-red-50 border-red-100 text-red-400 dark:bg-red-900/20 dark:border-red-800' : 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800 dark:border-gray-700'"
+                        class="w-10 h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center shrink-0 border transition-colors"
+                        :class="sale.deleted_at ? 'bg-red-50 border-red-100 text-red-500 dark:bg-red-900/20 dark:border-red-800' : 'bg-gray-50/50 border-gray-100 text-gray-500 dark:bg-gray-700/50 dark:border-gray-600 group-hover:bg-blue-50/50 group-hover:text-blue-500 group-hover:border-blue-100 dark:group-hover:bg-blue-900/20 dark:group-hover:border-blue-800 dark:group-hover:text-blue-400'"
                     >
                         <!-- Icon Premium Monochrome -->
-                        <svg class="w-5 h-5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        <svg class="w-5 h-5 lg:w-6 lg:h-6 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     </div>
 
                 <div class="flex flex-col gap-1.5 flex-1 overflow-hidden">
@@ -94,7 +94,7 @@ const confirmDelete = (sale) => {
                             </h4>
                             
                             <!-- Premium Monochrome Payment Badge -->
-                            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 text-[10px] sm:text-xs font-medium text-gray-600 dark:text-gray-300 capitalize shadow-sm">
+                            <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md border border-gray-100 bg-gray-50/50 dark:border-gray-700/50 dark:bg-gray-800/50 text-[10px] sm:text-xs font-semibold text-gray-600 dark:text-gray-300 capitalize">
                                 <span v-html="getPaymentMethodIcon(sale.payment_method)"></span>
                                 {{ sale.payment_method || 'Cash' }}
                             </div>
@@ -136,7 +136,7 @@ const confirmDelete = (sale) => {
                 <!-- Kanan: Nominal & Status -->
                 <div class="text-right flex flex-col justify-between sm:items-end w-full sm:w-auto mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-0 border-gray-100 dark:border-gray-800">
                     <div
-                        class="font-black tracking-tight text-gray-900 dark:text-white text-base lg:text-xl"
+                        class="font-black tracking-tight text-gray-900 dark:text-white text-base lg:text-xl group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors"
                     >
                         {{ formatRupiah(sale.total_revenue) }}
                     </div>
@@ -176,8 +176,8 @@ const confirmDelete = (sale) => {
                             class="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-900 transition dark:bg-transparent dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:border-gray-600 flex items-center gap-1.5"
                             title="Preview Invoice"
                         >
-                            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            <span class="text-[10px] font-bold sm:hidden">Cetak</span>
+                            <svg class="w-4 h-4 text-blue-500 dark:text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                            <span class="text-[10px] font-bold sm:hidden text-blue-600 dark:text-blue-400">Cetak</span>
                         </button>
                     </div>
                 </div>

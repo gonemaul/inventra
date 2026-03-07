@@ -287,74 +287,100 @@ const pagination = computed(() => props.sales);
 
                     <div v-if="activeTab !== 'year'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <!-- Card 1: Top Omset -->
-                        <div class="bg-gradient-to-br from-lime-600 to-green-700 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
-                            <div class="flex items-center justify-between mb-3 relative z-10">
-                                <div class="flex items-center gap-2">
-                                    <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-                                        <span class="text-sm">💎</span>
-                                    </div>
-                                    <h3 class="font-bold text-base leading-tight">Top Omset</h3>
-                                </div>
-                                <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Most Valuable</span>
-                            </div>
-
-                            <div class="space-y-2 relative z-10">
-                                <Link 
-                                    v-for="(product, idx) in activePeriodInsight.revenue" 
-                                    :key="'rev-'+product.id"
-                                    :href="route('products.show', product.slug)" 
-                                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition group"
-                                >
-                                    <div class="w-5 h-5 flex items-center justify-center font-bold text-lime-700 bg-white rounded-full text-xs shadow-sm">
-                                        {{ idx + 1 }}
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold truncate group-hover:text-lime-200 transition">{{ product.name }}</p>
-                                        <p class="text-[10px] text-lime-100/80">{{ product.qty }} items</p>
-                                    </div>
-                                    <div class="font-bold text-xs">
-                                        {{ new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(product.revenue) }}
-                                    </div>
-                                </Link>
-                            </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-0 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
+                            <!-- Gradient header bar -->
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                             
-                            <!-- Decoration -->
-                            <div class="absolute -right-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">💎</div>
+                            <div class="p-4 lg:p-5">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center shadow-inner">
+                                            <svg class="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm">Top Omset</h3>
+                                            <p class="text-[10px] text-gray-400">Penyumbang nominal tertinggi</p>
+                                        </div>
+                                    </div>
+                                    <span class="text-[9px] uppercase tracking-widest font-bold bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 px-2 py-1 rounded-md">
+                                        Revenue
+                                    </span>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <Link 
+                                        v-for="(product, idx) in activePeriodInsight.revenue" 
+                                        :key="'rev-'+product.id"
+                                        :href="route('products.show', product.slug)" 
+                                        class="flex items-center gap-3 group/item border-b border-gray-50 dark:border-gray-700/50 last:border-0 pb-2 last:pb-0"
+                                    >
+                                        <div class="w-6 h-6 flex-shrink-0 flex items-center justify-center font-bold rounded-lg text-[10px]" :class="idx === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-500' : idx === 1 ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400' : idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-500' : 'bg-gray-50 text-gray-400 dark:bg-gray-800/50 dark:text-gray-500'">
+                                            {{ idx + 1 }}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 truncate group-hover/item:text-blue-600 dark:group-hover/item:text-blue-400 transition-colors">{{ product.name }}</p>
+                                        </div>
+                                        <div class="text-right flex-shrink-0 flex flex-col items-end">
+                                            <span class="font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100">
+                                                {{ new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(product.revenue) }}
+                                            </span>
+                                            <span class="text-[9px] font-medium text-gray-400 bg-gray-50 dark:bg-gray-800 px-1 py-0.5 mt-0.5 rounded">{{ product.qty }} terjual</span>
+                                        </div>
+                                    </Link>
+                                    
+                                    <div v-if="!activePeriodInsight.revenue || activePeriodInsight.revenue.length === 0" class="py-6 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                                        Belum ada data penjualan
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Card 2: Top Qty -->
-                        <div class="bg-gradient-to-br from-teal-500 to-emerald-600 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
-                            <div class="flex items-center justify-between mb-3 relative z-10">
-                                <div class="flex items-center gap-2">
-                                    <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-                                        <span class="text-sm">📦</span>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-0 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] border border-gray-100 dark:border-gray-700 relative overflow-hidden group">
+                            <!-- Gradient header bar -->
+                            <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-400 to-teal-500"></div>
+                            
+                            <div class="p-4 lg:p-5">
+                                <div class="flex items-center justify-between mb-4">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-inner">
+                                            <svg class="w-5 h-5 lg:w-6 lg:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                        </div>
+                                        <div>
+                                            <h3 class="font-bold text-gray-800 dark:text-gray-100 text-sm">Terlaris (Qty)</h3>
+                                            <p class="text-[10px] text-gray-400">Paling banyak terjual</p>
+                                        </div>
                                     </div>
-                                    <h3 class="font-bold text-base leading-tight">Terlaris (Qty)</h3>
+                                    <span class="text-[9px] uppercase tracking-widest font-bold bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 px-2 py-1 rounded-md">
+                                        Volume
+                                    </span>
                                 </div>
-                                <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Most Popular</span>
-                            </div>
 
-                            <div class="space-y-2 relative z-10">
-                                <Link 
-                                    v-for="(product, idx) in activePeriodInsight.qty" 
-                                    :key="'qty-'+product.id"
-                                    :href="route('products.show', product.slug)" 
-                                    class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-white/10 transition group"
-                                >
-                                    <div class="w-5 h-5 flex items-center justify-center font-bold text-teal-700 bg-white rounded-full text-xs shadow-sm">
-                                        {{ idx + 1 }}
+                                <div class="space-y-3">
+                                    <Link 
+                                        v-for="(product, idx) in activePeriodInsight.qty" 
+                                        :key="'qty-'+product.id"
+                                        :href="route('products.show', product.slug)" 
+                                        class="flex items-center gap-3 group/item border-b border-gray-50 dark:border-gray-700/50 last:border-0 pb-2 last:pb-0"
+                                    >
+                                        <div class="w-6 h-6 flex-shrink-0 flex items-center justify-center font-bold rounded-lg text-[10px]" :class="idx === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-500' : idx === 1 ? 'bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400' : idx === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-500' : 'bg-gray-50 text-gray-400 dark:bg-gray-800/50 dark:text-gray-500'">
+                                            {{ idx + 1 }}
+                                        </div>
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-200 truncate group-hover/item:text-emerald-600 dark:group-hover/item:text-emerald-400 transition-colors">{{ product.name }}</p>
+                                        </div>
+                                        <div class="text-right flex-shrink-0">
+                                            <span class="font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100">
+                                                {{ product.qty }} <span class="text-[9px] text-gray-400 font-medium">unit</span>
+                                            </span>
+                                        </div>
+                                    </Link>
+                                    
+                                    <div v-if="!activePeriodInsight.qty || activePeriodInsight.qty.length === 0" class="py-6 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
+                                        Belum ada data penjualan
                                     </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-xs font-bold truncate group-hover:text-teal-200 transition">{{ product.name }}</p>
-                                    </div>
-                                    <div class="font-bold text-xs bg-white/20 px-1.5 py-0.5 rounded">
-                                        {{ product.qty }} items
-                                    </div>
-                                </Link>
+                                </div>
                             </div>
-
-                            <!-- Decoration -->
-                            <div class="absolute -right-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">🔥</div>
                         </div>
                     </div>
                 </div>
