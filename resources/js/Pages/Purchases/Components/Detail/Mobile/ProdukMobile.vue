@@ -39,6 +39,9 @@ const blurSearchInput = () => {
         document.activeElement.blur();
     }
 };
+
+import { useSmartRAB } from '@/Composable/useSmartRAB';
+const { openRabModal } = useSmartRAB();
 </script>
 <template>
     <div class="space-y-3" @touchmove="blurSearchInput">
@@ -280,12 +283,21 @@ const blurSearchInput = () => {
                         </div>
                     </div>
 
-                    <!-- Subtotal Highlighted -->
-                    <div class="flex flex-col items-end pl-3 border-l-2 border-dashed border-gray-200 dark:border-gray-700">
-                        <span class="text-[9px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">Subtotal</span>
-                        <span class="text-lg font-black text-gray-900 dark:text-white leading-none">
-                            {{ rp((item.actual_price || item.purchase_price) * (item.quantity_received || item.quantity)) }}
-                        </span>
+                    <!-- Beli Lagi Button & Subtotal Highlighted -->
+                    <div class="flex flex-col items-end gap-2 pl-3 border-l-2 border-dashed border-gray-200 dark:border-gray-700">
+                        <button 
+                            @click="openRabModal(item, purchase?.supplier?.id, item.product_snapshot?.quantity || 1)"
+                            class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-white bg-lime-500 rounded-lg hover:bg-lime-600 active:scale-95 transition shadow-sm shadow-lime-500/30"
+                        >
+                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                            Beli Lagi
+                        </button>
+                        <div class="flex flex-col items-end mt-auto">
+                            <span class="text-[9px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">Subtotal</span>
+                            <span class="text-lg font-black text-gray-900 dark:text-white leading-none">
+                                {{ rp((item.actual_price || item.purchase_price) * (item.quantity_received || item.quantity)) }}
+                            </span>
+                        </div>
                     </div>
             </div>
         </div>

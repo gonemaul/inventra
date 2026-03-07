@@ -37,10 +37,11 @@ const monthlyGrowth = computed(() => {
 });
 
 const icons = {
-    up: `<svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>`,
-    down: `<svg class="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" /></svg>`,
     alert: `<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>`,
 };
+
+import { useSmartRAB } from '@/Composable/useSmartRAB';
+const { openRabModal } = useSmartRAB();
 </script>
 
 <template>
@@ -271,6 +272,13 @@ const icons = {
         <div
             class="grid grid-cols-2 gap-3 p-4 border-t border-gray-200 dark:border-gray-700"
         >
+            <button
+                @click="openRabModal(data, null, 1)"
+                class="col-span-2 flex items-center justify-center gap-2 py-3.5 text-sm font-bold text-white transition bg-lime-500 rounded-xl hover:bg-lime-600 shadow-sm"
+            >
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                Tambah ke RAB
+            </button>
             <button
                 @click="$emit('adjustPrice', data)"
                 class="flex items-center justify-center gap-2 py-3 text-sm font-bold text-orange-700 transition bg-orange-100 rounded-xl hover:bg-orange-200"

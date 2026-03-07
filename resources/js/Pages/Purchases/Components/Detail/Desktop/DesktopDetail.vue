@@ -180,7 +180,7 @@ const updateStatus = (purchase, newStatus) => {
                 />
             </template>
             <template #products>
-                <ItemValidationTable :items="validationItems" />
+                <ItemValidationTable :items="validationItems" :purchase="purchase" />
             </template>
         </Tabs>
     </div>

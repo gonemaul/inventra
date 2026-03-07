@@ -22,6 +22,7 @@ import EmptyState from "./Components/EmptyState.vue";
 import StockAdjustmentForm from "./Components/Mobile/StockAdjustmentSheet.vue";
 import PriceAdjustmentForm from "./Components/Mobile/PriceAdjustmentSheet.vue";
 import ProductDetailSheet from "./Components/Mobile/ProductDetailSheet.vue";
+import SmartRabModal from "@/Components/SmartRabModal.vue";
 
 const props = defineProps({
     products: Object, // Berisi data produk yang sudah dipaginasi
@@ -574,4 +575,6 @@ onUnmounted(() => {
             "
         />
     </BottomSheet>
+
+    <SmartRabModal />
 </template>

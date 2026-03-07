@@ -15,9 +15,10 @@ import FinalizeModal from "./Components/Detail/FinalizeModal.vue";
 import OrderImageModal from "./Components/OrderImageModal.vue";
 import InvoiceForm from "./Components/Detail/InvoiceForm.vue";
 import BottomSheet from "@/Components/BottomSheet.vue";
+import SmartRabModal from "@/Components/SmartRabModal.vue";
 
 // Import Anak
-const DesktopDetail = defineAsyncComponent(() =>
+const  DesktopDetail = defineAsyncComponent(() =>
     import("./Components/Detail/Desktop/DesktopDetail.vue")
 );
 const MobileDetail = defineAsyncComponent(() =>
@@ -251,4 +252,6 @@ const actions = {
             />
         </div>
     </AuthenticatedLayout>
+
+    <SmartRabModal />
 </template>
