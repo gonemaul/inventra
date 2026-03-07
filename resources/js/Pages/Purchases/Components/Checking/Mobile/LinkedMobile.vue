@@ -1,4 +1,6 @@
 <script setup>
+import { ref, computed } from "vue";
+
 const props = defineProps({
     linkedItems: Object,
     openEditModal: Object,
@@ -9,8 +11,76 @@ const rp = (n) =>
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(n || 0);
+
+// --- SMART FILTERS ---
+const activeFilter = ref("Semua");
+const filterOptions = ["Semua", "Ada Perubahan", "Sesuai", "Baru"];
+
+const getUnifiedStatus = (item) => {
+    const orderQty = Number(item.product_snapshot?.quantity || 0);
+    const orderPrice = Number(item.product_snapshot?.purchase_price || 0);
+    const realQty = Number(item.quantity || 0);
+    const realPrice = Number(item.purchase_price || 0);
+
+    if (orderQty === 0 && realQty > 0) return "Baru";
+    
+    if (orderQty === realQty && orderPrice === realPrice) {
+        return "Sesuai";
+    } else {
+        return "Ada Perubahan";
+    }
+};
+
+const processedLinkedItems = computed(() => {
+    if (!props.linkedItems) return [];
+    return props.linkedItems.map(item => ({
+        ...item,
+        unified_status: getUnifiedStatus(item)
+    }));
+});
+
+const filteredLinkedItems = computed(() => {
+    let items = processedLinkedItems.value;
+    
+    if (activeFilter.value !== "Semua") {
+        items = items.filter(item => item.unified_status === activeFilter.value);
+    }
+    
+    return items;
+});
 </script>
 <template>
+        <!-- SMART FILTERS CHIPS -->
+        <div v-if="linkedItems && linkedItems.length > 0" class="flex overflow-x-auto gap-2 mb-3 pb-1 custom-scrollbar hide-scrollbar snap-x">
+            <button
+                v-for="filter in filterOptions"
+                :key="filter"
+                @click="activeFilter = filter"
+                class="snap-start whitespace-nowrap px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all"
+                :class="
+                    activeFilter === filter
+                        ? 'bg-gray-800 text-white border-gray-800 dark:bg-gray-100 dark:text-gray-900 border-transparent shadow-sm'
+                        : 'bg-white text-gray-500 border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-50'
+                "
+            >
+                {{ filter }}
+            </button>
+        </div>
+        
+        <!-- STATISTIK INFO -->
+        <div v-if="linkedItems && linkedItems.length > 0" class="flex items-center justify-between px-1 mb-2">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                Total: {{ filteredLinkedItems.length }} item {{ activeFilter !== 'Semua' ? `(${activeFilter})` : '' }}
+            </span>
+        </div>
+
+        <div
+            v-if="filteredLinkedItems.length === 0 && linkedItems.length > 0"
+            class="py-10 text-sm text-center text-gray-400"
+        >
+            <p>Tidak ada item pada filter "<strong>{{ activeFilter }}</strong>"</p>
+        </div>
+
         <div
             v-if="linkedItems.length === 0"
             class="py-10 text-sm text-center text-gray-400"
@@ -19,19 +89,17 @@ const rp = (n) =>
         </div>
 
         <div
-            v-for="item in linkedItems"
+            v-for="item in filteredLinkedItems"
             :key="item.id"
             @click="openEditModal(item)"
             class="relative mb-2 transition-all bg-white border rounded-lg shadow-sm cursor-pointer group dark:bg-gray-900 hover:shadow-md active:scale-[0.99]"
             :class="[
                 // 1. LOGIKA WARNA GARIS KIRI (Border Strip)
                 // Kasus A: Barang Baru (Snapshot Kosong) -> UNGU
-                item.product_snapshot.quantity <= 0
+                item.unified_status === 'Baru'
                     ? 'border-l-4 border-l-purple-500 border-y border-r border-purple-200 bg-purple-50/40 dark:border-purple-900/50 dark:bg-purple-900/10'
                     : // Kasus B: Barang PO tapi ADA PERUBAHAN (Qty atau Harga beda) -> ORANYE
-                    item.quantity !== item.product_snapshot.quantity ||
-                      item.purchase_price !==
-                          item.product_snapshot.purchase_price
+                    item.unified_status === 'Ada Perubahan'
                     ? 'border-l-4 border-l-orange-500 border-y border-r border-gray-200 dark:border-gray-700'
                     : // Kasus C: Barang PO dan SESUAI -> HIJAU
                       'border-l-4 border-l-lime-500 border-y border-r border-gray-200 dark:border-gray-700',
@@ -67,26 +135,20 @@ const rp = (n) =>
                         <span
                             class="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide rounded-full border"
                             :class="
-                                item.product_snapshot.quantity > 0
+                                item.unified_status !== 'Baru'
                                     ? 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-900/20 dark:text-blue-400'
                                     : 'bg-purple-100 text-purple-600 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400'
                             "
                         >
                             {{
-                                item.product_snapshot.quantity > 0
+                                item.unified_status !== 'Baru'
                                     ? "Dari PO"
                                     : "Baru"
                             }}
                         </span>
 
                         <span
-                            v-if="
-                                item.product_snapshot.quantity > 0 &&
-                                (item.quantity !==
-                                    item.product_snapshot.quantity ||
-                                    item.purchase_price !==
-                                        item.product_snapshot.purchase_price)
-                            "
+                            v-if="item.unified_status === 'Ada Perubahan'"
                             class="px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide rounded-full border bg-orange-50 text-orange-600 border-orange-100 dark:bg-orange-900/20 dark:text-orange-400"
                         >
                             Ada Perubahan

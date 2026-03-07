@@ -55,12 +55,17 @@ const getPaymentColor = (status) => {
             return "bg-orange-100 text-orange-800"; // Orange: Hutang
     }
 };
+
 const isNew = computed(() => {
     return (
         props.purchase.status == "diterima" ||
         props.purchase.status == "checking"
     );
 });
+
+// "gunakan cons dari model untuk mengecek status purchase dan invoice"
+const STATUS_PURCHASE_SELESAI = 'selesai';
+const STATUS_INVOICE_VALIDATED = 'validated';
 </script>
 <template>
     <ImageModal
@@ -140,7 +145,31 @@ const isNew = computed(() => {
 
             <div class="h-px my-2 bg-gray-100 dark:bg-gray-800"></div>
 
-            <div class="flex items-center justify-between">
+            <!-- Payment Progress Bar -->
+            <div 
+                v-if="inv.status === STATUS_INVOICE_VALIDATED && purchase.status === STATUS_PURCHASE_SELESAI" 
+                class="mb-3"
+            >
+                <div class="flex justify-between items-center mb-1.5 text-[10px] font-medium text-gray-500 dark:text-gray-400">
+                    <span>Progress Pembayaran</span>
+                    <span class="font-bold whitespace-nowrap" :class="inv.payment_status === 'paid' ? 'text-green-600' : 'text-blue-600'">
+                        {{ Math.round((inv.paid_amount || 0) / (inv.total_amount || 1) * 100) }}%
+                    </span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 mb-1">
+                    <div 
+                        class="h-1.5 rounded-full transition-all duration-500" 
+                        :class="inv.payment_status === 'paid' ? 'bg-green-500' : 'bg-blue-500'"
+                        :style="{ width: `${Math.round((inv.paid_amount || 0) / (inv.total_amount || 1) * 100)}%` }"
+                    ></div>
+                </div>
+                <div class="flex justify-between items-center text-[9px] text-gray-400 font-medium">
+                    <span>Terbayar: <b class="text-gray-700 dark:text-gray-300">{{ rp(inv.paid_amount || 0) }}</b></span>
+                    <span>Sisa: <b class="text-gray-700 dark:text-gray-300">{{ rp((inv.total_amount || 0) - (inv.paid_amount || 0)) }}</b></span>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between mt-2">
                 <div class="flex gap-2">
                     <button
                         v-if="canEditDelete"
@@ -206,9 +235,9 @@ const isNew = computed(() => {
                     </button>
                     <Link
                         v-if="
-                            inv.status === 'validated' &&
+                            inv.status === STATUS_INVOICE_VALIDATED &&
                             inv.payment_status !== 'paid' &&
-                            purchase.status === 'selesai'
+                            purchase.status === STATUS_PURCHASE_SELESAI
                         "
                         :href="
                             route('finance.show', {

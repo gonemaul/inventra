@@ -104,7 +104,7 @@ const invoiceCount = computed(() => {
         @close="showImageModal = false"
     /> -->
     <div
-        class="absolute top-0 left-0 min-h-screen font-sans text-gray-800 bg-gray-100 dark:bg-gray-950 dark:text-gray-100 pb-28"
+        class="absolute max-w-screen-lg top-0 w-screen left-0 min-h-screen font-sans text-gray-800 bg-gray-100 dark:bg-gray-950 dark:text-gray-100 pb-28"
     >
         <header
             class="sticky top-0 z-30 flex items-center justify-between px-4 py-3 mb-3 bg-white border-b border-gray-100 shadow-sm dark:bg-gray-900 dark:border-gray-800"

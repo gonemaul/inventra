@@ -20,18 +20,75 @@ const formatDate = (date) =>
           })
         : "-";
 
-// --- SMART SEARCH ---
+// --- SMART STATUS LOGIC ---
+const getUnifiedStatus = (item) => {
+    const orderQty = Number(item.product_snapshot?.quantity || 0);
+    const orderPrice = Number(item.product_snapshot?.purchase_price || 0);
+    const realQty = Number(item.quantity || 0);
+    const realPrice = Number(item.purchase_price || 0);
+
+    if (orderQty === 0 && realQty > 0) return "Baru";
+    if (orderQty > 0 && realQty === 0) {
+        return props.purchase?.status === "selesai" ? "Kosong" : "Menunggu";
+    }
+    if (orderQty > 0 && realQty > 0) {
+        if (orderQty === realQty && orderPrice === realPrice) {
+            return "Sesuai";
+        } else {
+            return "Ada Perubahan";
+        }
+    }
+    return "Menunggu";
+};
+
+const getStatusBadgeClass = (status) => {
+    switch(status) {
+        case 'Ada Perubahan': return 'px-1.5 py-0.5 text-[9px] font-bold bg-orange-100 text-orange-700 rounded border border-orange-200 dark:bg-orange-900/40 dark:border-orange-800 dark:text-orange-400';
+        case 'Sesuai': return 'px-1.5 py-0.5 text-[9px] font-bold bg-lime-100 text-lime-700 rounded border border-lime-200 dark:bg-lime-900/40 dark:border-lime-800 dark:text-lime-400';
+        case 'Baru': return 'px-1.5 py-0.5 text-[9px] font-bold bg-purple-100 text-purple-700 rounded border border-purple-200 dark:bg-purple-900/40 dark:border-purple-800 dark:text-purple-400';
+        case 'Kosong': return 'px-1.5 py-0.5 text-[9px] font-bold bg-red-100 text-red-700 rounded border border-red-200 dark:bg-red-900/40 dark:border-red-800 dark:text-red-400';
+        case 'Menunggu': return 'px-1.5 py-0.5 text-[9px] font-bold bg-gray-100 text-gray-500 rounded border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400';
+        default: return 'px-1.5 py-0.5 text-[9px] font-bold bg-gray-100 text-gray-600 rounded';
+    }
+};
+
+const processedItems = computed(() => {
+    if (!props.purchase?.items) return [];
+    return props.purchase.items.map(item => ({
+        ...item,
+        unified_status: getUnifiedStatus(item)
+    }));
+});
+
+// --- SMART SEARCH & FILTERS ---
 const searchKeywords = ref("");
+const activeFilter = ref("Semua");
+const filterOptions = ["Semua", "Ada Perubahan", "Sesuai", "Kosong", "Baru", "Menunggu"];
+
 const searchWords = computed(() =>
     searchKeywords.value.toLowerCase().split(" ").filter((w) => w)
 );
+
 const filteredItems = computed(() => {
-    if (!props.purchase?.items) return [];
-    if (searchWords.value.length === 0) return props.purchase.items;
-    return props.purchase.items.filter((item) => {
-        const text = `${(item.product?.name || "").toLowerCase()} ${(item.product?.code || "").toLowerCase()}`;
-        return searchWords.value.every((w) => text.includes(w));
-    });
+    let items = processedItems.value;
+    
+    // Default Fallback
+    if (items.length === 0) return [];
+
+    // Filter Chips
+    if (activeFilter.value !== "Semua") {
+        items = items.filter(item => item.unified_status === activeFilter.value);
+    }
+
+    // Keyword Search
+    if (searchWords.value.length > 0) {
+        items = items.filter((item) => {
+            const text = `${(item.product?.name || "").toLowerCase()} ${(item.product?.code || "").toLowerCase()}`;
+            return searchWords.value.every((w) => text.includes(w));
+        });
+    }
+
+    return items;
 });
 
 const blurSearchInput = () => {
@@ -60,7 +117,35 @@ const { openRabModal } = useSmartRAB();
                 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
         </div>
-        <p v-if="searchKeywords && filteredItems.length === 0" class="py-6 text-xs text-center text-gray-400">Tidak ada produk yang cocok dengan "<strong>{{ searchKeywords }}</strong>"</p>
+
+        <!-- SMART FILTERS CHIPS -->
+        <div class="flex overflow-x-auto gap-2 pb-1 scrollbar-hide pr-4 mask-fade-right snap-x">
+            <button
+                v-for="filter in filterOptions"
+                :key="filter"
+                @click="activeFilter = filter"
+                class="snap-start whitespace-nowrap px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all"
+                :class="
+                    activeFilter === filter
+                        ? 'bg-gray-800 text-white border-gray-800 dark:bg-gray-100 dark:text-gray-900 border-transparent shadow-sm'
+                        : 'bg-white text-gray-500 border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-50'
+                "
+            >
+                {{ filter }}
+            </button>
+        </div>
+        
+        <!-- STATISTIK INFO -->
+        <div class="flex items-center justify-between px-1 mb-2">
+            <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                Total: {{ filteredItems.length }} item {{ activeFilter !== 'Semua' ? `(${activeFilter})` : '' }}
+            </span>
+        </div>
+
+        <p v-if="filteredItems.length === 0" class="py-6 text-xs text-center text-gray-400">
+            <span v-if="searchKeywords">Tidak ada produk yang cocok dengan "<strong>{{ searchKeywords }}</strong>"</span>
+            <span v-else>Tidak ada produk pada filter "<strong>{{ activeFilter }}</strong>"</span>
+        </p>
 
         <div
             v-for="item in filteredItems"
@@ -275,11 +360,9 @@ const { openRabModal } = useSmartRAB();
                         </div>
 
                         <div class="flex flex-wrap gap-1">
-                            <span v-if="item.quantity_received < item.quantity" class="px-1.5 py-0.5 text-[9px] font-bold bg-red-100 text-red-700 rounded dark:bg-red-900/30 dark:text-red-400">Qty Kurang</span>
-                            <span v-else-if="item.quantity_received > item.quantity" class="px-1.5 py-0.5 text-[9px] font-bold bg-yellow-100 text-yellow-700 rounded dark:bg-yellow-900/30 dark:text-yellow-400">Qty Lebih</span>
-                            <span v-if="item.actual_price > item.purchase_price" class="px-1.5 py-0.5 text-[9px] font-bold bg-orange-100 text-orange-700 rounded dark:bg-orange-900/30 dark:text-orange-400">Harga Naik</span>
-                            <span v-else-if="item.actual_price < item.purchase_price && item.actual_price > 0" class="px-1.5 py-0.5 text-[9px] font-bold bg-green-100 text-green-700 rounded dark:bg-green-900/30 dark:text-green-400">Harga Turun</span>
-                            <span v-if="item.quantity_received == item.quantity && (!item.actual_price || item.actual_price == item.purchase_price)" class="px-1.5 py-0.5 text-[9px] font-bold bg-lime-100 text-lime-700 rounded dark:bg-lime-900/30 dark:text-lime-400">Sesuai</span>
+                            <span :class="getStatusBadgeClass(item.unified_status)">
+                                {{ item.unified_status }}
+                            </span>
                         </div>
                     </div>
 
@@ -303,3 +386,16 @@ const { openRabModal } = useSmartRAB();
         </div>
     </div>
 </template>
+<style scoped>
+.mask-fade-right {
+    mask-image: linear-gradient(to right, black 90%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to right, black 90%, transparent 100%);
+}
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+</style>
