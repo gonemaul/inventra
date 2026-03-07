@@ -61,7 +61,7 @@ const performSearch = debounce(async (query) => {
 
     isLoading.value = true;
     try {
-        const response = await axios.get(route("products.searchProducts"), {
+        const response = await axios.get(route("api.products.search"), {
             params: { q: query, limit: 10 },
         });
         results.value = response.data;

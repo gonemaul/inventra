@@ -243,7 +243,10 @@ class ReportController extends Controller
         // Kecuali user ingin lihat semua, bisa diatur filter nanti.
 
         $query = Product::with(['category', 'unit'])
-            ->where('stock', '>', 0);
+            ->where('stock', '>', 0)
+            ->whereHas('category', function ($q) {
+                $q->whereNotIn('name', ['Jasa', 'Layanan']);
+            });
 
         // Filter Kategori (Jika ada)
         if ($request->has('category_id') && $request->category_id) {
@@ -326,6 +329,9 @@ class ReportController extends Controller
         // Gunakan addSelect untuk mengambil tanggal penjualan terakhir agar bisa disortir dlm SQL
         $query = Product::with(['category', 'unit'])
             ->where('stock', '>', 0)
+            ->whereHas('category', function ($q) {
+                $q->whereNotIn('name', ['Jasa', 'Layanan']);
+            })
             ->addSelect(['last_sale_at' => StockMovement::select('created_at')
                 ->whereColumn('product_id', 'products.id')
                 ->where('type', StockMovement::TYPE_SALE)

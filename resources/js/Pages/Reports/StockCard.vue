@@ -56,6 +56,13 @@ const formatDateTime = (dateStr) => {
     });
 };
 
+const formatRupiah = (val) =>
+    new Intl.NumberFormat("id-ID", {
+        style: "currency",
+        currency: "IDR",
+        minimumFractionDigits: 0,
+    }).format(val);
+
 // Helper Warna Badge Tipe
 const getTypeBadge = (type) => {
     const map = {
@@ -99,11 +106,13 @@ const getTypeBadge = (type) => {
                 </h2>
             </div>
             <div class="flex gap-2">
-                <button @click="doExport" v-if="product" class="p-2 text-gray-600 transition hover:text-green-600 dark:text-gray-300" title="Export CSV">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                <button @click="doExport" v-if="product" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-green-600 rounded-lg shadow hover:bg-green-700" title="Export CSV">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                    <span class="hidden sm:inline">Export CSV</span>
                 </button>
-                <button onclick="window.print()" class="p-2 text-gray-600 transition hover:text-blue-600 dark:text-gray-300" title="Print">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-blue-600 rounded-lg shadow hover:bg-blue-700" title="Print">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    <span class="hidden sm:inline">Print</span>
                 </button>
             </div>
         </template>
@@ -170,12 +179,15 @@ const getTypeBadge = (type) => {
 
             <div
                 v-if="reportData"
-                class="overflow-hidden bg-white border border-gray-200 shadow-lg rounded-2xl dark:bg-gray-800 dark:border-gray-700"
+                class="overflow-hidden bg-white border border-gray-100 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] rounded-2xl dark:bg-gray-800 dark:border-gray-700"
             >
                 <div
-                    class="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/50"
+                    class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 gap-4 border-b border-gray-100 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 relative overflow-hidden"
                 >
-                    <div>
+                    <!-- Background Decoration -->
+                    <div class="absolute -right-4 -top-4 w-32 h-32 bg-blue-500/10 dark:bg-blue-400/10 rounded-full blur-2xl"></div>
+
+                    <div class="relative z-10">
                         <h2
                             class="text-2xl font-black text-gray-800 dark:text-white"
                         >
@@ -211,21 +223,21 @@ const getTypeBadge = (type) => {
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
                         <thead
-                            class="text-xs text-gray-500 uppercase bg-gray-100 dark:bg-gray-900/50"
+                            class="text-[11px] tracking-wider text-gray-500 uppercase bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700"
                         >
                             <tr>
-                                <th class="px-6 py-3">Waktu</th>
-                                <th class="px-6 py-3">Tipe & Ref</th>
-                                <th class="px-6 py-3">Keterangan</th>
+                                <th class="px-6 py-4 font-bold">Waktu</th>
+                                <th class="px-6 py-4 font-bold">Tipe & Ref</th>
+                                <th class="px-6 py-4 font-bold">Keterangan</th>
                                 <th
-                                    class="px-6 py-3 text-center text-green-600"
+                                    class="px-6 py-4 font-bold text-center text-emerald-600"
                                 >
                                     Masuk
                                 </th>
-                                <th class="px-6 py-3 text-center text-red-600">
+                                <th class="px-6 py-4 font-bold text-center text-red-600">
                                     Keluar
                                 </th>
-                                <th class="px-6 py-3 font-black text-right">
+                                <th class="px-6 py-4 font-black text-right">
                                     Saldo
                                 </th>
                             </tr>
@@ -331,33 +343,35 @@ const getTypeBadge = (type) => {
                 </div>
             </div>
 
+            <!-- Premium Empty State -->
             <div
                 v-else
-                class="flex flex-col items-center justify-center border-2 border-gray-300 border-dashed h-96 bg-gray-50 rounded-2xl dark:bg-gray-800 dark:border-gray-700"
+                class="flex flex-col items-center justify-center min-h-[400px] bg-gradient-to-b from-white to-gray-50/50 dark:from-gray-800 dark:to-gray-800/50 border border-gray-100 dark:border-gray-700 shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] rounded-2xl relative overflow-hidden"
             >
-                <div
-                    class="flex items-center justify-center w-20 h-20 mb-4 bg-gray-200 rounded-full dark:bg-gray-700 animate-pulse"
-                >
-                    <svg
-                        class="w-10 h-10 text-gray-400"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
-                        ></path>
-                    </svg>
+                <!-- Decorative Background Element -->
+                <div class="absolute inset-0 z-0">
+                    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-lime-400/5 dark:bg-lime-900/10 rounded-full blur-3xl"></div>
                 </div>
-                <h3 class="text-lg font-bold text-gray-700 dark:text-gray-300">
-                    Pilih Produk Terlebih Dahulu
-                </h3>
-                <p class="text-sm text-gray-500">
-                    Silakan pilih produk di atas untuk melihat mutasi stok.
-                </p>
+
+                <div class="relative z-10 flex flex-col items-center text-center p-8 max-w-md">
+                    <div
+                        class="flex items-center justify-center w-20 h-20 mb-6 bg-white dark:bg-gray-700 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-600"
+                    >
+                         <svg class="w-10 h-10 text-lime-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    
+                    <h3 class="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">
+                        Analisis Pergerakan Stok
+                    </h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
+                        Pilih produk pada panel filter di atas untuk melihat riwayat lengkap perputaran barang, dari saldo awal, mutasi masuk/keluar, hingga sisa stok saat ini.
+                    </p>
+                    
+                    <div class="flex items-center gap-2 text-xs font-semibold text-lime-600 dark:text-lime-400 bg-lime-50 dark:bg-lime-900/20 px-3 py-1.5 rounded-full">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Siap menampilkan rincian
+                    </div>
+                </div>
             </div>
         </div>
     </AuthenticatedLayout>

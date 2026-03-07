@@ -97,74 +97,88 @@ const toggleSort = (key) => {
                 <div class="flex gap-2">
                     <button @click="doExport" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-green-600 rounded-lg shadow hover:bg-green-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Export CSV
+                        <span class="hidden sm:inline">Export CSV</span>
                     </button>
                     <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-blue-600 rounded-lg shadow hover:bg-blue-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        Print
+                        <span class="hidden sm:inline">Print</span>
                     </button>
                 </div>
             </div>
-            <!-- SUMMARY CARDS (Tetap Sama) -->
+            <!-- SUMMARY CARDS -->
             <div class="grid grid-cols-1 gap-4 md:grid-cols-4">
                 <div
-                    class="relative p-6 overflow-hidden text-white shadow-lg md:col-span-2 bg-gradient-to-br from-gray-800 to-gray-900 dark:from-lime-700 dark:to-lime-950 rounded-2xl"
+                    class="relative p-6 overflow-hidden text-white shadow-lg md:col-span-2 bg-gradient-to-br from-indigo-900 via-gray-800 to-black dark:from-lime-800 dark:via-lime-900 dark:to-black rounded-2xl group"
                 >
+                    <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
+                    <div class="absolute -right-10 -top-10 w-48 h-48 bg-white opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity duration-700"></div>
+                    
+                    <div class="relative z-10 flex flex-col h-full justify-between">
+                        <div>
+                            <div class="flex items-center gap-2 mb-2">
+                                <div class="p-2 bg-white/10 rounded-lg backdrop-blur-sm">
+                                    <svg class="w-5 h-5 text-indigo-300 dark:text-lime-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                                </div>
+                                <p class="text-xs font-bold tracking-widest text-indigo-200 dark:text-lime-200 uppercase">
+                                    Total Nilai Aset (HPP)
+                                </p>
+                            </div>
+                            <h2 class="text-4xl font-black tracking-tight text-white drop-shadow-md">
+                                {{ formatRupiah(summary.total_asset_value) }}
+                            </h2>
+                        </div>
+                        <div class="mt-4 flex items-center justify-between border-t border-white/10 pt-4">
+                            <p class="text-sm font-medium text-indigo-100/70 dark:text-lime-100/70">
+                                Mengendap dalam <span class="text-white font-bold">{{ summary.total_items }}</span> unit barang aktif.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    class="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl dark:bg-gray-800 dark:border-gray-700 relative overflow-hidden group"
+                >
+                    <div class="absolute right-0 top-0 w-24 h-24 bg-blue-50 dark:bg-blue-900/20 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
                     <div class="relative z-10">
-                        <p
-                            class="text-xs font-bold tracking-widest text-gray-400 uppercase"
-                        >
-                            Total Nilai Aset (HPP)
-                        </p>
-                        <h2 class="mt-2 text-3xl font-black">
-                            {{ formatRupiah(summary.total_asset_value) }}
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                            </div>
+                            <p class="text-[11px] font-bold tracking-widest text-gray-500 uppercase">
+                                Potensi Omzet
+                            </p>
+                        </div>
+                        <h2 class="text-2xl font-black text-gray-800 dark:text-white tracking-tight">
+                            {{ formatRupiah(summary.potential_revenue) }}
                         </h2>
-                        <p class="mt-2 text-xs text-gray-400">
-                            Uang yang mengendap dalam bentuk
-                            {{ summary.total_items }} unit barang.
-                        </p>
-                    </div>
-                    <div class="absolute bottom-0 right-0 p-4 opacity-10">
-                        <svg
-                            class="w-24 h-24"
-                            fill="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
+                        <div class="mt-2 flex items-center text-[11px] text-gray-400 font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-blue-400 mr-1.5"></span>
+                            Jika semua terjual habis
+                        </div>
                     </div>
                 </div>
 
                 <div
-                    class="p-6 bg-white border border-gray-200 rounded-2xl dark:bg-gray-800 dark:border-gray-700"
+                    class="p-6 bg-white border border-gray-100 shadow-[0_4px_20px_-4px_rgba(0,0,0,0.05)] rounded-2xl dark:bg-gray-800 dark:border-gray-700 relative overflow-hidden group"
                 >
-                    <p
-                        class="text-xs font-bold tracking-widest text-gray-500 uppercase"
-                    >
-                        Potensi Omzet
-                    </p>
-                    <h2 class="mt-1 text-2xl font-bold text-blue-600">
-                        {{ formatRupiah(summary.potential_revenue) }}
-                    </h2>
-                    <p class="text-[10px] text-gray-400 mt-1">
-                        Jika semua terjual habis
-                    </p>
-                </div>
-
-                <div
-                    class="p-6 bg-white border border-gray-200 rounded-2xl dark:bg-gray-800 dark:border-gray-700"
-                >
-                    <p
-                        class="text-xs font-bold tracking-widest text-gray-500 uppercase"
-                    >
-                        Estimasi Profit
-                    </p>
-                    <h2 class="mt-1 text-2xl font-bold text-lime-600">
-                        {{ formatRupiah(summary.potential_profit) }}
-                    </h2>
-                    <p class="text-[10px] text-gray-400 mt-1">Margin Kotor</p>
+                    <div class="absolute right-0 top-0 w-24 h-24 bg-lime-50 dark:bg-lime-900/20 rounded-bl-full -z-0 transition-transform group-hover:scale-110"></div>
+                    <div class="relative z-10">
+                         <div class="flex items-center gap-2 mb-3">
+                            <div class="w-8 h-8 rounded-full bg-lime-100 dark:bg-lime-900/50 flex items-center justify-center">
+                                <svg class="w-4 h-4 text-lime-600 dark:text-lime-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </div>
+                            <p class="text-[11px] font-bold tracking-widest text-gray-500 uppercase">
+                                Estimasi Profit
+                            </p>
+                        </div>
+                        <h2 class="text-2xl font-black text-gray-800 dark:text-white tracking-tight">
+                            {{ formatRupiah(summary.potential_profit) }}
+                        </h2>
+                        <div class="mt-2 flex items-center text-[11px] text-gray-400 font-medium">
+                            <span class="w-1.5 h-1.5 rounded-full bg-lime-400 mr-1.5"></span>
+                            Estimasi Margin Kotor Global
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -200,64 +214,64 @@ const toggleSort = (key) => {
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
                         <thead
-                            class="text-xs text-gray-500 uppercase bg-gray-50 dark:bg-gray-700/50"
+                            class="text-[11px] tracking-wider text-gray-500 uppercase bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700"
                         >
                             <tr>
                                 <th
-                                    class="px-6 py-3 cursor-pointer hover:text-lime-600 group"
+                                    class="px-6 py-4 font-bold cursor-pointer hover:text-lime-600 transition-colors group"
                                     @click="toggleSort('name')"
                                 >
                                     <div class="flex items-center gap-1">
                                         Produk
-                                        <span class="text-gray-300 group-hover:text-lime-500" :class="{'text-lime-600': sortKey === 'name'}">
+                                        <span class="text-gray-300 group-hover:text-lime-500 transition-colors" :class="{'text-lime-600': sortKey === 'name'}">
                                             <span v-if="sortKey === 'name'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
                                             <span v-else>↕</span>
                                         </span>
                                     </div>
                                 </th>
                                 <th
-                                    class="px-6 py-3 text-center cursor-pointer hover:text-lime-600 group"
+                                    class="px-6 py-4 font-bold text-center cursor-pointer hover:text-lime-600 transition-colors group"
                                     @click="toggleSort('stock')"
                                 >
                                     <div class="flex items-center justify-center gap-1">
                                         Stok
-                                         <span class="text-gray-300 group-hover:text-lime-500" :class="{'text-lime-600': sortKey === 'stock'}">
+                                         <span class="text-gray-300 group-hover:text-lime-500 transition-colors" :class="{'text-lime-600': sortKey === 'stock'}">
                                             <span v-if="sortKey === 'stock'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
                                             <span v-else>↕</span>
                                         </span>
                                     </div>
                                 </th>
                                 <th
-                                    class="px-6 py-3 text-right cursor-pointer hover:text-lime-600 group"
+                                    class="px-6 py-4 font-bold text-right cursor-pointer hover:text-lime-600 transition-colors group"
                                     @click="toggleSort('purchase_price')"
                                 >
                                     <div class="flex items-center justify-end gap-1">
                                         HPP Satuan
-                                        <span class="text-gray-300 group-hover:text-lime-500" :class="{'text-lime-600': sortKey === 'purchase_price'}">
+                                        <span class="text-gray-300 group-hover:text-lime-500 transition-colors" :class="{'text-lime-600': sortKey === 'purchase_price'}">
                                             <span v-if="sortKey === 'purchase_price'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
                                             <span v-else>↕</span>
                                         </span>
                                     </div>
                                 </th>
                                 <th
-                                    class="px-6 py-3 font-bold text-right bg-gray-100 cursor-pointer hover:text-lime-600 dark:bg-gray-900/50 group"
+                                    class="px-6 py-4 font-extrabold tracking-widest text-right bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900/50 cursor-pointer hover:text-lime-600 transition-colors group"
                                     @click="toggleSort('asset_value')"
                                 >
                                      <div class="flex items-center justify-end gap-1">
                                         Total Aset (HPP)
-                                         <span class="text-gray-300 group-hover:text-lime-500" :class="{'text-lime-600': sortKey === 'asset_value'}">
+                                         <span class="text-gray-300 group-hover:text-lime-500 transition-colors" :class="{'text-lime-600': sortKey === 'asset_value'}">
                                             <span v-if="sortKey === 'asset_value'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
                                             <span v-else>↕</span>
                                         </span>
                                     </div>
                                 </th>
                                 <th
-                                    class="px-6 py-3 text-right cursor-pointer hover:text-lime-600 group"
+                                    class="px-6 py-4 font-bold text-right cursor-pointer hover:text-lime-600 transition-colors group"
                                     @click="toggleSort('potential_revenue')"
                                 >
                                      <div class="flex items-center justify-end gap-1">
                                         Potensi Jual
-                                         <span class="text-gray-300 group-hover:text-lime-500" :class="{'text-lime-600': sortKey === 'potential_revenue'}">
+                                         <span class="text-gray-300 group-hover:text-lime-500 transition-colors" :class="{'text-lime-600': sortKey === 'potential_revenue'}">
                                             <span v-if="sortKey === 'potential_revenue'">{{ sortOrder === 'asc' ? '↑' : '↓' }}</span>
                                             <span v-else>↕</span>
                                         </span>
@@ -306,8 +320,14 @@ const toggleSort = (key) => {
                                 </td>
                             </tr>
                             <tr v-if="products.data.length === 0">
-                                <td colspan="5" class="px-6 py-8 text-center text-gray-500">
-                                    Data tidak ditemukan.
+                                <td colspan="5" class="py-12">
+                                     <div class="flex flex-col items-center justify-center text-center">
+                                        <div class="w-16 h-16 mb-4 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center border border-gray-100 dark:border-gray-700 shadow-sm">
+                                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                                        </div>
+                                        <h3 class="text-sm font-bold text-gray-800 dark:text-gray-200 mb-1">Data Kosong</h3>
+                                        <p class="text-xs text-gray-500">Tidak ada produk yang sesuai dengan kategori pencarian.</p>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

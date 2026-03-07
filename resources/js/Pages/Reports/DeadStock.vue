@@ -73,58 +73,66 @@ const formatDate = (date) =>
                 <div class="flex gap-2">
                     <button @click="doExport" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-green-600 rounded-lg shadow hover:bg-green-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                        Export CSV
+                        <span class="hidden sm:inline">Export CSV</span>
                     </button>
                     <button onclick="window.print()" class="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white transition bg-blue-600 rounded-lg shadow hover:bg-blue-700">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                        Print
+                        <span class="hidden sm:inline">Print</span>
                     </button>
                 </div>
             </div>
             <!-- Header Cards -->
             <div
-                class="flex flex-col items-center justify-between gap-6 p-6 text-white shadow-lg bg-gradient-to-r from-red-800 to-red-600 rounded-2xl md:flex-row"
+                class="relative flex flex-col items-center justify-between gap-6 p-8 text-white shadow-lg overflow-hidden bg-gradient-to-br from-red-600 to-rose-900 border border-red-500 rounded-2xl md:flex-row shadow-red-900/20 group"
             >
-                <div>
+                <div class="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay pointer-events-none"></div>
+                <div class="absolute -right-20 -bottom-20 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl group-hover:opacity-10 transition-opacity duration-700 pointer-events-none"></div>
+
+                <div class="relative z-10 w-full md:w-auto">
                     <h2
-                        class="flex items-center gap-2 text-2xl font-black tracking-tight uppercase"
+                        class="flex items-center gap-3 text-3xl font-black tracking-tight"
                     >
-                        <svg
-                            class="w-8 h-8"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                            ></path>
-                        </svg>
+                        <div class="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                            <svg
+                                class="w-8 h-8 drop-shadow-sm text-red-100"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                                ></path>
+                            </svg>
+                        </div>
                         Uang Mati di Gudang
                     </h2>
-                    <p class="max-w-xl mt-1 text-red-100">
-                        Barang-barang ini tidak terjual lebih dari
-                        <strong>{{ filters.days }} hari</strong>. Segera lakukan
-                        tindakan (Diskon/Bundle) agar cashflow berputar kembali.
+                    <p class="max-w-xl mt-3 text-red-100/90 leading-relaxed font-medium">
+                        Barang-barang ini terdeteksi tidak mengalami pergerakan penjualan lebih dari
+                        <strong class="text-white px-1.5 py-0.5 bg-red-800/50 rounded-md">{{ filters.days }} hari</strong>. 
+                        Pertimbangkan untuk melakukan cuci gudang atau diskon agar cashflow usaha Anda berputar kembali.
                     </p>
                 </div>
                 <div
-                    class="text-right bg-white/10 p-4 rounded-xl border border-white/20 backdrop-blur-sm min-w-[200px]"
+                    class="relative z-10 text-right bg-black/20 p-6 rounded-2xl border border-white/20 backdrop-blur-md min-w-[240px] w-full md:w-auto group-hover:bg-black/30 transition-colors"
                 >
-                    <p
-                        class="text-xs font-bold tracking-widest text-red-100 uppercase"
-                    >
-                        Total Nilai Aset Macet
-                    </p>
-                    <p class="mt-1 text-3xl font-black">
+                    <div class="flex items-center justify-end gap-2 mb-1">
+                        <span class="w-2 h-2 rounded-full bg-red-400 animate-pulse"></span>
+                        <p
+                            class="text-xs font-bold tracking-widest text-red-200 uppercase"
+                        >
+                            Total Nilai Aset Macet
+                        </p>
+                    </div>
+                    <p class="text-4xl font-black text-white drop-shadow-md">
                         {{ formatRupiah(total_frozen_asset) }}
                     </p>
-                     <!-- Total items logic need adjustment if paginated, better usage of products.total -->
-                    <p class="mt-1 text-xs text-red-200">
-                        {{ products.total }} Jenis Barang
-                    </p>
+                    <div class="mt-3 pt-3 border-t border-red-400/30 flex items-center justify-between text-sm text-red-200 font-medium">
+                        <span>Total Antrean:</span>
+                        <span class="text-white font-bold bg-white/10 px-2 py-0.5 rounded">{{ products.total }} Item</span>
+                    </div>
                 </div>
             </div>
 
@@ -160,23 +168,23 @@ const formatDate = (date) =>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
                         <thead
-                            class="text-xs text-gray-500 uppercase border-b bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700"
+                            class="text-[11px] tracking-wider text-gray-500 uppercase border-b bg-gray-50 dark:bg-gray-700/50 dark:border-gray-700"
                         >
                             <tr>
-                                <th class="px-6 py-4">Produk</th>
-                                <th class="px-6 py-4 text-center">
+                                <th class="px-6 py-4 font-bold">Produk</th>
+                                <th class="px-6 py-4 font-bold text-center">
                                     Stok Macet
                                 </th>
-                                <th class="px-6 py-4 text-right">
+                                <th class="px-6 py-4 font-bold text-right">
                                     Nilai Aset (HPP)
                                 </th>
-                                <th class="px-6 py-4 text-center">
+                                <th class="px-6 py-4 font-bold text-center">
                                     Terakhir Laku
                                 </th>
-                                <th class="px-6 py-4 text-center">
+                                <th class="px-6 py-4 font-bold text-center">
                                     Durasi (Hari)
                                 </th>
-                                <th class="px-6 py-4 text-center">Saran AI</th>
+                                <th class="px-6 py-4 font-bold text-center">Saran Tindakan</th>
                             </tr>
                         </thead>
                         <tbody
@@ -257,31 +265,32 @@ const formatDate = (date) =>
                             </tr>
 
                             <tr v-if="products.data.length === 0">
-                                <td colspan="6" class="px-6 py-12 text-center">
+                                <td colspan="6" class="px-6 py-16 text-center">
                                     <div
-                                        class="flex flex-col items-center justify-center text-green-500"
+                                        class="flex flex-col items-center justify-center p-8 bg-emerald-50/50 border border-emerald-100 rounded-3xl dark:bg-emerald-900/10 dark:border-emerald-800 max-w-lg mx-auto shadow-sm"
                                     >
-                                        <svg
-                                            class="w-12 h-12 mb-2"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                                            ></path>
-                                        </svg>
+                                        <div class="w-16 h-16 bg-white dark:bg-emerald-800 rounded-full flex items-center justify-center mb-4 shadow-sm border border-emerald-100 dark:border-emerald-700">
+                                            <svg
+                                                class="w-8 h-8 text-emerald-500"
+                                                fill="none"
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path
+                                                    stroke-linecap="round"
+                                                    stroke-linejoin="round"
+                                                    stroke-width="2"
+                                                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                                                ></path>
+                                            </svg>
+                                        </div>
                                         <h3
-                                            class="text-lg font-bold text-gray-800 dark:text-white"
+                                            class="text-xl font-black text-emerald-800 dark:text-emerald-400 mb-2"
                                         >
                                             Gudang Sehat!
                                         </h3>
-                                        <p class="text-sm text-gray-500">
-                                            Tidak ada barang yang macet lebih
-                                            dari {{ filters.days }} hari.
+                                        <p class="text-sm font-medium text-emerald-600/70 dark:text-emerald-500 text-center leading-relaxed">
+                                            Hebat, saat ini tidak terdeteksi adanya barang fisik yang mengendap atau macet di atas ambang batas <strong class="text-emerald-700 dark:text-emerald-300">{{ filters.days }} hari</strong>. Teruskan perputaran stok Anda!
                                         </p>
                                     </div>
                                 </td>

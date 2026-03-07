@@ -101,7 +101,7 @@ const triggerAnalysis = () => {
 
             <!-- SUMMARY STATS -->
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div class="bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl p-5 shadow-sm text-center">
+                <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm text-center">
                     <p class="text-xs font-bold text-gray-400 uppercase mb-1">Total Rekomendasi</p>
                     <p class="text-3xl font-black text-gray-800 dark:text-white">{{ insights.length }}</p>
                 </div>
@@ -125,9 +125,9 @@ const triggerAnalysis = () => {
             <!-- FILTER -->
             <div class="flex gap-3 items-center">
                 <span class="text-sm font-semibold text-gray-600 dark:text-gray-400">Filter:</span>
-                <button @click="actionFilter = ''" :class="['px-3 py-1.5 text-xs font-bold rounded-lg transition-all', !actionFilter ? 'bg-gray-800 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300']">Semua ({{ insights.length }})</button>
-                <button @click="actionFilter = 'raise'" :class="['px-3 py-1.5 text-xs font-bold rounded-lg transition-all', actionFilter === 'raise' ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400']">📈 Naikkan ({{ raiseCount }})</button>
-                <button @click="actionFilter = 'lower'" :class="['px-3 py-1.5 text-xs font-bold rounded-lg transition-all', actionFilter === 'lower' ? 'bg-amber-600 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400']">📉 Turunkan ({{ lowerCount }})</button>
+                <button @click="actionFilter = ''" :class="['px-3 py-1.5 text-xs font-bold rounded-lg transition-all', !actionFilter ? 'bg-gray-800 text-white dark:bg-white dark:text-gray-900' : 'bg-gray-200/50 text-gray-600 dark:bg-gray-700 dark:text-gray-300']">Semua ({{ insights.length }})</button>
+                <button @click="actionFilter = 'raise'" :class="['px-3 py-1.5 text-xs font-bold rounded-lg transition-all', actionFilter === 'raise' ? 'bg-emerald-600 text-white' : 'bg-emerald-200/50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400']">📈 Naikkan ({{ raiseCount }})</button>
+                <button @click="actionFilter = 'lower'" :class="['px-3 py-1.5 text-xs font-bold rounded-lg transition-all', actionFilter === 'lower' ? 'bg-amber-600 text-white' : 'bg-amber-200/50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400']">📉 Turunkan ({{ lowerCount }})</button>
             </div>
 
             <!-- INSIGHT LIST -->
@@ -138,7 +138,7 @@ const triggerAnalysis = () => {
             </div>
             <div v-else class="grid gap-4 md:grid-cols-2">
                 <div v-for="insight in filteredInsights" :key="insight.id"
-                    :class="['p-5 border rounded-2xl shadow-sm transition-all hover:shadow-md', insight.payload?.action === 'raise' ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800']">
+                    :class="['p-5 border rounded-2xl shadow-sm transition-all hover:shadow-md', insight.payload?.action === 'raise' ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800' : 'bg-amber-50/50 dark:bg-amber-900/10 border-amber-200 dark:border-amber-800']">
                     <div class="flex items-start justify-between gap-3">
                         <div class="flex-1">
                             <div class="flex items-center gap-2 flex-wrap mb-2">
