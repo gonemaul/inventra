@@ -16,14 +16,14 @@ use Inertia\Inertia;
 
 class SalesRecapController extends Controller
 {
-    protected $service;
-
     protected $categoryService;
+    protected $maintenanceService;
 
-    public function __construct(SalesRecapService $service, CategoryService $categoryService)
+    public function __construct(SalesRecapService $service, CategoryService $categoryService, \App\Services\MaintenanceService $maintenanceService)
     {
         $this->service = $service;
         $this->categoryService = $categoryService;
+        $this->maintenanceService = $maintenanceService;
     }
 
     /**
@@ -319,6 +319,12 @@ class SalesRecapController extends Controller
                 },
             ], // Support Desimal
             'items.*.selling_price' => 'required|numeric|min:0',
+            // validasi service_data (Bengkel Mode)
+            'service_data' => 'nullable|array',
+            'service_data.vehicle.id' => 'nullable|exists:vehicles,id',
+            'service_data.current_km' => 'nullable|numeric',
+            'service_data.engine_oil_id' => 'nullable|exists:products,id',
+            'service_data.gear_oil_id' => 'nullable|exists:products,id',
         ], [
             'items.min' => 'Keranjang penjualan tidak boleh kosong.',
             'items.*.quantity.min' => 'Jumlah barang harus lebih dari 0.',
@@ -326,7 +332,13 @@ class SalesRecapController extends Controller
         ]);
 
         try {
-            $sale = $this->service->storeRecap($validated);
+            if ($request->filled('service_data')) {
+                // Gunakan MaintenanceService untuk transaksi atomik bengkel
+                $sale = $this->maintenanceService->storeMaintenance($validated);
+            } else {
+                // Gunakan SalesRecapService standar untuk retail
+                $sale = $this->service->storeRecap($validated);
+            }
 
             $printUrl = $request->print_invoice ? route('sales.print', $sale->id) : null;
             $message = $validated['input_type'] == Sale::TYPE_REALTIME ? 'Transaksi Berhasil!' : 'Rekap penjualan berhasil disimpan.';

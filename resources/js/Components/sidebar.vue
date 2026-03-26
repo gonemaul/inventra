@@ -21,6 +21,7 @@ import SalesIcon from "./Icons/SalesIcon.vue";
 import PaymentsIcon from "./Icons/PaymentsIcon.vue";
 import ReportsIcon from "./Icons/ReportsIcon.vue";
 import SettingsIcon from "./Icons/SettingsIcon.vue";
+import CustomerHubIcon from "./Icons/CustomerHubIcon.vue";
 const navigation = [
     {
         name: "Dashboard",
@@ -57,6 +58,12 @@ const navigation = [
         href: route("reports.index"),
         icon: ReportsIcon,
         active: route().current("reports*"),
+    },
+    {
+        name: "Pelanggan",
+        href: route("customer-hub"),
+        icon: CustomerHubIcon,
+        active: route().current("customer-hub*"),
     },
     {
         name: "Pengaturan",

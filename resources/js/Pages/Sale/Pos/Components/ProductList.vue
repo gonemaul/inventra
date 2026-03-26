@@ -1,6 +1,10 @@
 <script setup>
 import { ref } from "vue";
+import { usePosState } from "@/Composables/POS/usePosState";
+import { storeToRefs } from "pinia";
 
+const posState = usePosState();
+const { activeDraft } = storeToRefs(posState);
 const props = defineProps({
     products: {
         type: Array,
@@ -83,7 +87,7 @@ const handleTouchStart = () => {
                 :class="[
                     product.stock == 0 ? 'opacity-75 grayscale-[0.5]' : '',
                     getCartQty(product.id) > 0
-                        ? 'border-lime-500 ring-1 ring-lime-500 bg-lime-50/30 dark:bg-lime-900/10'
+                        ? activeDraft.mode === 'bengkel' ? 'border-blue-500 ring-1 ring-blue-500 bg-blue-50/30 dark:bg-blue-900/10': 'border-lime-500 ring-1 ring-lime-500 bg-lime-50/30 dark:bg-lime-900/10'
                         : 'border-gray-200 dark:border-gray-700 hover:shadow-md',
                 ]"
             >
@@ -219,8 +223,8 @@ const handleTouchStart = () => {
                         <div
                             class="flex items-center justify-between pt-2 mt-auto border-t border-gray-100 dark:border-gray-700"
                         >
-                            <span
-                                class="text-sm sm:text-base font-black text-lime-600 dark:text-lime-400"
+                            <span :class="activeDraft.mode === 'bengkel' ? 'text-blue-600': 'text-lime-600 dark:text-lime-400'"
+                                class="text-sm sm:text-base font-black "
                             >
                                 {{
                                     rp(
@@ -239,7 +243,8 @@ const handleTouchStart = () => {
 
                             <div
                                 v-else
-                                class="p-1.5 rounded-lg text-lime-600 bg-lime-50 dark:text-lime-400 dark:bg-lime-500/10"
+                                :class="activeDraft.mode === 'bengkel' ? 'text-blue-600 bg-blue-50 dark:text-blue-400 dark:bg-blue-500/10': 'text-lime-600 bg-lime-50 dark:text-lime-400 dark:bg-lime-500/10'"
+                                class="p-1.5 rounded-lg"
                             >
                                 <svg
                                     class="w-4 h-4"

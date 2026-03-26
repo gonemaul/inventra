@@ -13,6 +13,17 @@ const formatRupiah = (number) => {
         minimumFractionDigits: 0,
     }).format(number);
 };
+
+const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+        })
+    };
 const isStockLow = computed(() => {
     const hasInsight = props.data.insights?.some((i) => i.type === "restock");
     return hasInsight;
@@ -21,7 +32,7 @@ const isStockLow = computed(() => {
 
 <template>
     <div
-        class="relative flex flex-col h-full overflow-hidden transition-all duration-300 bg-white border border-gray-100 shadow-sm rounded-2xl dark:bg-gray-800 dark:border-gray-700 active:scale-95 hover:shadow-md"
+        class="relative flex flex-col h-full overflow-hidden transition-all duration-300 bg-white border border-gray-300 shadow-sm rounded-2xl dark:bg-gray-800 dark:border-gray-700 active:scale-95 hover:shadow-md"
         :class="{ 'ring-2 ring-red-500/50': data.stock <= 0 }"
     >
         <!-- Image Container (1:1 Aspect Ratio) -->
@@ -113,6 +124,9 @@ const isStockLow = computed(() => {
             <div class="flex items-end justify-between pt-1 mt-auto">
                 <div class="flex flex-col">
                      <!-- Margin Alert (If any) -->
+                      <span class="text-[9px] text-gray-400 dark:text-gray-500 font-medium">
+                        {{ data.stock }} {{ data.unit?.name || 'Unit' }}
+                    </span>
                     <span 
                         v-if="data.is_margin_low" 
                         class="text-[8px] text-red-500 font-bold mb-0.5"
@@ -124,10 +138,8 @@ const isStockLow = computed(() => {
                     </span>
                 </div>
 
-                <div class="flex flex-col items-end gap-0.5">
-                    <span class="text-[9px] text-gray-400 dark:text-gray-500 font-medium">
-                        {{ data.stock }} {{ data.unit?.name || 'Unit' }}
-                    </span>
+                <div class="items-end gap-0.5">
+                    <span class="text-[9px] text-gray-400 dark:text-gray-500 font-medium">{{ formatDate(data.updated_at) }}</span>
                  </div>
             </div>
         </div>

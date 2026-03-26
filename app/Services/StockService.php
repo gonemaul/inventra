@@ -67,23 +67,17 @@ class StockService
             elseif (in_array($type, [StockMovement::TYPE_ADJUSTMENT_OPNAME])) {
                 $stockAfter = $qty;
                 $qty = $qty > $stockBefore ? $qty - $stockBefore : $stockBefore - $qty;
-                $analysis = $this->inventoryAnalyzer->calculateInventoryHealth($product);
-
-                if (in_array($analysis['status'], [SmartInsight::SEVERITY_CRITICAL, SmartInsight::SEVERITY_WARNING])) {
-                    $this->sendLowStock($product, $analysis);
-                }
             }
             // kurangi stock
             elseif (in_array($type, [StockMovement::TYPE_ADJUSTMENT_OUT, StockMovement::TYPE_SALE, StockMovement::TYPE_RETURN_OUT])) {
                 $stockAfter = $stockBefore - $qty;
-                $analysis = $this->inventoryAnalyzer->calculateInventoryHealth($product);
-
-                if (in_array($analysis['status'], [SmartInsight::SEVERITY_CRITICAL, SmartInsight::SEVERITY_WARNING])) {
-                    $this->sendLowStock($product, $analysis);
-                }
             }
             $product->stock = $stockAfter;
             $product->save();
+            $analysis = $this->inventoryAnalyzer->calculateInventoryHealth($product);
+            if (in_array($analysis['status'], [SmartInsight::SEVERITY_CRITICAL, SmartInsight::SEVERITY_WARNING])) {
+                $this->sendLowStock($product, $analysis);
+            }
         } else {
              // Jika Jasa, stock update diskip, tapi variabel stockAfter disamakan stockBefore agar log mencatat saldo akhir tetap.
              $stockAfter = $stockBefore;

@@ -107,6 +107,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/sales/api/product-lite', 'getAllProductsLite')->name('sales.products.lite');
     });
 
+    // Vehicle Service Hub
+    Route::controller(\App\Http\Controllers\VehicleController::class)->group(function () {
+        Route::get('/customer-hub', 'index')->name('customer-hub');
+        Route::get('/api/vehicles/search', 'search')->name('api.vehicles.search');
+        Route::get('/api/vehicles/info', 'getVehicleInfo')->name('api.vehicles.info');
+        Route::get('/api/vehicles/{vehicle}/history', 'history')->name('api.vehicles.history');
+        Route::post('/api/vehicles', 'store')->name('api.vehicles.store');
+        Route::put('/api/vehicles/{vehicle}', 'update')->name('api.vehicles.update');
+        Route::delete('/api/vehicles/{vehicle}', 'destroy')->name('api.vehicles.destroy');
+    });
+
     // Keuangan
     Route::controller(PaymentController::class)->prefix('finance')->name('finance.')->group(function () {
         Route::get('/', 'index')->name('index');

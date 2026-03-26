@@ -1,6 +1,11 @@
 <script setup>
 import BottomSheet from "@/Components/BottomSheet.vue";
+import { storeToRefs } from "pinia";
 import { watch, ref } from "vue";
+import { usePosState } from "@/Composables/POS/usePosState";
+
+const posState = usePosState();
+const { activeDraft } = storeToRefs(posState);
 const props = defineProps({
     showConfirmModal: {
         type: Boolean,
@@ -49,7 +54,7 @@ const emit = defineEmits(["close", "confirmTransaction"]);
                      <!-- Outer Ring -->
                     <div class="absolute inset-0 rounded-full border-4 border-gray-200 dark:border-gray-700"></div>
                      <!-- Spinner -->
-                    <div class="absolute inset-0 rounded-full border-4 border-lime-500 border-t-transparent animate-spin"></div>
+                    <div :class="activeDraft.mode === 'bengkel' ? 'border-blue-500' : 'border-lime-500'" class="absolute inset-0 rounded-full border-4 border-t-transparent animate-spin"></div>
                      <!-- Inner Icon -->
                     <div class="absolute inset-0 flex items-center justify-center animate-pulse">
                          <span class="text-3xl">🚀</span>
@@ -59,8 +64,8 @@ const emit = defineEmits(["close", "confirmTransaction"]);
                 <p class="text-xs text-gray-500">Mohon tunggu sebentar</p>
             </div>
 
-            <div
-                class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full bg-lime-100 dark:bg-lime-900/30 text-lime-600 dark:text-lime-400 animate-bounce-subtle"
+            <div :class="activeDraft.mode === 'bengkel' ? 'bg-blue-100 text-blue-600 dark:text-blue-400' : 'bg-lime-100 dark:bg-lime-900/30 text-lime-600 dark:text-lime-400'"
+                class="flex items-center justify-center w-16 h-16 mx-auto mb-4 rounded-full  animate-bounce-subtle"
             >
                 <svg
                     class="w-8 h-8"
@@ -91,7 +96,7 @@ const emit = defineEmits(["close", "confirmTransaction"]);
                 </div>
                  <div class="text-center border-l dark:border-gray-700">
                     <p class="text-xs text-gray-500">Kembali</p>
-                    <p class="font-bold text-lime-600">{{ rp(Math.abs(changeAmount)) }}</p>
+                    <p :class="activeDraft.mode === 'bengkel' ? 'text-blue-600' : 'text-lime-600'" class="font-bold">{{ rp(Math.abs(changeAmount)) }}</p>
                 </div>
             </div>
 
@@ -102,21 +107,22 @@ const emit = defineEmits(["close", "confirmTransaction"]);
                         :disabled="processing"
                         class="flex-1 py-3.5 bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-bold rounded-2xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                        <span>🖨️ Cetak</span>
+                        <span>Cetak</span>
                     </button>
                     <button
                         @click="handleClick('save')"
                         :disabled="processing"
-                        class="flex-1 py-3.5 bg-lime-500 hover:bg-lime-600 text-white font-bold rounded-2xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        :class="activeDraft.mode === 'bengkel' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-lime-500 hover:bg-lime-600'"
+                        class="flex-1 py-3.5 text-white font-bold rounded-2xl shadow-lg transition active:scale-95 flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
                     >
-                        <span>💾 Simpan</span>
+                        <span>Simpan</span>
                     </button>
                 </div>
 
                 <button
                     @click="$emit('close')"
                     :disabled="processing"
-                    class="mt-1 text-xs font-medium text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    class="mt-1 text-xs text-red-500 font-medium text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     Batal / Revisi
                 </button>

@@ -2,6 +2,11 @@
 import { computed, ref } from "vue";
 import { Link } from "@inertiajs/vue3";
 import BottomSheet from "@/Components/BottomSheet.vue";
+import { usePosState } from "@/Composables/POS/usePosState";
+import { storeToRefs } from "pinia";
+
+const posState = usePosState();
+const { activeDraft } = storeToRefs(posState);
 
 // 1. Menerima Data dari Parent
 const props = defineProps({
@@ -123,15 +128,15 @@ const resetFilters = () => {
                <!-- Loading Indicator -->
                 <div v-if="isFetching" class="absolute right-3 top-3">
                      <span class="relative flex h-3 w-3">
-                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-lime-400 opacity-75"></span>
-                        <span class="relative inline-flex rounded-full h-3 w-3 bg-lime-500"></span>
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" :class="activeDraft.mode === 'bengkel' ? 'bg-blue-400': 'bg-lime-400'"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3" :class="activeDraft.mode === 'bengkel' ? 'bg-blue-500': 'bg-lime-500'"></span>
                     </span>
                 </div>
             </div>
 
             <button
-                @click="$emit('scan')"
-                class="p-2.5 rounded-xl bg-gray-900 text-white dark:bg-lime-500 dark:text-gray-900 shadow-lg active:scale-95 transition"
+                @click="$emit('scan')" :class="activeDraft.mode === 'bengkel' ? 'dark:bg-blue-500': 'dark:bg-lime-500'"
+                class="p-2.5 rounded-xl bg-gray-900 text-white dark:text-gray-900 shadow-lg active:scale-95 transition"
             >
             <svg
                         class="w-5 h-5"
@@ -158,17 +163,17 @@ const resetFilters = () => {
 
         <!-- Middle Bar: Horizontal Category Scroll + Filter Button -->
         <div class="flex items-center gap-2 pl-4 py-3 overflow-hidden">
-             <!-- Filter Button -->
+             <!-- Filter Button --> 
              <button 
                 @click="showFilterModal = true"
                 class="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap transition active:scale-95 shrink-0"
                 :class="activeFiltersCount > 0 
-                    ? 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20' 
+                    ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20' 
                     : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300'"
              >
                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
                 Filter
-                <span v-if="activeFiltersCount > 0" class="flex items-center justify-center w-4 h-4 text-[9px] bg-white text-lime-600 rounded-full">{{ activeFiltersCount }}</span>
+                <span v-if="activeFiltersCount > 0" class="flex items-center justify-center w-4 h-4 text-[9px] bg-white rounded-full" :class="activeDraft.mode === 'bengkel' ? 'text-blue-600': 'text-lime-600'">{{ activeFiltersCount }}</span>
              </button>
 
              <div class="w-px h-6 bg-gray-200 dark:bg-gray-700 shrink-0 mx-1"></div>
@@ -179,7 +184,7 @@ const resetFilters = () => {
                     @click="selectCategory('all')"
                     class="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition active:scale-95 border"
                     :class="category === 'all'
-                        ? 'bg-gray-900 dark:bg-lime-500 text-white dark:text-gray-900 border-gray-900 dark:border-lime-500'
+                        ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20'
                         : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
                 >
                     Semua
@@ -190,7 +195,7 @@ const resetFilters = () => {
                     @click="selectCategory(cat.id)"
                     class="px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition active:scale-95 border"
                     :class="category === cat.id
-                        ? 'bg-gray-900 dark:bg-lime-500 text-white dark:text-gray-900 border-gray-900 dark:border-lime-500'
+                        ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20'
                         : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'"
                 >
                     {{ cat.name }}
@@ -220,7 +225,7 @@ const resetFilters = () => {
                             class="flex flex-col items-center justify-center p-3 rounded-xl border transition active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:border-gray-200 dark:disabled:bg-gray-800 dark:disabled:border-gray-700"
                             :class="[
                                 sort === opt.val 
-                                    ? 'bg-lime-50 border-lime-500 text-lime-700 dark:bg-lime-900/20 dark:text-lime-400' 
+                                    ? activeDraft.mode === 'bengkel' ? 'bg-blue-50 border-blue-500 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' : 'bg-lime-50 border-lime-500 text-lime-700 dark:bg-lime-900/20 dark:text-lime-400' 
                                     : 'bg-white border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300',
                             ]"
                             :title="opt.disabled ? 'Pilih kategori terlebih dahulu' : ''"
@@ -239,7 +244,7 @@ const resetFilters = () => {
                             @click="selectSubCategory('all')"
                             class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                              :class="subCategory === 'all' 
-                                ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
+                                ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20' 
                                 : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'"
                         >
                             Semua
@@ -250,7 +255,7 @@ const resetFilters = () => {
                             @click="selectSubCategory(sub.id)"
                             class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                             :class="subCategory === sub.id 
-                                ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
+                                ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20' 
                                 : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'"
                         >
                             {{ sub.name }}
@@ -269,7 +274,7 @@ const resetFilters = () => {
                                 @click="selectBrand('all')"
                                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                                  :class="brand === 'all' 
-                                    ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
+                                    ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20' 
                                     : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'"
                             >
                                 Semua
@@ -280,8 +285,8 @@ const resetFilters = () => {
                                 @click="selectBrand(b.id)"
                                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                                 :class="brand === b.id 
-                                    ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
-                                    : 'bg-white text-gray-600 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'"
+                                    ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20' 
+                                    : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'"
                             >
                                 {{ b.name }}
                             </button>
@@ -297,7 +302,7 @@ const resetFilters = () => {
                                 @click="selectSize('all')"
                                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                                  :class="size === 'all' 
-                                    ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
+                                    ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20' 
                                     : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'"
                             >
                                 Semua
@@ -308,8 +313,8 @@ const resetFilters = () => {
                                 @click="selectSize(s.id)"
                                 class="px-3 py-1.5 rounded-lg border text-xs font-bold transition active:scale-95"
                                 :class="size === s.id 
-                                    ? 'bg-gray-800 text-white dark:bg-lime-500 dark:text-gray-900 border-gray-800 dark:border-lime-500' 
-                                    : 'bg-white text-gray-600 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'"
+                                    ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 border-blue-500 text-white shadow-md shadow-blue-500/20' : 'bg-lime-500 border-lime-500 text-white shadow-md shadow-lime-500/20' 
+                                    : 'bg-gray-50 text-gray-500 border-gray-200 dark:bg-gray-700 dark:border-gray-600 dark:text-gray-300'"
                             >
                                 {{ s.name }}
                             </button>
@@ -325,7 +330,7 @@ const resetFilters = () => {
                         <button 
                             @click="$emit('update:hideEmptyStock', !hideEmptyStock)"
                             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
-                            :class="hideEmptyStock ? 'bg-lime-500' : 'bg-gray-200 dark:bg-gray-600'"
+                            :class="hideEmptyStock ? activeDraft.mode === 'bengkel' ? 'bg-blue-500' : 'bg-lime-500' : 'bg-gray-200 dark:bg-gray-600'"
                         >
                             <span
                                 class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform shadow-sm"

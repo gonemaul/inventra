@@ -67,6 +67,12 @@ class Sale extends Model
         return $this->hasMany(SaleItem::class);
     }
 
+    // Relasi ke Oil Service Log (Bengkel Mode)
+    public function oilServiceLog()
+    {
+        return $this->hasOne(OilServiceLog::class);
+    }
+
     // Relasi ke User (Kasir)
     public function user()
     {

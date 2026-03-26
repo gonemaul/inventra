@@ -1,5 +1,10 @@
 <script setup>
 import BottomSheet from "@/Components/BottomSheet.vue";
+import { usePosState } from "@/Composables/POS/usePosState";
+import { storeToRefs } from "pinia";
+
+const posState = usePosState();
+const { activeDraft } = storeToRefs(posState);
 
 const props = defineProps({
     show: {
@@ -20,6 +25,7 @@ const rp = (val) =>
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(val);
+
 </script>
 
 <template>
@@ -44,7 +50,7 @@ const rp = (val) =>
             <!-- Amount Display -->
             <div class="mb-10">
                 <span class="block text-sm text-gray-500 dark:text-gray-400 mb-1">Total Transaksi</span>
-                <span class="block text-4xl font-black text-lime-600 dark:text-lime-400 tracking-tight">{{ rp(total) }}</span>
+                <span :class="activeDraft.mode === 'bengkel' ? 'text-blue-600 dark:text-blue-400' : 'text-lime-600 dark:text-lime-400'" class="block text-4xl font-black tracking-tight">{{ rp(total) }}</span>
             </div>
 
             <!-- Action Button -->
