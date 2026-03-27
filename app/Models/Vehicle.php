@@ -10,10 +10,13 @@ class Vehicle extends Model
         'plate_number',
         'brand',
         'model',
+        'color',
         'description',
         'security_code',
-        'service_interval_km',
-        'service_interval_days',
+        'engine_interval_km',
+        'engine_interval_days',
+        'gear_interval_km',
+        'gear_interval_days',
         'engine_type',
     ];
 

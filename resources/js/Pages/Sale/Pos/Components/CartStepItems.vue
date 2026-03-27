@@ -20,7 +20,7 @@ const isBengkel = computed(() => activeDraft.value.mode === 'bengkel');
 </script>
 
 <template>
-    <div class="flex flex-col h-full">
+    <div class="flex flex-col h-full overflow-y-hidden">
         <!-- Quick Services (Bengkel only) -->
         <div
             v-if="isBengkel && serviceProducts?.length > 0"
@@ -170,7 +170,7 @@ const isBengkel = computed(() => activeDraft.value.mode === 'bengkel');
         </div>
 
         <!-- Footer CTA -->
-        <div class="shrink-0 px-5 pb-5 pt-3 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
+        <div class="shrink-0 px-5 py-3 bg-white dark:bg-gray-800 border-t dark:border-gray-700 shadow-[0_-4px_12px_rgba(0,0,0,0.04)]">
             <button
                 @click="nextStep"
                 :disabled="!activeDraft.cart_items.length"
@@ -179,7 +179,7 @@ const isBengkel = computed(() => activeDraft.value.mode === 'bengkel');
                     ? activeDraft.mode === 'bengkel' ? 'bg-blue-500 hover:bg-blue-600 shadow-blue-500/20' : 'bg-lime-500 hover:bg-lime-600 shadow-lime-500/20'
                     : 'bg-gray-300 cursor-not-allowed shadow-none'"
             >
-                <span>{{ activeDraft.cart_items.length ? 'LANJUT PEMBAYARAN' : 'KERANJANG KOSONG' }}</span>
+                <span class="text-center uppercase">{{ activeDraft.cart_items.length ? 'LANJUT PEMBAYARAN' : 'KERANJANG KOSONG' }}</span>
                 <svg v-if="activeDraft.cart_items.length" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
         </div>

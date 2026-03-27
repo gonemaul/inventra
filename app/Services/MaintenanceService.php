@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\OilServiceLog;
 use App\Models\Vehicle;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -40,7 +41,7 @@ class MaintenanceService
             
             // --- VALIDASI KILOMETER MUNDUR (Critical) ---
             // Ambil log servis terakhir untuk kendaraan ini
-            $lastService = \App\Models\OilServiceLog::where('vehicle_id', $vehicle->id)
+            $lastService = OilServiceLog::where('vehicle_id', $vehicle->id)
                 ->latest()
                 ->first();
 
@@ -49,16 +50,20 @@ class MaintenanceService
             }
             
             // 2. Hitung estimasi servis berikutnya
-            $calc = $this->calculateNextService($vehicle, (int)$currentKm);
+            $isChangingGearOil = !empty($serviceData['gear_oil_id']);
+            $calc = $this->calculateNextService($vehicle, (int)$currentKm, $isChangingGearOil);
             
             // 3. Buat Service Log
             $sale->oilServiceLog()->create([
                 'vehicle_id' => $vehicle->id,
+                'service_date' => Carbon::today(),
                 'current_km' => $currentKm,
                 'engine_oil_id' => $serviceData['engine_oil_id'] ?? null,
                 'gear_oil_id' => $serviceData['gear_oil_id'] ?? null,
-                'next_service_date' => $calc['data']['estimated_next_service_date'],
-                'next_service_km' => $calc['data']['estimated_next_service_km'],
+                'next_engine_oil_date' => $calc['next_engine_oil_date'] ?? null,
+                'next_engine_oil_km' => $calc['next_engine_oil_km'] ?? null,
+                'next_gear_oil_date' => $calc['next_gear_oil_date'] ?? null,
+                'next_gear_oil_km' => $calc['next_gear_oil_km'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ]);
 
@@ -67,34 +72,77 @@ class MaintenanceService
     }
 
     /**
-     * Calculate the estimated next service for a vehicle.
-     *
-     * @param Vehicle $vehicle
-     * @param int|null $currentKm
+     * Menghitung estimasi ganti oli berikutnya secara cerdas.
+     * * @param Vehicle $vehicle Model kendaraan
+     * @param int|null $currentKm KM saat ini (opsional jika spidometer mati)
+     * @param bool $isChangingGearOil Apakah hari ini ganti oli gardan juga?
      * @return array
      */
-    public function calculateNextService(Vehicle $vehicle, ?int $currentKm = null): array
+    public function calculateNextService(Vehicle $vehicle, ?int $currentKm, bool $isChangingGearOil = false): array
     {
-        $nextServiceKm = null;
-        if ($currentKm !== null) {
-            $nextServiceKm = $currentKm + ($vehicle->service_interval_km ?? 0);
+        $now = Carbon::now();
+
+        // 1. Dapatkan log servis terakhir yang memiliki KM valid (untuk hitung rata-rata)
+        $lastService = OilServiceLog::where('vehicle_id', $vehicle->id)
+            ->whereNotNull('current_km')
+            ->latest('service_date')
+            ->first();
+
+        // 2. TENTUKAN DEFAULT (Fallback jika spidometer rusak atau motor baru pertama kali servis)
+        $nextEngineDate = $now->copy()->addDays($vehicle->engine_interval_days);
+        $nextEngineKm = $currentKm ? $currentKm + $vehicle->engine_interval_km : null;
+
+        $nextGearDate = $now->copy()->addDays($vehicle->gear_interval_days);
+        $nextGearKm = $currentKm ? $currentKm + $vehicle->gear_interval_km : null;
+
+        // 3. ALGORITMA SMART AVERAGE (Berjalan hanya jika ada histori & spidometer nyala)
+        if ($lastService && $currentKm) {
+            $daysDiff = $now->diffInDays($lastService->service_date);
+            $kmDiff = $currentKm - $lastService->current_km;
+
+            // Mencegah pembagian nol atau error jika tanggal sama / KM diinput mundur
+            if ($daysDiff > 0 && $kmDiff > 0) {
+                $dailyKm = $kmDiff / $daysDiff;
+
+                // SMART CLAMP: Batasi ekstrem. Minimal 5 km/hari (mangkrak), Maksimal 100 km/hari (touring)
+                $dailyKm = max(5, min(100, $dailyKm));
+
+                // Prediksi Mesin: "Whichever comes first"
+                $estDaysEngine = $vehicle->engine_interval_km / $dailyKm;
+                if ($estDaysEngine < $vehicle->engine_interval_days) {
+                    // Jika prediksi hari lebih cepat dari default (sering dipakai), majukan tanggalnya
+                    $nextEngineDate = $now->copy()->addDays(round($estDaysEngine));
+                }
+
+                // Prediksi Gardan: "Whichever comes first"
+                $estDaysGear = $vehicle->gear_interval_km / $dailyKm;
+                if ($estDaysGear < $vehicle->gear_interval_days) {
+                    $nextGearDate = $now->copy()->addDays(round($estDaysGear));
+                }
+            }
         }
 
-        $nextServiceDate = Carbon::now()->addDays($vehicle->service_interval_days ?? 0);
+        // 4. LOGIKA BAWAAN OLI GARDAN
+        // Jika hari ini TIDAK ganti oli gardan, kita tidak boleh me-reset target gardannya.
+        // Kita harus tarik target gardan dari riwayat sebelumnya.
+        if (!$isChangingGearOil && $vehicle->engine_type === 'matic') {
+            $lastGearService = OilServiceLog::where('vehicle_id', $vehicle->id)
+                ->whereNotNull('gear_oil_id')
+                ->latest('service_date')
+                ->first();
 
+            if ($lastGearService) {
+                $nextGearDate = Carbon::parse($lastGearService->next_gear_oil_date);
+                $nextGearKm = $lastGearService->next_gear_oil_km;
+            }
+        }
+
+        // Return format yang siap di-insert ke database
         return [
-            'status' => 'success',
-            'data' => [
-                'vehicle_id' => $vehicle->id,
-                'current_km' => $currentKm,
-                'estimated_next_service_km' => $nextServiceKm,
-                'estimated_next_service_date' => $nextServiceDate->toDateString(),
-                'service_interval_km' => $vehicle->service_interval_km,
-                'service_interval_days' => $vehicle->service_interval_days,
-            ],
-            'meta' => [
-                'calculated_at' => Carbon::now()->toDateTimeString(),
-            ]
+            'next_engine_oil_date' => $nextEngineDate->format('Y-m-d'),
+            'next_engine_oil_km' => $nextEngineKm,
+            'next_gear_oil_date' => $vehicle->engine_type === 'matic' && $nextGearDate ? $nextGearDate->format('Y-m-d') : null,
+            'next_gear_oil_km' => $vehicle->engine_type === 'matic' ? $nextGearKm : null,
         ];
     }
 }
