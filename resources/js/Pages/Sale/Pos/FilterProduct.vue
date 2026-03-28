@@ -105,7 +105,7 @@ const resetFilters = () => {
     <div class="flex flex-col bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm z-30 transition-colors duration-300">
         <!-- Top Bar: Search & Scan -->
         <div class="px-4 py-3 pb-0 flex items-center gap-3">
-             <Link
+             <Link 
                 :href="route('dashboard')"
                 class="p-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-700 transition"
             >

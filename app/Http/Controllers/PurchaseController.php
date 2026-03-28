@@ -49,64 +49,14 @@ class PurchaseController extends Controller
     {
         $purchases = $this->purchaseService->get($request->all());
 
-        // --- Summary Statistics (Dashboard) ---
-        $now = now();
-        
-        // 1. Belanja Bulan Ini vs Bulan Lalu (Hanya yang Selesai/Berhasil)
-        $spendThisMonth = Purchase::where('status', Purchase::STATUS_COMPLETED)
-            ->whereYear('transaction_date', $now->year)
-            ->whereMonth('transaction_date', $now->month)
-            ->sum('grand_total');
-            
-        $lastMonthDate = $now->copy()->subMonth();
-        $spendLastMonth = Purchase::where('status', Purchase::STATUS_COMPLETED)
-            ->whereYear('transaction_date', $lastMonthDate->year)
-            ->whereMonth('transaction_date', $lastMonthDate->month)
-            ->sum('grand_total');
-
-        // 2. Belanja Tahun Ini (Hanya yang Selesai/Berhasil)
-        $spendThisYear = Purchase::where('status', Purchase::STATUS_COMPLETED)
-            ->whereYear('transaction_date', $now->year)
-            ->sum('grand_total');
-        $spendLastYear = Purchase::where('status', Purchase::STATUS_COMPLETED)
-            ->whereYear('transaction_date', $now->copy()->subYear()->year)
-            ->sum('grand_total');
-
-        // 3. Top Supplier Bulan Ini (Berdasarkan nilai transaksi Selesai)
-        $topSupplier = Purchase::selectRaw('supplier_id, SUM(grand_total) as total')
-            ->where('status', Purchase::STATUS_COMPLETED)
-            ->whereYear('transaction_date', $now->year)
-            ->whereMonth('transaction_date', $now->month)
-            ->whereNotNull('supplier_id')
-            ->groupBy('supplier_id')
-            ->orderByDesc('total')
-            ->with('supplier:id,name')
-            ->first();
-
-        // 4. Active Plan (Draft/Proses)
-        $activeOrderCount = Purchase::whereIn('status', [
-            Purchase::STATUS_DRAFT, 
-            Purchase::STATUS_ORDERED, 
-            Purchase::STATUS_SHIPPED,
-            Purchase::STATUS_CHECKING
-        ])->count();
-
-        $summary = [
-            'spend_this_month' => $spendThisMonth,
-            'spend_growth_month' => $spendLastMonth > 0 ? round((($spendThisMonth - $spendLastMonth) / $spendLastMonth) * 100, 1) : 0,
-            
-            'spend_this_year' => $spendThisYear,
-            'spend_growth_year' => $spendLastYear > 0 ? round((($spendThisYear - $spendLastYear) / $spendLastYear) * 100, 1) : 0,
-
-            'top_supplier_name' => $topSupplier->supplier->name ?? '-',
-            'top_supplier_amount' => $topSupplier->total ?? 0,
-            
-            'active_orders' => $activeOrderCount,
-        ];
+        // Gunakan Service Modular untuk Statistik dan Chart
+        $summary = $this->purchaseService->getDashboardStats();
+        $chartData = $this->purchaseService->getDashboardChartData();
 
         return Inertia::render('Purchases/index', [
             'purchases' => $purchases,
-            'summary' => $summary, // Pass Summary
+            'summary' => $summary,
+            'chartData' => $chartData,
             'dropdowns' => [
                 'suppliers' => $this->supplierService->getAll(),
                 'purchaseStatuses' => Purchase::STATUSES,

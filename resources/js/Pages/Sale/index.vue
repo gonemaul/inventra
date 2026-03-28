@@ -250,9 +250,9 @@ const pagination = computed(() => props.sales);
             <SalesStatsGrid :summary="summary" />
 
             <!-- 2. Smart Controls: Tabs & Filters -->
-            <div class="flex flex-col justify-between gap-4">
+            <div class="flex flex-col lg:flex-row justify-between items-center gap-4 shadow-md bg-gray-50/50 dark:bg-gray-900/50 p-2 rounded-2xl border border-gray-100 dark:border-gray-800 backdrop-blur-sm">
                 <!-- Premium Segmented Tabs -->
-                <div class="flex items-center p-1 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl w-full lg:w-auto overflow-x-auto no-scrollbar relative shadow-inner">
+                <div class="flex items-center p-1 bg-gray-200/80 dark:bg-gray-800/80 rounded-xl w-full lg:w-auto overflow-x-auto no-scrollbar relative shadow-inner">
                     <button
                         v-for="tab in tabs.filter(t => t.id !== 'all')"
                         :key="tab.id"
@@ -260,7 +260,7 @@ const pagination = computed(() => props.sales);
                         class="px-5 py-2 text-xs lg:text-sm font-bold rounded-lg transition-all duration-300 whitespace-nowrap flex-1 lg:flex-none relative z-10"
                         :class="
                             activeTab === tab.id
-                                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-md transform scale-[1.02]'
+                                ? 'bg-white dark:bg-gray-700 text-lime-600 dark:text-lime-400 shadow-md transform scale-[1.02]'
                                 : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                         "
                     >
@@ -270,11 +270,12 @@ const pagination = computed(() => props.sales);
                     <button
                         v-if="activeTab === 'all'"
                         @click="setTab('all')"
-                        class="px-5 py-2 text-xs lg:text-sm font-bold rounded-lg bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-md whitespace-nowrap flex-1 lg:flex-none mx-1"
+                        class="px-5 py-2 text-xs lg:text-sm font-bold rounded-lg bg-white dark:bg-gray-700 text-lime-600 dark:text-lime-400 shadow-md whitespace-nowrap flex-1 lg:flex-none mx-1"
                     >
                         {{ params.search ? 'Hasil Pencarian' : 'Custom / Semua' }}
                     </button>
-                    <div class="hidden flex-1 lg:flex flex-col md:flex-row items-center gap-3 w-full lg:justify-end lg:w-auto">
+                </div>
+                <div class="hidden flex-1 lg:flex flex-col md:flex-row items-center gap-3 w-full lg:justify-end lg:w-auto">
                     <!-- Toggle Deleted (Minimalist) -->
                     <label class="hidden md:flex items-center gap-2 cursor-pointer group px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                         <input 
@@ -293,7 +294,6 @@ const pagination = computed(() => props.sales);
                         @showFilter="showFilterModal = true"
                         :filterCount="0"
                     />
-                </div>
                 </div>
 
                 <!-- Action Controls (Search & Filter) -->
@@ -317,6 +317,7 @@ const pagination = computed(() => props.sales);
                         :filterCount="0"
                     />
                 </div>
+            </div>
                 
                 <!-- Insight Cards Grid -->
                 <!-- Show only if activeTab is one of the standard periods AND data exists -->
@@ -431,7 +432,6 @@ const pagination = computed(() => props.sales);
 
 
             <!-- 3. Transaction List (The New 'Table') -->
-            <div>
                 <div class="mb-4 flex items-center justify-between">
                     <h2 class="text-lg font-bold text-gray-800 dark:text-white">
                         Riwayat Transaksi
@@ -467,8 +467,6 @@ const pagination = computed(() => props.sales);
                         Next
                     </button>
                 </div>
-            </div>
-        </div>
     </div>
     </AuthenticatedLayout>
     
@@ -512,6 +510,13 @@ const pagination = computed(() => props.sales);
 </template>
 
 <style scoped>
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
 /* Reuse styles from original file */
 .receipt-preview-wrapper :deep(table) { width: 100% !important; max-width: 100% !important; }
 .receipt-preview-wrapper :deep(img) { max-width: 100% !important; height: auto !important; }

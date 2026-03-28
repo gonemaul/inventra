@@ -3,51 +3,60 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, router } from "@inertiajs/vue3";
 import Filter from "@/Components/Filter.vue";
 import FilterModal from "./partials/modalFilter.vue";
-import { ref, watch, computed } from "vue";
+import { ref, watch, computed, onMounted, onUnmounted } from "vue";
 import { throttle } from "lodash";
 import PurchaseStatsGrid from "./Components/PurchaseStatsGrid.vue";
 import PurchaseTransactionList from "./Components/PurchaseTransactionList.vue";
-import { onMounted, onUnmounted } from "vue";
+import PurchaseChart from "./Components/PurchaseChart.vue";
 
 const props = defineProps({
     dropdowns: Object, 
     filters: Object,
     purchases: Object,
-    summary: Object
+    summary: Object,
+    chartData: Object
 });
 
 const search = ref(props.filters.search || "");
 const showFilterModal = ref(false);
 
 // --- TABS LOGIC ---
-const activeTab = ref("all");
+const activeTab = ref("all"); 
 const tabs = [
-    { id: "all", label: "Semua" },
-    { id: "process", label: "Dalam Proses", status: ['draft','dipesan','dikirim','checking'] },
-    { id: "completed", label: "Selesai", status: ['selesai'] },
+    { id: "month", label: "Bulan Ini" },
+    { id: "year", label: "Tahun Ini" },
+    { id: "all", label: "Semua Data" },
 ];
 
-// Helper to update params based on tab
-const setTab = (tabId) => {
-    activeTab.value = tabId;
-    // Reset page on tab switch
-    params.value.page = 1;
-
-    // Set filter status based on Tab
-    if(tabId === 'all') {
-        delete params.value.status_in;
-    } else {
-        const tab = tabs.find(t => t.id === tabId);
-        if(tab && tab.status) {
-            params.value.status_in = tab.status; // Pass array, backend must handle whereIn or we use loop?
-            // Laravel Request params string? better pass comma separated or array.
-            // Inertia handles arrays usually. Check standard handling.
-            // If backend `PurchaseService` uses `whereIn` for `status_in` key...
-            // Need to check backend `PurchaseService` later. 
-            // For now assume standard filter or I might need to adjust backend.
-            // Let's assume I need to pass specific statuses.
-        }
+// Helper Date Range
+const getDateRange = (tab) => {
+    const today = new Date();
+    const formatDate = (date) => date.toISOString().split("T")[0];
+    
+    if (tab === "month") {
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        return { min: formatDate(startOfMonth), max: formatDate(today) };
     }
+    if (tab === "year") {
+        const startOfYear = new Date(today.getFullYear(), 0, 1);
+        return { min: formatDate(startOfYear), max: formatDate(today) };
+    }
+    return { min: null, max: null }; // All
+};
+
+// Handle Tab Change
+const setTab = (tabId) => {
+    if(activeTab.value == tabId && tabId !== 'all'){
+        activeTab.value = 'all';
+        params.value.min_date = null;
+        params.value.max_date = null;
+    } else {
+        activeTab.value = tabId;
+        const { min, max } = getDateRange(tabId);
+        params.value.min_date = min;
+        params.value.max_date = max;
+    }
+    params.value.page = 1;
 };
 
 const params = ref({
@@ -55,15 +64,41 @@ const params = ref({
     sort: props.filters.sort || "transaction_date",
     order: props.filters.order || "desc",
     page: props.purchases.current_page || 1,
-    // Add tab specific filters if needed
+    min_date: props.filters.min_date || null,
+    max_date: props.filters.max_date || null,
+    status: props.filters.status || "",
+    supplier_id: props.filters.supplier_id || "",
+    user_id: props.filters.user_id || "",
+});
+
+// Update activeTab based on filters
+const syncTabWithDate = (min, max) => {
+    if (!min && !max) {
+        activeTab.value = 'all';
+        return; 
+    }
+    const month = getDateRange('month');
+    const year = getDateRange('year');
+
+    if (min === month.min && max === month.max) activeTab.value = 'month';
+    else if (min === year.min && max === year.max) activeTab.value = 'year';
+    else activeTab.value = 'all'; 
+};
+
+const initTab = () => {
+    syncTabWithDate(params.value.min_date, params.value.max_date);
+};
+initTab();
+
+watch(() => [params.value.min_date, params.value.max_date], ([min, max]) => {
+    syncTabWithDate(min, max);
 });
 
 // WATCHERS
 const performSearch = throttle(() => {
-    const query = { ...params.value };
-    
-    // Clean up
-    if(!query.search) delete query.search;
+    const query = Object.fromEntries(
+        Object.entries(params.value).filter(([_, v]) => v != null && v !== "")
+    );
 
     router.get(route("purchases.index"), query, {
         preserveState: true,
@@ -78,9 +113,15 @@ watch(params, performSearch, { deep: true });
 watch(search, (val) => {
     params.value.search = val;
     params.value.page = 1;
+
+    if (val && val.length > 0) {
+        activeTab.value = 'all';
+        params.value.min_date = null;
+        params.value.max_date = null;
+    }
 });
 
-// AUTO BLUR PADA SAAT SCROLL (Smart Search UX)
+// AUTO BLUR PADA SAAT SCROLL
 const blurInputs = () => {
     if (document.activeElement && document.activeElement.tagName === 'INPUT') {
         document.activeElement.blur();
@@ -102,88 +143,50 @@ onUnmounted(() => {
     <AuthenticatedLayout headerTitle="Dashboard Procurement">
         <div class="w-full min-h-screen space-y-6 pb-20">
             
-            <!-- 1. Stats Grid (Selalu Muncul) -->
+            <!-- 1. Stats Grid -->
             <PurchaseStatsGrid :summary="summary" />
 
-            <!-- 2. Top Summary Cards (Pengganti Chart) -->
-             <div v-if="summary.top_supplier_name" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                 <!-- Card 1: Top Supplier -->
-                 <div class="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-xl p-4 text-white shadow-lg relative overflow-hidden">
-                     <div class="flex items-center justify-between mb-3 relative z-10">
-                         <div class="flex items-center gap-2">
-                             <div class="p-1.5 bg-white/20 rounded-lg backdrop-blur-sm">
-                                 <span class="text-sm">🏭</span>
-                             </div>
-                             <h3 class="font-bold text-base leading-tight">Top Supplier Bulan Ini</h3>
-                         </div>
-                         <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-sm">Mitra Utama</span>
-                     </div>
+            <!-- 2. Smart Controls: Tabs & Filters -->
+            <div class="flex flex-col lg:flex-row justify-between items-center gap-4 shadow-md bg-gray-50/50 dark:bg-gray-900/50 p-2 rounded-2xl border border-gray-100 dark:border-gray-800 backdrop-blur-sm">
+                
+                <!-- Premium Segmented Tabs -->
+                <div class="flex items-center p-1 bg-gray-200/80 dark:bg-gray-800/80 rounded-xl w-full lg:w-auto overflow-x-auto no-scrollbar shadow-inner">
+                    <button
+                        v-for="tab in tabs.filter(t => t.id !== 'all')"
+                        :key="tab.id"
+                        @click="setTab(tab.id)"
+                        class="px-5 py-2 text-xs lg:text-sm font-bold rounded-lg transition-all duration-300 whitespace-nowrap flex-1 lg:flex-none"
+                        :class="
+                            activeTab === tab.id
+                                ? 'bg-white dark:bg-gray-700 text-lime-600 dark:text-lime-400 shadow-md transform scale-[1.02]'
+                                : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                        "
+                    >
+                        {{ tab.label }}
+                    </button>
+                    <!-- Custom / Search Active Indicator -->
+                    <button
+                        v-if="activeTab === 'all'"
+                        @click="setTab('all')"
+                        class="px-5 py-2 text-xs lg:text-sm font-bold rounded-lg bg-white dark:bg-gray-700 text-lime-600 dark:text-lime-400 shadow-md whitespace-nowrap flex-1 lg:flex-none mx-1"
+                    >
+                        {{ params.search ? 'Hasil Pencarian' : 'Semua Data' }}
+                    </button>
+                </div>
 
-                     <div class="space-y-2 relative z-10">
-                         <div class="flex items-center gap-2 p-1.5 rounded-lg bg-white/10">
-                             <div class="w-8 h-8 flex items-center justify-center font-bold text-indigo-700 bg-white rounded-full text-xs shadow-sm">
-                                 1
-                             </div>
-                             <div class="flex-1 min-w-0">
-                                 <p class="text-sm font-bold truncate">{{ summary.top_supplier_name }}</p>
-                             </div>
-                             <div class="font-bold text-sm">
-                                 {{ new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(summary.top_supplier_amount) }}
-                             </div>
-                         </div>
-                     </div>
-                     <div class="absolute -right-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">🏭</div>
-                 </div>
-
-                 <!-- Card 2: Quick Search Action -->
-                 <div class="bg-gradient-to-br from-slate-700 to-slate-900 rounded-xl p-4 text-white shadow-lg relative overflow-hidden flex flex-col justify-center items-center text-center">
-                     <p class="text-sm text-gray-300 font-bold uppercase mb-3 relative z-10">Banyak Vendor?</p>
-                     <div class="relative z-10">
-                         <button 
-                             @click="showFilterModal = true"
-                             class="px-5 py-2.5 bg-white text-slate-900 rounded-lg text-sm font-bold hover:bg-gray-100 transition shadow-md flex gap-2 items-center"
-                         >
-                             <span>✅</span> Buka Filter Lanjutan
-                         </button>
-                     </div>
-                     <div class="absolute -left-6 -bottom-6 text-9xl opacity-5 pointer-events-none select-none">🔍</div>
-                 </div>
-             </div>
-
-            <!-- 3. Controls & Tabs -->
-             <div class="flex flex-col gap-4 mt-4">
-                 <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                     <!-- Tabs -->
-                    <div class="flex p-1 space-x-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-x-auto w-full md:w-auto">
-                        <button
-                            v-for="tab in tabs"
-                            :key="tab.id"
-                            @click="setTab(tab.id)"
-                            class="px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap flex-1"
-                            :class="
-                                activeTab === tab.id
-                                    ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                            "
-                        >
-                            {{ tab.label }}
-                        </button>
-                    </div>
-
-                    <!-- Filter Bar -->
-                     <div class="w-full md:w-auto flex gap-2">
-                         <Filter
-                            class="w-full"
-                            :filters="filters"
-                            v-model="search"
-                            @showFilter="showFilterModal = true"
-                            :filterCount="0"
-                            :actions="[
-                                { route: route('purchases.create'), buttonText: '+ RAB Baru' },
-                            ]"
-                        />
-                    </div>
-                 </div>
+                <!-- Action Controls (Search & Filter) -->
+                <div class="flex items-center gap-3 w-full lg:w-auto">
+                    <Filter
+                        class="w-full lg:w-[400px]"
+                        :filters="filters"
+                        v-model="search"
+                        @showFilter="showFilterModal = true"
+                        :filterCount="0"
+                        :actions="[
+                            { route: route('purchases.create'), buttonText: '+ RAB Baru' },
+                        ]"
+                    />
+                </div>
             </div>
 
             <FilterModal
@@ -193,44 +196,59 @@ onUnmounted(() => {
                 :dropdowns="dropdowns"
             />
 
+            <!-- 3. Purchase Trend Chart -->
+             <PurchaseChart :data="chartData" :range="chartData?.range" />
+
             <!-- 4. Content (List) -->
             <div>
-                <div class="mb-4 flex items-center justify-between">
-                    <h2 class="text-xl font-black text-gray-800 dark:text-white tracking-tight">
-                        Riwayat Transaksi & Pembelian
-                    </h2>
-                    <span class="text-xs font-semibold py-1 px-3 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full border border-gray-200 dark:border-gray-700">
-                        Total {{ purchases.total }} Data
-                    </span>
-                </div>
-                    <span class="text-xs text-gray-500">
-                        Total {{ purchases.total }} Data
-                    </span>
+                <div class="mb-5 flex items-center justify-between">
+                    <div class="flex flex-col">
+                        <h2 class="text-xl font-black text-gray-800 dark:text-white tracking-tight">
+                            Riwayat Transaksi & Pembelian
+                        </h2>
+                        <p class="text-xs text-gray-400 font-medium mt-1">Daftar Purchase Order dan Pengadaan Barang</p>
+                    </div>
+                    <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded-full border border-gray-200 dark:border-gray-700 shadow-sm">
+                        <span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                        <span class="text-[10px] font-bold uppercase tracking-wider">Total {{ purchases.total }} Data</span>
+                    </div>
                 </div>
 
                 <PurchaseTransactionList :purchases="purchases.data" />
                 
                  <!-- Pagination -->
-                 <div v-if="purchases.last_page > 1" class="flex justify-center mt-8 gap-2">
+                 <div v-if="purchases.last_page > 1" class="flex justify-center mt-10 gap-3">
                     <button
-                        v-bind="purchases.links[0]"
                         :disabled="!purchases.prev_page_url"
                         @click="params.page--"
-                        class="px-4 py-2 bg-white border rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                        class="flex items-center gap-2 px-5 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl font-bold text-xs text-gray-600 dark:text-gray-300 transition-all hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed group"
                     >
+                        <svg class="w-4 h-4 transition-transform group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
                         Prev
                     </button>
-                    <span class="px-4 py-2 text-gray-500 text-sm flex items-center">
+                    <div class="flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-800/50 rounded-xl text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest border border-gray-200/50 dark:border-gray-700/50">
                         Hal {{ purchases.current_page }} / {{ purchases.last_page }}
-                    </span>
+                    </div>
                     <button
                         :disabled="!purchases.next_page_url"
                         @click="params.page++"
-                        class="px-4 py-2 bg-white border rounded-lg disabled:opacity-50 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                        class="flex items-center gap-2 px-5 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl font-bold text-xs text-gray-600 dark:text-gray-300 transition-all hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed group"
                     >
                         Next
+                        <svg class="w-4 h-4 transition-transform group-hover:translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
                     </button>
                 </div>
             </div>
+        </div>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+</style>

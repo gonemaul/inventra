@@ -19,8 +19,7 @@ export const usePosState = defineStore("posState", () => {
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
-        console.log(`${year}-${month}-${day}`);
-        
+
         return {
             id: Date.now(),
             mode: 'retail', // 'retail' | 'bengkel'
@@ -82,7 +81,7 @@ export const usePosState = defineStore("posState", () => {
         get: () => activeDraft.value.selectedMember,
         set: (val) => activeDraft.value.selectedMember = val,
     });
-    
+
     // GLOBAL SHARED STATE 
     const allProducts = ref([]);
     const isFetchingData = ref(false);
@@ -546,12 +545,12 @@ export const usePosState = defineStore("posState", () => {
             const response = await axios.get(route('api.vehicles.info'), {
                 params: { plate_number: plateNumber }
             });
-            
+
             if (response.data.status === 'success') {
                 activeDraft.value.serviceData.vehicle = response.data.data.vehicle;
                 activeDraft.value.serviceData.last_service = response.data.data.last_service;
                 activeDraft.value.selected_vehicle = response.data.data.vehicle;
-                
+
                 // Peringatan jika KM terakhir lebih tinggi (UI Only help)
                 if (activeDraft.value.serviceData.last_service?.current_km) {
                     toast.info(`Info: KM Terakhir adalah ${activeDraft.value.serviceData.last_service.current_km.toLocaleString()}`);
@@ -628,12 +627,12 @@ export const usePosState = defineStore("posState", () => {
         addNewTab,
         removeTab,
         switchTab,
-        
+
         // Active Transaction Getters
         form,
         filterState,
         selectedMember,
-        
+
         // Globals
         allProducts,
         filteredProducts,
@@ -644,7 +643,7 @@ export const usePosState = defineStore("posState", () => {
         dynamicSizes,
         memberSearch,
         memberSearchResults,
-        
+
         // Computed
         subTotal,
         discountAmount,
@@ -655,7 +654,7 @@ export const usePosState = defineStore("posState", () => {
         moneySuggestions,
         maxSteps,
         isLastStep,
-        
+
         // Cart / Global actions
         addItem,
         removeItem,

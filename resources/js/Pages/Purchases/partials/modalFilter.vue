@@ -102,33 +102,7 @@ const formatRupiah = (value) => {
 
 <template>
     <BottomSheetFilter :show="show" @close="$emit('close')" title="pembelian">
-        <div class="w-full p-6 bg-white shadow-xl rounded-2xl dark:bg-gray-800">
-            <!-- <div
-                class="flex items-center justify-between pb-4 mb-6 border-b border-gray-100 dark:border-gray-700"
-            >
-                <h2 class="text-xl font-bold text-gray-800 dark:text-white">
-                    Filter Data Pembelian
-                </h2>
-                <button
-                    @click="$emit('close')"
-                    class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
-                >
-                    <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12"
-                        ></path>
-                    </svg>
-                </button>
-            </div> -->
-
+        <div class="w-full">
             <div class="space-y-4">
                 <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                     <div>

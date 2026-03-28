@@ -7,6 +7,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseItem;
 use App\Models\SmartInsight;
 use App\Models\StockMovement;
+use App\Models\Supplier;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -659,5 +660,148 @@ class PurchaseService
 
             return true;
         });
+    }
+
+    /**
+     * Mengambil statistik ringkasan dashboard pembelian.
+     */
+    public function getDashboardStats()
+    {
+        $now = now();
+        $startOfMonth = $now->copy()->startOfMonth();
+        $startOfYear = $now->copy()->startOfYear();
+
+        // 1. Belanja & Transaksi Bulan Ini
+        // Gunakan format('Y-m-d') agar sinkron dengan SQLite string date
+        $thisMonthStats = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->where('transaction_date', '>=', $startOfMonth->format('Y-m-d'))
+            ->selectRaw('SUM(grand_total) as spend, COUNT(*) as trans')
+            ->first();
+
+        $prevMonthDate = $now->copy()->subMonth();
+        $prevMonthStats = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->whereYear('transaction_date', $prevMonthDate->year)
+            ->whereMonth('transaction_date', $prevMonthDate->month)
+            ->selectRaw('SUM(grand_total) as spend, COUNT(*) as trans')
+            ->first();
+
+        // 2. Belanja & Transaksi Tahun Ini
+        $thisYearStats = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->where('transaction_date', '>=', $startOfYear->format('Y-m-d'))
+            ->selectRaw('SUM(grand_total) as spend, COUNT(*) as trans')
+            ->first();
+
+        $prevYearStats = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->whereYear('transaction_date', $now->copy()->subYear()->year)
+            ->selectRaw('SUM(grand_total) as spend, COUNT(*) as trans')
+            ->first();
+
+        // 3. Top Supplier Bulan Ini
+        $topSupplier = Purchase::selectRaw('supplier_id, SUM(grand_total) as total')
+            ->where('status', Purchase::STATUS_COMPLETED)
+            ->whereYear('transaction_date', $now->year)
+            ->whereMonth('transaction_date', $now->month)
+            ->whereNotNull('supplier_id')
+            ->groupBy('supplier_id')
+            ->orderByDesc('total')
+            ->with('supplier:id,name')
+            ->first();
+
+        // 4. Active Orders
+        $activeOrderCount = Purchase::whereIn('status', [
+            Purchase::STATUS_DRAFT, 
+            Purchase::STATUS_ORDERED, 
+            Purchase::STATUS_SHIPPED,
+            Purchase::STATUS_CHECKING
+        ])->count();
+
+        return [
+            'spend_this_month' => (float)$thisMonthStats->spend ?? 0,
+            'spend_prev_month' => (float)$prevMonthStats->spend ?? 0,
+            'trans_this_month' => (int)$thisMonthStats->trans ?? 0,
+            'trans_prev_month' => (int)$prevMonthStats->trans ?? 0,
+            
+            'spend_this_year' => (float)$thisYearStats->spend ?? 0,
+            'spend_prev_year' => (float)$prevYearStats->spend ?? 0,
+            'trans_this_year' => (int)$thisYearStats->trans ?? 0,
+            'trans_prev_year' => (int)$prevYearStats->trans ?? 0,
+
+            'top_supplier_name' => $topSupplier->supplier->name ?? '-',
+            'top_supplier_amount' => (float)$topSupplier->total ?? 0,
+            'active_orders' => $activeOrderCount,
+        ];
+    }
+
+    /**
+     * Mengambil data chart untuk dashboard (Last 12 Months).
+     */
+    public function getDashboardChartData()
+    {
+        $now = now();
+        $chartLabels = [];
+        $months = [];
+        $startOfPeriod = $now->copy()->subMonths(11)->startOfMonth();
+        
+        for ($i = 0; $i < 12; $i++) {
+            $monthDate = $startOfPeriod->copy()->addMonths($i);
+            $chartLabels[] = $monthDate->translatedFormat('M y');
+            $months[] = [
+                'year' => (int)$monthDate->year,
+                'month' => (int)$monthDate->month,
+                'key' => $monthDate->format('Y-m')
+            ];
+        }
+
+        // Fetch completed purchases in the last 12 months
+        // FIX: Gunakan format string eksplisit untuk SQLite compatibility
+        $allChartPurchases = Purchase::where('status', Purchase::STATUS_COMPLETED)
+            ->where('transaction_date', '>=', $startOfPeriod->format('Y-m-d'))
+            ->get(['supplier_id', 'transaction_date', 'grand_total']);
+
+        // Top 5 Suppliers in the result set
+        $top5SupplierIds = $allChartPurchases->whereNotNull('supplier_id')
+            ->groupBy('supplier_id')
+            ->map(fn($group) => $group->sum('grand_total'))
+            ->sortDesc()
+            ->take(5)
+            ->keys();
+
+        $suppliers = Supplier::whereIn('id', $top5SupplierIds)->select('id', 'name')->get();
+
+        $chartSuppliers = [];
+        foreach ($suppliers as $sup) {
+            $monthlyData = [];
+            foreach ($months as $m) {
+                $totalForMonth = $allChartPurchases->filter(function($p) use ($m, $sup) {
+                    if ($p->supplier_id != $sup->id) return false;
+                    $dt = \Illuminate\Support\Carbon::parse($p->transaction_date);
+                    return (int)$dt->year === $m['year'] && (int)$dt->month === $m['month'];
+                })->sum('grand_total');
+                
+                $monthlyData[] = (float) $totalForMonth;
+            }
+            $chartSuppliers[] = [
+                'name' => $sup->name,
+                'data' => $monthlyData
+            ];
+        }
+
+        // Global Total per month (All suppliers)
+        $globalMonthlyData = [];
+        foreach ($months as $m) {
+            $totalForMonth = $allChartPurchases->filter(function($p) use ($m) {
+                $dt = \Illuminate\Support\Carbon::parse($p->transaction_date);
+                return (int)$dt->year === $m['year'] && (int)$dt->month === $m['month'];
+            })->sum('grand_total');
+            
+            $globalMonthlyData[] = (float) $totalForMonth;
+        }
+
+        return [
+            'labels' => $chartLabels,
+            'total' => $globalMonthlyData, // Used for Summary & Aggregate Line
+            'suppliers' => $chartSuppliers, // Per-supplier breakdown
+            'range' => $startOfPeriod->translatedFormat('F Y') . ' - ' . $now->translatedFormat('F Y')
+        ];
     }
 }
