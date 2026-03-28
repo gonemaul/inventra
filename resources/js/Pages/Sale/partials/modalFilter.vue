@@ -80,67 +80,69 @@ const formatRupiah = (value) => {
 };
 </script>
 <template>
-    <!-- <Modal :show="show" @close="$emit('close')" maxWidth="lg"> -->
     <BottomSheetFilter :show="show" @close="$emit('close')" title="penjualan">
-        <div class="w-full p-4 bg-white shadow rounded-xl dark:bg-gray-800">
-            <!-- <h2
-                class="mb-4 text-lg font-semibold text-gray-800 dark:text-white"
-            >
-                Filter Penjualan
-            </h2> -->
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Tanggal</label
-                >
-                <div class="flex gap-2">
-                    <input
-                        type="date"
-                        placeholder="Min"
-                        class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                        v-model="form.min_date"
-                    />
-                    <input
-                        type="date"
-                        placeholder="Max"
-                        class="w-1/2 px-3 py-2 text-sm border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-lime-500 focus:ring-lime-500"
-                        v-model="form.max_date"
-                    />
+        <div class="w-full ">
+            <!-- Tanggal Filter -->
+            <div class="mb-5">
+                <label class="block mb-2 text-[10px] uppercase tracking-widest font-black text-gray-400 dark:text-gray-500">
+                    Periode Transaksi
+                </label>
+                <div class="flex items-center gap-3">
+                    <div class="relative flex-1">
+                        <input
+                            type="date"
+                            class="form-input !py-3 !px-4"
+                            v-model="form.min_date"
+                        />
+                    </div>
+                    <div class="relative flex-1">
+                        <input
+                            type="date"
+                            class="form-input !py-3 !px-4"
+                            v-model="form.max_date"
+                        />
+                    </div>
                 </div>
             </div>
-            <div class="mb-4">
-                <label
-                    class="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-                    >Total Omset</label
-                >
-                <div class="flex gap-2">
-                    <div class="flex-1">
-                        <input
-                            type="number"
-                            placeholder="Min"
-                            class="px-1 text-center form-input"
-                            v-model.number="form.min_revenue"
-                        />
-                        <p class="text-[10px] text-gray-400 mt-1 text-left">
+
+            <!-- Revenue Filter -->
+            <div class="mb-6">
+                <label class="block mb-2 text-[10px] uppercase tracking-widest font-black text-gray-400 dark:text-gray-500">
+                    Rentang Omset (Nominal)
+                </label>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="group">
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">Rp</span>
+                            <input
+                                type="number"
+                                placeholder="Min"
+                                class="form-input !pl-9 !py-3 text-right font-bold"
+                                v-model.number="form.min_revenue"
+                            />
+                        </div>
+                        <p class="text-[9px] font-medium text-gray-400 mt-1.5 px-1 truncate">
                             {{ formatRupiah(form.min_revenue) }}
                         </p>
                     </div>
-                    <span class="self-start mt-2 text-gray-400">-</span>
-                    <div class="flex-1">
-                        <input
-                            type="number"
-                            placeholder="Max"
-                            class="px-1 text-center form-input"
-                            v-model.number="form.max_revenue"
-                        />
-                        <p class="text-[10px] text-gray-400 mt-1 text-left">
+                    <div class="group">
+                        <div class="relative">
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-400">Rp</span>
+                            <input
+                                type="number"
+                                placeholder="Max"
+                                class="form-input !pl-9 !py-3 text-right font-bold"
+                                v-model.number="form.max_revenue"
+                            />
+                        </div>
+                        <p class="text-[9px] font-medium text-gray-400 mt-1.5 px-1 truncate">
                             {{ formatRupiah(form.max_revenue) }}
                         </p>
                     </div>
                 </div>
             </div>
             <div
-                class="flex flex-col-reverse items-center justify-between gap-4 px-3 py-3 mt-3 border-t border-gray-100 sm:flex-row dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800 sm:gap-0"
+                class="flex flex-col-reverse items-center justify-between gap-4 px-3 py-3 mt-3 border-t border-gray-100 sm:flex-row dark:border-gray-700 bg-gray-50/50 sm:gap-0"
             >
                 <button
                     @click="resetFilter"

@@ -87,8 +87,10 @@ const params = ref({
     sort: props.filters.sort || "transaction_date",
     order: props.filters.order || "desc",
     page: props.sales.current_page || 1,
-    min_date: props.filters.min_date || getDateRange('today').min, // Default filter hari ini? User request "Fokus ke hari ini"
+    min_date: props.filters.min_date || getDateRange('today').min,
     max_date: props.filters.max_date || getDateRange('today').max,
+    min_revenue: props.filters.min_revenue || "",
+    max_revenue: props.filters.max_revenue || "",
     show_deleted: props.filters.show_deleted === 'true' || false,
 });
 
@@ -162,28 +164,33 @@ const activePeriodInsight = computed(() => {
     let qty = [];
     let chart = { labels: [], values: [] };
     let label = '';
+    let range = '';
 
     if (activeTab.value === 'today') {
         revenue = props.summary.best_selling_revenue_today;
         qty = props.summary.best_selling_qty_today;
         chart = props.summary.chart_today;
         label = "Per Jam";
+        range = props.summary.today.range;
     } else if (activeTab.value === 'week') {
         revenue = props.summary.best_selling_revenue_week;
         qty = props.summary.best_selling_qty_week;
         chart = props.summary.chart_week;
         label = "7 Hari Terakhir";
+        range = props.summary.week.range;
     } else if (activeTab.value === 'month') {
         revenue = props.summary.best_selling_revenue_month;
         qty = props.summary.best_selling_qty_month;
         chart = props.summary.chart_month;
         label = "Mingguan";
+        range = props.summary.month.range;
     } else if (activeTab.value === 'year') {
         chart = props.summary.chart_year;
         label = "Bulanan";
+        range = props.summary.year.range;
     }
     
-    return { revenue, qty, chart, label };
+    return { revenue, qty, chart, label, range };
 });
 
 const openInvoice = async (row) => {
@@ -230,49 +237,85 @@ const pagination = computed(() => props.sales);
 <template>
     <Head title="Riwayat Penjualan" />
 
+    <FilterModal
+        :show="showFilterModal"
+        @close="showFilterModal = false"
+        :filters="filters"
+        @applyFilter="applyFilter"
+        @resetFilter="resetFilter"
+    />
     <AuthenticatedLayout headerTitle="Dashboard Penjualan">
         <div class="w-full min-h-screen space-y-6 pb-20">
             <!-- 1. Stats Grid -->
             <SalesStatsGrid :summary="summary" />
 
-            <!-- 2. Controls & Tabs -->
-            <div class="flex flex-col gap-4">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <!-- Tabs -->
-                    <div class="flex p-1 space-x-1 bg-gray-100 dark:bg-gray-800 rounded-xl overflow-x-auto w-full md:w-auto">
-                        <button
-                        v-if="activeTab !== 'all'"
-                            v-for="tab in tabs.filter(t => t.id !== 'all')"
-                            :key="tab.id"
-                            @click="setTab(tab.id)"
-                            class="px-4 py-2 text-sm font-bold rounded-lg transition-all whitespace-nowrap flex-1"
-                            :class="
-                                activeTab === tab.id
-                                    ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700 dark:text-gray-400'
-                            "
-                        >
-                            {{ tab.label }}
-                        </button>
-                        <!-- Custom 'All' / Custom Range Indicator -->
-                        <button
-                             v-if="activeTab === 'all'"
-                             @click="setTab('all')"
-                             class="px-4 py-2 text-sm font-bold rounded-lg bg-white dark:bg-gray-700 text-blue-600 shadow-sm whitespace-nowrap"
-                        >
-                            Custom / Semua
-                        </button>
-                    </div>
-
-                     <!-- Toggle Deleted -->
-                    <label class="flex items-center gap-2 cursor-pointer text-sm text-gray-600 dark:text-gray-300">
+            <!-- 2. Smart Controls: Tabs & Filters -->
+            <div class="flex flex-col justify-between gap-4">
+                <!-- Premium Segmented Tabs -->
+                <div class="flex items-center p-1 bg-gray-100/80 dark:bg-gray-800/80 rounded-xl w-full lg:w-auto overflow-x-auto no-scrollbar relative shadow-inner">
+                    <button
+                        v-for="tab in tabs.filter(t => t.id !== 'all')"
+                        :key="tab.id"
+                        @click="setTab(tab.id)"
+                        class="px-5 py-2 text-xs lg:text-sm font-bold rounded-lg transition-all duration-300 whitespace-nowrap flex-1 lg:flex-none relative z-10"
+                        :class="
+                            activeTab === tab.id
+                                ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-md transform scale-[1.02]'
+                                : 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                        "
+                    >
+                        {{ tab.label }}
+                    </button>
+                    <!-- Custom / Search Active Indicator -->
+                    <button
+                        v-if="activeTab === 'all'"
+                        @click="setTab('all')"
+                        class="px-5 py-2 text-xs lg:text-sm font-bold rounded-lg bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-md whitespace-nowrap flex-1 lg:flex-none mx-1"
+                    >
+                        {{ params.search ? 'Hasil Pencarian' : 'Custom / Semua' }}
+                    </button>
+                    <div class="hidden flex-1 lg:flex flex-col md:flex-row items-center gap-3 w-full lg:justify-end lg:w-auto">
+                    <!-- Toggle Deleted (Minimalist) -->
+                    <label class="hidden md:flex items-center gap-2 cursor-pointer group px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
                         <input 
                             type="checkbox" 
                             v-model="params.show_deleted" 
-                            class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            class="w-4 h-4 rounded-md border-gray-300 dark:border-gray-600 text-lime-600 focus:ring-lime-500 dark:bg-gray-700 transition-all cursor-pointer"
                         >
-                        <span>Tampilkan Terhapus</span>
+                        <span class="text-[11px] font-bold text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 uppercase tracking-wider transition-colors">Terhapus</span>
                     </label>
+
+                    <!-- Main Filter Component (Integrated) -->
+                    <Filter
+                        class="w-full lg:w-[450px]"
+                        :filters="filters"
+                        v-model="search"
+                        @showFilter="showFilterModal = true"
+                        :filterCount="0"
+                    />
+                </div>
+                </div>
+
+                <!-- Action Controls (Search & Filter) -->
+                <div class="lg:hidden flex-1 flex flex-col md:flex-row items-center gap-3 w-full lg:justify-end lg:w-auto">
+                    <!-- Toggle Deleted (Minimalist) -->
+                    <label class="hidden md:flex items-center gap-2 cursor-pointer group px-3 py-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                        <input 
+                            type="checkbox" 
+                            v-model="params.show_deleted" 
+                            class="w-4 h-4 rounded-md border-gray-300 dark:border-gray-600 text-lime-600 focus:ring-lime-500 dark:bg-gray-700 transition-all cursor-pointer"
+                        >
+                        <span class="text-[11px] font-bold text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-200 uppercase tracking-wider transition-colors">Terhapus</span>
+                    </label>
+
+                    <!-- Main Filter Component (Integrated) -->
+                    <Filter
+                        class="w-full lg:w-[450px]"
+                        :filters="filters"
+                        v-model="search"
+                        @showFilter="showFilterModal = true"
+                        :filterCount="0"
+                    />
                 </div>
                 
                 <!-- Insight Cards Grid -->
@@ -283,6 +326,7 @@ const pagination = computed(() => props.sales);
                      <SalesChart 
                         :data="activePeriodInsight.chart" 
                         :title="`Grafik Omset & Laba Bersih (${activePeriodInsight.label})`"
+                        :range="activePeriodInsight.range"
                     />
 
                     <div v-if="activeTab !== 'year'" class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -385,23 +429,6 @@ const pagination = computed(() => props.sales);
                     </div>
                 </div>
 
-                 <!-- Search -->
-                <!-- <Filter
-                    class="w-full"
-                    :filters="filters"
-                    v-model="search"
-                    @showFilter="showFilterModal = true"
-                    :filterCount="0" 
-                    :actions="[
-                        { route: route('sales.create'), buttonText: '+ Rekap Manual' },
-                    ]"
-                /> -->
-
-            <!-- <FilterModal
-                :show="showFilterModal"
-                @close="showFilterModal = false"
-                :filters="filters"
-            /> -->
 
             <!-- 3. Transaction List (The New 'Table') -->
             <div>
