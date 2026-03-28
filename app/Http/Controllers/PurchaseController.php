@@ -131,7 +131,7 @@ class PurchaseController extends Controller
             ->where('status', 'active')
             ->where('supplier_id', $supplierId);
 
-        // --- 1. UTAMA: Query Produk (Apply Semua Filter) ---
+        // --- 1. UTAMA: Query Produk (Apply Filter) ---
         $productQuery = $baseQuery->clone()
             ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_url', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'product_type_id', 'supplier_id')
             ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'productType:id,name', 'insights']);
@@ -141,18 +141,18 @@ class PurchaseController extends Controller
              $searchTerms = array_filter(explode(' ', $search));
              
              $productQuery->where(function ($q) use ($search, $searchTerms) {
-                // Exact Match Keras (Super Relevan)
+                // 1. Exact Match pada Kode/Barcode (Prioritas Tertinggi)
                 $q->where('code', $search)
                   ->orWhere('name', 'like', $search . '%');
                   
-                // Multi-Word AND Matching (Cari Tiap Kata)
+                // 2. Multi-Word Matching (Cari Tiap Kata di Nama atau Deskripsi)
                 $q->orWhere(function ($subQuery) use ($searchTerms) {
                     foreach ($searchTerms as $term) {
                         $subQuery->where('name', 'like', "%{$term}%");
                     }
                 });
                 
-                // Cross-Column Relational Search
+                // 3. Cross-Column Relational Search (Kategori, Brand, Ukuran)
                 $q->orWhereHas('category', function ($subQuery) use ($search) {
                     $subQuery->where('name', 'like', "%{$search}%");
                 })->orWhereHas('brand', function ($subQuery) use ($search) {
@@ -164,27 +164,30 @@ class PurchaseController extends Controller
         }
 
         // Add Sales Stats for Badges
-    $productQuery->withSum(['saleItems as sold_last_90_days' => function ($query) {
-        $query->where('created_at', '>=', now()->subDays(90));
-    }], 'quantity')
-    ->withSum(['saleItems as sold_last_30_days' => function ($query) {
-        $query->where('created_at', '>=', now()->subDays(30));
-    }], 'quantity');
+        $productQuery->withSum(['saleItems as sold_last_90_days' => function ($query) {
+            $query->where('created_at', '>=', now()->subDays(90));
+        }], 'quantity')
+        ->withSum(['saleItems as sold_last_30_days' => function ($query) {
+            $query->where('created_at', '>=', now()->subDays(30));
+        }], 'quantity');
 
-        if ($categoryId && $categoryId !== 'all') $productQuery->where('category_id', $categoryId);
-        if ($subCategoryId && $subCategoryId !== 'all') $productQuery->where('product_type_id', $subCategoryId);
-        if ($brandId && $brandId !== 'all') $productQuery->where('brand_id', $brandId);
-        if ($sizeId && $sizeId !== 'all') $productQuery->where('size_id', $sizeId);
-        
-        if ($stockStatus) {
-            if ($stockStatus === 'empty') {
-                $productQuery->where('stock', '<=', 0);
-            } elseif ($stockStatus === 'low') {
-                $productQuery->whereColumn('stock', '<=', 'min_stock')->where('stock', '>', 0);
-            } elseif ($stockStatus === 'safe') {
-                $productQuery->whereColumn('stock', '>', 'min_stock');
-            } elseif ($stockStatus === 'low_empty') {
-                $productQuery->whereColumn('stock', '<=', 'min_stock');
+        // SESUAI REQUEST: Jika ada Search, abaikan filter lainnya.
+        if (!$search) {
+            if ($categoryId && $categoryId !== 'all') $productQuery->where('category_id', $categoryId);
+            if ($subCategoryId && $subCategoryId !== 'all') $productQuery->where('product_type_id', $subCategoryId);
+            if ($brandId && $brandId !== 'all') $productQuery->where('brand_id', $brandId);
+            if ($sizeId && $sizeId !== 'all') $productQuery->where('size_id', $sizeId);
+            
+            if ($stockStatus) {
+                if ($stockStatus === 'empty') {
+                    $productQuery->where('stock', '<=', 0);
+                } elseif ($stockStatus === 'low') {
+                    $productQuery->whereColumn('stock', '<=', 'min_stock')->where('stock', '>', 0);
+                } elseif ($stockStatus === 'safe') {
+                    $productQuery->whereColumn('stock', '>', 'min_stock');
+                } elseif ($stockStatus === 'low_empty') {
+                    $productQuery->whereColumn('stock', '<=', 'min_stock');
+                }
             }
         }
 

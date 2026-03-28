@@ -26,6 +26,10 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    searchTerm: {
+        type: String,
+        default: "",
+    },
 });
 const emit = defineEmits(["addToCart", "openDetail", "toggleCompare", "loadMore"]);
 
@@ -67,6 +71,12 @@ const handleTouchStart = () => {
     if (document.activeElement && ['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
         document.activeElement.blur();
     }
+};
+
+const highlight = (text) => {
+    if (!props.searchTerm || !text) return text;
+    const regex = new RegExp(`(${props.searchTerm})`, "gi");
+    return text.replace(regex, '<mark class="bg-yellow-200 text-gray-900 rounded-px px-0.5">$1</mark>');
 };
 </script>
 
@@ -182,9 +192,8 @@ const handleTouchStart = () => {
                         <h3
                             class="text-xs sm:text-sm font-bold leading-snug text-gray-800 dark:text-gray-100 line-clamp-2 min-h-[2.5em] mb-2"
                             :title="product.name"
-                        >
-                            {{ product.name }}
-                        </h3>
+                            v-html="highlight(product.name)"
+                        ></h3>
 
                         <div class="flex items-center justify-between mb-2">
                             <div class="flex items-center gap-1.5">

@@ -307,7 +307,7 @@ const dynamicSizes = storeToRefs(posState).dynamicSizes;
                     v-model:brand="activeDraft.filterState.brand"
                     v-model:size="activeDraft.filterState.size"
                     v-model:sort="activeDraft.filterState.sort"
-                    v-model:hideEmptyStock="activeDraft.filterState.hideEmptyStock"
+                v-model:hideEmptyStock="activeDraft.filterState.hideEmptyStock"
                     @scan="openScanProduk"
                 />
                 <div class="flex-1 overflow-y-auto w-full">
@@ -317,6 +317,7 @@ const dynamicSizes = storeToRefs(posState).dynamicSizes;
                         :cart-items="activeDraft?.cart_items || []"
                         :all-products-count="allProducts.length"
                         :compare-list="compareList"
+                        :search-term="activeDraft.filterState.search"
                         @loadMore="loadMoreProducts"
                         @addToCart="handleDirectAddToCart"
                         @openDetail="openDetail"

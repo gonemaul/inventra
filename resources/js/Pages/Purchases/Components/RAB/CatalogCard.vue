@@ -6,6 +6,7 @@ const props = defineProps({
     isSelected: Boolean,
     isInCart: Boolean,
     cartQty: Number,
+    searchTerm: String,
 });
 
 const emit = defineEmits(["select"]);
@@ -44,6 +45,12 @@ const categoryColor = (name) => {
     const num = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const colors = ['bg-indigo-500', 'bg-emerald-500', 'bg-rose-500', 'bg-amber-500', 'bg-purple-500', 'bg-cyan-500'];
     return colors[num % colors.length];
+};
+
+const highlight = (text) => {
+    if (!props.searchTerm || !text) return text;
+    const regex = new RegExp(`(${props.searchTerm})`, "gi");
+    return text.replace(regex, '<mark class="bg-yellow-200 text-gray-900 rounded-px px-0.5">$1</mark>');
 };
 </script>
 
@@ -105,12 +112,14 @@ const categoryColor = (name) => {
 
             <!-- Name & Price -->
             <div>
-                <h3 class="text-sm sm:text-base font-bold leading-tight line-clamp-2 min-h-[2.5em] mb-1" :title="item.name">
-                    {{ item.name }}
-                </h3>
+                <h3 
+                    class="text-sm sm:text-base font-bold leading-tight line-clamp-2 min-h-[2.5em] mb-1" 
+                    :title="item.name"
+                    v-html="highlight(item.name)"
+                ></h3>
                 <div class="flex items-center justify-between">
                      <span class="text-sm sm:text-base font-black text-lime-600 dark:text-lime-400">{{ formatRupiah(item.purchase_price) }}</span>
-                     <span class="text-[10px] sm:text-xs text-gray-400 font-mono">#{{ item.code }}</span>
+                     <!-- <span class="text-[10px] sm:text-xs text-gray-400 font-mono">#{{ item.code }}</span> -->
                 </div>
             </div>
             

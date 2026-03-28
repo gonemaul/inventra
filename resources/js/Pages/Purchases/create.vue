@@ -303,10 +303,10 @@ function parseRupiah(value) {
 }
 </script>
 <template>
-    <AuthenticatedLayout>
+    <AuthenticatedLayout :show-sidebar="false" :show-header="false">
         <Head title="Buat RAB" />
 
-        <div class="w-full min-h-screen space-y-6 py-6 lg:py-10">
+        <div class="w-full px-2 lg:px-1 min-h-screen space-y-6">
             <HeadRabMobile
                 v-if="isMobile"
                 :form-header="formHeader"
