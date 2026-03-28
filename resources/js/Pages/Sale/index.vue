@@ -386,7 +386,7 @@ const pagination = computed(() => props.sales);
                 </div>
 
                  <!-- Search -->
-                <Filter
+                <!-- <Filter
                     class="w-full"
                     :filters="filters"
                     v-model="search"
@@ -395,13 +395,13 @@ const pagination = computed(() => props.sales);
                     :actions="[
                         { route: route('sales.create'), buttonText: '+ Rekap Manual' },
                     ]"
-                />
+                /> -->
 
-            <FilterModal
+            <!-- <FilterModal
                 :show="showFilterModal"
                 @close="showFilterModal = false"
                 :filters="filters"
-            />
+            /> -->
 
             <!-- 3. Transaction List (The New 'Table') -->
             <div>

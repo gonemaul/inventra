@@ -5,14 +5,12 @@ const props = defineProps({
     summary: {
         type: Object,
         required: true,
+        // DUMMY DATA FOR TESTING
         default: () => ({
-            sales_today: 0,
-            sales_week: 0,
-            sales_month: 0,
-            count_today: 0,
-            period_today: '',
-            period_week: '',
-            period_month: '',
+            today: { revenue: 15450000, revenue_prev: 12500000, profit: 2540000, profit_prev: 2100000, transactions: 12, transactions_prev: 10, range: "28 Mar 2026" },
+            week: { revenue: 84200000, revenue_prev: 78500000, profit: 12400000, profit_prev: 11000000, transactions: 84, transactions_prev: 75, range: "22 - 28 Mar" },
+            month: { revenue: 320500000, revenue_prev: 350000000, profit: 45000000, profit_prev: 48000000, transactions: 342, transactions_prev: 360, range: "Maret 2026" },
+            year: { revenue: 12400000000, revenue_prev: 10500000000, profit: 1840000000, profit_prev: 1500000000, transactions: 5420, transactions_prev: 4800, range: "Tahun 2026" },
         }),
     },
 });
@@ -24,50 +22,35 @@ const formatRupiah = (val) =>
         minimumFractionDigits: 0,
     }).format(val);
 
+const calculateGrowth = (current, previous) => {
+    if (!previous || previous === 0) return current > 0 ? 100 : 0;
+    return (((current - previous) / previous) * 100).toFixed(1);
+};
+
 const stats = computed(() => [
     {
         label: "Penjualan Hari Ini",
-        period: props.summary.period_today,
-        value: formatRupiah(props.summary.sales_today),
-        profit: formatRupiah(props.summary.profit_today || 0),
-        margin: props.summary.sales_today > 0 ? ((props.summary.profit_today || 0) / props.summary.sales_today * 100).toFixed(1) : 0,
-        iconSvg: '<svg class="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>',
-        colorClass: "bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200 dark:border-blue-800",
-        bgClass: "bg-white border-gray-100 dark:bg-gray-800 dark:border-gray-700 lg:bg-gradient-to-br lg:from-white lg:to-blue-50/30",
-        textClass: "text-gray-800 dark:text-gray-100 group-hover:text-blue-600",
+        data: props.summary.today,
+        icon: "M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z",
+        color: "blue",
     },
     {
         label: "7 Hari Terakhir",
-        period: props.summary.period_week,
-        value: formatRupiah(props.summary.sales_week),
-        profit: formatRupiah(props.summary.profit_week || 0),
-        margin: props.summary.sales_week > 0 ? ((props.summary.profit_week || 0) / props.summary.sales_week * 100).toFixed(1) : 0,
-        iconSvg: '<svg class="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>',
-        colorClass: "bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800",
-        bgClass: "bg-white border-gray-100 dark:bg-gray-800 dark:border-gray-700 lg:bg-gradient-to-br lg:from-white lg:to-indigo-50/30",
-        textClass: "text-gray-800 dark:text-gray-100 group-hover:text-indigo-600",
+        data: props.summary.week,
+        icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z",
+        color: "indigo",
     },
     {
         label: "30 Hari Terakhir",
-        period: props.summary.period_month,
-        value: formatRupiah(props.summary.sales_month),
-        profit: formatRupiah(props.summary.profit_month || 0),
-        margin: props.summary.sales_month > 0 ? ((props.summary.profit_month || 0) / props.summary.sales_month * 100).toFixed(1) : 0,
-        iconSvg: '<svg class="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>',
-        colorClass: "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 border border-amber-200 dark:border-amber-800",
-        bgClass: "bg-white border-gray-100 dark:bg-gray-800 dark:border-gray-700 lg:bg-gradient-to-br lg:from-white lg:to-amber-50/30",
-        textClass: "text-gray-800 dark:text-gray-100 group-hover:text-amber-600",
+        data: props.summary.month,
+        icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z",
+        color: "amber",
     },
     {
-        label: "Transaksi Hari Ini",
-        period: props.summary.period_today,
-        value: props.summary.count_today + " Nota",
-        profit: null,
-        margin: 0,
-        iconSvg: '<svg class="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>',
-        colorClass: "bg-gray-50 text-gray-600 dark:bg-gray-700/50 dark:text-gray-300 border border-gray-200 dark:border-gray-600",
-        bgClass: "bg-white border-gray-100 dark:bg-gray-800 dark:border-gray-700 lg:bg-gradient-to-br lg:from-white lg:to-gray-50/50",
-        textClass: "text-gray-800 dark:text-gray-100 group-hover:text-gray-600",
+        label: "Tahun Ini",
+        data: props.summary.year,
+        icon: "M13 7h8m0 0v8m0-8l-8 8-4-4-6 6",
+        color: "emerald",
     },
 ]);
 </script>
@@ -77,47 +60,132 @@ const stats = computed(() => [
         <div
             v-for="(stat, idx) in stats"
             :key="idx"
-            class="relative p-4 lg:p-5 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.05)] transition hover:shadow-md group overflow-hidden"
-            :class="stat.bgClass"
+            class="group relative flex flex-col bg-white dark:bg-gray-800/95 border border-gray-200 dark:border-gray-700/50 rounded-2xl lg:rounded-[2rem] shadow-sm hover:shadow-xl transition-all duration-500 overflow-hidden"
         >
-            <div class="flex items-center justify-between mb-3 lg:mb-4">
-                <h3 class="text-[10px] sm:text-xs uppercase font-extrabold tracking-widest text-gray-400 dark:text-gray-500">
-                    {{ stat.label }}
-                </h3>
-                <div
-                    class="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 rounded-xl flex items-center justify-center transition-colors shadow-sm"
-                    :class="stat.colorClass"
-                    v-html="stat.iconSvg"
-                >
-                </div>
-            </div>
+            <!-- COLOR ACCENT BAR -->
+            <div 
+                class="absolute left-0 top-0 bottom-0 w-1 lg:w-1.5 transition-all duration-500"
+                :class="[
+                    stat.color === 'blue' ? 'bg-blue-500 shadow-[0_0_15px_-3px_rgba(59,130,246,0.5)]' :
+                    stat.color === 'indigo' ? 'bg-indigo-500 shadow-[0_0_15px_-3px_rgba(99,102,241,0.5)]' :
+                    stat.color === 'amber' ? 'bg-amber-500 shadow-[0_0_15px_-3px_rgba(245,158,11,0.5)]' :
+                    'bg-emerald-500 shadow-[0_0_15px_-3px_rgba(16,185,129,0.5)]'
+                ]"
+            ></div>
 
-            <div>
-                 <p class="text-[9px] sm:text-xs text-gray-400 dark:text-gray-500 mb-1 lg:hidden">{{ stat.period }}</p>
-                <p
-                    class="text-base sm:text-lg text-gray-800 lg:text-2xl font-black truncate transition-colors"
-                    :class="stat.textClass"
-                >
-                    {{ stat.value }}
-                </p>
-                <!-- Profit Indicator -->
-                <div v-if="stat.profit" class="mt-2 flex items-center gap-1.5 opacity-90">
-                    <span class="flex items-center justify-center w-4 h-4 lg:w-5 lg:h-5 rounded-full bg-emerald-50 dark:bg-emerald-900/30">
-                        <svg class="w-2.5 h-2.5 lg:w-3 lg:h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                    </span>
-                    <span class="text-[10px] sm:text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                        Laba: {{ stat.profit }}
-                        <span v-if="stat.margin > 0" class="ml-1 text-[8px] sm:text-[9px] px-1 py-0.5 rounded-md bg-emerald-100/80 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
-                            {{ stat.margin }}%
+            <div class="p-3.5 sm:p-4 lg:p-6 pl-4.5 sm:pl-5 lg:pl-8 relative z-10 flex flex-col h-full">
+                <!-- Header: Title & Range -->
+                <div class="flex items-start justify-between mb-3 lg:mb-5">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-[9px] sm:text-[10px] lg:text-xs uppercase font-extrabold tracking-[0.15em] text-gray-500 dark:text-gray-400 mb-0.5 lg:mb-1 truncate">
+                            {{ stat.label }}
+                        </h3>
+                        <p class="text-[9px] sm:text-[10px] lg:text-xs font-semibold text-gray-400 dark:text-gray-600 flex items-center gap-1">
+                             <svg class="w-2.5 h-2.5 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                             {{ stat.data?.range || '...' }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Main Section: Omset (Revenue) -->
+                <div class="mb-5 lg:mb-8">
+                    <div class="flex items-baseline gap-1 lg:gap-2 mb-1">
+                        <span class="text-lg sm:text-xl lg:text-[1.75rem] font-black text-gray-900 dark:text-white tracking-tight leading-none group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {{ formatRupiah(stat.data?.revenue || 0).replace('Rp', '') }}
                         </span>
-                    </span>
+                        <span class="text-[8px] lg:text-[10px] font-black text-gray-400 dark:text-gray-600 uppercase">IDR</span>
+                    </div>
+                    
+                    <!-- Revenue Growth -->
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <template v-if="stat.data?.revenue_prev !== undefined">
+                            <div 
+                                class="flex items-center px-2 py-0.5 rounded-md text-[8px] lg:text-[10px] font-black"
+                                :class="calculateGrowth(stat.data.revenue, stat.data.revenue_prev) >= 0 
+                                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20' 
+                                    : 'bg-rose-50 text-rose-600 dark:bg-rose-500/10 dark:text-rose-400 border border-rose-100 dark:border-rose-500/20'"
+                            >
+                                <svg 
+                                    class="w-2.5 h-2.5 mr-0.5" 
+                                    :class="calculateGrowth(stat.data.revenue, stat.data.revenue_prev) < 0 ? 'rotate-180' : ''"
+                                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                                >
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                                {{ Math.abs(calculateGrowth(stat.data.revenue, stat.data.revenue_prev)) }}%
+                            </div>
+                            <span class="hidden sm:inline text-[8px] lg:text-[10px] font-bold text-gray-400 dark:text-gray-600 uppercase tracking-tighter self-center">vs periode sebelumnya</span>
+                        </template>
+                    </div>
+                </div>
+
+                <!-- Footer: Extended Metrics (Profit & Transaksi) -->
+                <div class="mt-auto flex flex-col gap-3 lg:gap-4 pt-4 lg:pt-6 border-t border-gray-100 dark:border-gray-700/50">
+                    <!-- Profit Section -->
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[8px] lg:text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Estimasi Laba</span>
+                            <span class="text-[8px] lg:text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
+                                {{ stat.data?.revenue > 0 ? ((stat.data.profit / stat.data.revenue) * 100).toFixed(1) : 0 }}%
+                            </span>
+                        </div>
+                        <div class="flex items-center justify-between gap-1 flex-wrap">
+                            <span class="text-[11px] lg:text-sm font-bold text-gray-800 dark:text-gray-200">
+                                {{ formatRupiah(stat.data?.profit || 0) }}
+                            </span>
+                            <div 
+                                v-if="stat.data?.profit_prev !== undefined"
+                                class="text-[8px] lg:text-[9px] font-black"
+                                :class="calculateGrowth(stat.data.profit, stat.data.profit_prev) >= 0 ? 'text-emerald-500' : 'text-rose-500'"
+                            >
+                                {{ calculateGrowth(stat.data.profit, stat.data.profit_prev) >= 0 ? '▲' : '▼' }} {{ Math.abs(calculateGrowth(stat.data.profit, stat.data.profit_prev)) }}%
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transactions Section -->
+                    <div class="flex flex-col gap-1.5 pt-3 border-t border-dotted border-gray-100 dark:border-gray-700/80">
+                        <div class="flex items-center justify-between">
+                            <span class="text-[8px] lg:text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Total Transaksi</span>
+                        </div>
+                        <div class="flex items-center justify-between gap-1 flex-wrap">
+                            <span class="text-[11px] lg:text-sm font-bold text-gray-800 dark:text-gray-200">
+                                {{ stat.data?.transactions || 0 }} <span class="text-[9px] font-medium text-gray-400 ml-0.5">Nota</span>
+                            </span>
+                            <div 
+                                v-if="stat.data?.transactions_prev !== undefined"
+                                class="text-[8px] lg:text-[9px] font-black"
+                                :class="calculateGrowth(stat.data.transactions, stat.data.transactions_prev) >= 0 ? 'text-emerald-500' : 'text-rose-500'"
+                            >
+                                {{ calculateGrowth(stat.data.transactions, stat.data.transactions_prev) >= 0 ? '▲' : '▼' }} {{ Math.abs(calculateGrowth(stat.data.transactions, stat.data.transactions_prev)) }}%
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            
-             <!-- Decorative -->
-             <div class="hidden lg:block mt-4 pt-3 border-t border-gray-100 dark:border-gray-700/50">
-                 <p class="text-[11px] text-gray-400 font-medium">{{ stat.period }}</p>
-             </div>
         </div>
     </div>
 </template>
+
+<style scoped>
+/* Mobile adjustments for a more premium & spacious feel */
+@media (max-width: 640px) {
+    .p-3\.5 { padding: 0.875rem; }
+    .pl-4\.5 { padding-left: 1.125rem; }
+}
+
+/* Premium shadows & focus effects */
+.shadow-sm {
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+}
+
+.hover\:shadow-xl {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+}
+
+/* Font Smoothing */
+span, p, h3 {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+</style>

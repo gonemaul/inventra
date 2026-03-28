@@ -19,6 +19,7 @@ export const usePosState = defineStore("posState", () => {
         const year = d.getFullYear();
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const day = String(d.getDate()).padStart(2, '0');
+        console.log(`${year}-${month}-${day}`);
         
         return {
             id: Date.now(),
@@ -30,7 +31,7 @@ export const usePosState = defineStore("posState", () => {
             form: {
                 id: null,
                 input_type: "realtime",
-                report_date: `${year}-${month}-${day}`,
+                transaction_date: `${year}-${month}-${day}`,
                 customer_id: null,
                 payment_amount: 0,
                 change_amount: 0,

@@ -16,6 +16,7 @@ use Inertia\Inertia;
 
 class SalesRecapController extends Controller
 {
+    protected $service;
     protected $categoryService;
     protected $maintenanceService;
 
@@ -46,189 +47,38 @@ class SalesRecapController extends Controller
         $sales = $this->service->get($filters);
 
         // 2. Hitung Ringkasan (Dashboard & Best Seller)
-        // REVISI: Menggunakan Rolling Period (Hari ini ke belakang)
-        $todayDate = now();
-        $weekDate = now()->subDays(6); // 7 Hari Terakhir (termasuk hari ini)
-        $monthDate = now()->subDays(29); // 30 Hari Terakhir
-
-        $today = $todayDate->format('Y-m-d');
-        $startOfWeek = $weekDate->format('Y-m-d');
-        $startOfMonth = $monthDate->format('Y-m-d');
-
-        // Helper untuk hitung produk terlaris (Top 3 by Omset)
-        $getBestSellingRevenue = function ($startDate, $endDate = null) {
-            $query = \App\Models\SaleItem::selectRaw('product_id, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
-                ->whereHas('sale', function ($q) use ($startDate, $endDate) {
-                    $q->whereDate('transaction_date', '>=', $startDate);
-                    if ($endDate) {
-                        $q->whereDate('transaction_date', '<=', $endDate);
-                    }
-                })
-                ->groupBy('product_id')
-                ->orderByDesc('total_revenue') // Order by Omset
-                ->with('product:id,name,slug,unit,price,code') 
-                ->limit(3)
-                ->get();
-
-            return $query->map(function ($item) {
-                return [
-                    'id' => $item->product_id,
-                    'slug' => $item->product->slug,
-                    'name' => $item->product->name ?? 'Unknown',
-                    'code' => $item->product->code ?? '-',
-                    'qty' => $item->total_qty,
-                    'revenue' => $item->total_revenue
-                ];
-            });
-        };
-
-        // Helper untuk hitung produk terlaris (Top 3 by Qty)
-        $getBestSellingQty = function ($startDate, $endDate = null) {
-            $query = \App\Models\SaleItem::selectRaw('product_id, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
-                ->whereHas('sale', function ($q) use ($startDate, $endDate) {
-                    $q->whereDate('transaction_date', '>=', $startDate);
-                    if ($endDate) {
-                        $q->whereDate('transaction_date', '<=', $endDate);
-                    }
-                })
-                ->groupBy('product_id')
-                ->orderByDesc('total_qty') // Order by Qty
-                ->with('product:id,name,slug,unit,price,code') 
-                ->limit(3)
-                ->get();
-
-            return $query->map(function ($item) {
-                return [
-                    'id' => $item->product_id,
-                    'slug' => $item->product->slug,
-                    'name' => $item->product->name ?? 'Unknown',
-                    'code' => $item->product->code ?? '-',
-                    'qty' => $item->total_qty,
-                    'revenue' => $item->total_revenue
-                ];
-            });
-        };
-
-        // Helper Chart Data (MODIFIED FOR PROFIT & REVENUE)
-        $getChartData = function ($type) use ($today, $startOfWeek, $startOfMonth) {
-            $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
-
-            if ($type === 'today') {
-                $timeColumn = 'updated_at'; 
-                $labelRaw = $isSqlite ? "CAST(strftime('%H', $timeColumn) AS INTEGER)" : "HOUR($timeColumn)";
-                
-                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
-                    ->whereDate('transaction_date', $today)
-                    ->groupBy('label')
-                    ->get()
-                    ->keyBy('label');
-                
-                // Fill 00-23
-                $resultRevenue = [];
-                $resultProfit = [];
-                for ($i = 0; $i <= 23; $i++) {
-                    $resultRevenue[] = (int)($data[$i]->revenue ?? 0);
-                    $resultProfit[] = (int)($data[$i]->profit ?? 0);
-                }
-                return ['labels' => range(0, 23), 'revenues' => $resultRevenue, 'profits' => $resultProfit];
-            }
-            
-            if ($type === 'week') {
-                $labelRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
-
-                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue,  SUM(total_profit) as profit")
-                    ->where('transaction_date', '>=', $startOfWeek)
-                    ->groupBy('label')
-                    ->get()
-                    ->keyBy('label');
-                
-                $labels = [];
-                $revenues = [];
-                $profits = [];
-                for ($i = 6; $i >= 0; $i--) {
-                    $date = now()->subDays($i)->format('Y-m-d');
-                    $labels[] = now()->subDays($i)->format('d/m'); 
-                    $revenues[] = (int)($data[$date]->revenue ?? 0);
-                    $profits[] = (int)($data[$date]->profit ?? 0);
-                }
-                return ['labels' => $labels, 'revenues' => $revenues, 'profits' => $profits];
-            }
-
-            if ($type === 'month') {
-                $labelRaw = $isSqlite ? "strftime('%W', transaction_date)" : "WEEK(transaction_date, 1)";
-                $dateRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
-
-                $data = Sale::selectRaw("$labelRaw as label, MIN($dateRaw) as start_date, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
-                    ->where('transaction_date', '>=', $startOfMonth)
-                    ->groupBy('label')
-                    ->orderBy('start_date')
-                    ->get();
-                
-                return [
-                    'labels' => $data->map(fn($item) => 'Minggu ' . date('W', strtotime($item->start_date)))->toArray(),
-                    'revenues' => $data->pluck('revenue')->toArray(),
-                    'profits' => $data->pluck('profit')->toArray(),
-                ];
-            }
-            
-            if ($type === 'year') {
-                $year = now()->year;
-                $labelRaw = $isSqlite ? "strftime('%m', transaction_date)" : "MONTH(transaction_date)";
-
-                $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
-                    ->whereYear('transaction_date', $year)
-                    ->groupBy('label')
-                    ->get()
-                    ->keyBy('label');
-                
-                $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-                $revenues = [];
-                $profits = [];
-                
-                for ($i = 1; $i <= 12; $i++) {
-                    // SQLite strftime '%m' returns '01', '02', etc. MySQL MONTH returns 1, 2.
-                    $keyString = $isSqlite ? str_pad($i, 2, '0', STR_PAD_LEFT) : $i;
-                    $revenues[] = (int)($data[$keyString]->revenue ?? 0);
-                    $profits[] = (int)($data[$keyString]->profit ?? 0);
-                }
-                
-                return [
-                    'labels' => $labels,
-                    'revenues' => $revenues,
-                    'profits' => $profits,
-                ];
-            }
-        };
+        $todayRange = [now()->startOfDay(), now()->endOfDay()];
+        $yesterdayRange = [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()];
+        
+        $weekRange = [now()->subDays(6)->startOfDay(), now()->endOfDay()];
+        $prevWeekRange = [now()->subDays(13)->startOfDay(), now()->subDays(7)->endOfDay()];
+        
+        $monthRange = [now()->subDays(29)->startOfDay(), now()->endOfDay()];
+        $prevMonthRange = [now()->subDays(59)->startOfDay(), now()->subDays(30)->endOfDay()];
+        
+        $yearRange = [now()->startOfYear(), now()->endOfDay()];
+        $prevYearRange = [now()->subYear()->startOfYear(), now()->subYear()->setMonth(now()->month)->setDay(now()->day)->endOfDay()];
 
         $summary = [
-            'sales_today' => Sale::whereDate('transaction_date', $today)->sum('total_revenue'),
-            'sales_week' => Sale::where('transaction_date', '>=', $startOfWeek)->sum('total_revenue'),
-            'sales_month' => Sale::where('transaction_date', '>=', $startOfMonth)->sum('total_revenue'),
-            
-            'profit_today' => Sale::whereDate('transaction_date', $today)->sum('total_profit'),
-            'profit_week' => Sale::where('transaction_date', '>=', $startOfWeek)->sum('total_profit'),
-            'profit_month' => Sale::where('transaction_date', '>=', $startOfMonth)->sum('total_profit'),
-            
-            'count_today' => Sale::whereDate('transaction_date', $today)->count(),
-            
-            'period_today' => $todayDate->translatedFormat('d M Y'),
-            'period_week' => $weekDate->translatedFormat('d M') . ' - ' . $todayDate->translatedFormat('d M Y'),
-            'period_month' => $monthDate->translatedFormat('d M') . ' - ' . $todayDate->translatedFormat('d M Y'),
+            'today' => $this->getStatsForPeriod($todayRange, $yesterdayRange, 'd M Y'),
+            'week' => $this->getStatsForPeriod($weekRange, $prevWeekRange, 'd M Y'),
+            'month' => $this->getStatsForPeriod($monthRange, $prevMonthRange, 'd M Y'),
+            'year' => $this->getStatsForPeriod($yearRange, $prevYearRange, 'd M Y'),
 
-            // Data Tambahan untuk "Produk Terlaris" per periode
-            'best_selling_revenue_today' => $getBestSellingRevenue($today, $today),
-            'best_selling_revenue_week' => $getBestSellingRevenue($startOfWeek),
-            'best_selling_revenue_month' => $getBestSellingRevenue($startOfMonth),
+            // Data Tambahan untuk "Produk Terlaris" per periode (Tetap ada untuk insight lain)
+            'best_selling_revenue_today' => $this->getBestSellingRevenue($todayRange[0], $todayRange[1]),
+            'best_selling_revenue_week' => $this->getBestSellingRevenue($weekRange[0]),
+            'best_selling_revenue_month' => $this->getBestSellingRevenue($monthRange[0]),
 
-            'best_selling_qty_today' => $getBestSellingQty($today, $today),
-            'best_selling_qty_week' => $getBestSellingQty($startOfWeek),
-            'best_selling_qty_month' => $getBestSellingQty($startOfMonth),
+            'best_selling_qty_today' => $this->getBestSellingQty($todayRange[0], $todayRange[1]),
+            'best_selling_qty_week' => $this->getBestSellingQty($weekRange[0]),
+            'best_selling_qty_month' => $this->getBestSellingQty($monthRange[0]),
 
             // charts
-            'chart_today' => $getChartData('today'),
-            'chart_week' => $getChartData('week'),
-            'chart_month' => $getChartData('month'),
-            'chart_year' => $getChartData('year'),
+            'chart_today' => $this->getChartData('today', $todayRange[0]),
+            'chart_week' => $this->getChartData('week', $weekRange[0]),
+            'chart_month' => $this->getChartData('month', $monthRange[0]),
+            'chart_year' => $this->getChartData('year'),
         ];
 
         return Inertia::render('Sale/index', [
@@ -286,7 +136,7 @@ class SalesRecapController extends Controller
         $validated = $request->validate([
             'input_type' => ['required', Rule::in(Sale::TYPES)],
             'customer_id' => 'nullable|exists:customers,id',
-            'report_date' => 'required|date|before_or_equal:today',
+            'transaction_date' => 'required|date|before_or_equal:today',
             'created_at' => 'nullable|date',
             'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
             'payment_amount' => 'nullable|numeric|min:0',
@@ -736,8 +586,8 @@ class SalesRecapController extends Controller
                 ->where('created_at', '>=', now()->subDays(90))
                 ->sum('quantity');
             
-            $productCount = \App\Models\Product::count();
-            $avgStock = \App\Models\Product::avg('stock');
+            $productCount = Product::count();
+            $avgStock = Product::avg('stock');
 
             return [
                 'avg_sold' => $productCount > 0 ? $totalSold90d / $productCount : 0,
@@ -766,7 +616,144 @@ class SalesRecapController extends Controller
             'products' => $products,
             'available_brands' => $availableBrands,
             'available_sizes' => $availableSizes,
-            'stats' => $globalStats // Optional: Kirim stats buat debug frontend
         ]);
+    }
+
+    /**
+     * Helper to get stats for a period and its previous comparison
+     */
+    protected function getStatsForPeriod($currentRange, $prevRange, $format)
+    {
+        $current = Sale::whereBetween('transaction_date', $currentRange)
+            ->selectRaw('SUM(total_revenue) as revenue, SUM(total_profit) as profit, COUNT(*) as transactions')
+            ->first();
+
+        $prev = Sale::whereBetween('transaction_date', $prevRange)
+            ->selectRaw('SUM(total_revenue) as revenue, SUM(total_profit) as profit, COUNT(*) as transactions')
+            ->first();
+
+        return [
+            'revenue' => (float) ($current->revenue ?? 0),
+            'revenue_prev' => (float) ($prev->revenue ?? 0),
+            'profit' => (float) ($current->profit ?? 0),
+            'profit_prev' => (float) ($prev->profit ?? 0),
+            'transactions' => (int) ($current->transactions ?? 0),
+            'transactions_prev' => (int) ($prev->transactions ?? 0),
+            'range' => $currentRange[0]->translatedFormat($format) . ($currentRange[0]->isSameDay($currentRange[1]) ? '' : ' - ' . $currentRange[1]->translatedFormat('d M Y')),
+        ];
+    }
+
+    protected function getBestSellingRevenue($startDate, $endDate = null)
+    {
+        $query = \App\Models\SaleItem::selectRaw('product_id, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
+            ->whereHas('sale', function ($q) use ($startDate, $endDate) {
+                $q->whereDate('transaction_date', '>=', $startDate);
+                if ($endDate) {
+                    $q->whereDate('transaction_date', '<=', $endDate);
+                }
+            })
+            ->groupBy('product_id')
+            ->orderByDesc('total_revenue')
+            ->with('product:id,name,slug,unit,price,code') 
+            ->limit(3)
+            ->get();
+
+        return $query->map(fn($item) => [
+            'id' => $item->product_id,
+            'slug' => $item->product->slug,
+            'name' => $item->product->name ?? 'Unknown',
+            'code' => $item->product->code ?? '-',
+            'qty' => $item->total_qty,
+            'revenue' => $item->total_revenue
+        ]);
+    }
+
+    protected function getBestSellingQty($startDate, $endDate = null)
+    {
+        $query = \App\Models\SaleItem::selectRaw('product_id, SUM(quantity) as total_qty, SUM(subtotal) as total_revenue')
+            ->whereHas('sale', function ($q) use ($startDate, $endDate) {
+                $q->whereDate('transaction_date', '>=', $startDate);
+                if ($endDate) {
+                    $q->whereDate('transaction_date', '<=', $endDate);
+                }
+            })
+            ->groupBy('product_id')
+            ->orderByDesc('total_qty')
+            ->with('product:id,name,slug,unit,price,code') 
+            ->limit(3)
+            ->get();
+
+        return $query->map(fn($item) => [
+            'id' => $item->product_id,
+            'slug' => $item->product->slug,
+            'name' => $item->product->name ?? 'Unknown',
+            'code' => $item->product->code ?? '-',
+            'qty' => $item->total_qty,
+            'revenue' => $item->total_revenue
+        ]);
+    }
+
+    protected function getChartData($type, $startDate = null)
+    {
+        $isSqlite = \Illuminate\Support\Facades\DB::connection()->getDriverName() === 'sqlite';
+        $today = now()->format('Y-m-d');
+
+        if ($type === 'today') {
+            $timeColumn = 'updated_at'; 
+            $labelRaw = $isSqlite ? "CAST(strftime('%H', $timeColumn) AS INTEGER)" : "HOUR($timeColumn)";
+            $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
+                ->whereDate('transaction_date', $today)
+                ->groupBy('label')->get()->keyBy('label');
+            $resultRevenue = []; $resultProfit = [];
+            for ($i = 0; $i <= 23; $i++) {
+                $resultRevenue[] = (int)($data[$i]->revenue ?? 0);
+                $resultProfit[] = (int)($data[$i]->profit ?? 0);
+            }
+            return ['labels' => range(0, 23), 'revenues' => $resultRevenue, 'profits' => $resultProfit];
+        }
+        
+        if ($type === 'week') {
+            $labelRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
+            $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
+                ->where('transaction_date', '>=', $startDate->format('Y-m-d'))
+                ->groupBy('label')->get()->keyBy('label');
+            $labels = []; $revenues = []; $profits = [];
+            for ($i = 6; $i >= 0; $i--) {
+                $date = now()->subDays($i)->format('Y-m-d');
+                $labels[] = now()->subDays($i)->format('d/m'); 
+                $revenues[] = (int)($data[$date]->revenue ?? 0);
+                $profits[] = (int)($data[$date]->profit ?? 0);
+            }
+            return ['labels' => $labels, 'revenues' => $revenues, 'profits' => $profits];
+        }
+
+        if ($type === 'month') {
+            $labelRaw = $isSqlite ? "strftime('%W', transaction_date)" : "WEEK(transaction_date, 1)";
+            $dateRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
+            $data = Sale::selectRaw("$labelRaw as label, MIN($dateRaw) as start_date, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
+                ->where('transaction_date', '>=', $startDate->format('Y-m-d'))
+                ->groupBy('label')->orderBy('start_date')->get();
+            return [
+                'labels' => $data->map(fn($item) => 'Minggu ' . date('W', strtotime($item->start_date)))->toArray(),
+                'revenues' => $data->pluck('revenue')->toArray(),
+                'profits' => $data->pluck('profit')->toArray(),
+            ];
+        }
+        
+        if ($type === 'year') {
+            $year = now()->year;
+            $labelRaw = $isSqlite ? "strftime('%m', transaction_date)" : "MONTH(transaction_date)";
+            $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
+                ->whereYear('transaction_date', $year)
+                ->groupBy('label')->get()->keyBy('label');
+            $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+            $revenues = []; $profits = [];
+            for ($i = 1; $i <= 12; $i++) {
+                $keyString = $isSqlite ? str_pad($i, 2, '0', STR_PAD_LEFT) : $i;
+                $revenues[] = (int)($data[$keyString]->revenue ?? 0);
+                $profits[] = (int)($data[$keyString]->profit ?? 0);
+            }
+            return ['labels' => $labels, 'revenues' => $revenues, 'profits' => $profits];
+        }
     }
 }
