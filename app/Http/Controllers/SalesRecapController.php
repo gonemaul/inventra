@@ -40,22 +40,22 @@ class SalesRecapController extends Controller
             unset($filters['max_date']);
         } elseif (!$request->has('min_date') && (!$request->has('max_date')) && $request->input('period') !== 'all') {
             // FIX: Default ke Hari Ini (strictly Today) jika tidak ada filter sama sekali
-            $filters['min_date'] = now()->format('Y-m-d'); 
+            $filters['min_date'] = now()->format('Y-m-d');
             $filters['max_date'] = now()->format('Y-m-d');
         }
-        
+
         $sales = $this->service->get($filters);
 
         // 2. Hitung Ringkasan (Dashboard & Best Seller)
         $todayRange = [now()->startOfDay(), now()->endOfDay()];
         $yesterdayRange = [now()->subDay()->startOfDay(), now()->subDay()->endOfDay()];
-        
+
         $weekRange = [now()->subDays(6)->startOfDay(), now()->endOfDay()];
         $prevWeekRange = [now()->subDays(13)->startOfDay(), now()->subDays(7)->endOfDay()];
-        
+
         $monthRange = [now()->subDays(29)->startOfDay(), now()->endOfDay()];
         $prevMonthRange = [now()->subDays(59)->startOfDay(), now()->subDays(30)->endOfDay()];
-        
+
         $yearRange = [now()->startOfYear(), now()->endOfDay()];
         $prevYearRange = [now()->subYear()->startOfYear(), now()->subYear()->setMonth(now()->month)->setDay(now()->day)->endOfDay()];
 
@@ -135,9 +135,11 @@ class SalesRecapController extends Controller
         // Validasi Array Items
         $validated = $request->validate([
             'input_type' => ['required', Rule::in(Sale::TYPES)],
+            'type' => ['nullable', Rule::in(Sale::SALE_TYPES)], // retail | bengkel (nullable = default retail)
             'customer_id' => 'nullable|exists:customers,id',
-            'transaction_date' => 'required|date|before_or_equal:today',
-            'created_at' => 'nullable|date',
+            // FIX: transaction_date hanya wajib untuk mode Rekap (input manual).
+            // POS Realtime selalu pakai Carbon::now() di server — mencegah bug cache tanggal dari tab idle.
+            'transaction_date' => 'required_if:input_type,recap|nullable|date|before_or_equal:today',
             'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
             'payment_amount' => 'nullable|numeric|min:0',
             'change_amount' => 'numeric|min:0',
@@ -160,7 +162,7 @@ class SalesRecapController extends Controller
 
                     $product = Product::with('unit')->find($productId);
 
-                    if ($product && $product->unit && ! $product->unit->is_decimal) {
+                    if ($product && $product->unit && !$product->unit->is_decimal) {
                         // Jika unit TIDAK boleh desimal, cek apakah nilai integer
                         if (floor($value) != $value) {
                             $fail("Produk {$product->name} (Satuan: {$product->unit->name}) tidak boleh pecahan (koma).");
@@ -200,7 +202,7 @@ class SalesRecapController extends Controller
             ]);
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error("Sales Store Error: " . $e->getMessage());
-            return back()->with('error', 'Terjadi kesalahan: '.$e->getMessage());
+            return back()->with('error', 'Terjadi kesalahan: ' . $e->getMessage());
         }
     }
 
@@ -208,47 +210,47 @@ class SalesRecapController extends Controller
      * API untuk Search Bar di Frontend
      * Menerima parameter ?query=nama_produk
      */
-    public function searchProduct(Request $request)
-    {
-        $search = $request->input('query');
+    // public function searchProduct(Request $request)
+    // {
+    //     $search = $request->input('query');
 
-        if (! $search) {
-            return response()->json([]);
-        }
+    //     if (! $search) {
+    //         return response()->json([]);
+    //     }
 
-        // Gunakan Scope Filter (Search Pintar) yang sudah kita buat di Model Product
-        // Atau query manual sederhana:
-        $products = Product::query()
-            ->with(['unit', 'brand']) // Load relasi biar data lengkap
-            ->where('stock', '>', 0)  // Opsional: Hanya tampilkan yg ada stok
-            ->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            })
-            ->limit(10) // Batasi 10 hasil biar ringan
-            ->get()
-            ->map(function ($product) {
-                return [
-                    'id' => $product->id,
-                    'code' => $product->code,
-                    'name' => $product->name, // Pakai Accessor Full Name Komposit
-                    'stock' => (float) $product->stock, // Cast ke float biar gak string
-                    'unit' => $product->unit->name ?? 'Pcs',
-                    'price' => (float) $product->selling_price,
-                    'brand' => $product->brand->name,
-                    'image' => $product->image_url ?? null,
-                ];
-            });
+    //     // Gunakan Scope Filter (Search Pintar) yang sudah kita buat di Model Product
+    //     // Atau query manual sederhana:
+    //     $products = Product::query()
+    //         ->with(['unit', 'brand']) // Load relasi biar data lengkap
+    //         ->where('stock', '>', 0)  // Opsional: Hanya tampilkan yg ada stok
+    //         ->where(function ($q) use ($search) {
+    //             $q->where('name', 'like', "%{$search}%")
+    //                 ->orWhere('code', 'like', "%{$search}%");
+    //         })
+    //         ->limit(10) // Batasi 10 hasil biar ringan
+    //         ->get()
+    //         ->map(function ($product) {
+    //             return [
+    //                 'id' => $product->id,
+    //                 'code' => $product->code,
+    //                 'name' => $product->name, // Pakai Accessor Full Name Komposit
+    //                 'stock' => (float) $product->stock, // Cast ke float biar gak string
+    //                 'unit' => $product->unit->name ?? 'Pcs',
+    //                 'price' => (float) $product->selling_price,
+    //                 'brand' => $product->brand->name,
+    //                 'image' => $product->image_url ?? null,
+    //             ];
+    //         });
 
-        return response()->json($products);
-    }
+    //     return response()->json($products);
+    // }
 
     /**
      * Display the specified resource.
      */
     public function show(Sale $sale)
     {
-        $sale->load(['items','items.product:id,slug', 'user']);
+        $sale->load(['items', 'items.product:id,slug', 'user']);
 
         return Inertia::render('Sale/Show', [
             'sale' => $sale,
@@ -261,14 +263,15 @@ class SalesRecapController extends Controller
     public function edit(Sale $sale)
     {
         $sale->load([
-            'items.product' => function($q) {
+            'items.product' => function ($q) {
                 $q->withTrashed();
             },
-            'items.product.unit', 
-            'items.product.category', 
+            'items.product.unit',
+            'items.product.category',
             'items.product.brand',
             'items.product.size',
-            'customer'
+            'customer',
+            'oilServiceLog.vehicle', // Fase 2: Untuk pre-populate service data di edit bengkel
         ]);
 
         if ($sale->input_type == Sale::TYPE_REALTIME) {
@@ -289,26 +292,79 @@ class SalesRecapController extends Controller
 
     /**
      * Update the specified resource in storage.
+     * Fase 3: Logika update yang aman dengan Revert & Re-deduct atomik.
      */
     public function update(Request $request, Sale $sale)
     {
-        // Validasi sama persis dengan Store
+        // --- GUARD: Cegah edit pada transaksi yang sudah di-void/hapus ---
+        if ($sale->trashed()) {
+            return back()->with('error', 'Transaksi yang sudah dihapus (VOID) tidak dapat diedit.');
+        }
+
+        // Validasi lengkap — sinkron dengan store()
         $validated = $request->validate([
-            'report_date' => 'required|date',
-            'notes' => 'nullable|string',
+            'input_type' => ['required', Rule::in(Sale::TYPES)],
+            'type' => ['nullable', Rule::in(Sale::SALE_TYPES)],
+            'customer_id' => 'nullable|exists:customers,id',
+            'transaction_date' => 'nullable|date|before_or_equal:today',
+            'payment_method' => ['required', Rule::in(Sale::PAYMENT_METHODS)],
+            'payment_amount' => 'nullable|numeric|min:0',
+            'change_amount' => 'nullable|numeric|min:0',
+            'notes' => 'nullable|string|max:500',
+            'discount_type' => ['nullable', Rule::in(Sale::DISCON_TYPES)],
+            'discount_value' => 'nullable|numeric|min:0',
+            // Validasi items
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|numeric|gt:0',
+            'items.*.quantity' => [
+                'required',
+                'numeric',
+                'min:0.0001',
+                function ($attribute, $value, $fail) use ($request) {
+                    $index = explode('.', $attribute)[1];
+                    $productId = $request->input("items.{$index}.product_id");
+                    $product = \App\Models\Product::with('unit')->find($productId);
+                    if ($product && $product->unit && !$product->unit->is_decimal) {
+                        if (floor($value) != $value) {
+                            $fail("Produk {$product->name} (Satuan: {$product->unit->name}) tidak boleh pecahan.");
+                        }
+                    }
+                },
+            ],
             'items.*.selling_price' => 'required|numeric|min:0',
+            // Validasi service_data (Bengkel Mode)
+            'service_data' => 'nullable|array',
+            'service_data.vehicle.id' => 'nullable|exists:vehicles,id',
+            'service_data.current_km' => 'nullable|numeric',
+            'service_data.engine_oil_id' => 'nullable|exists:products,id',
+            'service_data.gear_oil_id' => 'nullable|exists:products,id',
+        ], [
+            'items.min' => 'Keranjang tidak boleh kosong.',
+            'items.*.quantity.min' => 'Jumlah barang harus lebih dari 0.',
         ]);
 
         try {
-            $this->service->updateRecap($sale, $validated);
+            // Tentukan tipe: gunakan type dari request, fallback ke type di DB
+            $saleType = $validated['type'] ?? $sale->type ?? Sale::TYPE_RETAIL;
 
-            return Redirect::route('sales.index')
-                ->with('success', 'Rekap berhasil diperbarui.');
+            if ($saleType === Sale::TYPE_BENGKEL && $request->filled('service_data')) {
+                // Bengkel: Gunakan MaintenanceService untuk update + sync oil service log
+                $this->maintenanceService->updateMaintenance($sale, $validated);
+            } else {
+                // Retail/Rekap: Gunakan SalesRecapService standar
+                $this->service->updateRecap($sale, $validated);
+            }
+
+            // Response berbeda untuk POS (redirect back) vs Rekap (redirect index)
+            $message = 'Transaksi berhasil diperbarui.';
+            if ($sale->input_type === Sale::TYPE_REALTIME) {
+                return redirect()->back()->with('success', $message);
+            }
+
+            return Redirect::route('sales.index')->with('success', $message);
         } catch (\Exception $e) {
-            return back()->with('error', $e->getMessage());
+            \Illuminate\Support\Facades\Log::error("Sales Update Error: " . $e->getMessage());
+            return back()->with('error', 'Gagal memperbarui: ' . $e->getMessage());
         }
     }
 
@@ -350,9 +406,37 @@ class SalesRecapController extends Controller
 
     public function getAllProductsLite(Request $request)
     {
+        // --- 0. KONFIGURASI AI (PLUG & PLAY) ---
+        $useAi = true; // Hardcoded toggle sesuai instruksi
+        $aiEndpoint = 'http://127.0.0.1:8000/api/realtime/sales-recommendation';
+
         // 1. Ambil Parameter
         $search = $request->input('query'); // Input dari ketikan user
         $limit = $request->input('limit', 20); // Default load 20 saja biar ringan
+        $offset = $request->input('offset', 0);
+        $sort = $request->input('sort');
+
+        // --- 1.1 LOGIKA AI RECOMMENDATION ---
+        $aiProductIds = [];
+        if ($useAi && ($sort === 'recommendation' || empty($sort))) {
+            try {
+                $response = \Illuminate\Support\Facades\Http::timeout(1)->post($aiEndpoint, [
+                    'query' => $search,
+                    'cart_item_ids' => $request->input('cart_item_ids', []),
+                    'customer_id' => $request->input('customer_id'),
+                    'limit' => $limit,
+                    'offset' => $offset,
+                ]);
+
+                if ($response->successful()) {
+                    $aiData = $response->json();
+                    $aiProductIds = $aiData['product_ids'] ?? [];
+                }
+            } catch (\Exception $e) {
+                // Graceful Degradation: Jika AI mati, log error dan biarkan sistem lanjut ke Fallback
+                \Illuminate\Support\Facades\Log::warning("AI Recommendation Service Unreachable: " . $e->getMessage());
+            }
+        }
 
         $query = Product::query()
             ->select([
@@ -370,152 +454,142 @@ class SalesRecapController extends Controller
                 'unit_id',
                 'size_id',
             ])
-            ->withSum(['saleItems as total_sold' => function($q) {
-                $q->where('created_at', '>=', now()->subDays(90));
-            }], 'quantity')
-            ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name', 'category:id,name','productType:id,name']);
-            
+            ->withSum([
+                'saleItems as total_sold' => function ($q) {
+                    $q->where('created_at', '>=', now()->subDays(90));
+                }
+            ], 'quantity')
+            ->with(['unit:id,name,is_decimal', 'brand:id,name', 'size:id,name', 'category:id,name', 'productType:id,name']);
+
         if ($request->boolean('hide_empty_stock')) {
             $query->where('stock', '>', 0);
         }
 
         // 2. Logic Search & Filter Server Side
-        // A. Filter Search (SMART SEARCH LOGIC)
-        if ($search) {
-            $searchTerms = array_filter(explode(' ', $search));
-            
-            $query->where(function($q) use ($search, $searchTerms) {
-                // Exact Match Keras (Super Relevan)
-                $q->where('code', $search)
-                  ->orWhere('name', 'like', $search . '%');
-                  
-                // Multi-Word AND Matching (Cari Tiap Kata)
-                $q->orWhere(function ($subQuery) use ($searchTerms) {
-                    foreach ($searchTerms as $term) {
-                        $subQuery->where('name', 'like', "%{$term}%");
-                    }
+        // A. Filter Search (Tetap ada sebagai base filter jika tidak menggunakan AI)
+        // Jika AI mengembalikan hasil, kita filter query utama berdasarkan ID dari AI
+        if (!empty($aiProductIds)) {
+            $query->whereIn('id', $aiProductIds);
+
+            // Urutkan persis sesuai rekomendasi AI (Preserve Order untuk SQLite)
+            $idsOrder = implode(',', $aiProductIds);
+            $query->orderByRaw("INSTR(',$idsOrder,', ',' || id || ',')");
+        } else {
+            // FALLBACK / LEGACY SEARCH LOGIC
+            if ($search) {
+                $searchTerms = array_filter(explode(' ', $search));
+
+                $query->where(function ($q) use ($search, $searchTerms) {
+                    // Exact Match Keras (Super Relevan)
+                    $q->where('code', $search)
+                        ->orWhere('name', 'like', $search . '%');
+
+                    // Multi-Word AND Matching (Cari Tiap Kata)
+                    $q->orWhere(function ($subQuery) use ($searchTerms) {
+                        foreach ($searchTerms as $term) {
+                            $subQuery->where('name', 'like', "%{$term}%");
+                        }
+                    });
+
+                    // Cross-Column Relational Search
+                    $q->orWhereHas('category', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', "%{$search}%");
+                    })->orWhereHas('brand', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', "%{$search}%");
+                    })->orWhereHas('size', function ($subQuery) use ($search) {
+                        $subQuery->where('name', 'like', "%{$search}%");
+                    });
                 });
-                
-                // Cross-Column Relational Search
-                $q->orWhereHas('category', function ($subQuery) use ($search) {
-                    $subQuery->where('name', 'like', "%{$search}%");
-                })->orWhereHas('brand', function ($subQuery) use ($search) {
-                    $subQuery->where('name', 'like', "%{$search}%");
-                })->orWhereHas('size', function ($subQuery) use ($search) {
-                    $subQuery->where('name', 'like', "%{$search}%");
+            }
+            // B. Filter Kategori
+            if ($request->filled('category_id') && $request->input('category_id') !== 'all') {
+                $query->where('category_id', $request->input('category_id'));
+            }
+            // C. Filter Tipe/SubKategori
+            if ($request->filled('product_type_id') && $request->input('product_type_id') !== 'all') {
+                $query->where('product_type_id', $request->input('product_type_id'));
+            }
+            // D. Filter Brand
+            if ($request->filled('brand_id') && $request->input('brand_id') !== 'all') {
+                $query->where('brand_id', $request->input('brand_id'));
+            }
+            // E. Filter Size
+            if ($request->filled('size_id') && $request->input('size_id') !== 'all') {
+                $query->where('size_id', $request->input('size_id'));
+            }
+
+            // 3. Sorting & Limiting (Rekomendasi jadi Default kalau ada Filter)
+            $hasFilters = $request->filled('category_id') && $request->input('category_id') !== 'all' ||
+                $request->filled('product_type_id') && $request->input('product_type_id') !== 'all' ||
+                $request->filled('brand_id') && $request->input('brand_id') !== 'all' ||
+                $request->filled('size_id') && $request->input('size_id') !== 'all';
+
+            // Default sort behavior
+            if (empty($sort) || $sort === 'default') {
+                $sort = $hasFilters ? 'recommendation' : 'name';
+            }
+
+            if ($request->boolean('only_services')) {
+                // LOGIC BARU: Ambil HANYA Jasa/Layanan
+                $query->whereHas('category', function ($q) {
+                    $q->whereIn('name', ['Jasa', 'Layanan']);
                 });
-            });
-        }
-        // B. Filter Kategori
-        if ($request->filled('category_id') && $request->input('category_id') !== 'all') {
-            $query->where('category_id', $request->input('category_id'));
-        }
-        // C. Filter Tipe/SubKategori
-        if ($request->filled('product_type_id') && $request->input('product_type_id') !== 'all') {
-            $query->where('product_type_id', $request->input('product_type_id'));
-        }
-        // D. Filter Brand
-        if ($request->filled('brand_id') && $request->input('brand_id') !== 'all') {
-            $query->where('brand_id', $request->input('brand_id'));
-        }
-        // E. Filter Size
-        if ($request->filled('size_id') && $request->input('size_id') !== 'all') {
-            $query->where('size_id', $request->input('size_id'));
+                $query->orderBy('name');
+            } else {
+                if ($search) {
+                    // RELEVANCE SORTING PADA SMART SEARCH
+                    $query->orderByRaw("
+                        CASE 
+                            WHEN code = ? THEN 1
+                            WHEN name LIKE ? THEN 2
+                            WHEN name LIKE ? THEN 3
+                            ELSE 4
+                        END ASC
+                     ", [$search, $search . '%', '%' . $search . '%']);
+                    // Sebagai secondary sort, pakai best seller biar barang yang sering dicari duluan
+                    $query->orderByDesc('total_sold');
+                } elseif ($sort === 'cheapest') {
+                    $query->orderBy('selling_price', 'asc');
+                } elseif ($sort === 'bestseller') {
+                    $query->orderByDesc('total_sold');
+                } elseif ($sort === 'recommendation') {
+                    // LOGIC REKOMENDASI SORTING
+                    $query->orderByRaw('( 
+                        (CAST(stock AS DECIMAL(10,2)) * 0.3) + 
+                        (((CAST(selling_price AS DECIMAL(15,2)) - CAST(purchase_price AS DECIMAL(15,2))) / 1000) * 0.5) - 
+                        (COALESCE((SELECT SUM(quantity) FROM sale_items WHERE product_id = products.id), 0) * 0.2) 
+                     ) DESC');
+                } else {
+                    $query->orderBy('name');
+                }
+
+                // LOGIC FILTER JASA: Sembunyikan Jasa/Layanan jika tidak ada filter kategori spesifik
+                if (!$request->filled('category_id') || $request->input('category_id') === 'all') {
+                    $query->whereDoesntHave('category', function ($q) {
+                        $q->whereIn('name', ['Jasa', 'Layanan']);
+                    });
+                }
+            }
         }
 
-        // 3. Sorting & Limiting (Rekomendasi jadi Default kalau ada Filter)
-        $hasFilters = $request->filled('category_id') && $request->input('category_id') !== 'all' ||
-                      $request->filled('product_type_id') && $request->input('product_type_id') !== 'all' ||
-                      $request->filled('brand_id') && $request->input('brand_id') !== 'all' ||
-                      $request->filled('size_id') && $request->input('size_id') !== 'all';
-                      
-        // Default sort behavior
-        $sort = $request->input('sort');
-        if (empty($sort) || $sort === 'default') {
-             $sort = $hasFilters ? 'recommendation' : 'name';
-        }
-        
-        if ($request->boolean('only_services')) {
-             // LOGIC BARU: Ambil HANYA Jasa/Layanan
-             $query->whereHas('category', function($q) {
-                 $q->whereIn('name', ['Jasa', 'Layanan']);
-             });
-             $query->orderBy('name');
-        } else {
-             if ($search) {
-                 // RELEVANCE SORTING PADA SMART SEARCH
-                 // 1. Exact Code (Paling Atas)
-                 // 2. Dimulai dengan nama persis
-                 // 3. Mengandung nama utuh
-                 // 4. Default relasi lain
-                 $query->orderByRaw("
-                    CASE 
-                        WHEN code = ? THEN 1
-                        WHEN name LIKE ? THEN 2
-                        WHEN name LIKE ? THEN 3
-                        ELSE 4
-                    END ASC
-                 ", [$search, $search . '%', '%' . $search . '%']);
-                 // Sebagai secondary sort, pakai best seller biar barang yang sering dicari duluan
-                 $query->orderByDesc('total_sold');
-             } elseif ($sort === 'cheapest') {
-                 $query->orderBy('selling_price', 'asc');
-             } elseif ($sort === 'bestseller') {
-                 $query->orderByDesc('total_sold');
-             } elseif ($sort === 'recommendation') {
-                 // LOGIC REKOMENDASI SORTING
-                 // Rumus: (Stock * 0.3) + (((Selling Price - Purchase Price) / 1000) * 0.5) - (Total Sold * 0.2)
-                 $query->orderByRaw('( 
-                    (CAST(stock AS DECIMAL(10,2)) * 0.3) + 
-                    (((CAST(selling_price AS DECIMAL(15,2)) - CAST(purchase_price AS DECIMAL(15,2))) / 1000) * 0.5) - 
-                    (COALESCE((SELECT SUM(quantity) FROM sale_items WHERE product_id = products.id), 0) * 0.2) 
-                 ) DESC');
-             } else {
-                 $query->orderBy('name');
-             }
-             
-             // LOGIC FILTER JASA: Sembunyikan Jasa/Layanan jika tidak ada filter kategori spesifik
-             if (!$request->filled('category_id') || $request->input('category_id') === 'all') {
-                 $query->whereDoesntHave('category', function($q) {
-                     $q->whereIn('name', ['Jasa', 'Layanan']);
-                 });
-             }
-        }
-            
         // --- LOGIC DYNAMIC FILTERS (FACETS) ---
-        // Requirement:
-        // 1. Jika Category = All -> Tampilkan Semua Brand, Hide Size.
-        // 2. Jika Category Selected -> Tampilkan Brand & Size yg available di produk kategori tsb.
-        
         $availableBrands = [];
         $availableSizes = [];
 
-        // RE-BUILD BASIC QUERY SCOPE (Search + Category + Type + Jasa Logic)
-        // Note: Kita gunakan scope ini untuk mencari "Available Brands" dan "Available Sizes"
-        // Kita TIDAK meng-apply filter Brand/Size di sini, karena Facet harus menunjukkan opsi lain
-        
         $baseScope = Product::query();
         if ($request->boolean('hide_empty_stock')) {
             $baseScope->where('stock', '>', 0);
         }
-        
-        // Context 1: Current Search Context (SMART SEARCH)
+
         if ($search) {
-             $searchTerms = array_filter(explode(' ', $search));
-             
-             $baseScope->where(function($q) use ($search, $searchTerms) {
-                // Exact Match Keras (Super Relevan)
-                $q->where('code', $search)
-                  ->orWhere('name', 'like', $search . '%');
-                  
-                // Multi-Word AND Matching (Cari Tiap Kata)
+            $searchTerms = array_filter(explode(' ', $search));
+            $baseScope->where(function ($q) use ($search, $searchTerms) {
+                $q->where('code', $search)->orWhere('name', 'like', $search . '%');
                 $q->orWhere(function ($query) use ($searchTerms) {
                     foreach ($searchTerms as $term) {
                         $query->where('name', 'like', "%{$term}%");
                     }
                 });
-                
-                // Cross-Column Relational Search
                 $q->orWhereHas('category', function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%");
                 })->orWhereHas('brand', function ($query) use ($search) {
@@ -525,70 +599,50 @@ class SalesRecapController extends Controller
                 });
             });
         }
-        
-        // Context 2: Current Category Context
+
         $categoryId = $request->input('category_id');
         $hasCategoryFilter = $request->filled('category_id') && $categoryId !== 'all';
-        
+
         if ($hasCategoryFilter) {
             $baseScope->where('category_id', $categoryId);
         }
-        
+
         if ($request->filled('product_type_id') && $request->input('product_type_id') !== 'all') {
             $baseScope->where('product_type_id', $request->input('product_type_id'));
         }
-        
-        // Jasa Logic
+
         if ($request->boolean('only_services')) {
-             $baseScope->whereHas('category', function($q) { $q->whereIn('name', ['Jasa', 'Layanan']); });
+            $baseScope->whereHas('category', function ($q) {
+                $q->whereIn('name', ['Jasa', 'Layanan']); });
         } else {
-             if (!$hasCategoryFilter) {
-                  // Jika All Category, exclude Jasa (default pos behavior usually) 
-                  // Kecuali user cari spesifik? 
-                  // Mari kita ikut logic utama:
-                  $baseScope->whereDoesntHave('category', function($q) { $q->whereIn('name', ['Jasa', 'Layanan']); });
-             }
+            if (!$hasCategoryFilter) {
+                $baseScope->whereDoesntHave('category', function ($q) {
+                    $q->whereIn('name', ['Jasa', 'Layanan']); });
+            }
         }
 
-        // 1. Get Available Brands
-        // Logic: Ambil brand dari scope produk saat ini.
-        // Jika Category All (dan no search), baseScope covers almost all products (minus jasa).
-        // Maka ini akan return semua brand. Ini SESUAI request "tampilkan semua brands".
         $availableBrands = Brand::whereIn('id', $baseScope->clone()->select('brand_id')->distinct())
             ->select('id', 'name')
             ->orderBy('name')
             ->get();
 
-
-        // 2. Get Available Sizes
-        // Logic: "ketika all (Category) ... hide size"
         if ($hasCategoryFilter || $search) {
-            // Jika ada filter kategori ATAU ada search -> baru cari Size
             $availableSizes = \App\Models\Size::whereIn('id', $baseScope->clone()->select('size_id')->distinct())
                 ->select('id', 'name')
                 ->orderBy('name')
                 ->get();
         } else {
-            // Jika Category All & No Search -> Kosongkan Size (Hide)
-            $availableSizes = []; 
+            $availableSizes = [];
         }
-
-        // --- END FACETS ---
-
-        // --- END FACETS ---
 
         $products = $query->limit($limit)->get();
 
-        // --- DYNAMIC THRESHOLD LOGIC ---
-        // Hitung Rata-rata Global (Cache 10 menit agar performa terjaga)
         $globalStats = \Illuminate\Support\Facades\Cache::remember('pos_product_global_stats', 600, function () {
             $totalSold90d = \Illuminate\Support\Facades\DB::table('sale_items')
                 ->where('created_at', '>=', now()->subDays(90))
                 ->sum('quantity');
-            
             $productCount = Product::count();
             $avgStock = Product::avg('stock');
-
             return [
                 'avg_sold' => $productCount > 0 ? $totalSold90d / $productCount : 0,
                 'avg_stock' => $avgStock ?? 0
@@ -598,21 +652,16 @@ class SalesRecapController extends Controller
         $avgSold = $globalStats['avg_sold'];
         $avgStock = $globalStats['avg_stock'];
 
-        // Transform data untuk menambahkan flag Badge
         $products->transform(function ($product) use ($avgSold, $avgStock) {
             $totalSold = (float) $product->total_sold;
             $stock = (float) $product->stock;
-
-            // Logic Best Seller: Sold > 1.5x Rata-rata (Min 5 unit biar valid)
             $product->is_best_seller = $totalSold > ($avgSold * 1.5) && $totalSold > 5;
-
-            // Logic Stok Banyak (Dead Stock): Stok > 1.5x Rata-rata AND Sold < 0.5x Rata-rata
             $product->is_dead_stock = $stock > ($avgStock * 1.5) && $totalSold < ($avgSold * 0.5);
-
             return $product;
         });
 
         return response()->json([
+            'ai_recommendations' => $aiProductIds,
             'products' => $products,
             'available_brands' => $availableBrands,
             'available_sizes' => $availableSizes,
@@ -654,7 +703,7 @@ class SalesRecapController extends Controller
             })
             ->groupBy('product_id')
             ->orderByDesc('total_revenue')
-            ->with('product:id,name,slug,unit,price,code') 
+            ->with('product:id,name,slug,unit,price,code')
             ->limit(3)
             ->get();
 
@@ -679,7 +728,7 @@ class SalesRecapController extends Controller
             })
             ->groupBy('product_id')
             ->orderByDesc('total_qty')
-            ->with('product:id,name,slug,unit,price,code') 
+            ->with('product:id,name,slug,unit,price,code')
             ->limit(3)
             ->get();
 
@@ -699,30 +748,33 @@ class SalesRecapController extends Controller
         $today = now()->format('Y-m-d');
 
         if ($type === 'today') {
-            $timeColumn = 'updated_at'; 
+            $timeColumn = 'updated_at';
             $labelRaw = $isSqlite ? "CAST(strftime('%H', $timeColumn) AS INTEGER)" : "HOUR($timeColumn)";
             $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
                 ->whereDate('transaction_date', $today)
                 ->groupBy('label')->get()->keyBy('label');
-            $resultRevenue = []; $resultProfit = [];
+            $resultRevenue = [];
+            $resultProfit = [];
             for ($i = 0; $i <= 23; $i++) {
-                $resultRevenue[] = (int)($data[$i]->revenue ?? 0);
-                $resultProfit[] = (int)($data[$i]->profit ?? 0);
+                $resultRevenue[] = (int) ($data[$i]->revenue ?? 0);
+                $resultProfit[] = (int) ($data[$i]->profit ?? 0);
             }
             return ['labels' => range(0, 23), 'revenues' => $resultRevenue, 'profits' => $resultProfit];
         }
-        
+
         if ($type === 'week') {
             $labelRaw = $isSqlite ? "date(transaction_date)" : "DATE(transaction_date)";
             $data = Sale::selectRaw("$labelRaw as label, SUM(total_revenue) as revenue, SUM(total_profit) as profit")
                 ->where('transaction_date', '>=', $startDate->format('Y-m-d'))
                 ->groupBy('label')->get()->keyBy('label');
-            $labels = []; $revenues = []; $profits = [];
+            $labels = [];
+            $revenues = [];
+            $profits = [];
             for ($i = 6; $i >= 0; $i--) {
                 $date = now()->subDays($i)->format('Y-m-d');
-                $labels[] = now()->subDays($i)->format('d/m'); 
-                $revenues[] = (int)($data[$date]->revenue ?? 0);
-                $profits[] = (int)($data[$date]->profit ?? 0);
+                $labels[] = now()->subDays($i)->format('d/m');
+                $revenues[] = (int) ($data[$date]->revenue ?? 0);
+                $profits[] = (int) ($data[$date]->profit ?? 0);
             }
             return ['labels' => $labels, 'revenues' => $revenues, 'profits' => $profits];
         }
@@ -739,7 +791,7 @@ class SalesRecapController extends Controller
                 'profits' => $data->pluck('profit')->toArray(),
             ];
         }
-        
+
         if ($type === 'year') {
             $year = now()->year;
             $labelRaw = $isSqlite ? "strftime('%m', transaction_date)" : "MONTH(transaction_date)";
@@ -747,11 +799,12 @@ class SalesRecapController extends Controller
                 ->whereYear('transaction_date', $year)
                 ->groupBy('label')->get()->keyBy('label');
             $labels = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-            $revenues = []; $profits = [];
+            $revenues = [];
+            $profits = [];
             for ($i = 1; $i <= 12; $i++) {
                 $keyString = $isSqlite ? str_pad($i, 2, '0', STR_PAD_LEFT) : $i;
-                $revenues[] = (int)($data[$keyString]->revenue ?? 0);
-                $profits[] = (int)($data[$keyString]->profit ?? 0);
+                $revenues[] = (int) ($data[$keyString]->revenue ?? 0);
+                $profits[] = (int) ($data[$keyString]->profit ?? 0);
             }
             return ['labels' => $labels, 'revenues' => $revenues, 'profits' => $profits];
         }

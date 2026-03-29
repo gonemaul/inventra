@@ -21,7 +21,7 @@ class SaleItem extends Model
 
     protected $casts = [
         'product_snapshot' => 'array', // Otomatis jadi Array/JSON
-        'quantity' => 'integer',
+        'quantity' => 'decimal:2',
         'selling_price' => 'decimal:2',
         'capital_price' => 'decimal:2',
         'subtotal' => 'decimal:2',

@@ -25,6 +25,10 @@ class MaintenanceService
     public function storeMaintenance(array $data): \App\Models\Sale
     {
         return DB::transaction(function () use ($data) {
+            // Force type to 'bengkel' — maintenance transaction is always bengkel.
+            // Defense in depth: backend enforces this regardless of frontend payload.
+            $data['type'] = \App\Models\Sale::TYPE_BENGKEL;
+
             // 1. Simpan Transaksi Penjualan (Retail/Jasa)
             $sale = $this->salesRecapService->storeRecap($data);
 
@@ -66,6 +70,72 @@ class MaintenanceService
                 'next_gear_oil_km' => $calc['next_gear_oil_km'] ?? null,
                 'notes' => $data['notes'] ?? null,
             ]);
+
+            return $sale;
+        });
+    }
+
+    /**
+     * Update transaksi bengkel yang sudah ada.
+     *
+     * Alur atomik:
+     *   1. Delegasi update sale (revert stok + re-deduct) ke SalesRecapService
+     *   2. Validasi KM mundur terhadap log servis LAIN (bukan log milik transaksi ini)
+     *   3. Kalkulasi ulang next_service jika KM atau oli berubah
+     *   4. Update/Create oil_service_log yang terhubung ke sale ini
+     *
+     * @param \App\Models\Sale $sale
+     * @param array $data Validated request data
+     * @return \App\Models\Sale
+     */
+    public function updateMaintenance(\App\Models\Sale $sale, array $data): \App\Models\Sale
+    {
+        return DB::transaction(function () use ($sale, $data) {
+            // 1. Update Sale Items (Revert & Re-deduct via SalesRecapService)
+            $data['type'] = \App\Models\Sale::TYPE_BENGKEL; // Force type bengkel
+            $this->salesRecapService->updateRecap($sale, $data);
+
+            $serviceData = $data['service_data'] ?? null;
+            if (!$serviceData) return $sale;
+
+            $vehicleId = $serviceData['vehicle']['id'] ?? null;
+            if (!$vehicleId) return $sale;
+
+            $currentKm = $serviceData['current_km'] ?? null;
+            $vehicle = Vehicle::findOrFail($vehicleId);
+
+            // 2. Validasi KM mundur — SKIP log milik transaksi ini sendiri
+            //    Agar user bisa mengoreksi KM pada transaksi yang sama tanpa error
+            $lastService = OilServiceLog::where('vehicle_id', $vehicle->id)
+                ->where('sale_id', '!=', $sale->id) // Exclude log transaksi ini
+                ->latest()
+                ->first();
+
+            if ($lastService && $currentKm !== null && $currentKm < $lastService->current_km) {
+                throw new \Exception("Kilometer tidak boleh lebih rendah dari servis lainnya (Terakhir: " . number_format($lastService->current_km, 0, ',', '.') . " KM)");
+            }
+
+            // 3. Kalkulasi ulang estimasi servis berikutnya
+            $isChangingGearOil = !empty($serviceData['gear_oil_id']);
+            $calc = $this->calculateNextService($vehicle, (int) $currentKm, $isChangingGearOil);
+
+            // 4. Update atau Buat oil_service_log
+            //    updateOrCreate berdasarkan sale_id agar tidak ada duplikasi log per transaksi
+            OilServiceLog::updateOrCreate(
+                ['sale_id' => $sale->id],
+                [
+                    'vehicle_id' => $vehicle->id,
+                    'service_date' => Carbon::today(),
+                    'current_km' => $currentKm,
+                    'engine_oil_id' => $serviceData['engine_oil_id'] ?? null,
+                    'gear_oil_id' => $serviceData['gear_oil_id'] ?? null,
+                    'next_engine_oil_date' => $calc['next_engine_oil_date'] ?? null,
+                    'next_engine_oil_km' => $calc['next_engine_oil_km'] ?? null,
+                    'next_gear_oil_date' => $calc['next_gear_oil_date'] ?? null,
+                    'next_gear_oil_km' => $calc['next_gear_oil_km'] ?? null,
+                    'notes' => $data['notes'] ?? null,
+                ]
+            );
 
             return $sale;
         });

@@ -11,6 +11,7 @@ class Sale extends Model
 
     protected $fillable = [
         'input_type',
+        'type',
         'reference_no',
         'transaction_date',
         'total_revenue',
@@ -39,6 +40,15 @@ class Sale extends Model
     const TYPES = [
         self::TYPE_REALTIME,
         self::TYPE_REKAP,
+    ];
+
+    // Tipe Penjualan (Retail vs Bengkel)
+    const TYPE_RETAIL = 'retail';
+    const TYPE_BENGKEL = 'bengkel';
+
+    const SALE_TYPES = [
+        self::TYPE_RETAIL,
+        self::TYPE_BENGKEL,
     ];
 
     const PAYMENT_METHOD_CASH = 'cash';

@@ -91,13 +91,21 @@ class SalesRecapService
     public function storeRecap(array $data)
     {
         return DB::transaction(function () use ($data) {
-            $transactionDate = ($data['input_type'] === Sale::TYPE_REKAP && $data['transaction_date'])
-                ? $data['transaction_date']
-                : now();
+            // FIX BUG CACHE TANGGAL:
+            // Realtime (POS) SELALU pakai server time. Mencegah bug dari tab POS
+            // yang dibiarkan terbuka berjam-jam lalu checkout dengan tanggal basi.
+            // Rekap (Input Manual Malam) boleh pakai tanggal dari frontend.
+            $transactionDate = ($data['input_type'] === Sale::TYPE_REKAP)
+                ? ($data['transaction_date'] ?? now())
+                : now(); // ← STRICT: Abaikan tanggal frontend untuk POS
+
+            $saleType = $data['type'] ?? Sale::TYPE_RETAIL;
+
             // 1. Buat Header Sales
             $sale = Sale::create([
-                'reference_no' => $this->generateReferenceNo($transactionDate, $data['input_type']),
+                'reference_no' => $this->generateReferenceNo($transactionDate, $data['input_type'], $saleType),
                 'transaction_date' => $transactionDate,
+                'type' => $saleType,
                 'user_id' => Auth::id(),
                 'customer_id' => $data['customer_id'] ?? null, // Simpan ID Member
                 'input_type' => $data['input_type'],   // Simpan Tipe Input
@@ -107,7 +115,6 @@ class SalesRecapService
                 'total_revenue' => 0, // Nanti diupdate
                 'total_profit' => 0,  // Nanti diupdate
                 'financial_summary' => [],
-                // 'created_at' => $transactionDate,
             ]);
 
             $totalRevenue = 0;
@@ -239,7 +246,16 @@ class SalesRecapService
     }
 
     /**
-     * Update Rekap dengan teknik Safe Reset
+     * Update Rekap/Transaksi dengan teknik Safe Revert & Re-deduct.
+     *
+     * Alur Atomik:
+     *   1. Kembalikan stok semua item lama (REFUND)
+     *   2. Hapus baris item lama
+     *   3. Update header (notes, customer, payment, type)
+     *   4. Insert item baru + potong stok baru (REPLAY)
+     *   5. Hitung diskon & update total
+     *
+     * Seluruh proses di dalam DB::transaction() — gagal di tengah = rollback semua.
      */
     public function updateRecap(Sale $sale, array $data)
     {
@@ -247,7 +263,6 @@ class SalesRecapService
 
             // --- LANGKAH 1: KEMBALIKAN SEMUA STOK LAMA (REFUND) ---
             foreach ($sale->items as $oldItem) {
-                // GUNAKAN STOCK SERVICE AGAR TERCATAT
                 $this->stockService->record(
                     productId: $oldItem->product_id,
                     qty: $oldItem->quantity, // Positif = Masuk (Refund)
@@ -258,51 +273,42 @@ class SalesRecapService
             }
 
             // --- LANGKAH 2: HAPUS SEMUA ITEM LAMA ---
-            // Kita hapus fisik baris item lama agar tidak pusing mikirin update/insert satu-satu
             $sale->items()->delete();
-            // (Note: Pastikan sale_items pakai SoftDeletes atau ForceDelete sesuai kebutuhan.
-            // Kalau di migrasi pakai cascadeOnDelete, aman).
 
-            // $totalRevenue = 0;
-            // $totalProfit = 0;
             // --- LANGKAH 3: UPDATE HEADER ---
             $sale->update([
-                'transaction_date' => $data['report_date'],
                 'notes' => $data['notes'] ?? null,
-                // Reset total, nanti dihitung ulang di bawah
+                'customer_id' => $data['customer_id'] ?? $sale->customer_id,
+                'payment_method' => $data['payment_method'] ?? $sale->payment_method,
+                'type' => $data['type'] ?? $sale->type,
+                // Reset total, dihitung ulang di bawah
                 'total_revenue' => 0,
                 'total_profit' => 0,
             ]);
 
             // --- LANGKAH 4: INSERT ITEM BARU (REPLAY) ---
-            // Logika ini COPY-PASTE dari method storeRecap,
-            // atau sebaiknya dibuat private method biar reusable.
-
             $totalRevenue = 0;
             $totalProfit = 0;
             $itemsCount = 0;
             $totalQty = 0;
+            $soldProductIds = [];
 
             foreach ($data['items'] as $itemData) {
                 $product = Product::with(['brand', 'category', 'unit'])
                     ->lockForUpdate()
                     ->findOrFail($itemData['product_id']);
 
-                $inputQty = $itemData['quantity'];
+                $inputQty = (float) $itemData['quantity'];
                 $sellingPrice = $itemData['selling_price'];
 
-                // Cek Stok (Stok di DB sekarang adalah: Stok Awal + Pengembalian Langkah 1)
-                // Jadi aman untuk dikurangi lagi.
-                if ($product->stock < $inputQty) {
-                    throw new Exception("Stok tidak cukup (setelah revisi) untuk: {$product->name}.");
+                // Skip validasi stok untuk Jasa/Layanan (konsisten dengan storeRecap)
+                $isService = in_array(strtolower($product->category->name ?? ''), ['jasa', 'layanan']);
+
+                if (!$isService && $product->stock < $inputQty) {
+                    throw new Exception("Stok tidak cukup (setelah revisi) untuk: {$product->name}. Sisa: {$product->stock}");
                 }
 
-                // Ambil HPP (Profit Locking Baru)
-                // Jika mau pakai HPP lama, harus ambil dari $oldItem, tapi itu rumit.
-                // Asumsi: Edit transaksi berarti mengikuti harga modal saat ini (atau logic lain).
-                // Untuk simplifikasi, kita ambil modal master saat ini.
                 $capitalPrice = $product->purchase_price;
-
                 $subtotal = $inputQty * $sellingPrice;
                 $rowCost = $inputQty * $capitalPrice;
                 $rowProfit = $subtotal - $rowCost;
@@ -313,6 +319,7 @@ class SalesRecapService
                     'brand' => $product->brand->name ?? '-',
                     'category' => $product->category->name ?? '-',
                     'unit' => $product->unit->name ?? 'Pcs',
+                    'original_price' => $product->selling_price,
                 ];
 
                 $sale->items()->create([
@@ -325,12 +332,11 @@ class SalesRecapService
                     'product_snapshot' => $snapshot,
                 ]);
 
-                // $product->decrement('stock', $inputQty);
                 $this->stockService->record(
                     productId: $product->id,
-                    qty: $inputQty, // Positif, StockService akan kurangi otomatis jika tipe SALE
+                    qty: $inputQty,
                     type: StockMovement::TYPE_SALE,
-                    ref: $sale->reference_no, // No Nota Kasir
+                    ref: $sale->reference_no,
                     desc: 'Update Penjualan Kasir'
                 );
 
@@ -338,9 +344,10 @@ class SalesRecapService
                 $totalProfit += $rowProfit;
                 $itemsCount++;
                 $totalQty += $inputQty;
+                $soldProductIds[] = $product->id;
             }
 
-            // --- HITUNG DISKON DI EDIT (Logic Tambahan) ---
+            // --- LANGKAH 5: HITUNG DISKON & UPDATE TOTAL ---
             $discountTotal = 0;
             if (! empty($data['discount_value']) && $data['discount_value'] > 0) {
                 $type = $data['discount_type'] ?? null;
@@ -354,7 +361,7 @@ class SalesRecapService
             if ($discountTotal > $totalRevenue) {
                 $discountTotal = $totalRevenue;
             }
-            
+
             $grandTotal = $totalRevenue - $discountTotal;
             $finalProfit = $totalProfit - $discountTotal;
 
@@ -364,8 +371,18 @@ class SalesRecapService
                 'discount_type' => $data['discount_type'] ?? Sale::DISCON_FIXED,
                 'discount_value' => $data['discount_value'] ?? 0,
                 'discount_total' => $discountTotal,
-                'financial_summary' => ['item_count' => $itemsCount, 'total_qty' => $totalQty],
+                'financial_summary' => [
+                    'item_count' => $itemsCount,
+                    'total_qty' => $totalQty,
+                    'payment_amount' => $data['payment_amount'] ?? 0,
+                    'change_amount' => $data['change_amount'] ?? 0,
+                ],
             ]);
+
+            // Dispatch asynchronous stock analysis
+            if (!empty($soldProductIds)) {
+                \App\Jobs\AnalyzePostSaleJob::dispatch($soldProductIds);
+            }
 
             return $sale;
         });
@@ -397,30 +414,59 @@ class SalesRecapService
         });
     }
 
-    // Generator No: POS/YYMMDD/001
-    private function generateReferenceNo($date, $type)
+    /**
+     * Generator Kode Transaksi Terpadu.
+     *
+     * Format:
+     *   - Rekap:   REKAP/YYMMDD/XXX
+     *   - Retail:  POS/YYMMDD/XXX
+     *   - Bengkel: POS/B/YYMMDD/XXX
+     *
+     * PENTING: Nomor urut (XXX) bersifat UNIFIED — di-share lintas semua tipe
+     * untuk satu hari yang sama, agar tidak ada duplikasi sequence.
+     *
+     * @param mixed  $date      Tanggal transaksi (Carbon|string)
+     * @param string $inputType 'realtime' atau 'recap'
+     * @param string $saleType  'retail' atau 'bengkel'
+     * @return string
+     */
+    private function generateReferenceNo($date, string $inputType, string $saleType = Sale::TYPE_RETAIL): string
     {
         $dateCode = date('ymd', strtotime($date));
-        if ($type === Sale::TYPE_REALTIME) {
-            $prefix = 'POS/'.$dateCode.'/';
-        } elseif ($type === Sale::TYPE_REKAP) {
-            $prefix = 'REKAP/'.$dateCode.'/';
+
+        // 1. Tentukan PREFIX berdasarkan kombinasi input_type & sale_type
+        if ($inputType === Sale::TYPE_REKAP) {
+            $prefix = "REKAP/{$dateCode}/";
+        } elseif ($saleType === Sale::TYPE_BENGKEL) {
+            $prefix = "POS/B/{$dateCode}/";
         } else {
-            $prefix = 'unknown';
+            $prefix = "POS/{$dateCode}/";
         }
 
-        // Cari nomor terakhir hari itu (termasuk yang sudah dihapus agar sequence tidak bentrok)
-        $lastSale = Sale::withTrashed()
-            ->where('reference_no', 'like', $prefix.'%')
-            ->orderByDesc('id')
-            ->first();
+        // 2. UNIFIED COUNTER: Cari nomor urut terbesar dari SEMUA tipe di hari yang sama.
+        //    Ini memastikan ketiga format (REKAP, POS, POS/B) tidak pernah bentrok nomornya.
+        //    lockForUpdate() mencegah 2 kasir mendapat nomor yang sama (race condition).
+        $allPrefixes = [
+            "POS/{$dateCode}/",
+            "POS/B/{$dateCode}/",
+            "REKAP/{$dateCode}/",
+        ];
 
-        $seq = 1;
-        if ($lastSale) {
-            $parts = explode('/', $lastSale->reference_no);
-            $seq = (int) end($parts) + 1;
+        $maxSeq = 0;
+        foreach ($allPrefixes as $searchPrefix) {
+            $lastSale = Sale::withTrashed()
+                ->where('reference_no', 'like', $searchPrefix . '%')
+                ->lockForUpdate() // Pesimistik Lock: Block transaksi lain sampai commit
+                ->orderByDesc('id')
+                ->first();
+
+            if ($lastSale) {
+                $parts = explode('/', $lastSale->reference_no);
+                $seq = (int) end($parts);
+                $maxSeq = max($maxSeq, $seq);
+            }
         }
 
-        return $prefix.str_pad($seq, 3, '0', STR_PAD_LEFT);
+        return $prefix . str_pad($maxSeq + 1, 3, '0', STR_PAD_LEFT);
     }
 }

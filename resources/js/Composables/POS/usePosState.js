@@ -27,9 +27,18 @@ export const usePosState = defineStore("posState", () => {
             cart_items: [], // renamed from form.items -> cart_items
             selected_vehicle: null, // explicit selected_vehicle key
             subtotal: 0, // explicit subtotal key
+
+            // --- EDIT MODE STATE ---
+            // Digunakan untuk menandai tab yang sedang mengedit transaksi existing.
+            // Jika is_edit_mode=true, mode toggle (Retail/Bengkel) HARUS dikunci.
+            is_edit_mode: false,
+            edit_transaction_id: null,
+            original_items: [], // Snapshot item asli untuk keperluan revert stok di backend
+
             form: {
                 id: null,
                 input_type: "realtime",
+                type: "retail", // 'retail' | 'bengkel' — Fase 1 kolom baru
                 transaction_date: `${year}-${month}-${day}`,
                 customer_id: null,
                 payment_amount: 0,
@@ -533,9 +542,134 @@ export const usePosState = defineStore("posState", () => {
         activeTabIndex.value = index;
     };
 
+    // Guard: Mencegah perubahan mode di tab yang sedang edit.
+    // Penting agar tipe transaksi bengkel tidak diubah ke retail saat edit
+    // (akan merusak integritas riwayat servis kendaraan).
+    const isEditModeLocked = computed(() => activeDraft.value?.is_edit_mode === true);
+
     const switchPosMode = (mode) => {
+        if (isEditModeLocked.value) {
+            toast.warning('Mode tidak bisa diubah saat mengedit transaksi.');
+            return;
+        }
         activeDraft.value.mode = mode;
+        activeDraft.value.form.type = mode; // Sync type di form payload
         activeDraft.value.current_cart_step = 1; // Reset step on mode switch
+    };
+
+    /**
+     * Load transaksi existing ke tab baru untuk diedit.
+     *
+     * Alur:
+     * 1. Buat tab baru (atau gunakan tab kosong saat ini)
+     * 2. Inject data transaksi lama: items, customer, payment, notes, discount
+     * 3. Set mode (retail/bengkel) berdasarkan data dari DB — TIDAK BISA DIUBAH
+     * 4. Simpan original_items untuk keperluan revert stok di backend (Fase 3)
+     *
+     * @param {Object} transactionData - Sale object dari backend (with items, customer, oilServiceLog)
+     */
+    const loadTransactionToTab = (transactionData) => {
+        // Tentukan apakah tab aktif kosong (bisa di-reuse) atau perlu tab baru
+        const currentTabEmpty = activeDraft.value.cart_items.length === 0
+            && !activeDraft.value.is_edit_mode;
+
+        if (!currentTabEmpty) {
+            // Cek duplikasi: jangan buka edit untuk transaksi yang sudah ada di tab lain
+            const existingTabIndex = drafts.value.findIndex(
+                tab => tab.is_edit_mode && tab.edit_transaction_id === transactionData.id
+            );
+            if (existingTabIndex !== -1) {
+                activeTabIndex.value = existingTabIndex;
+                toast.info('Transaksi ini sudah dibuka di tab lain.');
+                return;
+            }
+
+            if (drafts.value.length >= MAX_DRAFTS) {
+                toast.warning(`Maksimal ${MAX_DRAFTS} tab. Tutup tab lain terlebih dahulu.`);
+                return;
+            }
+            drafts.value.push(createEmptyTab());
+            activeTabIndex.value = drafts.value.length - 1;
+        }
+
+        const tab = activeDraft.value;
+        const sale = transactionData;
+
+        // --- SET EDIT MODE FLAGS ---
+        tab.is_edit_mode = true;
+        tab.edit_transaction_id = sale.id;
+
+        // --- DETERMINE MODE (Retail/Bengkel) ---
+        // Prioritas: kolom `type` dari DB (Fase 1). Fallback: deteksi item Jasa/Layanan.
+        const saleType = sale.type || 'retail';
+        tab.mode = saleType;
+
+        // --- POPULATE FORM ---
+        tab.form.id = sale.id;
+        tab.form.input_type = sale.input_type || 'realtime';
+        tab.form.type = saleType;
+        tab.form.transaction_date = sale.transaction_date;
+        tab.form.customer_id = sale.customer_id;
+        tab.form.payment_method = sale.payment_method || 'cash';
+        tab.form.discount_type = sale.discount_type || 'fixed';
+        tab.form.discount_value = parseFloat(sale.discount_value) || 0;
+        tab.form.notes = sale.notes || '';
+
+        // --- POPULATE CUSTOMER ---
+        if (sale.customer) {
+            tab.selectedMember = sale.customer;
+        }
+
+        // --- MAP SALE ITEMS KE FORMAT CART ---
+        // Backend items → cart_items format yang kompatibel dengan UI
+        const mappedItems = (sale.items || []).map(item => {
+            const product = item.product || {};
+            const snapshot = item.product_snapshot || {};
+            const isService = ['Jasa', 'Layanan'].includes(
+                product.category?.name || snapshot.category || ''
+            );
+
+            return {
+                product_id: item.product_id,
+                code: product.code || snapshot.code || '-',
+                name: product.name || snapshot.name || 'Produk Dihapus',
+                image_url: product.image_url || null,
+                category: product.category || { name: snapshot.category || '-' },
+                unit: product.unit || { name: snapshot.unit || 'Pcs', is_decimal: 0 },
+                size: product.size || null,
+                // Stok: stok saat ini + qty yang sedang ditahan oleh transaksi ini
+                // (karena stok sudah terpotong saat transaksi pertama dibuat)
+                stock_max: parseFloat(product.stock || 0) + parseFloat(item.quantity),
+                selling_price: parseFloat(item.selling_price),
+                original_price: parseFloat(snapshot.original_price || item.selling_price),
+                quantity: parseFloat(item.quantity),
+                original_quantity: parseFloat(item.quantity), // Untuk revert stok
+                subtotal: parseFloat(item.subtotal),
+                is_service: isService,
+            };
+        });
+
+        tab.cart_items = mappedItems;
+
+        // --- SIMPAN SNAPSHOT ORIGINAL ITEMS ---
+        // Deep clone agar tidak ter-mutate saat user edit di keranjang
+        tab.original_items = JSON.parse(JSON.stringify(mappedItems));
+
+        // --- POPULATE SERVICE DATA (Bengkel Mode) ---
+        if (saleType === 'bengkel' && sale.oil_service_log) {
+            const log = sale.oil_service_log;
+            tab.serviceData.vehicle = log.vehicle || null;
+            tab.serviceData.plate_number = log.vehicle?.plate_number || '';
+            tab.serviceData.current_km = log.current_km;
+            tab.serviceData.engine_oil_id = log.engine_oil_id;
+            tab.serviceData.gear_oil_id = log.gear_oil_id;
+            tab.selected_vehicle = log.vehicle || null;
+        }
+
+        // Reset ke step 1
+        tab.current_cart_step = 1;
+
+        toast.success(`Transaksi ${sale.reference_no} dimuat untuk diedit.`);
     };
 
     const fetchVehicleInfo = async (plateNumber) => {
@@ -587,9 +721,12 @@ export const usePosState = defineStore("posState", () => {
 
             const payload = {
                 ...form.value,
+                type: activeDraft.value.mode, // 'retail' | 'bengkel' — Fase 1
                 items: activeDraft.value.cart_items,
                 print_invoice: printInvoice,
-                service_data: activeDraft.value.mode === 'bengkel' ? activeDraft.value.serviceData : null
+                service_data: activeDraft.value.mode === 'bengkel' ? activeDraft.value.serviceData : null,
+                // Kirim original_items jika edit mode (untuk revert stok di Fase 3)
+                original_items: activeDraft.value.is_edit_mode ? activeDraft.value.original_items : null,
             };
 
             router[method](path, payload, {
@@ -654,6 +791,7 @@ export const usePosState = defineStore("posState", () => {
         moneySuggestions,
         maxSteps,
         isLastStep,
+        isEditModeLocked, // Fase 2: Guard untuk lock mode saat edit
 
         // Cart / Global actions
         addItem,
@@ -677,6 +815,7 @@ export const usePosState = defineStore("posState", () => {
         clearCompare,
         isInCompare,
         submitTransaction,
+        loadTransactionToTab, // Fase 2: Load transaksi existing ke tab POS
         // Mode & Step API
         switchPosMode,
         nextStep,

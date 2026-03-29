@@ -41,8 +41,7 @@ const getPaymentMethodIcon = (method) => {
 };
 
 const hasServiceItem = (sale) => {
-    console.log(sale)
-    return sale.items?.some(item => ['Jasa', 'Layanan'].includes(item.product?.category?.name));
+    return sale.type === 'bengkel';
 };
 
 import { router } from "@inertiajs/vue3";

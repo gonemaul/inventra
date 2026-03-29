@@ -33,6 +33,13 @@ onMounted(() => {
     posDraft.startSync();
     posState.loadProduct();
     posState.fetchServices();
+
+    // --- FASE 2: Proses Edit Mode ---
+    // Jika halaman POS diakses melalui route `sales.edit` (controller mengirim props sale + mode),
+    // maka load data transaksi ke tab POS via action loadTransactionToTab.
+    if (props.mode === 'edit' && props.sale) {
+        posState.loadTransactionToTab(props.sale);
+    }
 });
 
 const { isDimmed, resetIdleTimer } = useWakeLock();
@@ -65,7 +72,10 @@ const {
     switchTab,
     switchPosMode,
     resetCartStep,
+    loadTransactionToTab,
 } = posState;
+
+const { isEditModeLocked } = storeToRefs(posState);
 
 // --- LOCAL UI STATE ---
 const toast = usePremiumAlert();
@@ -222,9 +232,14 @@ const dynamicSizes = storeToRefs(posState).dynamicSizes;
                             : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     ]"
                 >
-                    <span class="truncate max-w-[80px]">Tab {{ index + 1 }}</span>
+                    <span class="truncate max-w-[80px]">{{ trx.is_edit_mode ? `Edit #${trx.edit_transaction_id}` : `Tab ${index + 1}` }}</span>
+                    <!-- Edit Mode Badge -->
                     <span
-                        v-if="trx.cart_items?.length"
+                        v-if="trx.is_edit_mode"
+                        class="text-[8px] text-orange-500 bg-orange-100 dark:bg-orange-900/30 px-1 py-0.5 rounded leading-none font-black tracking-widest"
+                    >EDIT</span>
+                    <span
+                        v-else-if="trx.cart_items?.length"
                         class="text-[9px] text-lime-500 bg-white px-1.5 py-0.5 rounded-full leading-none"
                     >{{ trx.cart_items.length }}</span>
                     <button
@@ -248,9 +263,13 @@ const dynamicSizes = storeToRefs(posState).dynamicSizes;
             </div>
 
             <!-- Right: Mode Toggle -->
-            <div class="ml-auto flex items-center bg-gray-800 rounded-full p-0.5 border border-gray-700 relative z-10 shrink-0">
+            <div class="ml-auto flex items-center bg-gray-800 rounded-full p-0.5 border border-gray-700 relative z-10 shrink-0"
+                :class="{ 'opacity-50 pointer-events-none': isEditModeLocked }"
+                :title="isEditModeLocked ? 'Mode terkunci saat mengedit transaksi' : ''"
+            >
                 <button
                     @click="switchPosMode('retail')"
+                    :disabled="isEditModeLocked"
                     :class="[
                         'px-3 py-1 text-[11px] hidden md:flex font-bold rounded-full transition-all',
                         activeDraft?.mode === 'retail'
@@ -260,6 +279,7 @@ const dynamicSizes = storeToRefs(posState).dynamicSizes;
                 >Retail</button>
                 <button
                     @click="switchPosMode('bengkel')"
+                    :disabled="isEditModeLocked"
                     :class="[
                         'px-3 py-1 text-[11px] hidden md:flex font-bold rounded-full transition-all',
                         activeDraft?.mode === 'bengkel'
@@ -269,6 +289,7 @@ const dynamicSizes = storeToRefs(posState).dynamicSizes;
                 >Bengkel</button>
                 <button
                     @click="switchPosMode(activeDraft?.mode === 'bengkel' ? 'retail' : 'bengkel')"
+                    :disabled="isEditModeLocked"
                     :class="[
                         'px-3 py-1 text-[11px] font-bold md:hidden rounded-full transition-all',
                         activeDraft?.mode === 'retail'
@@ -295,7 +316,7 @@ const dynamicSizes = storeToRefs(posState).dynamicSizes;
         <!-- ===== MAIN CONTENT ===== -->
         <div class="flex flex-col lg:flex-row flex-1 h-full w-full overflow-hidden">
             <!-- Left: Products -->
-            <div class="flex flex-col flex-1 h-full md:overflow-hidden">
+            <div class="flex flex-col flex-1 h-full lg:overflow-hidden">
                 <FilterProduct
                     :categories="categories"
                     :brands="dynamicBrands?.length ? dynamicBrands : brands"
