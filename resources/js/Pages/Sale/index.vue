@@ -229,6 +229,14 @@ const handlePrint = () => {
     }, 500);
 };
 
+const formatQtyGlobal = (value) => {
+    if (!value) return 0;
+    
+    return new Intl.NumberFormat('id-ID', {
+        maximumFractionDigits: 3, // Batasi maksimal 2 angka di belakang koma
+    }).format(value);
+};
+
 // Computed for Pagination
 const salesData = computed(() => props.sales.data);
 const pagination = computed(() => props.sales);
@@ -369,7 +377,7 @@ const pagination = computed(() => props.sales);
                                             <span class="font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100">
                                                 {{ new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(product.revenue) }}
                                             </span>
-                                            <span class="text-[9px] font-medium text-gray-400 bg-gray-50 dark:bg-gray-800 px-1 py-0.5 mt-0.5 rounded">{{ product.qty }} terjual</span>
+                                            <span class="text-[9px] font-medium text-gray-400 bg-gray-50 dark:bg-gray-800 px-1 py-0.5 mt-0.5 rounded">{{ formatQtyGlobal(product.qty) }} Terjual</span>
                                         </div>
                                     </Link>
                                     
@@ -416,7 +424,7 @@ const pagination = computed(() => props.sales);
                                         </div>
                                         <div class="text-right flex-shrink-0">
                                             <span class="font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100">
-                                                {{ product.qty }} <span class="text-[9px] text-gray-400 font-medium">unit</span>
+                                                {{ formatQtyGlobal(product.qty) }} <span class="text-[9px] text-gray-400 font-medium">Unit</span>
                                             </span>
                                         </div>
                                     </Link>

@@ -171,6 +171,8 @@ class SalesRecapController extends Controller
                 },
             ], // Support Desimal
             'items.*.selling_price' => 'required|numeric|min:0',
+            'items.*.subtotal' => 'nullable|numeric|min:0', // Wajib jika is_nominal_override
+            'items.*.is_nominal_override' => 'nullable|boolean', // Flag penjualan eceran nominal
             // validasi service_data (Bengkel Mode)
             'service_data' => 'nullable|array',
             'service_data.vehicle.id' => 'nullable|exists:vehicles,id',
@@ -332,6 +334,8 @@ class SalesRecapController extends Controller
                 },
             ],
             'items.*.selling_price' => 'required|numeric|min:0',
+            'items.*.subtotal' => 'nullable|numeric|min:0',
+            'items.*.is_nominal_override' => 'nullable|boolean',
             // Validasi service_data (Bengkel Mode)
             'service_data' => 'nullable|array',
             'service_data.vehicle.id' => 'nullable|exists:vehicles,id',
@@ -408,7 +412,7 @@ class SalesRecapController extends Controller
     {
         // --- 0. KONFIGURASI AI (PLUG & PLAY) ---
         $useAi = true; // Hardcoded toggle sesuai instruksi
-        $aiEndpoint = 'http://127.0.0.1:8000/api/realtime/sales-recommendation';
+        $aiEndpoint = 'http://127.0.0.1:8080/api/sync/sales-recommendation';
 
         // 1. Ambil Parameter
         $search = $request->input('query'); // Input dari ketikan user

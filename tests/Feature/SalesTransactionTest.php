@@ -334,5 +334,54 @@ class SalesTransactionTest extends TestCase
         $sale->refresh();
         $this->assertEquals(95000, $sale->total_revenue); // 100000 - 5000
     }
-}
+    // ─── FASE 4: NOMINAL OVERRIDE / FRACTIONAL SALES ─────────
 
+    /** @test */
+    public function it_calculates_qty_from_subtotal_when_nominal_override_is_active(): void
+    {
+        // Simulasi: Kasir input nominal Rp 12.500 untuk produk seharga Rp 25.000 / unit.
+        // Qty seharusnya dihitung otomatis oleh backend menjadi 0.5.
+        $this->actingAs($this->user)
+            ->post(route('sales.store'), $this->makePayload([
+                'items' => [[
+                    'product_id' => $this->product->id,
+                    'quantity' => 1, // sengaja dikirim dummy, akan diignore backend
+                    'selling_price' => 25000,
+                    'is_nominal_override' => true,
+                    'subtotal' => 12500, // Explicit subtotal override
+                ]],
+            ]));
+
+        $sale = Sale::latest('id')->first();
+        $item = $sale->items->first();
+
+        // Qty di db harus 12500 / 25000 = 0.5
+        $this->assertEquals(0.5, $item->quantity);
+        $this->assertEquals(12500, $item->subtotal);
+        $this->assertEquals(12500, $sale->total_revenue);
+    }
+
+    /** @test */
+    public function it_fails_when_selling_price_is_zero_in_nominal_override(): void
+    {
+        // Division by Zero prevention test
+        $response = $this->actingAs($this->user)
+            ->post(route('sales.store'), $this->makePayload([
+                'items' => [[
+                    'product_id' => $this->product->id,
+                    'quantity' => 1,
+                    'selling_price' => 0, // Invalid untuk nominal override
+                    'is_nominal_override' => true,
+                    'subtotal' => 15000,
+                ]],
+            ]));
+
+        // Karena service melempar Exception, controller harus menangkapnya
+        // atau kita assert bahwa transaksi tidak tercipta bila ada Exception (500 atau custom error handling).
+        // Biasanya Inventra me-return redirect back() dengan errors jika caught, atau 500 error.
+        // Di SalesRecapController, \Exception di-catch dan me-return response dengan status error.
+        $this->assertDatabaseMissing('sales', [
+            'total_revenue' => 15000
+        ]);
+    }
+}

@@ -77,11 +77,11 @@ const stats = computed(() => [
                 <!-- Header: Title & Range -->
                 <div class="flex items-start justify-between mb-3 lg:mb-5">
                     <div class="flex-1 min-w-0">
-                        <h3 class="text-[9px] sm:text-[10px] lg:text-xs uppercase font-extrabold tracking-[0.15em] text-gray-500 dark:text-gray-400 mb-0.5 lg:mb-1 truncate">
+                        <h3 class="text-[9px] sm:text-[10px] lg:text-xs uppercase font-extrabold tracking-[0.15em] text-gray-500 dark:text-gray-300 mb-0.5 lg:mb-1 truncate">
                             {{ stat.label }}
                         </h3>
                         <p class="text-[9px] sm:text-[10px] lg:text-xs font-semibold text-gray-400 dark:text-gray-600 flex items-center gap-1">
-                             <svg class="w-2.5 h-2.5 opacity-40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                             <svg class="w-3 h-3opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
                              {{ stat.data?.range || '...' }}
                         </p>
                     </div>
@@ -125,7 +125,7 @@ const stats = computed(() => [
                     <div class="flex flex-col gap-1.5">
                         <div class="flex items-center justify-between">
                             <span class="text-[8px] lg:text-[10px] font-extrabold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Estimasi Laba</span>
-                            <span class="text-[8px] lg:text-[9px] font-black px-1.5 py-0.5 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
+                            <span class="text-[8px] lg:text-[10px] font-black px-1.5 py-0.5 rounded bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border border-gray-100 dark:border-gray-700">
                                 {{ stat.data?.revenue > 0 ? ((stat.data.profit / stat.data.revenue) * 100).toFixed(1) : 0 }}%
                             </span>
                         </div>
@@ -135,7 +135,7 @@ const stats = computed(() => [
                             </span>
                             <div 
                                 v-if="stat.data?.profit_prev !== undefined"
-                                class="text-[8px] lg:text-[9px] font-black"
+                                class="text-[8px] lg:text-[10px] font-black"
                                 :class="calculateGrowth(stat.data.profit, stat.data.profit_prev) >= 0 ? 'text-emerald-500' : 'text-rose-500'"
                             >
                                 {{ calculateGrowth(stat.data.profit, stat.data.profit_prev) >= 0 ? '▲' : '▼' }} {{ Math.abs(calculateGrowth(stat.data.profit, stat.data.profit_prev)) }}%
@@ -154,7 +154,7 @@ const stats = computed(() => [
                             </span>
                             <div 
                                 v-if="stat.data?.transactions_prev !== undefined"
-                                class="text-[8px] lg:text-[9px] font-black"
+                                class="text-[8px] lg:text-[10px] font-black"
                                 :class="calculateGrowth(stat.data.transactions, stat.data.transactions_prev) >= 0 ? 'text-emerald-500' : 'text-rose-500'"
                             >
                                 {{ calculateGrowth(stat.data.transactions, stat.data.transactions_prev) >= 0 ? '▲' : '▼' }} {{ Math.abs(calculateGrowth(stat.data.transactions, stat.data.transactions_prev)) }}%

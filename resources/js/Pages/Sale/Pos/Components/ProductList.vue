@@ -42,6 +42,14 @@ const rp = (val) =>
         minimumFractionDigits: 0,
     }).format(val);
 
+const formatQtyGlobal = (value) => {
+    if (!value) return 0;
+    
+    return new Intl.NumberFormat('id-ID', {
+        maximumFractionDigits: 3, // Batasi maksimal 2 angka di belakang koma
+    }).format(value);
+};
+
 const getCartQty = (productId) => {
     const item = props.cartItems.find((i) => i.product_id === productId);
     return item ? item.quantity : 0;
@@ -215,17 +223,17 @@ const highlight = (text) => {
                                 >
                                     {{
                                         product.stock <= 5
-                                            ? `Sisa ${parseFloat(
+                                            ? `Sisa ${formatQtyGlobal(
                                                     product.stock
                                                 )} ` + product.unit?.name
-                                            : `Stok ${parseFloat(
+                                            : `Stok ${formatQtyGlobal(
                                                     product.stock
                                                 )} ` + product.unit?.name
                                     }}
                                 </span>
                             </div>
                             <span v-if="product.total_sold > 0" class="text-[9px] sm:text-[10px] font-bold text-gray-400 bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">
-                                {{ product.total_sold }} Terjual
+                                {{ formatQtyGlobal(product.total_sold) }} Terjual
                             </span>
                         </div>
 

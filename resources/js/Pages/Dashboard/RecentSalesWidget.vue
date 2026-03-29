@@ -31,6 +31,14 @@ const formatDate = (dateString) => {
         }),
     };
 };
+
+const formatQtyGlobal = (value) => {
+    if (!value) return 0;
+    
+    return new Intl.NumberFormat('id-ID', {
+        maximumFractionDigits: 2, // Batasi maksimal 2 angka di belakang koma
+    }).format(value);
+};
 </script>
 
 <template>
@@ -64,7 +72,7 @@ const formatDate = (dateString) => {
             </h3>
             <Link
                 :href="route('sales.index')"
-                class="text-xs font-bold text-gray-500 bg-gray-50 dark:bg-gray-900/50 hover:text-lime-600 dark:text-lime-400 dark:hover:text-lime-400 transation"
+                class="text-xs font-bold text-gray-500 bg-transparent hover:text-lime-600 dark:text-lime-400 dark:hover:text-lime-400 transation"
             >
                 Lihat Semua &rarr;
             </Link>
@@ -127,15 +135,16 @@ const formatDate = (dateString) => {
                                         <span class="mx-1 text-gray-400"
                                             >|</span
                                         >
-                                        {{ sale.financial_summary.total_qty }}
+                                        {{ formatQtyGlobal(sale.financial_summary.total_qty) }}
                                         Pcs
                                     </p>
 
-                                    <p
-                                        class="text-[13px] text-gray-400 font-mono mt-0.5"
+                                    <Link
+                                        :href="route('sales.show', sale.id)"
+                                        class="text-[13px] text-gray-400 font-mono mt-0.5 hover:text-lime-600 dark:hover:text-lime-400 transition"
                                     >
                                         #{{ sale.reference_no }}
-                                    </p>
+                                    </Link>
                                 </div>
                             </div>
                         </td>

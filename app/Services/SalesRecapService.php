@@ -128,36 +128,38 @@ class SalesRecapService
                 // Ambil Master Produk Terbaru
                 $product = Product::with(['brand', 'category', 'unit'])->lockForUpdate()->findOrFail($itemData['product_id']);
 
-                $inputQty = (float) $itemData['quantity'];
-                $sellingPrice = $itemData['selling_price'];
+                $sellingPrice = (float) $itemData['selling_price'];
+                $isNominalOverride = !empty($itemData['is_nominal_override']);
 
-                // Validasi Stok (Opsional, jika tidak boleh minus)
-                // SKIP jika kategori Jasa/Layanan
+                // ═══════════════════════════════════════════════
+                // HUKUM SUBTOTAL EKSPLISIT (Penjualan Eceran)
+                // ═══════════════════════════════════════════════
+                // Jika kasir input nominal (Rp), subtotal dikunci dari frontend.
+                // Qty dihitung terbalik: subtotal ÷ harga_jual.
+                // Jika BUKAN nominal override, hitung normal: qty × harga.
+                if ($isNominalOverride) {
+                    // GUARD: Cegah Division by Zero
+                    if ($sellingPrice <= 0) {
+                        throw new Exception("Harga jual {$product->name} tidak valid (Rp 0). Tidak bisa input nominal.");
+                    }
+                    $subtotal = (float) $itemData['subtotal'];
+                    $inputQty = round($subtotal / $sellingPrice, 4); // Presisi 4 desimal
+                } else {
+                    $inputQty = (float) $itemData['quantity'];
+                    $subtotal = $inputQty * $sellingPrice;
+                }
+
+                // Validasi Stok — SKIP jika kategori Jasa/Layanan
                 $isService = in_array(strtolower($product->category->name ?? ''), ['jasa', 'layanan']);
                 
                 if (!$isService && $product->stock < $inputQty) {
                     throw new Exception("Stok tidak cukup untuk produk: {$product->name}. Sisa: {$product->stock}");
                 }
 
-                // $unitName = strtolower($product->unit->name ?? '');
-                // $isDecimalAllowed = in_array($unitName, $this->decimalUnits);
-
-                // // Cek apakah inputQty mengandung koma (misal 1.5)
-                // // fmod(1.5, 1) hasilnya 0.5. fmod(1.0, 1) hasilnya 0.
-                // if (!$isDecimalAllowed && fmod($inputQty, 1) !== 0.0) {
-                //     throw new Exception("Produk {$product->name} dengan satuan '{$product->unit->name}' tidak boleh desimal (0.xx).");
-                // }
-
-                // Jika harga jual < harga modal, sistem bisa menolak atau membiarkan
-                // if ($itemData['selling_price'] < $product->purchase_price) {
-                //     throw new Exception("Harga jual {$product->name} di bawah modal! Cek harga.");
-                // }
-
                 // PENTING: Ambil HPP saat ini dari Master Product
                 $capitalPrice = $product->purchase_price;
 
                 // Hitungan Baris
-                $subtotal = $inputQty * $sellingPrice;
                 $rowCost = $inputQty * $capitalPrice;
                 $rowProfit = $subtotal - $rowCost;
 
@@ -298,8 +300,20 @@ class SalesRecapService
                     ->lockForUpdate()
                     ->findOrFail($itemData['product_id']);
 
-                $inputQty = (float) $itemData['quantity'];
-                $sellingPrice = $itemData['selling_price'];
+                $sellingPrice = (float) $itemData['selling_price'];
+                $isNominalOverride = !empty($itemData['is_nominal_override']);
+
+                // HUKUM SUBTOTAL EKSPLISIT (Konsisten dengan storeRecap)
+                if ($isNominalOverride) {
+                    if ($sellingPrice <= 0) {
+                        throw new Exception("Harga jual {$product->name} tidak valid (Rp 0). Tidak bisa input nominal.");
+                    }
+                    $subtotal = (float) $itemData['subtotal'];
+                    $inputQty = round($subtotal / $sellingPrice, 4);
+                } else {
+                    $inputQty = (float) $itemData['quantity'];
+                    $subtotal = $inputQty * $sellingPrice;
+                }
 
                 // Skip validasi stok untuk Jasa/Layanan (konsisten dengan storeRecap)
                 $isService = in_array(strtolower($product->category->name ?? ''), ['jasa', 'layanan']);
@@ -309,7 +323,6 @@ class SalesRecapService
                 }
 
                 $capitalPrice = $product->purchase_price;
-                $subtotal = $inputQty * $sellingPrice;
                 $rowCost = $inputQty * $capitalPrice;
                 $rowProfit = $subtotal - $rowCost;
 

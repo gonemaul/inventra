@@ -6,7 +6,7 @@ import { storeToRefs } from "pinia";
 
 const posState = usePosState();
 const { activeDraft, serviceProducts } = storeToRefs(posState);
-const { removeItem, recalcFromQty, recalcFromPrice, updateQty, addItem, nextStep, rp } = posState;
+const { removeItem, recalcFromQty, recalcFromPrice, updateQty, addItem, nextStep, rp, openQtyModal } = posState;
 
 const cartServices = computed(() => {
     return activeDraft.value.cart_items.filter(item => ['Jasa', 'Layanan'].includes(item.category?.name));
@@ -128,10 +128,13 @@ const isBengkel = computed(() => activeDraft.value.mode === 'bengkel');
                         <div class="flex justify-between items-start gap-1">
                             <div>
                                 <h4 class="text-sm font-bold text-gray-800 dark:text-gray-100 leading-tight line-clamp-2">{{ item.name }}</h4>
-                                <div class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5 text-[10px] text-gray-500">
+                                <div v-if="!item.is_decimal" class="flex flex-wrap items-center gap-x-2 gap-y-1 mt-0.5 text-[10px] text-gray-500">
                                     <span v-if="item.code" class="font-mono bg-gray-100 dark:bg-gray-700 px-1 rounded text-gray-600 dark:text-gray-300">{{ item.code }}</span>
                                     <span v-if="item.size" class="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">{{ item.size?.name }}</span>
-                                    <span v-if="item.unit">{{ item.unit?.name }}</span>
+                                    <span v-if="item.unit">{{ item.unit?.name || item.unit }}</span>
+                                </div>
+                                <div v-else class="mt-0.5">
+                                    <span class="text-[10px] font-bold text-lime-600 bg-lime-50 dark:bg-lime-900/30 px-1.5 py-0.5 rounded uppercase tracking-wider">Eceran</span>
                                 </div>
                             </div>
                             <button
@@ -145,13 +148,24 @@ const isBengkel = computed(() => activeDraft.value.mode === 'bengkel');
                         <!-- Price & Qty -->
                         <div class="flex items-end justify-between gap-2 mt-2">
                             <div class="flex-1">
+                                <div v-if="item.is_decimal" class="mb-1">
+                                    <p class="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">Harga / {{ item.unit?.name || 'Unit' }}</p>
+                                    <p class="text-xs font-bold text-gray-500">{{ rp(item.selling_price) }}</p>
+                                </div>
                                 <InputRupiah
+                                    v-if="!item.is_decimal"
                                     v-model="item.selling_price"
                                     @input="recalcFromPrice(item)"
                                     class="w-full !py-0 !px-0 bg-transparent border-0 border-b border-gray-200 dark:border-gray-600 text-sm font-bold text-lime-600 focus:ring-0 focus:border-lime-500 p-0"
                                 />
+                                <div v-else>
+                                    <p class="text-[9px] text-lime-600 font-bold uppercase tracking-tighter">Total</p>
+                                    <p class="text-lg font-black text-lime-600 leading-none">{{ rp(item.subtotal) }}</p>
+                                </div>
                             </div>
-                            <div class="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shrink-0 h-8 bg-white dark:bg-gray-800">
+
+                            <!-- Qty Controls -->
+                            <div v-if="!item.is_decimal" class="flex items-center border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden shrink-0 h-8 bg-white dark:bg-gray-800">
                                 <button @click="updateQty(activeDraft.cart_items.indexOf(item), -1)" class="w-8 h-full flex items-center justify-center hover:bg-red-50 hover:text-red-500 active:bg-gray-100 transition text-base font-bold">−</button>
                                 <input
                                     type="number"
@@ -163,6 +177,14 @@ const isBengkel = computed(() => activeDraft.value.mode === 'bengkel');
                                 />
                                 <button @click="updateQty(activeDraft.cart_items.indexOf(item), 1)" class="w-8 h-full flex items-center justify-center hover:bg-lime-50 hover:text-lime-600 active:bg-gray-100 transition text-base font-bold">+</button>
                             </div>
+                            <button
+                                v-else
+                                @click="openQtyModal(item, true)"
+                                class="h-10 px-3 flex flex-col items-end justify-center bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-xl hover:bg-gray-100 transition active:scale-95"
+                            >
+                                <span class="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">Jumlah</span>
+                                <span class="text-sm font-black text-gray-800 dark:text-white">{{ item.quantity }} {{ item.unit?.name || 'Ltr' }}</span>
+                            </button>
                         </div>
                     </div>
                 </div>

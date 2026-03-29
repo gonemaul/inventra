@@ -44,6 +44,8 @@ onMounted(() => {
 
 const { isDimmed, resetIdleTimer } = useWakeLock();
 
+
+
 const {
     drafts,
     activeTabIndex,
@@ -54,6 +56,12 @@ const {
     compareList,
     grandTotal,
     changeAmount,
+    showQtyModal,
+    currentItem,
+    showDetailModal,
+    showCompareModal,
+    isSubmitting,
+    isEditModeLocked,
 } = storeToRefs(posState);
 
 const {
@@ -73,9 +81,8 @@ const {
     switchPosMode,
     resetCartStep,
     loadTransactionToTab,
+    openQtyModal,
 } = posState;
-
-const { isEditModeLocked } = storeToRefs(posState);
 
 // --- LOCAL UI STATE ---
 const toast = usePremiumAlert();
@@ -83,13 +90,12 @@ const showMobileCart = ref(false);
 const showScanner = ref(false);
 const showConfirmModal = ref(false);
 const showSuccessModal = ref(false);
-const isSubmitting = ref(false);
-const showQtyModal = ref(false);
-const showDetailModal = ref(false);
-const showCompareModal = ref(false);
 const scanType = ref("product");
 const selectedDetailProduct = ref(null);
 const lastPrintedId = ref(null);
+const lastChangeAmount = ref(0);
+const lastGrandTotal = ref(0);
+const cartRef = ref(null);
 
 
 
@@ -103,36 +109,25 @@ const handleNewTransaction = () => {
     showSuccessModal.value = false;
 };
 
-const currentItem = ref({
-    id: null, name: "", code: "", price: 0, quantity: 1, stock: 0, unit: "Pcs", image: null,
-});
-
 const prepareModalData = (productMaster) => {
-    currentItem.value = {
-        id: productMaster.id,
-        name: productMaster.name,
-        code: productMaster.code,
-        image_url: productMaster.image_url,
-        price: parseFloat(productMaster.selling_price || productMaster.price || 0),
-        quantity: 1,
-        stock: parseInt(productMaster.stock || 0),
-        unit: productMaster.unit?.name || "Pcs",
-    };
-    showQtyModal.value = true;
+    openQtyModal(productMaster);
 };
 
 const handleDirectAddToCart = (productMaster) => {
-    const item = {
-        id: productMaster.id,
-        name: productMaster.name,
-        code: productMaster.code,
-        image_url: productMaster.image_url,
+    // Jika produk desimal, WAJIB lewat modal untuk pilih mode input (Qty vs Nominal)
+    if (productMaster.unit?.is_decimal == 1 || productMaster.unit?.is_decimal === true) {
+        openQtyModal(productMaster);
+        return;
+    }
+
+    addItem({
+        ...productMaster,
         price: parseFloat(productMaster.selling_price || productMaster.price || 0),
         quantity: 1,
-        stock: parseInt(productMaster.stock || 0),
-        unit: productMaster.unit?.name || "Pcs",
-    };
-    addItem(item);
+        is_decimal: false,
+        is_nominal_override: false,
+        subtotal: parseFloat(productMaster.selling_price || productMaster.price || 0)
+    });
 };
 
 const openDetail = (product) => {
@@ -164,10 +159,6 @@ const addToCart = (retry = false) => {
     showQtyModal.value = false;
     if (retry) openScanProduk();
 };
-
-const lastChangeAmount = ref(0);
-const lastGrandTotal = ref(0);
-const cartRef = ref(null);
 
 const handleConfirmTransaction = (printInvoice) => {
     isSubmitting.value = true;

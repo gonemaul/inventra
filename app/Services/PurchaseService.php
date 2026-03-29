@@ -609,7 +609,11 @@ class PurchaseService
                 }
 
                 // Jika ada Qty Bersih, proses sebagai stok masuk
-                $finalHpp = $item->purchase_price + $costPerUnitAllocation;
+                // HUKUM HPP CEIL (Buffer Susut):
+                // Bulatkan HPP ke atas agar menutupi kerugian susut fisik (oli tumpah, dsb).
+                // Rumus: ceil(harga_beli_per_unit + alokasi_biaya_tambahan)
+                $rawHpp = $item->purchase_price + $costPerUnitAllocation;
+                $finalHpp = (int) ceil($rawHpp);
 
                 $subtotalFix = $netQty * $finalHpp;
                 $finalTotalItemPrice += $subtotalFix; // Kumpulkan Total Murni

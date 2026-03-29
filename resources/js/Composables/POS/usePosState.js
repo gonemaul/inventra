@@ -106,6 +106,16 @@ export const usePosState = defineStore("posState", () => {
     const memberSearch = ref("");
     const memberSearchResults = ref([]);
 
+    // --- MODAL QTY STATE ---
+    const showQtyModal = ref(false);
+    const currentItem = ref({
+        id: null, name: "", code: "", price: 0, quantity: 1, stock: 0, unit: "Pcs", image: null,
+    });
+
+    const isSubmitting = ref(false);
+    const showDetailModal = ref(false);
+    const showCompareModal = ref(false);
+
     // 2. FINANCIAL CALCULATIONS (Based on active draft)
     const subTotal = computed(() => {
         return activeDraft.value.cart_items.reduce((sum, item) => sum + (parseFloat(item.subtotal) || 0), 0);
@@ -178,7 +188,7 @@ export const usePosState = defineStore("posState", () => {
 
     // 3. CART ACTIONS
     const recalcFromQty = (item) => {
-        const isDecimal = item.unit?.is_decimal === 1;
+        const isDecimal = item.unit?.is_decimal === 1 || item.unit?.is_decimal === true || item.is_decimal;
         if (!isDecimal) {
             item.quantity = Math.round(item.quantity);
             if (item.quantity < 1) item.quantity = 1;
@@ -187,6 +197,13 @@ export const usePosState = defineStore("posState", () => {
             item.quantity = item.stock_max;
             toast.warning(`Stok sisa ${item.stock_max}`);
         }
+
+        // HUKUM SUBTOTAL: Jika item ini berasal dari input nominal, 
+        // CEGAH penghitungan ulang subtotal agar tidak terjadi rounding errors (drift).
+        if (item.is_nominal_override) {
+            return; 
+        }
+
         item.subtotal = Math.round(item.quantity * item.selling_price);
     };
 
@@ -218,44 +235,79 @@ export const usePosState = defineStore("posState", () => {
         item.subtotal = Math.round(item.quantity * item.selling_price);
     };
 
+    const openQtyModal = (product, isEdit = false) => {
+        console.log(product)
+        currentItem.value = {
+            ...product,
+            price: parseFloat(product.selling_price || product.price || 0),
+            quantity: isEdit ? parseFloat(product.quantity) : 1,
+            stock: parseFloat(product.stock || product.stock_max || 0),
+            is_decimal: product.unit?.is_decimal == 1 || product.unit?.is_decimal === true || product.is_decimal,
+            is_nominal_override: product.is_nominal_override || false,
+            subtotal: parseFloat(product.subtotal || product.selling_price || product.price || 0),
+            _is_edit: isEdit, // Internal flag to distinguish add vs edit
+        };
+        showQtyModal.value = true;
+    };
+
     const addItem = (product) => {
         const isService = ['Jasa', 'Layanan'].includes(product.category?.name);
 
-        if (!isService && parseFloat(product.stock) <= 0) {
+        if (!isService && parseFloat(product.stock || product.stock_max) <= 0) {
             toast.error("Stok habis!");
             return;
         }
 
-        const existingItem = activeDraft.value.cart_items.find((i) => i.product_id === product.id);
+        const existingItem = activeDraft.value.cart_items.find((i) => i.product_id === (product.id || product.product_id));
 
         if (existingItem) {
             if (isService) {
                 toast.warning(`Jasa "${product.name}" sudah ada di keranjang.`);
                 return;
             }
-            if (existingItem.quantity + 1 > parseFloat(product.stock)) {
+
+            // Jika ini adalah EDIT dari modal, maka KITA OVERWRITE, bukan ADD (tambah)
+            if (product._is_edit) {
+                existingItem.quantity = parseFloat(product.quantity);
+                existingItem.subtotal = parseFloat(product.subtotal);
+                existingItem.is_nominal_override = product.is_nominal_override;
+                toast.success("Item diperbarui");
+                return;
+            }
+
+            if (existingItem.quantity + (product.quantity || 1) > parseFloat(product.stock || product.stock_max)) {
                 toast.warning("Stok maksimal!");
                 return;
             }
-            existingItem.quantity++;
-            recalcFromQty(existingItem);
+            
+            if (product.is_nominal_override) {
+                // Tambahkan langsung subtotal dan qty tanpa memecah lock
+                existingItem.quantity += parseFloat(product.quantity);
+                existingItem.subtotal += parseFloat(product.subtotal);
+                existingItem.is_nominal_override = true;
+            } else {
+                existingItem.quantity += parseFloat(product.quantity || 1);
+                recalcFromQty(existingItem);
+            }
         } else {
             const price = parseFloat(product.selling_price || product.price);
             activeDraft.value.cart_items.push({
-                product_id: product.id,
+                product_id: product.id || product.product_id,
                 code: product.code,
                 name: product.name,
                 image_url: product.image_url,
                 category: product.category,
                 unit: product.unit,
                 size: product.size,
-                stock_max: parseFloat(product.stock),
+                stock_max: parseFloat(product.stock || product.stock_max),
                 selling_price: price,
                 original_price: price,
-                quantity: 1,
+                quantity: parseFloat(product.quantity || 1),
                 original_quantity: 0,
-                subtotal: price,
+                subtotal: parseFloat(product.subtotal || price),
                 is_service: isService,
+                is_nominal_override: product.is_nominal_override || false,
+                is_decimal: product.is_decimal || false,
             });
         }
     };
@@ -274,6 +326,10 @@ export const usePosState = defineStore("posState", () => {
             if (confirm("Hapus item ini?")) removeItem(index);
             return;
         }
+        
+        // PENTING: Jika diubah via tombol +/- di keranjang, lock nominal akan lepas
+        item.is_nominal_override = false; 
+        
         item.quantity = newQty;
         recalcFromQty(item);
     };
@@ -782,6 +838,8 @@ export const usePosState = defineStore("posState", () => {
         memberSearchResults,
 
         // Computed
+        currentItem,
+        showQtyModal,
         subTotal,
         discountAmount,
         grandTotal,
@@ -791,9 +849,13 @@ export const usePosState = defineStore("posState", () => {
         moneySuggestions,
         maxSteps,
         isLastStep,
+        showDetailModal,
+        showCompareModal,
+        isSubmitting,
         isEditModeLocked, // Fase 2: Guard untuk lock mode saat edit
 
         // Cart / Global actions
+        openQtyModal,
         addItem,
         removeItem,
         updateQty,
