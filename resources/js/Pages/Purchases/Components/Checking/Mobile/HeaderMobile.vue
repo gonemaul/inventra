@@ -88,11 +88,11 @@ const formatTanggal = (date) =>
                                 ]"
                             ></span>
                             <div class="space-y-0.5">
-                                <h1 class="text-sm font-bold leading-none">
+                                <h1 class="text-sm font-bold leading-none t-gray-800 dark:text-gray-100">
                                     {{ purchase.reference_no || "PO-####" }}
                                 </h1>
                                 <h1
-                                    class="text-xs font-black tracking-tight text-gray-800 dark:text-white"
+                                    class="text-xs font-black tracking-tight text-gray-800 dark:text-gray-400"
                                 >
                                     Invoice : #{{ invoice.invoice_number }} |
                                     {{ formatTanggal(invoice.invoice_date) }}
@@ -174,144 +174,6 @@ const formatTanggal = (date) =>
                 </div>
             </div>
 
-            <div
-                class="relative h-3 mb-4 overflow-hidden bg-gray-200 rounded-full dark:bg-gray-700"
-            >
-                <div
-                    class="absolute top-0 left-0 h-full transition-all duration-500 ease-out rounded-full"
-                    :class="
-                        isReadyToValidate
-                            ? 'bg-lime-500 shadow-[0_0_10px_rgba(132,204,22,0.6)]'
-                            : 'bg-blue-500'
-                    "
-                    :style="{ width: `${progressPercentage}%` }"
-                ></div>
-
-                <span
-                    class="absolute inset-0 flex items-center justify-center text-[9px] font-bold text-gray-700 z-10"
-                    :class="
-                        progressPercentage > 50
-                            ? 'text-white drop-shadow-md'
-                            : 'text-gray-600'
-                    "
-                >
-                    {{ Math.round(progressPercentage) }}%
-                </span>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 h-[72px]">
-                <div
-                    class="flex flex-col justify-center p-3 border border-gray-300 bg-gray-50 dark:bg-gray-800 rounded-2xl dark:border-gray-700"
-                >
-                    <p
-                        class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-0.5"
-                    >
-                        Total Nota
-                    </p>
-                    <p
-                        class="text-sm font-bold text-gray-800 truncate dark:text-gray-200"
-                    >
-                        {{ formatRupiah(invoice.total_amount) }}
-                    </p>
-                </div>
-
-                <transition name="fade" mode="out-in">
-                    <button
-                        v-if="
-                            isReadyToValidate && invoice.status !== 'validated'
-                        "
-                        @click="validateInvoice"
-                        class="relative flex items-center justify-between w-full h-full px-4 overflow-hidden text-white transition-all shadow-lg bg-lime-500 hover:bg-lime-600 active:scale-95 rounded-2xl shadow-lime-500/40 group"
-                    >
-                        <div
-                            class="absolute inset-0 transition-transform duration-300 translate-y-full bg-white/10 group-hover:translate-y-0"
-                        ></div>
-
-                        <div class="relative z-10 text-left">
-                            <p
-                                class="text-[10px] font-bold opacity-90 uppercase tracking-wider"
-                            >
-                                Data Cocok
-                            </p>
-                            <p class="text-sm font-black leading-none">
-                                VALIDASI
-                            </p>
-                        </div>
-                        <div
-                            class="bg-white/20 p-1.5 rounded-full relative z-10 group-hover:translate-x-1 transition-transform"
-                        >
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                class="w-5 h-5"
-                                viewBox="0 0 20 20"
-                                fill="currentColor"
-                            >
-                                <path
-                                    fill-rule="evenodd"
-                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                                    clip-rule="evenodd"
-                                />
-                            </svg>
-                        </div>
-                    </button>
-
-                    <div
-                        v-else
-                        :class="[
-                            'w-full h-full p-3 rounded-2xl border flex flex-col justify-center relative overflow-hidden',
-                            Math.abs(invoiceBalance) < 100
-                                ? 'bg-teal-50 border-teal-200 text-teal-800' // Sudah Validated
-                                : 'bg-white dark:bg-gray-800 border-red-100 text-red-600', // Belum Balance
-                        ]"
-                    >
-                        <div class="relative z-10">
-                            <p
-                                class="text-[10px] uppercase font-bold tracking-wider mb-0.5 opacity-70"
-                            >
-                                {{
-                                    Math.abs(invoiceBalance) < 100
-                                        ? "Status"
-                                        : "Selisih"
-                                }}
-                            </p>
-                            <p class="text-sm font-black uppercase truncate">
-                                {{
-                                    Math.abs(invoiceBalance) < 100
-                                        ? invoice.status
-                                        : formatRupiah(invoiceBalance)
-                                }}
-                            </p>
-                        </div>
-
-                        <svg
-                            v-if="Math.abs(invoiceBalance) >= 100"
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="absolute w-10 h-10 -right-2 -bottom-2 opacity-10"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                        <svg
-                            v-else
-                            xmlns="http://www.w3.org/2000/svg"
-                            class="absolute w-10 h-10 -right-2 -bottom-2 opacity-10"
-                            viewBox="0 0 20 20"
-                            fill="currentColor"
-                        >
-                            <path
-                                fill-rule="evenodd"
-                                d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                clip-rule="evenodd"
-                            />
-                        </svg>
-                    </div>
-                </transition>
-            </div>
         </div>
     </header>
 </template>

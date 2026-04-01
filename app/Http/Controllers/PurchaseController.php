@@ -365,10 +365,13 @@ class PurchaseController extends Controller
             'items.invoice:id,invoice_number,payment_status,total_amount',
 
             // 7. Daftar Invoice (Header): Ambil ringkasan keuangan saja
-            'invoices:id,purchase_id,invoice_number,invoice_date,due_date,total_amount,payment_status,status,invoice_image',
+            'invoices:id,purchase_id,invoice_number,invoice_date,due_date,total_amount,amount_paid,payment_status,status,invoice_image',
 
             // 8. Item di dalam Invoice: Biasanya cuma butuh snapshot/qty untuk display
-            'invoices.items:id,purchase_id,purchase_invoice_id',
+            'invoices.items:id,purchase_id,purchase_invoice_id,subtotal',
+
+            // 9. Ambil data pembayaran untuk bukti foto
+            'invoices.payments',
         ]);
         $purchase->loadSum('invoices', 'total_amount');
         $invoice = $purchase->invoices->first() ?? new PurchaseInvoice;
@@ -413,6 +416,10 @@ class PurchaseController extends Controller
      */
     public function updateInvoice(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
     {
+        if ($invoice->purchase_id !== $purchase->id) {
+            abort(404, 'Nota tidak ditemukan untuk transaksi ini.');
+        }
+
         // Panggil Service untuk update
         $this->invoiceService->update($request->all(), $invoice);
 
@@ -425,6 +432,10 @@ class PurchaseController extends Controller
      */
     public function destroyInvoice(Purchase $purchase, PurchaseInvoice $invoice)
     {
+        if ($invoice->purchase_id !== $purchase->id) {
+            abort(404, 'Nota tidak ditemukan untuk transaksi ini.');
+        }
+
         // Panggil Service untuk menghapus nota dan file
         try {
             $this->invoiceService->destroy($invoice);
@@ -441,6 +452,10 @@ class PurchaseController extends Controller
      */
     public function linkItemsView(Purchase $purchase, PurchaseInvoice $invoice)
     {
+        if ($invoice->purchase_id !== $purchase->id) {
+            abort(404, 'Nota tidak ditemukan untuk transaksi ini.');
+        }
+
         $unlinkedItems = null;
         if ($invoice->status !== PurchaseInvoice::STATUS_VALIDATED) {
             $unlinkedItems = $purchase->items()
@@ -472,6 +487,10 @@ class PurchaseController extends Controller
     // MENAUTKAN PRODUK KE INVOICE
     public function linkItems(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
     {
+        if ($invoice->purchase_id !== $purchase->id) {
+            abort(404, 'Nota tidak ditemukan untuk transaksi ini.');
+        }
+
         // 1. Validasi Input Item Ids
         $request->validate([
             'type' => 'required|in:link,create',
@@ -501,6 +520,10 @@ class PurchaseController extends Controller
      */
     public function unlinkItems(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
     {
+        if ($invoice->purchase_id !== $purchase->id) {
+            abort(404, 'Nota tidak ditemukan untuk transaksi ini.');
+        }
+
         $request->validate([
             'item_ids' => 'required|array|min:1',
             'item_ids.*' => 'exists:purchase_items,id',
@@ -521,6 +544,10 @@ class PurchaseController extends Controller
      */
     public function updateLinkedItemDetails(Request $request, Purchase $purchase, PurchaseInvoice $invoice)
     {
+        if ($invoice->purchase_id !== $purchase->id) {
+            abort(404, 'Nota tidak ditemukan untuk transaksi ini.');
+        }
+
         // Guard: Pastikan transaksi masih dalam tahap CHECKING
         if ($purchase->status !== Purchase::STATUS_CHECKING) {
             return redirect()->back()->with('error', 'Koreksi hanya dapat disimpan saat status Checking.');
@@ -543,6 +570,10 @@ class PurchaseController extends Controller
      */
     public function validateInvoice(Purchase $purchase, PurchaseInvoice $invoice)
     {
+        if ($invoice->purchase_id !== $purchase->id) {
+            abort(404, 'Nota tidak ditemukan untuk transaksi ini.');
+        }
+
         // Guard: Pastikan transaksi masih dalam tahap CHECKING
         if ($purchase->status !== Purchase::STATUS_CHECKING) {
             return redirect()->back()->with('error', 'Invoice hanya dapat divalidasi saat status Checking.');

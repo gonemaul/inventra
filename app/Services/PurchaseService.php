@@ -42,9 +42,9 @@ class PurchaseService
 
         // 2. Filter Search (Smart Search: Cari No Ref, Nama Supplier, ATAU Nama Produk di History)
         $query->when($params['search'] ?? null, function ($q, $search) {
-             $searchTerms = array_filter(explode(' ', $search));
-             
-             $q->where(function ($subQuery) use ($search, $searchTerms) {
+            $searchTerms = array_filter(explode(' ', $search));
+
+            $q->where(function ($subQuery) use ($search, $searchTerms) {
                 // Exact Match
                 $subQuery->where('reference_no', 'like', "%{$search}%")
                     ->orWhereHas('supplier', function ($supplierQuery) use ($search) {
@@ -53,29 +53,29 @@ class PurchaseService
                     // Smart Search: Multi-keyword matching di JSON / Relasi (Produk)
                     // Karena product_snapshot->name di DB, kita cek product_snapshot
                     ->orWhereHas('items', function ($itemsQuery) use ($searchTerms) {
-                         $itemsQuery->where(function ($itemsSubQuery) use ($searchTerms) {
-                             foreach ($searchTerms as $term) {
-                                  // Asumsikan database support ->json search (MySQL/PostgreSQL)
-                                  // SQLite/MySQL compatible broad search inside JSON text
-                                  $itemsSubQuery->whereRaw('LOWER(product_snapshot) LIKE ?', ["%".strtolower($term)."%"]);
-                             }
-                         });
+                        $itemsQuery->where(function ($itemsSubQuery) use ($searchTerms) {
+                            foreach ($searchTerms as $term) {
+                                // Asumsikan database support ->json search (MySQL/PostgreSQL)
+                                // SQLite/MySQL compatible broad search inside JSON text
+                                $itemsSubQuery->whereRaw('LOWER(product_snapshot) LIKE ?', ["%" . strtolower($term) . "%"]);
+                            }
+                        });
                     });
             });
         });
         // 3. Filter Status & Supplier (Simple Where)
-        $query->when($params['status'] ?? null, fn ($q, $status) => $q->where('status', $status));
-        $query->when($params['status_in'] ?? null, fn ($q, $statuses) => $q->whereIn('status', $statuses));
-        $query->when($params['supplier_id'] ?? null, fn ($q, $id) => $q->where('supplier_id', $id));
-        $query->when($params['user_id'] ?? null, fn ($q, $id) => $q->where('user_id', $id));
+        $query->when($params['status'] ?? null, fn($q, $status) => $q->where('status', $status));
+        $query->when($params['status_in'] ?? null, fn($q, $statuses) => $q->whereIn('status', $statuses));
+        $query->when($params['supplier_id'] ?? null, fn($q, $id) => $q->where('supplier_id', $id));
+        $query->when($params['user_id'] ?? null, fn($q, $id) => $q->where('user_id', $id));
 
         // 4. Filter Tanggal (Date Range)
-        $query->when($params['min_date'] ?? null, fn ($q, $date) => $q->where('transaction_date', '>=', $date))
-            ->when($params['max_date'] ?? null, fn ($q, $date) => $q->where('transaction_date', '<=', $date));
+        $query->when($params['min_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '>=', $date))
+            ->when($params['max_date'] ?? null, fn($q, $date) => $q->where('transaction_date', '<=', $date));
 
         // 5. Filter Rentang Total (Having Aggregates)
-        $query->when($params['min_total'] ?? null, fn ($q, $total) => $q->where('grand_total', '>=', $total))
-            ->when($params['max_total'] ?? null, fn ($q, $total) => $q->where('grand_total', '<=', $total));
+        $query->when($params['min_total'] ?? null, fn($q, $total) => $q->where('grand_total', '>=', $total))
+            ->when($params['max_total'] ?? null, fn($q, $total) => $q->where('grand_total', '<=', $total));
 
         // --- SORTING & PAGINASI ---
         $sortBy = $params['sort'] ?? 'transaction_date';
@@ -191,7 +191,7 @@ class PurchaseService
 
             // 3. Handle DELETE (Item yang ada di DB tapi tidak ada di Input)
             foreach ($existingItems as $existingItem) {
-                if (! in_array($existingItem->id, $inputIds)) {
+                if (!in_array($existingItem->id, $inputIds)) {
                     $existingItem->delete();
                 }
             }
@@ -244,7 +244,7 @@ class PurchaseService
 
             foreach ($existingItems as $existing) {
                 // Jika ID item lama tidak ditemukan di array input, berarti user mencoba menghapusnya -> TOLAK
-                if (! in_array($existing->id, $inputIds)) {
+                if (!in_array($existing->id, $inputIds)) {
                     throw ValidationException::withMessages(['items' => "Item '{$existing->product->name}' tidak boleh dihapus karena sudah dipesan. Silakan edit Qty jika perlu revisi."]);
                 }
             }
@@ -332,24 +332,24 @@ class PurchaseService
         $oldStatus = $purchase->status;
 
         // 1. Validasi Transisi Status (Guard)
-        if (! in_array($newStatus, Purchase::STATUSES)) {
+        if (!in_array($newStatus, Purchase::STATUSES)) {
             throw new \InvalidArgumentException('Status tidak valid.');
         }
 
         // 2. GUARD 2: Peta Jalan Transisi yang Diizinkan (Kunci Alur)
         $allowedTransitions = [
-            // [Awal] -> [Tujuan yang Diizinkan, Termasuk CANCEL]
+                // [Awal] -> [Tujuan yang Diizinkan, Termasuk CANCEL]
             Purchase::STATUS_DRAFT => [Purchase::STATUS_ORDERED, Purchase::STATUS_CANCELLED],
             Purchase::STATUS_ORDERED => [Purchase::STATUS_SHIPPED, Purchase::STATUS_CANCELLED],
             Purchase::STATUS_SHIPPED => [Purchase::STATUS_RECEIVED, Purchase::STATUS_CANCELLED],
             Purchase::STATUS_RECEIVED => [Purchase::STATUS_CHECKING, Purchase::STATUS_SHIPPED, Purchase::STATUS_CANCELLED],
             Purchase::STATUS_CHECKING => [Purchase::STATUS_COMPLETED, Purchase::STATUS_CANCELLED],
 
-            // Status FINAL (Tidak boleh berubah lagi)
+                // Status FINAL (Tidak boleh berubah lagi)
             Purchase::STATUS_COMPLETED => [],
             Purchase::STATUS_CANCELLED => [],
         ];
-        if (! isset($allowedTransitions[$oldStatus]) || ! in_array($newStatus, $allowedTransitions[$oldStatus])) {
+        if (!isset($allowedTransitions[$oldStatus]) || !in_array($newStatus, $allowedTransitions[$oldStatus])) {
             if ($oldStatus === $newStatus) {
                 return $purchase;
             } // Lewati jika status sama
@@ -373,7 +373,7 @@ class PurchaseService
             // $this->updateProductStockAndHpp($purchase);
 
             // Untuk saat ini, kita tambahkan note sebagai placeholder
-            $purchase->notes = ($purchase->notes ?? '')."\n[SYSTEM] Transaction completed at ".now();
+            $purchase->notes = ($purchase->notes ?? '') . "\n[SYSTEM] Transaction completed at " . now();
         }
 
         // 4. Update Status dan Simpan
@@ -397,9 +397,11 @@ class PurchaseService
         $query = Product::query()
             ->select('id', 'name', 'code', 'stock', 'min_stock', 'purchase_price', 'image_path', 'unit_id', 'size_id', 'category_id', 'brand_id', 'supplier_id')
             ->with(['unit:id,name', 'size:id,name', 'category:id,name', 'brand:id,name', 'insights']) // Eager load insights
-            ->withSum(['saleItems as sold_last_30_days' => function ($query) {
-                $query->where('created_at', '>=', now()->subDays(30));
-            }], 'quantity') // Hitung total terjual 30 hari terakhir
+            ->withSum([
+                'saleItems as sold_last_30_days' => function ($query) {
+                    $query->where('created_at', '>=', now()->subDays(30));
+                }
+            ], 'quantity') // Hitung total terjual 30 hari terakhir
             ->where('status', 'active');
 
         // Filter Supplier
@@ -410,7 +412,7 @@ class PurchaseService
         // Logic Gabungan: (Ada di Insight Restock) ATAU (Stok <= Min Stock)
         $query->where(function ($q) use ($insightProductIds) {
             $q->whereIn('id', $insightProductIds)
-              ->orWhereColumn('stock', '<=', 'min_stock');
+                ->orWhereColumn('stock', '<=', 'min_stock');
         });
 
         // 3. Eksekusi
@@ -421,7 +423,7 @@ class PurchaseService
 
             // Cek apakah produk ini punya insight restock?
             $restockInsight = $item->insights->where('type', SmartInsight::TYPE_RESTOCK)->first();
-            
+
             // Logic Suggestion Qty: Insight > (Min - Stock) > 1
             $suggestedQty = $restockInsight ? (int) $restockInsight->payload['suggested_qty'] : 0;
             if ($suggestedQty <= 0) {
@@ -461,7 +463,7 @@ class PurchaseService
         return $formattedRecommendations->sort(function ($a, $b) {
             $reqA = $a['min_stock'] - $a['current_stock'];
             $reqB = $b['min_stock'] - $b['current_stock'];
-            
+
             $isDeadA = $a['sold_30d'] <= 0 && $a['current_stock'] > 5;
             $isDeadB = $b['sold_30d'] <= 0 && $b['current_stock'] > 5;
 
@@ -474,10 +476,10 @@ class PurchaseService
             if ($a['is_critical'] !== $b['is_critical']) {
                 return $b['is_critical'] ? 1 : -1;
             }
-            
+
             // Prioritas 2: Terlaris / Tren
             if ($a['sold_30d'] !== $b['sold_30d']) {
-                 return $b['sold_30d'] <=> $a['sold_30d'];
+                return $b['sold_30d'] <=> $a['sold_30d'];
             }
 
             // Prioritas 3: Kebutuhan Stok (Tertinggi)
@@ -495,7 +497,7 @@ class PurchaseService
         $dateCode = date('ym');
 
         // 2. Format Supplier ID (Padding 3 digit: ID 13 jadi '013')
-        $supplierCode = 'S-'.str_pad((string) $supplierId, 3, '0', STR_PAD_LEFT);
+        $supplierCode = 'S-' . str_pad((string) $supplierId, 3, '0', STR_PAD_LEFT);
 
         // 3. Susun Prefix Dasar: "PO/2411/S-013/"
         // Kita mencari urutan KHUSUS untuk Supplier ini di Bulan ini.
@@ -504,7 +506,7 @@ class PurchaseService
         // 4. Cari Transaksi Terakhir (Termasuk yang dihapus/soft delete)
         $lastRecord = Purchase::query()
             ->select('reference_no')
-            ->where('reference_no', 'like', $prefix.'%')
+            ->where('reference_no', 'like', $prefix . '%')
             ->when(method_exists(Purchase::class, 'bootSoftDeletes'), function ($q) {
                 $q->withTrashed(); // PENTING: Cek tong sampah agar urutan tidak bentrok
             })
@@ -527,7 +529,7 @@ class PurchaseService
 
         // 6. Gabungkan Hasil Akhir
         // Hasil: PO/2411/S-013/001 (Padding urutan 3 digit)
-        return $prefix.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -617,7 +619,7 @@ class PurchaseService
 
                 $subtotalFix = $netQty * $finalHpp;
                 $finalTotalItemPrice += $subtotalFix; // Kumpulkan Total Murni
-                
+
                 $item->update([
                     'subtotal' => $subtotalFix,
                 ]);
@@ -633,7 +635,7 @@ class PurchaseService
                     qty: $netQty,
                     type: StockMovement::TYPE_PURCHASE,
                     ref: $purchase->reference_no, // Referensi PO / Invoice Supplier
-                    desc: 'Pembelian Stok'.($item->rejected_qty > 0 ? " (Retur {$item->rejected_qty})" : '')
+                    desc: 'Pembelian Stok' . ($item->rejected_qty > 0 ? " (Retur {$item->rejected_qty})" : '')
                 );
                 if ($product) {
                     $product->updateWithSnapshot([
@@ -647,7 +649,7 @@ class PurchaseService
             // Rekam `sum(subtotal)` hasil final perhitungan ke struct master Purchase
             $shippingCost = $extraCosts['shipping_cost'] ?? 0;
             $otherCosts = $extraCosts['other_costs'] ?? 0;
-            
+
             $purchase->update([
                 'status' => Purchase::STATUS_COMPLETED,
                 'total_item_price' => $finalTotalItemPrice,
@@ -713,25 +715,25 @@ class PurchaseService
 
         // 4. Active Orders
         $activeOrderCount = Purchase::whereIn('status', [
-            Purchase::STATUS_DRAFT, 
-            Purchase::STATUS_ORDERED, 
+            Purchase::STATUS_DRAFT,
+            Purchase::STATUS_ORDERED,
             Purchase::STATUS_SHIPPED,
             Purchase::STATUS_CHECKING
         ])->count();
 
         return [
-            'spend_this_month' => (float)$thisMonthStats->spend ?? 0,
-            'spend_prev_month' => (float)$prevMonthStats->spend ?? 0,
-            'trans_this_month' => (int)$thisMonthStats->trans ?? 0,
-            'trans_prev_month' => (int)$prevMonthStats->trans ?? 0,
-            
-            'spend_this_year' => (float)$thisYearStats->spend ?? 0,
-            'spend_prev_year' => (float)$prevYearStats->spend ?? 0,
-            'trans_this_year' => (int)$thisYearStats->trans ?? 0,
-            'trans_prev_year' => (int)$prevYearStats->trans ?? 0,
+            'spend_this_month' => (float) $thisMonthStats->spend ?? 0,
+            'spend_prev_month' => (float) $prevMonthStats->spend ?? 0,
+            'trans_this_month' => (int) $thisMonthStats->trans ?? 0,
+            'trans_prev_month' => (int) $prevMonthStats->trans ?? 0,
 
-            'top_supplier_name' => $topSupplier->supplier->name ?? '-',
-            'top_supplier_amount' => (float)$topSupplier->total ?? 0,
+            'spend_this_year' => (float) $thisYearStats->spend ?? 0,
+            'spend_prev_year' => (float) $prevYearStats->spend ?? 0,
+            'trans_this_year' => (int) $thisYearStats->trans ?? 0,
+            'trans_prev_year' => (int) $prevYearStats->trans ?? 0,
+
+            'top_supplier_name' => $topSupplier?->supplier?->name ?? '-',
+            'top_supplier_amount' => (float) ($topSupplier?->total ?? 0),
             'active_orders' => $activeOrderCount,
         ];
     }
@@ -745,13 +747,13 @@ class PurchaseService
         $chartLabels = [];
         $months = [];
         $startOfPeriod = $now->copy()->subMonths(11)->startOfMonth();
-        
+
         for ($i = 0; $i < 12; $i++) {
             $monthDate = $startOfPeriod->copy()->addMonths($i);
             $chartLabels[] = $monthDate->translatedFormat('M y');
             $months[] = [
-                'year' => (int)$monthDate->year,
-                'month' => (int)$monthDate->month,
+                'year' => (int) $monthDate->year,
+                'month' => (int) $monthDate->month,
                 'key' => $monthDate->format('Y-m')
             ];
         }
@@ -776,12 +778,13 @@ class PurchaseService
         foreach ($suppliers as $sup) {
             $monthlyData = [];
             foreach ($months as $m) {
-                $totalForMonth = $allChartPurchases->filter(function($p) use ($m, $sup) {
-                    if ($p->supplier_id != $sup->id) return false;
+                $totalForMonth = $allChartPurchases->filter(function ($p) use ($m, $sup) {
+                    if ($p->supplier_id != $sup->id)
+                        return false;
                     $dt = \Illuminate\Support\Carbon::parse($p->transaction_date);
-                    return (int)$dt->year === $m['year'] && (int)$dt->month === $m['month'];
+                    return (int) $dt->year === $m['year'] && (int) $dt->month === $m['month'];
                 })->sum('grand_total');
-                
+
                 $monthlyData[] = (float) $totalForMonth;
             }
             $chartSuppliers[] = [
@@ -793,11 +796,11 @@ class PurchaseService
         // Global Total per month (All suppliers)
         $globalMonthlyData = [];
         foreach ($months as $m) {
-            $totalForMonth = $allChartPurchases->filter(function($p) use ($m) {
+            $totalForMonth = $allChartPurchases->filter(function ($p) use ($m) {
                 $dt = \Illuminate\Support\Carbon::parse($p->transaction_date);
-                return (int)$dt->year === $m['year'] && (int)$dt->month === $m['month'];
+                return (int) $dt->year === $m['year'] && (int) $dt->month === $m['month'];
             })->sum('grand_total');
-            
+
             $globalMonthlyData[] = (float) $totalForMonth;
         }
 

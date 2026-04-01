@@ -145,27 +145,50 @@ const STATUS_INVOICE_VALIDATED = 'validated';
 
             <div class="h-px my-2 bg-gray-100 dark:bg-gray-800"></div>
 
+            <!-- Checking Progress Bar (Untuk Status Uploaded) -->
+            <div 
+                v-if="inv.status === 'uploaded'" 
+                class="mb-3"
+            >
+                <div class="flex justify-between items-center mb-1.5 text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                    <span class="uppercase tracking-widest">Progress Pemeriksaan</span>
+                    <span class="font-black text-blue-600">
+                        {{ Math.round(((inv.items || []).reduce((acc, item) => acc + (item.subtotal || 0), 0) / (inv.total_amount || 1)) * 100) }}%
+                    </span>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-800 mb-1">
+                    <div 
+                        class="h-1.5 rounded-full transition-all duration-500 bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.4)]" 
+                        :style="{ width: `${Math.min(100, Math.round(((inv.items || []).reduce((acc, item) => acc + (item.subtotal || 0), 0) / (inv.total_amount || 1)) * 100))}%` }"
+                    ></div>
+                </div>
+                <div class="flex justify-between items-center text-[9px] text-gray-400 font-bold uppercase">
+                    <span>Item: <b class="text-gray-700 dark:text-gray-300">{{ (inv.items || []).length }} SKU</b></span>
+                    <span>Selisih: <b class="text-red-500">{{ rp((inv.total_amount || 0) - (inv.items || []).reduce((acc, item) => acc + (item.subtotal || 0), 0)) }}</b></span>
+                </div>
+            </div>
+
             <!-- Payment Progress Bar -->
             <div 
-                v-if="inv.status === STATUS_INVOICE_VALIDATED && purchase.status === STATUS_PURCHASE_SELESAI" 
+                v-if="inv.status === STATUS_INVOICE_VALIDATED && purchase.status === STATUS_PURCHASE_SELESAI && inv.payment_status !== 'paid'" 
                 class="mb-3"
             >
                 <div class="flex justify-between items-center mb-1.5 text-[10px] font-medium text-gray-500 dark:text-gray-400">
                     <span>Progress Pembayaran</span>
                     <span class="font-bold whitespace-nowrap" :class="inv.payment_status === 'paid' ? 'text-green-600' : 'text-blue-600'">
-                        {{ Math.round((inv.paid_amount || 0) / (inv.total_amount || 1) * 100) }}%
+                        {{ Math.round((inv.amount_paid || 0) / (inv.total_amount || 1) * 100) }}%
                     </span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-1.5 dark:bg-gray-700 mb-1">
                     <div 
                         class="h-1.5 rounded-full transition-all duration-500" 
                         :class="inv.payment_status === 'paid' ? 'bg-green-500' : 'bg-blue-500'"
-                        :style="{ width: `${Math.round((inv.paid_amount || 0) / (inv.total_amount || 1) * 100)}%` }"
+                        :style="{ width: `${Math.round((inv.amount_paid || 0) / (inv.total_amount || 1) * 100)}%` }"
                     ></div>
                 </div>
                 <div class="flex justify-between items-center text-[9px] text-gray-400 font-medium">
-                    <span>Terbayar: <b class="text-gray-700 dark:text-gray-300">{{ rp(inv.paid_amount || 0) }}</b></span>
-                    <span>Sisa: <b class="text-gray-700 dark:text-gray-300">{{ rp((inv.total_amount || 0) - (inv.paid_amount || 0)) }}</b></span>
+                    <span>Terbayar: <b class="text-gray-700 dark:text-gray-300">{{ rp(inv.amount_paid || 0) }}</b></span>
+                    <span>Sisa: <b class="text-gray-700 dark:text-gray-300">{{ rp((inv.total_amount || 0) - (inv.amount_paid || 0)) }}</b></span>
                 </div>
             </div>
 
@@ -211,12 +234,14 @@ const STATUS_INVOICE_VALIDATED = 'validated';
                             />
                         </svg>
                     </button>
+                    <!-- Tombol Foto Nota -->
                     <button
                         v-if="inv.invoice_image"
                         @click="
                             openImageModal(inv.invoice_url, inv.invoice_number)
                         "
-                        class="p-2 text-gray-600 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700"
+                        class="p-2 text-gray-600 border border-gray-200 rounded-lg bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-200"
+                        title="Foto Nota"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -231,6 +256,19 @@ const STATUS_INVOICE_VALIDATED = 'validated';
                                 stroke-width="2"
                                 d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
                             />
+                        </svg>
+                    </button>
+                    <!-- Tombol Bukti Bayar -->
+                    <button
+                        v-if="inv.payments?.some(p => p.proof_image)"
+                        @click="
+                            openImageModal(inv.payments.findLast(p => p.proof_image).proof_image_url, inv.invoice_number)
+                        "
+                        class="p-2 text-lime-600 border border-lime-100 rounded-lg bg-lime-50 dark:bg-lime-900/20 dark:border-lime-800 dark:text-lime-400"
+                        title="Bukti Bayar Terakhir"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                         </svg>
                     </button>
                     <Link

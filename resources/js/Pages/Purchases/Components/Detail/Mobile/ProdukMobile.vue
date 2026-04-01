@@ -99,6 +99,9 @@ const blurSearchInput = () => {
 
 import { useSmartRAB } from '@/Composable/useSmartRAB';
 const { openRabModal } = useSmartRAB();
+
+// --- VIEW MODE ---
+const viewMode = ref('detail'); // 'detail' | 'list'
 </script>
 <template>
     <div class="space-y-3" @touchmove="blurSearchInput">
@@ -118,21 +121,45 @@ const { openRabModal } = useSmartRAB();
             </button>
         </div>
 
-        <!-- SMART FILTERS CHIPS -->
-        <div class="flex overflow-x-auto gap-2 pb-1 scrollbar-hide pr-4 mask-fade-right snap-x">
-            <button
-                v-for="filter in filterOptions"
-                :key="filter"
-                @click="activeFilter = filter"
-                class="snap-start whitespace-nowrap px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all"
-                :class="
-                    activeFilter === filter
-                        ? 'bg-gray-800 text-white border-gray-800 dark:bg-gray-100 dark:text-gray-900 border-transparent shadow-sm'
-                        : 'bg-white text-gray-500 border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-50'
-                "
-            >
-                {{ filter }}
-            </button>
+        <!-- SMART FILTERS CHIPS & VIEW TOGGLE -->
+        <div class="flex items-center gap-2">
+            <div class="flex-1 flex overflow-x-auto gap-2 pb-1 scrollbar-hide mask-fade-right snap-x">
+                <button
+                    v-for="filter in filterOptions"
+                    :key="filter"
+                    @click="activeFilter = filter"
+                    class="snap-start whitespace-nowrap px-3 py-1.5 rounded-full text-[10px] font-bold border transition-all"
+                    :class="
+                        activeFilter === filter
+                            ? 'bg-gray-800 text-white border-gray-800 dark:bg-gray-100 dark:text-gray-900 border-transparent shadow-sm'
+                            : 'bg-white text-gray-500 border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400 hover:bg-gray-50'
+                    "
+                >
+                    {{ filter }}
+                </button>
+            </div>
+
+            <!-- View Toggle -->
+            <div class="flex p-0.5 bg-gray-100 dark:bg-gray-800 rounded-lg shrink-0 border border-gray-200 dark:border-gray-700">
+                <button 
+                    @click="viewMode = 'detail'"
+                    class="p-1.5 rounded-md transition-all"
+                    :class="viewMode === 'detail' ? 'bg-white dark:bg-gray-700 shadow-sm text-lime-600' : 'text-gray-400'"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                </button>
+                <button 
+                    @click="viewMode = 'list'"
+                    class="p-1.5 rounded-md transition-all"
+                    :class="viewMode === 'list' ? 'bg-white dark:bg-gray-700 shadow-sm text-lime-600' : 'text-gray-400'"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
         </div>
         
         <!-- STATISTIK INFO -->
@@ -147,241 +174,296 @@ const { openRabModal } = useSmartRAB();
             <span v-else>Tidak ada produk pada filter "<strong>{{ activeFilter }}</strong>"</span>
         </p>
 
-        <div
-            v-for="item in filteredItems"
-            :key="item.id"
-            :class="[
-                'overflow-hidden transition-all bg-white shadow-sm group dark:bg-gray-900 rounded-2xl hover:shadow-md',
-                item.purchase_invoice_id
-                    ? item.quantity < item.product_snapshot?.quantity
-                        ? 'border-2 border-red-500'
-                        : item.quantity > item.product_snapshot?.quantity
-                        ? 'border-2 border-yellow-500'
-                        : 'border-2 border-lime-500'
-                    : 'border border-gray-100 dark:border-gray-800',
-            ]"
-        >
-            <!-- HEADER: Gambar 1:1 + Info Produk -->
-            <div class="flex gap-3 p-3 pb-0">
-                <!-- 1:1 image -->
-                <div class="relative w-16 shrink-0 aspect-square overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
-                    <img
-                        v-if="item.product?.image_url"
-                        :src="item.product.image_url"
-                        :alt="item.product?.name"
-                        class="object-cover w-full h-full"
-                    />
-                    <div
-                        v-else
-                        class="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700"
-                    >
-                        <span class="text-lg font-black text-gray-300 dark:text-gray-600 uppercase select-none">
-                            {{ item.product?.name?.substring(0, 2).toUpperCase() }}
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Product Info -->
-                <div class="flex-1 overflow-hidden pt-1">
-                    <h4 class="text-sm font-bold leading-tight text-gray-800 line-clamp-2 dark:text-gray-100">
-                        {{ item.product?.name }}
-                    </h4>
-                    <p class="text-[11px] text-gray-500 font-medium mt-1">
-                        {{ item.product?.code || "-" }}
-                        <span class="mx-1 text-gray-300">|</span>
-                        {{ item.product_snapshot?.unit }}
-                    </p>
-                    <div class="flex gap-1 mt-1 flex-wrap">
-                        <span
-                            v-if="item.product_snapshot?.brand"
-                            class="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+        <!-- VIEW MODE: DETAIL (Grid Card) -->
+        <div v-if="viewMode === 'detail'" class="space-y-3">
+            <div
+                v-for="item in filteredItems"
+                :key="item.id"
+                :class="[
+                    'overflow-hidden transition-all bg-white shadow-sm group dark:bg-gray-900 rounded-2xl hover:shadow-md',
+                    item.purchase_invoice_id
+                        ? item.quantity < item.product_snapshot?.quantity
+                            ? 'border-2 border-red-500'
+                            : item.quantity > item.product_snapshot?.quantity
+                            ? 'border-2 border-yellow-500'
+                            : 'border-2 border-lime-500'
+                        : 'border border-gray-100 dark:border-gray-800',
+                ]"
+            >
+                <!-- HEADER: Gambar 1:1 + Info Produk -->
+                <div class="flex gap-3 p-3 pb-0">
+                    <!-- 1:1 image -->
+                    <div class="relative w-16 shrink-0 aspect-square overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800">
+                        <img
+                            v-if="item.product?.image_url"
+                            :src="item.product.image_url"
+                            :alt="item.product?.name"
+                            class="object-cover w-full h-full"
+                        />
+                        <div
+                            v-else
+                            class="flex items-center justify-center w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700"
                         >
-                            {{ item.product_snapshot?.brand }}
-                        </span>
-                        <span
-                            v-if="item.product_snapshot?.category"
-                            class="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
-                        >
-                            {{ item.product_snapshot?.category }}
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- BODY: Data tabel PO vs Realisasi -->
-            <div class="mt-3 mx-3 overflow-hidden border border-gray-100 bg-gray-50 dark:bg-gray-800/50 rounded-xl dark:border-gray-700">
-                <div
-                    class="grid grid-cols-2 border-b border-gray-100 dark:border-gray-700"
-                >
-                    <div
-                        class="py-1.5 text-center text-[9px] font-bold text-gray-700 uppercase tracking-wider bg-gray-200 dark:bg-gray-800"
-                    >
-                        Order (PO)
-                    </div>
-                    <div
-                        class="py-1.5 text-center text-[9px] font-bold text-gray-600 uppercase tracking-wider bg-white dark:bg-gray-900"
-                    >
-                        Realisasi (Datang)
-                    </div>
-                </div>
-
-                <div
-                    class="grid grid-cols-2 text-xs border-b border-gray-100 dark:border-gray-700"
-                >
-                    <div
-                        class="p-2 text-center text-gray-600 bg-gray-200 border-r border-gray-100 dark:text-gray-400 dark:border-gray-700"
-                    >
-                        <span class="text-[9px] text-gray-500 block mb-0.5"
-                            >Qty</span
-                        >
-                        {{ item.product_snapshot?.quantity }}
+                            <span class="text-lg font-black text-gray-300 dark:text-gray-600 uppercase select-none">
+                                {{ item.product?.name?.substring(0, 2).toUpperCase() }}
+                            </span>
+                        </div>
                     </div>
 
-                    <div
-                        :class="[
-                            'p-2 text-center font-bold bg-white dark:bg-gray-900',
-                            item.purchase_invoice_id
-                                ? item.quantity <
-                                  item.product_snapshot?.quantity
-                                    ? 'text-red-600'
-                                    : item.quantity >
-                                      item.product_snapshot?.quantity
-                                    ? 'text-yellow-600'
-                                    : 'text-lime-600'
-                                : 'text-gray-800 dark:text-gray-200',
-                        ]"
-                    >
-                        <span
-                            class="text-[9px] text-gray-400 block mb-0.5 font-normal"
-                            >Qty</span
-                        >
-                        {{ purchase.received_at ? item.quantity : "-" }}
-
-                        <span
-                            v-if="
-                                purchase.received_at &&
-                                item.quantity < item.product_snapshot?.quantity
-                            "
-                            class="ml-1 text-[9px]"
-                            >↓</span
-                        >
-                        <span
-                            v-else-if="
-                                purchase.received_at &&
-                                item.quantity > item.product_snapshot?.quantity
-                            "
-                            class="ml-1 text-[9px]"
-                            >↑</span
-                        >
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 text-xs">
-                    <div
-                        class="p-2 text-center text-gray-600 bg-gray-200 border-r border-gray-100 dark:text-gray-400 dark:border-gray-700"
-                    >
-                        <span class="text-[9px] text-gray-400 block mb-0.5"
-                            >@ Harga PO</span
-                        >
-                        {{ rp(item.product_snapshot?.purchase_price) }}
-                    </div>
-
-                    <div
-                        :class="[
-                            'p-2 text-center font-bold bg-white dark:bg-gray-900',
-                            item.purchase_price >
-                            item.product_snapshot?.purchase_price
-                                ? 'text-red-600'
-                                : item.purchase_price <
-                                  item.product_snapshot?.purchase_price
-                                ? 'text-green-600'
-                                : 'text-gray-700 dark:text-gray-300',
-                        ]"
-                    >
-                        <span
-                            class="text-[9px] text-gray-400 block mb-0.5 font-normal"
-                            >@ Harga Nota</span
-                        >
-                        {{
-                            purchase.received_at && item.purchase_price
-                                ? rp(item.purchase_price)
-                                : "-"
-                        }}
-
-                        <span
-                            v-if="
-                                purchase.received_at &&
-                                item.purchase_price >
-                                    item.product_snapshot?.purchase_price
-                            "
-                            class="ml-1 text-[9px]"
-                            >▲</span
-                        >
-                        <span
-                            v-else-if="
-                                purchase.received_at &&
-                                item.purchase_price <
-                                    item.product_snapshot?.purchase_price &&
-                                item.purchase_price > 0
-                            "
-                            class="ml-1 text-[9px]"
-                            >▼</span
-                        >
-                    </div>
-                </div>
-            </div>
-
-            <!-- Status badges + Subtotal -->
-            <div class="flex items-end justify-between mt-2 mx-3 mb-3 pt-2 border-t border-gray-100 dark:border-gray-700">
-                    <div class="flex flex-col gap-1.5">
-                        <div class="flex items-center gap-1.5">
-                            <Link
-                                :href="
-                                    route('purchases.linkInvoiceItems', {
-                                        purchase: purchase.id,
-                                        invoice: item.purchase_invoice_id,
-                                    })
-                                "
-                                v-if="item.purchase_invoice_id"
-                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-lime-50 text-lime-700 border border-lime-100 text-[10px] font-bold dark:bg-lime-900/20 dark:border-lime-800 dark:text-lime-300"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
-                                </svg>
-                                Terhubung Nota
-                            </Link>
+                    <!-- Product Info -->
+                    <div class="flex-1 overflow-hidden pt-1">
+                        <h4 class="text-sm font-bold leading-tight text-gray-800 line-clamp-2 dark:text-gray-100">
+                            {{ item.product?.name }}
+                        </h4>
+                        <p class="text-[11px] text-gray-500 font-medium mt-1">
+                            {{ item.product?.code || "-" }}
+                            <span class="mx-1 text-gray-300">|</span>
+                            {{ item.product_snapshot?.unit }}
+                        </p>
+                        <div class="flex gap-1 mt-1 flex-wrap">
                             <span
-                                v-else
-                                class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-medium dark:bg-gray-800 dark:border-gray-700"
+                                v-if="item.product_snapshot?.brand"
+                                class="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
                             >
-                                <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                                Pending Nota
+                                {{ item.product_snapshot?.brand }}
                             </span>
-                        </div>
-
-                        <div class="flex flex-wrap gap-1">
-                            <span :class="getStatusBadgeClass(item.unified_status)">
-                                {{ item.unified_status }}
+                            <span
+                                v-if="item.product_snapshot?.category"
+                                class="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400"
+                            >
+                                {{ item.product_snapshot?.category }}
                             </span>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Beli Lagi Button & Subtotal Highlighted -->
-                    <div class="flex flex-col items-end gap-2 pl-3 border-l-2 border-dashed border-gray-200 dark:border-gray-700">
-                        <button 
-                            @click="openRabModal(item, purchase?.supplier?.id, item.product_snapshot?.quantity || 1)"
-                            class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-white bg-lime-500 rounded-lg hover:bg-lime-600 active:scale-95 transition shadow-sm shadow-lime-500/30"
+                <!-- BODY: Data tabel PO vs Realisasi -->
+                <div class="mt-3 mx-3 overflow-hidden border border-gray-100 bg-gray-50 dark:bg-gray-800/50 rounded-xl dark:border-gray-700">
+                    <div
+                        class="grid grid-cols-2 border-b border-gray-100 dark:border-gray-700"
+                    >
+                        <div
+                            class="py-1.5 text-center text-[9px] font-bold text-gray-700 uppercase tracking-wider bg-gray-200 dark:bg-gray-800 dark:text-gray-400"
                         >
-                            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
-                            Beli Lagi
-                        </button>
-                        <div class="flex flex-col items-end mt-auto">
-                            <span class="text-[9px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">Subtotal</span>
-                            <span class="text-lg font-black text-gray-900 dark:text-white leading-none">
-                                {{ rp((item.actual_price || item.purchase_price) * (item.quantity_received || item.quantity)) }}
-                            </span>
+                            Order (PO)
+                        </div>
+                        <div
+                            class="py-1.5 text-center text-[9px] font-bold text-gray-600 uppercase tracking-wider bg-white dark:bg-gray-900"
+                        >
+                            Realisasi (Datang)
                         </div>
                     </div>
+
+                    <div
+                        class="grid grid-cols-2 text-xs border-b border-gray-100 dark:border-gray-700"
+                    >
+                        <div
+                            class="p-2 text-center text-gray-600 bg-gray-200 border-r border-gray-100 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800"
+                        >
+                            <span class="text-[9px] text-gray-500 block mb-0.5"
+                                >Qty</span
+                            >
+                            {{ item.product_snapshot?.quantity }}
+                        </div>
+
+                        <div
+                            :class="[
+                                'p-2 text-center font-bold bg-white dark:bg-gray-900',
+                                item.purchase_invoice_id
+                                    ? item.quantity <
+                                      item.product_snapshot?.quantity
+                                        ? 'text-red-600'
+                                        : item.quantity >
+                                          item.product_snapshot?.quantity
+                                        ? 'text-yellow-600'
+                                        : 'text-lime-600'
+                                    : 'text-gray-800 dark:text-gray-200',
+                            ]"
+                        >
+                            <span
+                                class="text-[9px] text-gray-400 block mb-0.5 font-normal"
+                                >Qty</span
+                            >
+                            {{ purchase.received_at ? item.quantity : "-" }}
+
+                            <span
+                                v-if="
+                                    purchase.received_at &&
+                                    item.quantity < item.product_snapshot?.quantity
+                                "
+                                class="ml-1 text-[9px]"
+                                >↓</span
+                            >
+                            <span
+                                v-else-if="
+                                    purchase.received_at &&
+                                    item.quantity > item.product_snapshot?.quantity
+                                "
+                                class="ml-1 text-[9px]"
+                                >↑</span
+                            >
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 text-xs">
+                        <div
+                            class="p-2 text-center text-gray-600 bg-gray-200 border-r border-gray-100 dark:text-gray-400 dark:border-gray-700 dark:bg-gray-800"
+                        >
+                            <span class="text-[9px] text-gray-400 block mb-0.5"
+                                >@ Harga PO</span
+                            >
+                            {{ rp(item.product_snapshot?.purchase_price) }}
+                        </div>
+
+                        <div
+                            :class="[
+                                'p-2 text-center font-bold bg-white dark:bg-gray-900',
+                                item.purchase_price >
+                                item.product_snapshot?.purchase_price
+                                    ? 'text-red-600'
+                                    : item.purchase_price <
+                                      item.product_snapshot?.purchase_price
+                                    ? 'text-green-600'
+                                    : 'text-gray-700 dark:text-gray-300',
+                            ]"
+                        >
+                            <span
+                                class="text-[9px] text-gray-400 block mb-0.5 font-normal"
+                                >@ Harga Nota</span
+                            >
+                            {{
+                                purchase.received_at && item.purchase_price
+                                    ? rp(item.purchase_price)
+                                    : "-"
+                            }}
+
+                            <span
+                                v-if="
+                                    purchase.received_at &&
+                                    item.purchase_price >
+                                        item.product_snapshot?.purchase_price
+                                "
+                                class="ml-1 text-[9px]"
+                                >▲</span
+                            >
+                            <span
+                                v-else-if="
+                                    purchase.received_at &&
+                                    item.purchase_price <
+                                        item.product_snapshot?.purchase_price &&
+                                    item.purchase_price > 0
+                                "
+                                class="ml-1 text-[9px]"
+                                >▼</span
+                            >
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status badges + Subtotal -->
+                <div class="flex items-end justify-between mt-2 mx-3 mb-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                        <div class="flex flex-col gap-1.5">
+                            <div class="flex items-center gap-1.5">
+                                <Link
+                                    :href="
+                                        route('purchases.linkInvoiceItems', {
+                                            purchase: purchase.id,
+                                            invoice: item.purchase_invoice_id,
+                                        })
+                                    "
+                                    v-if="item.purchase_invoice_id"
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-lime-50 text-lime-700 border border-lime-100 text-[10px] font-bold dark:bg-lime-900/20 dark:border-lime-800 dark:text-lime-300"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+                                    </svg>
+                                    {{ item.invoice?.invoice_number }}
+                                </Link>
+                                <span
+                                    v-else
+                                    class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-500 border border-gray-200 text-[10px] font-medium dark:bg-gray-800 dark:border-gray-700"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                                    Pending Nota
+                                </span>
+                            </div>
+
+                            <div class="flex flex-wrap gap-1">
+                                <span :class="getStatusBadgeClass(item.unified_status)">
+                                    {{ item.unified_status }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Beli Lagi Button & Subtotal Highlighted -->
+                        <div class="flex flex-col items-end gap-2 pl-3 border-l-2 border-dashed border-gray-200 dark:border-gray-700">
+                            <button v-if="purchase.status === 'selesai'"
+                                @click="openRabModal(item, purchase?.supplier?.id, item.product_snapshot?.quantity || 1)"
+                                class="flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold text-white bg-lime-500 rounded-lg hover:bg-lime-600 active:scale-95 transition shadow-sm shadow-lime-500/30"
+                            >
+                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                Beli Lagi
+                            </button>
+                            <div class="flex flex-col items-end mt-auto">
+                                <span class="text-[9px] uppercase tracking-wider font-bold text-gray-400 mb-0.5">Subtotal</span>
+                                <span class="text-lg font-black text-gray-900 dark:text-white leading-none">
+                                    {{ rp((item.actual_price || item.purchase_price) * (item.quantity_received || item.quantity)) }}
+                                </span>
+                            </div>
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW MODE: LIST (Compact Table) -->
+        <div v-else class="bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                            <th class="px-3 py-2 text-[10px] font-black uppercase text-gray-500 tracking-wider">Produk</th>
+                            <th class="px-3 py-2 text-[10px] font-black uppercase text-gray-500 tracking-wider text-center">PO</th>
+                            <th class="px-3 py-2 text-[10px] font-black uppercase text-gray-500 tracking-wider text-center">Real</th>
+                            <th class="px-3 py-2 text-[10px] font-black uppercase text-gray-500 tracking-wider text-right">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+                        <tr v-for="item in filteredItems" :key="item.id" class="active:bg-gray-50 dark:active:bg-gray-800/50">
+                            <td class="px-3 py-2.5">
+                                <div class="flex flex-col">
+                                    <span class="text-[11px] font-bold text-gray-800 dark:text-gray-100 line-clamp-1">
+                                        {{ item.product?.name }}
+                                    </span>
+                                    <div class="flex items-center gap-1.5 mt-0.5">
+                                        <span class="text-[9px] text-gray-400 font-medium tracking-tight bg-gray-100 dark:bg-gray-800 px-1 rounded">{{ item.product?.code || '-' }}</span>
+                                        <span :class="getStatusBadgeClass(item.unified_status)" class="scale-90 origin-left">
+                                            {{ item.unified_status === 'Ada Perubahan' ? 'Beda' : item.unified_status }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="px-3 py-2.5 text-center text-xs font-bold text-gray-500 bg-gray-50/50 dark:bg-gray-800/20">
+                                {{ item.product_snapshot?.quantity }}
+                            </td>
+                            <td class="px-3 py-2.5 text-center text-xs font-black" :class="item.quantity != item.product_snapshot?.quantity ? 'text-orange-500' : 'text-lime-600'">
+                                {{ item.quantity }}
+                            </td>
+                            <td class="px-3 py-2.5 text-right">
+                                <div class="flex flex-col items-end">
+                                    <span class="text-[11px] font-black text-gray-900 dark:text-white">
+                                        {{ rp((item.actual_price || item.purchase_price) * (item.quantity_received || item.quantity)) }}
+                                    </span>
+                                    <button v-if="purchase.status === 'selesai'"
+                                        @click="openRabModal(item, purchase?.supplier?.id, item.product_snapshot?.quantity || 1)"
+                                        class="text-[8px] font-black text-lime-600 uppercase tracking-tighter hover:underline"
+                                    >
+                                        Beli Lagi
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
